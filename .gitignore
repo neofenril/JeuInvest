@@ -11,6 +11,9 @@ godot/.godot/
 # Captures d'écran de contrôle (régénérées par godot/outils/capture.ps1)
 godot/captures/
 
+# Images d'inspiration fournies par l'utilisateur (œuvres de tiers : restent sur le PC)
+docs/sources/graphisme/references/
+
 # Réglages locaux de Claude Code
 .claude/settings.local.json
 

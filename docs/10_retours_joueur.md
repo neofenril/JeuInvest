@@ -44,6 +44,17 @@ Verbatim :
 
 - « Je trouve qu'on s'ennuie un peu » → création d'un agent game designer qui discute avec le client et fait une liste de propositions, **à soumettre au joueur avant toute autre chose** (aucune implémentation avant sa validation).
 
+## 2026-10-29 — Décision sur les propositions du game designer (docs/14) et du chef de projet
+
+Verbatim :
+
+- « On fait P1, P2, P3, P4, P5, P6, P9, P10 ; on garde éventuellement pour plus tard P7, P11, P12, P13 ; on retient pas P8. »
+- « Concernant les propositions techniques du CDP on conserve les deux idées. » → retirer les raccourcis de test des versions exportées ; découper `principal.gd`.
+- « Je laisse le CDP recruter d'autres développeurs s'il pense que ça peut permettre d'augmenter l'efficacité. »
+- Ajout d'un **testeur** : « Les développeurs ne pushent pas sur leur branche tant que le testeur n'est pas passé dessus et n'a pas vérifié que les développements étaient OK. »
+
+Questions 1 à 3 du game designer (moral du foyer, voisins rivaux, fréquence des cartes) : pas de réponse explicite ; en retenant P2, P3 et P5, le joueur valide le principe. Par défaut, on applique les réserves du client (docs/14 §6) : moral en 3 humeurs de Sylvie, 8 à 10 cartes par démo, Jean-Mi finit derrière Tata Livret, P5 et P10 dans leur version allégée — à confirmer par le joueur sur la démo.
+
 Réponses aux questions du client (docs/12) :
 - « le cadre de la démo est ok » → démo janvier 1984 → décembre 1988 avec Gérard, papa en 1985 : validé.
 - « pas de questionnaire prévu pour le moment, garde ça de côté, peut-être à implémenter plus tard » → « adapté au profil » = selon la situation de vie uniquement (âge, couple, enfants, épargne). Questionnaire de risque : idée mise de côté.
