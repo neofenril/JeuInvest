@@ -182,5 +182,34 @@ Arbitrage du chef de projet (2026-10-29) sur `docs/lots/lot_01_recette.md` :
 - CA-P2-4 : `tests.ps1` vert (≥ 202 vérifications), `-Autocontrole` vert ; diff limité au §1 ; le reste des CA du passage 1 est acquis (pas de nouvelle intégrale exigée, aucun script du jeu touché).
 
 ## 5. Validation (rempli par le chef de projet)
-- [ ] CA-L1 à CA-L9 · [ ] CA-I1 à CA-I7 · [ ] tests sur `main` après fusion · [ ] captures relues · [ ] bases de connaissances à jour · [ ] tâche documentaire D08 bis
-- Décision :
+- [x] CA-L1 à CA-L9 (`lot/01-logique` 00c4821, OK au passage 2 : CA-L2 complété par CA-P2-1) · [x] CA-I1 à CA-I7 (`lot/01-interface` 261d373, OK au passage 1) · [ ] tests sur `main` après fusion (coordinateur, liste ci-dessous) · [x] captures relues par le testeur (53 paires PC + 4 téléphone, comparaison à `main`) ; [ ] relecture post-fusion (titre, jouer, krach, fin, raccourcis) · [x] bases de connaissances à jour (`dev-logique.md`, `developpeur.md`, `dev-interface.md` dans les branches ; `chef-de-projet.md`) · [x] tâche documentaire D08 bis (docs/13 l. 312 et docs/11 l. 580 ne citent plus D08 bis que comme « supprimé le 2026-10-27 » ; phrase retirée de `CLAUDE.md`)
+- Remarque : `principal.gd` faisait 1 611 lignes sur `main`, pas 1 464 (le plan était inexact ; sans effet, la cible ≤ 600 est tenue : 585).
+- **Décision (2026-10-29) : fusion VALIDÉE**, sous réserve que les vérifications ci-dessous passent sur `main`. En cas d'échec : ne pas pousser `main`, revenir au chef de projet ; correction sur `lot/01-<dev>-correctif` (pas de correctif direct sur `main`).
+
+### Ordre de fusion (coordinateur, dépôt principal, `main` propre)
+1. `git merge --no-ff lot/01-logique -m "Fusion du lot 01 logique : worktrees, tests stricts, StrategieTest, test de l'interface"`
+2. `git merge --no-ff lot/01-interface -m "Fusion du lot 01 interface : découpage de principal.gd, raccourcis de test retirés de la version du joueur"` (fichiers disjoints, `git merge-tree` vérifié sans conflit par le testeur et par moi).
+3. Vérifications V1 à V9 ci-dessous. Puis commit séparé du test de recette (V5), puis push de `main`. Ne commiter aucun `*.ttf.import` (réservés à dev-interface PX0), aucune capture, aucun exe.
+
+### Vérifications après fusion (sur `main`, dépôt principal ; `$g` = Godot console, `$p` = `C:\Users\arthu\Documents\temp\JeuClaude\godot`)
+- **V1** `powershell -ExecutionPolicy Bypass -File godot\outils\tests.ps1` : import propre ; test_demo 107, test_interface 21, test_logique 66, test_partie 8 = **202 OK**, 0 KO, 0 erreur de script, « TOUT EST PROPRE », sauvegarde du joueur inchangée, < 90 s, code 0. (`test_interface` instancie ici la scène **découpée** : c'est le vrai test d'intégration du lot.)
+- **V2** `tests.ps1 -Autocontrole` : « AUTOCONTRÔLE RÉUSSI », code 0.
+- **V3** Captures PC par `capture.ps1 -Etape <x> -Nom post01_<x>` pour `titre`, `jouer`, `krach`, `fin` : code 0, aucune ligne `SCRIPT ERROR` / `Parse Error` / `Invalid` ; images relues (titre **avec** la ligne d'aide F10/F8, rue, journal du krach, écran de fin chiffré).
+- **V4** `raccourcis` (absent de la liste de `capture.ps1` mais accepté par `-Etape`) : (a) `capture.ps1 -Etape raccourcis -Nom post01_raccourcis` → `raccourcis_test=vrai`, F8 et triple toucher font avancer le mois, F6 enfants 0 → 1, F10 PC → téléphone ; (b) commande directe `& $g --path $p --resolution 1280x720 -- --capture=captures/post01_raccourcis_joueur.png --etape=raccourcis --joueur` → `raccourcis_test=faux`, mois, enfants et format inchangés, touches de jeu actives ; (c) même commande avec `--etape=titre --joueur` (`post01_titre_joueur.png`) → titre **sans** ligne d'aide.
+- **V5** Test de recette du testeur (décision ci-dessous) : copier les 3 fichiers dans `godot/tests/recette/`, puis `tests.ps1 -Recette` → 202 + **11 OK**, code 0 ; et `& $g --headless --path $p res://tests/recette/test_recette_decoupage.tscn -- --joueur` → « raccourcis_test=false : 11 OK, 0 KO », code 0. Puis commit « Lot 01 : test de recette du découpage (testeur) ».
+- **V6** Depuis un worktree neuf : `git worktree add --detach C:\Users\arthu\Documents\temp\JeuClaude_lots\verif01 main` ; dans ce worktree `tests.ps1 -Filtre test_interface` (Godot trouvé dans le dépôt principal, code 0) et `capture.ps1 -Etape titre -Nom essai_wt` (png écrit **dans le worktree**, code 0) ; puis `git worktree remove C:\Users\arthu\Documents\temp\JeuClaude_lots\verif01`.
+- **V7** `Jouer_Godot.bat` à sec (copie dans le scratchpad, `start ""` → `echo LANCE`, sans `JEUCLAUDE_GODOT`) : chemin `outils\…\Godot_v4.7.2-stable_win64.exe`, code 0. Ne pas lancer le vrai jeu.
+- **V8** Empreinte SHA-256 de `%APPDATA%\Godot\app_userdata\JeuClaude\partie_en_cours.sav` identique avant V1 et après V6 ; aucun `test_*.sav` ni `recette_*.sav` restant.
+- **V9** `git status` propre (hors fichiers ignorés et `*.ttf.import` non suivis) ; `git log --oneline -4` montre les deux fusions `--no-ff` et le commit du test de recette.
+- Pas de nouvel export pour le joueur (prévu au lot 02, version 0.3).
+
+### Test de recette `test_recette_decoupage` (décision)
+- **Ajouté à `main` tel quel** (`.gd`, `.gd.uid`, `.tscn`), dans `godot/tests/recette/`, **propriétaire : le testeur**. Lancé seulement par `tests.ps1 -Recette` (jamais dans la passe par défaut des développeurs) : il ne bloque donc pas leur travail.
+- Raison : il couvre les 5 chemins de `principal.gd` découpé que ni les captures ni `test_interface` n'empruntent (appels dynamiques `jeu.*`), et c'est le seul contrôle automatique de la variante `--joueur`.
+- Fragilités connues, acceptées : il appelle `Modales._on_choix_journal` (privé) et lit `EcranTitre.l_aide`, `modales.genre_courant` ; il cassera au découpage de `modales.gd` (lot 02, T9). Le testeur l'adapte pendant la recette du lot 02 (pas les développeurs). La variante `--joueur` reste à lancer à la main (V5) tant que `tests.ps1` ne sait pas passer d'arguments à un test (backlog T18).
+
+### Points remontés par la recette, reportés (backlog du chef de projet)
+- B1 graduations « Mon argent » recouvertes en début de partie (`hud.gd`, préexistant) → lot 02, dev-interface (ou PX2 si le HUD y est refait : vérifier alors sur la capture `jumeaux`).
+- B2 commentaire périmé `scripts/ville/accessoire.gd` l. 2 → lot 02 (ou PX1), dev-ville.
+- B3 `principal._info()` jamais appelée → lot 02, dev-interface (premier passage sur `principal.gd`).
+- `capture.ps1` : étape `raccourcis` dans la liste et option `-Joueur` (→ `--joueur`) → lot 02, dev-interface (le fichier lui revient après le lot 01), avec T13.

@@ -1,18 +1,17 @@
 # Base de connaissances du chef de projet technique
 
 > À lire au début de chaque mission (après `CLAUDE.md`, avec le socle `developpeur.md`). À mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-29 (arbitrage du KO de `lot/01-logique`, passage 1).
+> Dernière mise à jour : 2026-10-29 (validation de la fusion du lot 01).
 
 ## 0. Situation
 
 - Équipe : chef de projet (moi), `dev-logique`, `dev-interface`, `testeur`, **`dev-ville`** (recruté le 29/10, actif dès PX0).
 - Git (29/10) : `outils/git/cmd/git.exe`, dépôt GitHub, `main`. Circuit : plan → branches `lot/NN-<dev>` (worktrees dans `C:\Users\arthu\Documents\temp\JeuClaude_lots\`) → commits locaux → testeur (`lot_NN_recette.md`) → push de la branche → ma validation → fusion `--no-ff` dans `main`, tests relancés, push.
-- **Lot 01 lancé** (29/10, base `a515796`, worktrees `lot01-logique`, `lot01-interface`) : raccourcis de test retirés des versions exportées, découpage de `principal.gd`, worktrees, `tests.ps1` strict + `test_interface`.
-  - `lot/01-logique` : passage 1 **KO** (6751074, A1 `Jouer_Godot.bat` cassé sans variable). Arbitrage écrit dans `lot_01.md` § « Corrections — passage 2 » : A1 + A4 corrigés maintenant, A3 balisé (accesseurs au lot 02), A2 sans suite. CA-L9 corrigé dans le plan. 202 vérifications sur la branche (≈ 24 s).
-  - `lot/01-interface` : en recette.
-- **PX0 planifié** (`docs/lots/lot_px0.md`, docs/16 validée par le joueur : tout en pixel art dans le code, interface comprise, personnages ≈ taille actuelle) : scène autonome `scenes/px0.tscn`, aucun fichier commun avec le lot 01. Étape A dev-ville seul (atelier) → tag `px0-atelier` → étape B parallèle : `lot/px0-ville` (dev-ville) et `lot/px0-interface` (2e instance de dev-interface, **branche empilée sur le tag**). Ensuite décision du joueur, puis PX1 (rue, dev-ville) et PX2 (interface, dev-interface) en parallèle, avant les lots 03-04.
+- **Lot 01 : fusion validée** (29/10, §5 de `lot_01.md`) : `lot/01-logique` 00c4821 (OK passage 2) puis `lot/01-interface` 261d373 (OK passage 1), `--no-ff`, puis vérifications V1-V9 par le coordinateur (202 OK, autocontrôle, captures titre/jouer/krach/fin, `raccourcis` avec et sans `--joueur`, test de recette 11 OK ×2, worktree neuf, `Jouer_Godot.bat` à sec, sauvegarde du joueur intacte). Échec → pas de push, branche `lot/01-<dev>-correctif`. Tâche D08 bis : faite.
+  - Après fusion : `principal.gd` 585 l. ; `EcranTitre`, `Sequences`, `RaccourcisTest`, `Reglages`, `ScenariosCapture` + 5 familles ; `StrategieTest` ; `tests.ps1` découvre les tests et détecte les erreurs de script ; `test_interface` 21 vérifications. Référence attendue sur `main` : **202 vérifications** (107 + 21 + 66 + 8), ≈ 24 s.
+- **PX0 étape B en cours** (`docs/lots/lot_px0.md`) : `lot/px0-ville` (dev-ville) et `lot/px0-interface` (2e instance de dev-interface), empilées sur le tag `px0-atelier` (9fc6ed8, base 020f8d4 = **avant** le lot 01). Fichiers disjoints du lot 01 (vérifié : 20 fichiers neufs). À la fusion de PX0 : le `tests.ps1` du lot 01 découvrira `tests/test_pixel.gd` tout seul → la recette PX0 doit simuler la fusion avec `main` post-lot 01 (test_pixel doit quitter seul, imprimer OK/KO, aucune erreur de script). Ensuite décision du joueur, puis PX1 (rue, dev-ville) et PX2 (interface, dev-interface) en parallèle, avant les lots 03-04.
 - Feuille de route V3 : `docs/lots/feuille_de_route.md` (lots 02 à 07 : P4 → P2 → P1 → P3 + P9 → P6 → P5). Spec `docs/15_spec_game_design_v3.md` en cours chez le game designer.
-- Référence vérifiée le 29/10 sur `main` (b55ca7f) : 66 + 100 + 8 tests verts (≈ 12 s) ; import headless ≈ 5 s, sans erreur.
+- Référence avant lot 01 (b55ca7f) : 66 + 100 + 8 (≈ 12 s). Après lot 01 : 202 (voir ci-dessus) ; `-Recette` : + 11.
 
 ## 1. Carte de propriété des fichiers
 
@@ -24,11 +23,11 @@ Chemins relatifs à `godot/` sauf mention. « Partagé » = un seul propriétair
 | `scripts/logique/*.gd`, `scripts/partie.gd` | dev-logique | `partie.gd` = pont logique ↔ UI : tout signal modifié = interface du lot. Après lot 01 : `strategie_test.gd` (`StrategieTest`). |
 | `tests/test_*.gd`, `tests/autocontrole/`, `outils/tests.ps1`, `outils/trouver_godot.ps1` | dev-logique | Après lot 01 : `tests.ps1` découvre seul les `tests/test_*` → un développeur peut ajouter un test sans toucher `tests.ps1`. |
 | `tests/test_partie.*`, `tests/test_interface.*` | **partagé** (défaut dev-logique) | Instancient l'UI : à confier au développeur interface si le lot change ce qu'ils appellent. |
-| `tests/recette/` | testeur | Jamais modifié par les développeurs. |
+| `tests/recette/` | testeur | Jamais modifié par les développeurs. Lancé seulement par `tests.ps1 -Recette`. Contient `test_recette_decoupage` (lot 01 ; touche du privé de `Modales` : le testeur l'adapte au lot 02 après T9 ; variante `--joueur` lancée à la main). |
 | `export_presets.cfg`, `Exporter_*.bat`, `Jouer_Godot.bat` | dev-logique | Version 0.2 / code 2 → 0.3 au lot 02 (avec `project.godot`). |
 | `scripts/ui/*.gd`, `scripts/ecran.gd`, `scenes/`, `assets/icone`, `icon.svg`, `outils/generer_icones.gd` | dev-interface | Après lot 01 : `ui/ecran_titre.gd` (`EcranTitre`). |
 | `scripts/principal.gd` | dev-interface | Après lot 01 : câblage seulement (≤ 600 l.). Toute fonctionnalité visible y ajoute quelques lignes : prévoir qui les écrit. |
-| `scripts/outils/` (`capture.gd`, `reglages.gd`, `raccourcis_test.gd`, `scenarios_capture.gd`), `outils/capture.ps1`, `captures/` | dev-interface | `capture.ps1` prêté à dev-logique au lot 01. Familles de scénarios `scripts/outils/scenarios/{titre,banque,ville,ecrans,outils}.gd` : une famille = un propriétaire (ville → dev-ville). |
+| `scripts/outils/` (`capture.gd`, `reglages.gd`, `raccourcis_test.gd`, `scenarios_capture.gd`), `outils/capture.ps1`, `captures/` | dev-interface | `capture.ps1` prêté à dev-logique au lot 01, rendu à dev-interface ensuite (il inclut `trouver_godot.ps1`, qui reste à dev-logique). Familles de scénarios `scripts/outils/scenarios/{titre,banque,ville,ecrans,outils}.gd` : une famille = un propriétaire (ville → dev-ville). |
 | `scripts/ville/*.gd` (dont `sequences.gd` après lot 01), `shaders/`, `scripts/juice.gd` | dev-interface jusqu'au lot 01 ; **dev-ville ensuite** | |
 | `project.godot` | **partagé** (défaut dev-interface) | `[display]`, `[gui]`, `[rendering]`, `[input]`, `[jeuclaude]` → interface ; `[autoload]` Partie, `config/version` → logique. Un seul propriétaire par lot. |
 | `scripts/pixel/*.gd` (`PalettePixel`, `GrillePixel`, `VuePixel`, `MatieresPixel`, `RuePx0`, `px0.gd`), `scenes/px0.tscn`, `data/pixel/ville/`, `data/pixel/LISEZMOI.md`, `tests/test_pixel.gd`, `outils/capture_px0.ps1`, `Voir_PX0.bat` (racine) | **dev-ville** (PX0) | Atelier pixel (conservé) ; `px0.gd` / `rue_px0.gd` jetables. |
@@ -62,9 +61,11 @@ Chemins relatifs à `godot/` sauf mention. « Partagé » = un seul propriétair
 
 | # | Prio | Élément | Où |
 |---|---|---|---|
-| T1 | P0 | Raccourcis de test hors des versions exportées | **lot 01** |
-| T3 | P1 | Découpage de `principal.gd` + test de l'interface | **lot 01** |
-| T8 | P2 | D08 bis dans docs/13 et docs/11 | **lot 01** (tâche documentaire du coordinateur) |
+| ~~T1, T3, T8~~ | — | Raccourcis de test, découpage de `principal.gd` + `test_interface`, D08 bis | **faits au lot 01** |
+| B1 | P2 | Graduations de « Mon argent » recouvertes par la courbe et l'étiquette « = 0 F » en début de partie (préexistant ; capture `jumeaux`, mai 1984) | lot 02, dev-interface (`hud.gd`) ; si PX2 refait le HUD, vérifier là |
+| B2 | P3 | Commentaire périmé `scripts/ville/accessoire.gd` l. 2 (« séquences de principal.gd » → `Sequences`) | lot 02 ou PX1, dev-ville |
+| B3 | P3 | `principal._info()` jamais appelée (code mort, préexistant) | lot 02, dev-interface |
+| T18 | P2 | `capture.ps1` : étape `raccourcis` dans la liste, option `-Joueur` (→ `--joueur`) ; `tests.ps1` : pouvoir lancer un test de recette avec `--joueur` (variante du test de recette) | lot 02 : `capture.ps1` dev-interface (avec T13) ; `tests.ps1` dev-logique |
 | T2 | P0 | APK jamais essayé sur un vrai téléphone : liste de contrôle courte pour le joueur (installation, défilement de l'historique, cibles 80 px, orientation, sauvegarde en arrière-plan) | avec l'export 0.3 (lot 02) |
 | T13 | P1 | Scénarios de capture sur `StrategieTest` (copie temporaire au lot 01) | lot 02, dev-interface |
 | T14 | P1 | Migration douce des sauvegardes | lot 02, dev-logique |
@@ -109,4 +110,5 @@ Chemins relatifs à `godot/` sauf mention. « Partagé » = un seul propriétair
 - (29/10) Pixel art validé (docs/16) : **ne plus commander aucun dessin vectoriel**, même provisoire (sauf quelques lignes). PX0 : facteur N = max(1, floor(hauteur physique / 360)) ; téléphone simulé en 1600 × 720 ×1,7 (la fenêtre 1200 × 540 d'`Ecran` donne N = 1) ; options préfixées `--px0-` (l'autoload `Capture` réagit à `--capture`/`--etape`/`--telephone`) ; HUD de PX0 avec les valeurs de `v3_rue.png` (montage avant / après comparable), carte D08 avec les vrais chiffres (`Banquier.heritage_chiffres`, `Format.entier`). Dette : `include_filter` des exports à étendre à `data/pixel/**/*.txt` ; `capture_px0.ps1` à passer sur `trouver_godot.ps1`.
 - (29/10) Deux instances d'un même agent dans deux lots parallèles : jamais la même base de connaissances (fichier temporaire `<agent>_<lot>.md`).
 - (29/10) Recette lot 01 : vérifier un CA contre le code **avant** de l'écrire (CA-L9 visait `e.banque` dans `hud.gd`, qui ne le lit pas). Tout `.bat` modifié doit être vérifié « à sec » dans les deux cas (variable définie / absente) : `%VAR:a=b%` est développé avant le `if defined`. Un libellé de test faux = à corriger dans le lot. Les accès d'un test à des membres privés de l'UI sont tolérés s'ils échouent proprement et sont tracés au backlog.
+- (29/10) Validation du lot 01 : le testeur a simulé la fusion des deux branches (copie isolée, `user://` à part) ; c'est à exiger dès qu'un lot a deux branches qui se touchent à l'exécution (ici `test_interface` × scène découpée). Les tests de recette du testeur vont dans `tests/recette/` de `main` s'ils couvrent un chemin que rien d'autre ne couvre ; ils ne tournent qu'avec `-Recette`. Vérifier un nombre (« 1 464 lignes ») avant de l'écrire dans un plan.
 - Branche empilée (base = tag d'un commit d'une autre branche du lot) : acceptable quand l'API est petite et figée ; le testeur fait le `diff` depuis le tag.
