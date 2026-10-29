@@ -1,6 +1,7 @@
 # 16 : Bible graphique « pixel » (rue, personnages, interface)
 
 > Auteur : designer UX. Date : 2026-10-29. Statut : **proposition, à valider par le joueur sur une preuve de concept (§6.1)**.
+> **Révision du 2026-10-29 (§8)** : le style de rue de PX0 est rejeté ; nouvelle référence `rue_pixel_v2.jpg` (plein jour, briques, arbres verts), palette étendue à 59 couleurs, personnages 24 × 42. Le §8 prime sur §1.1, §2.2, §2.6 pour la rue.
 > Une fois validée, ce document **remplace `09_direction_artistique_godot.md` pour tout le visuel** : style de la ville, palette, matières, polices, panneaux (09 §2.2, §2.6 à §2.9, §6). Restent valables dans 09 : l'intention « un lieu par type de message » (§2.1), la composition de la rue (§2.3, à redimensionner), la ville qui vit (§2.4), l'époque dans la rue (§2.5), les 10 effets (§3), la mise en page adaptative (§4).
 > Origine : retour du joueur du 2026-10-29 (`10_retours_joueur.md`) : « la vue de face est pas mal mais le style est trop "générique" » ; deux références déposées dans `docs/sources/graphisme/references/`.
 > Nouveaux éléments à dessiner (docs/15) : Jean-Mi, Tonton Matelas, Tata Livret, Mme Lopez la concierge, Sylvie à la fenêtre (3 humeurs), la maison qui évolue (P10), cartes de dilemme et de projet, Lundi noir en direct, classement de la rue **permanent**, écran de fin avec titres.
@@ -559,3 +560,74 @@ Bilan : environ **2 lots de plus côté ville et interface** (PX0, puis PX1 et P
 1. **Provenance des images** : je propose que l'équipe dessine tout le jeu en pixel art dans le code (une palette, des règles communes : cohérent, gratuit, facile à faire évoluer), et que vous fournissiez **plus tard, si vous le souhaitez**, les portraits des personnages et les illustrations du journal (par une IA d'images ou un graphiste), selon un cahier des charges précis (§4.3). Êtes-vous d'accord ? Avez-vous déjà un outil d'IA d'images, ou un budget pour un graphiste, en tête ?
 2. **L'interface** : on habille aussi l'interface en pixel (cadres, titres en police pixel, cartes en papier, historique en classeur) en gardant les **chiffres et les textes longs dans une police nette**, ou préférez-vous que seule la ville passe en pixel et que l'interface reste comme aujourd'hui ?
 3. **La taille des personnages** : dans la rue, les personnages sont petits (comme dans votre image de rue : on voit toute la rue, les visages se découvrent dans les cartes et les bulles en grand portrait, comme votre image de personnage), ou voulez-vous des personnages **plus grands dans la rue elle-même** (on voit alors moins de la rue, et la caméra suit l'action) ?
+
+---
+
+## 8. Révision 2026-10-29 : référence `rue_pixel_v2`
+
+> Auteur : chef de projet, d'après le retour du joueur sur PX0 (docs/10 : « Plutôt ça comme style graphique » + « Personnages un peu plus grands cette fois-ci »). **Prime sur §1.1, §2.2, §2.3 (ajouts seulement), §2.6 et l'automne de référence pour la rue.** L'interface (§3), les règles techniques (§2.1, §2.4, §2.5) et la provenance (§4) restent valables. Plan : `docs/lots/lot_px0_bis.md`. À relire par le designer UX avant PX1.
+
+### 8.1 Nouvelle référence de rue
+`docs/sources/graphisme/references/rue_pixel_v2.jpg` (non versionnée ; ne jamais la décalquer ni l'intégrer). Ce qu'on en garde : **plein jour d'été**, ciel bleu saturé à **gros nuages blancs** en volumes ; rue de **briques rouge-orangé** très détaillée (joints, toits d'ardoise sombre ou de tuiles rouges, fenêtres à encadrement, portes colorées, boutique à enseigne et **auvent rouge**, boîtes aux lettres, bouches d'incendie) ; **murets de briques à chaperon** ; **grands arbres feuillus vert vif** à gros volumes, derrière et entre les bâtiments, **un tronc au premier plan** sur un bord ; **lampadaire noir à cloche** ; **skyline lointaine bleutée** (silhouettes, grues, pylônes) pour la profondeur ; trottoir en dalles, bordure, chaussée grise à marquages et **passage piéton** ; voitures rouge et grise ; contours sombres jamais noirs, ombres portées douces **en aplat**. Ambiance lumineuse, saturée, chaleureuse. Elle **remplace** `rueStyle.jpg` (automne, crépuscule) comme image de référence ; l'automne redevient une simple saison.
+
+Ce qui reste français (à garder malgré la référence anglo-saxonne) : boîte aux lettres **jaune** La Poste (pas bleue), plaque de rue bleue émaillée, poteau d'incendie rouge (français aussi), voitures françaises (R5, 205, 4L), enseignes en français. La brique situe la rue dans le **Nord ou la banlieue parisienne** des années 1980 (la meulière disparaît de la maison de Gérard).
+
+Jour = référence ; **nuit et orage** = la même scène par tables de substitution (§2.3), sans élément ajouté hors lumières.
+
+### 8.2 Palette étendue : « Rue 84 » 59 couleurs
+Les 40 couleurs de §2.3 sont **inchangées** (valeurs et ordre : l'interface s'en sert). 19 couleurs sont **ajoutées à la suite** (n° 41 à 59), pour le monde seulement ; aucune n'est émissive.
+
+| # | Nom | Jour | Nuit | Orage | Usage |
+|---|---|---|---|---|---|
+| 41 | ciel_haut | `#3C8AD6` | `#1A2C58` | `#4A5266` | haut du ciel de jour (saturé) |
+| 42 | ciel_vif | `#5DAAE8` | `#203A66` | `#565C70` | milieu du ciel |
+| 43 | nuage | `#F7FBFF` | `#7C80A2` | `#B4B0B8` | nuage éclairé |
+| 44 | nuage_ombre | `#CFE2F2` | `#5A6488` | `#9894A0` | volume des nuages |
+| 45 | nuage_creux | `#A3C3E0` | `#44507A` | `#7E7C8C` | dessous des nuages |
+| 46 | lointain_clair | `#B4CCE0` | `#3E4870` | `#8A8696` | skyline, plan le plus lointain |
+| 47 | lointain | `#8DA9C8` | `#323C64` | `#706E80` | skyline, grues, pylônes |
+| 48 | lointain_sombre | `#6A86A8` | `#283258` | `#5E5C6E` | skyline la plus proche |
+| 49 | brique_vive | `#C4573A` | `#563048` | `#8E4636` | brique rouge-orangé (ton moyen) |
+| 50 | brique_claire | `#DE7A4E` | `#66424C` | `#A6644A` | brique éclairée, arêtes |
+| 51 | feuille_sombre | `#23542A` | `#142236` | `#22342A` | creux du feuillage |
+| 52 | feuille | `#3E8C34` | `#1E3444` | `#3A5634` | feuillage (ton moyen) |
+| 53 | feuille_vive | `#6DBB3C` | `#2C4450` | `#5A7A40` | feuillage éclairé |
+| 54 | feuille_eclat | `#A9DC54` | `#3C5258` | `#7A9450` | reflets des grappes |
+| 55 | goudron | `#5E626C` | `#2A2C46` | `#4C4A54` | chaussée |
+| 56 | goudron_clair | `#7C808A` | `#383C5A` | `#64626C` | chaussée usée, bordure |
+| 57 | sarcelle | `#2F7C80` | `#18344A` | `#36545A` | portes, volets, auvents secondaires |
+| 58 | dalle | `#BDB7AD` | `#50547A` | `#8C8482` | trottoir en dalles |
+| 59 | dalle_ombre | `#9E978C` | `#44466A` | `#76706E` | joints des dalles, ombres au sol |
+
+- Rampes : **ciel** 41 → 42 → 20 → 21 (bandes tramées Bayer, claires) ; **nuages** 43 / 44 / 45 ; **lointain** 46 / 47 / 48 ; **brique** 50 / 49 / 13 / 12 (joints : 12, ou 11 pour un mortier clair) ; **feuillage d'été** 54 / 53 / 52 / 51 ; **sol** 58 / 59 (trottoir), 56 / 55 (chaussée), marquages 8 ; toits d'ardoise 4 / 3 / 2, tuiles 15 / 14 / 13 ; lampadaire encre (1) + nuit (2), jamais de noir pur.
+- Saisons (§2.3) : l'**été** devient la référence (54 / 53 / 52 / 51) ; printemps 24 / 23 / 22 ; automne 34 / 25 / 26 ; hiver inchangé.
+- Ombres portées **en aplat** du ton sombre de la surface touchée (arbre sur brique → 12 ; voiture sur chaussée → 2 ; personnage sur trottoir → 59) ; jamais d'alpha dans les images.
+
+### 8.3 Nouvelle échelle (remplace §2.2 pour la rue)
+Le joueur demande des **personnages plus grands** : la figurine passe à **24 × 42** px d'art (× 1,5), soit 126 px à l'écran en 1080p (84 en PX0). « 1 mètre » ≈ 24 px. La grille reste 640 × 360 (§2.1) et la vue garde les bandes du HUD (32 et 24 px d'art).
+
+| Élément | PX0 | Révision |
+|---|---|---|
+| Figurine adulte | 16 × 28 | **24 × 42** (2,5 têtes ; tête ≈ 16 × 15 : œil 2 × 2 avec pupille, sourcil 3 px, bouche 3-4 px, nez, oreille ; mains et chaussures) |
+| Enfant / poussette | 10 × 16 / 18 × 14 | 15 × 24 / 27 × 21 |
+| Sylvie à la fenêtre | buste 12 × 14 dans 18 × 22 | buste **18 × 21** dans **26 × 32** (humeurs lisibles sans bulle) |
+| Portraits de bulle / de carte | 32 / 48 | inchangés |
+| Porte | — | 22 × 44 (+ imposte) |
+| Fenêtre | 12 × 20 | 24 × 32 (encadrement 2 px, appui 2 px) |
+| Étage | 34 | ≈ 50 |
+| Maison de Gérard | 96 × 124 | ≈ **152 × 172** (cheminée comprise), 2 niveaux + toit |
+| Bâtiments de la rue | 64-112 × 140-200 | 96-180 × 140-240 |
+| Banque / Gazette | 128 × 150 / 112 × 216 | à redimensionner en PX1 (≈ 180 × 200 / 150 × 260), selon la décision sur la largeur de rue |
+| Lampadaire / arbre | 8 × 56 / 40 × 64 | 10 × 84 / ≈ 70 × 110 (arbre de premier plan : plus grand, coupé par le bord) |
+| Voitures (R5, 205, 4L) | 48 × 20 | ≈ 72 × 30 (roues 12 px) |
+| Trottoir / chaussée | 8 / 16 | 12 + bordure 2 / 22 (sol à y = 296 en vue 360) |
+
+**Conséquence** : la zone utile de §2.6 (448 × 232, maison + Gazette + banque visibles ensemble) ne tient plus. Choix à faire par le joueur avant PX1 : rue plus large que l'écran avec caméra qui glisse vers le bâtiment qui parle, ou bâtiments jouables plus étroits.
+
+### 8.4 Banque et Gazette dans la rue de briques (PX1)
+- **Banque** : brique 50 / 49 avec encadrements, bandeau et petit fronton en pierre claire (11), horloge dans le fronton, porte en bois à deux battants, enseigne « BANQUE » dorée (34), distributeur à partir de 1986.
+- **Gazette** : brique sombre (13 / 12), la plus haute ; enseigne peinte « LA GAZETTE » au 1er étage, vitrine des rotatives, **journal lumineux** sur le toit (ambre) et néon rose.
+- **Maison de Gérard** : la plus chaude (tuiles rouges, porte sarcelle ou bleu vif, jardinière), signature : fenêtre de Sylvie et boîte aux lettres jaune.
+
+### 8.5 Interface
+Rien ne change dans §3 tant que le joueur n'a pas vu la rue claire sous le HUD. Points à juger sur la preuve PX0 bis : panneaux `nuit` foncés au-dessus d'un ciel clair (garder, teinter vers `bleu_nuit` ou passer la barre haute en papier crème) ; contraste de l'étiquette « MA MAISON » sur le goudron ; ombre portée des panneaux (encre α 0,5 → `bleu_nuit` α 0,35). Aucune de ces options ne demande de couleur en plus.

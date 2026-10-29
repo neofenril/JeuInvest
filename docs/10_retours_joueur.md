@@ -70,3 +70,11 @@ Décisions : tout en pixel art dessiné dans le code (images fournies plus tard 
 Réponses aux questions du client (docs/12) :
 - « le cadre de la démo est ok » → démo janvier 1984 → décembre 1988 avec Gérard, papa en 1985 : validé.
 - « pas de questionnaire prévu pour le moment, garde ça de côté, peut-être à implémenter plus tard » → « adapté au profil » = selon la situation de vie uniquement (âge, couple, enfants, épargne). Questionnaire de risque : idée mise de côté.
+
+## 2026-10-29 — Retour sur la preuve de concept PX0 (style de la rue)
+
+Verbatim : « Plutôt ca comme style graphique, fait une nouvelle proposition en te basant là-dessus » + nouvelle image de référence (docs/sources/graphisme/references/rue_pixel_v2.jpg, gitignorée) : rue de briques vue de face, ciel bleu à gros nuages, grands arbres feuillus vert vif, lampadaire noir, voitures rouge et grise, trottoirs, passage piéton, skyline lointaine floue, arbre en premier plan à droite. Couleurs vives et saturées, bien plus claires que le PX0 (automne/crépuscule).
+
+
+Verbatim (complément, même jour) : « Personnages un peu plus grand cette fois-ci » → remplace la décision précédente « petits, taille de la version vectorielle » pour la nouvelle proposition PX0 bis.
+
