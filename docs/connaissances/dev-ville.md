@@ -26,6 +26,17 @@
 - `capture_px0.ps1` : `Start-Process -RedirectStandardOutput/-Error` (pas de `2>&1` en PS 5.1) ; fichier `.ps1` en UTF-8 **avec BOM** (sinon accents illisibles en PS 5.1). `-Serie` complète ≈ 55 s.
 - Images par seconde mesurées en capture : > 2 000 (pas de vsync) ; à revoir avec la rue complète.
 
+## 2 bis. Étape B (rue complète)
+
+- `facades.gd` (sans class_name, `preload`) : maison de Gérard (meulière à joints caramel, chaînes et linteaux de brique, tuiles mécaniques en trapèze, lucarne, cheminée à poteries, volets persiennes vert sombre, marquise, boîte aux lettres, plaque de numéro), haussmannien (pierre de taille, refends, balcons filants 2e et dernier étage, corniche, comble zinc, lucarnes, souches ; rez-de-chaussée porte cochère / boulangerie à auvent rayé / pharmacie à croix gain / tabac à rideaux bistrot), immeuble de brique, arbres d'automne (grappes ombrées haut gauche, contour brique sombre, 2 images), massif, grille basse + portillon, carotte de tabac, chaises, potelets, plaque de rue. Chaque générateur renvoie `{"image", "fenetres"}` : les fenêtres s'allument la nuit (op « nuit seulement », lumiere).
+- `RuePx0.generer_decor()` (statique) enregistre ~43 images `decor/…` + `miroir/gerard_*` (retournées par `flip_x`, origine recalculée) ; 0,6 s au lancement. Fond : haussmanniens pâlis (`palir` : ardoise / gris pierre / zinc clair), jamais derrière la maison (toit sur le ciel).
+- Classes internes : `Couche` (fixe), `Mobile` (animé, parts [nom, décalage] + rects de nuit), `Halos` (3 disques additifs). Tout ce qui bouge est posé à des positions entières.
+- Grilles écrites en « suites » puis développées par un script PowerShell (bloc-notes de session, non versionné) : les `.txt` de `data/pixel/ville` sont la source de vérité.
+- Ciel réglé : crème 64, ciel clair 76, ciel 150, bleu ardoise 40 (horizon y 320).
+- `capture_px0.ps1` passe `--log-file` hors de `user://` : sinon `user://logs` tourne à chaque lancement (CA-V11 faux positif). Le cache de shaders ne bouge plus après le premier lancement.
+- Piège GDScript : `const M := MatieresPixel` refusé (« not a constant expression ») → `preload(...)` ; une variable locale ne peut pas porter le nom d'un paramètre ; `MatieresPixel.call(...)` interdit (passer par `load(...)`).
+- Ne jamais tuer de processus Godot (dev-interface tourne en parallèle) : le garde-fou de `px0.gd` est posé en tout premier dans `_ready`.
+
 ## 3. Décisions (étape A)
 
 - Ciel : bandes crème 12, ciel clair 46, ciel 110, bleu ardoise 112, puis bleu nuit ; horizon posé au bas du trottoir. **À régler à l'étape B** avec les bâtiments (la partie claire est surtout cachée ; le haut bleu nuit est sous la barre).

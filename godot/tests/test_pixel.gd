@@ -169,6 +169,36 @@ func _tests_catalogue() -> void:
 	_verifier(GrillePixel.charger_dossier("dossier_absent") == 0 and GrillePixel.erreurs().is_empty(), "catalogue : dossier absent = 0, sans erreur")
 	_verifier(GrillePixel.charger_dossier("ville") == nb and GrillePixel.erreurs().is_empty(), "catalogue : recharger un dossier ne crée pas de doublon")
 	_verifier(GrillePixel.existe("ville/lefranc_affable") and GrillePixel.taille("ville/lefranc_affable") == Vector2i(48, 48), "catalogue : ville/lefranc_affable 48 × 48")
+	var tailles := {
+		"ville/gerard_marche_1": Vector2i(16, 28), "ville/gerard_marche_2": Vector2i(16, 28),
+		"ville/gerard_marche_3": Vector2i(16, 28), "ville/gerard_marche_4": Vector2i(16, 28),
+		"ville/gerard_repos_1": Vector2i(16, 28), "ville/gerard_repos_2": Vector2i(16, 28),
+		"ville/sylvie_contente": Vector2i(12, 14), "ville/sylvie_neutre": Vector2i(12, 14),
+		"ville/sylvie_contrariee": Vector2i(12, 14), "ville/sylvie_cligne": Vector2i(12, 14),
+		"ville/lefranc_grave": Vector2i(48, 48), "ville/lefranc_yeux_fermes": Vector2i(48, 48),
+		"ville/r5_caisse": Vector2i(48, 20), "ville/r5_roue_1": Vector2i(8, 8), "ville/r5_roue_2": Vector2i(8, 8),
+		"ville/reverbere": Vector2i(8, 56),
+	}
+	var manquants := PackedStringArray()
+	for n in tailles:
+		if GrillePixel.taille(n) != tailles[n]:
+			manquants.append(n)
+	_verifier(manquants.is_empty(), "catalogue : %d sprites de la rue à la taille de docs/16 §2.2" % tailles.size(), ", ".join(manquants))
+	_verifier(GrillePixel.origine("ville/gerard_marche_1") == Vector2i(8, 27), "catalogue : origine de Gérard au milieu des pieds")
+	var diff := 0
+	var a := GrillePixel.image("ville/gerard_marche_1")
+	var b := GrillePixel.image("ville/gerard_marche_3")
+	for y in 28:
+		for x in 16:
+			if a.get_pixel(x, y) != b.get_pixel(x, y):
+				diff += 1
+	_verifier(diff >= 20, "catalogue : les deux contacts de la marche diffèrent (%d px)" % diff)
+	var h0 := GrillePixel.image("ville/sylvie_contente")
+	var ok_h := true
+	for autre in ["ville/sylvie_neutre", "ville/sylvie_contrariee"]:
+		if GrillePixel.image(autre).get_data() == h0.get_data():
+			ok_h = false
+	_verifier(ok_h and GrillePixel.image("ville/sylvie_neutre").get_data() != GrillePixel.image("ville/sylvie_contrariee").get_data(), "catalogue : 3 humeurs de Sylvie différentes")
 	var tex := GrillePixel.texture("ville/lefranc_affable", PalettePixel.NUIT)
 	_verifier(tex != null and tex.get_size() == Vector2(48, 48) and GrillePixel.texture("ville/lefranc_affable", PalettePixel.NUIT) == tex, "catalogue : texture de nuit créée puis gardée en cache")
 	_verifier(GrillePixel.image("ville/lefranc_affable", PalettePixel.ORAGE) == GrillePixel.image("ville/lefranc_affable", PalettePixel.ORAGE), "catalogue : image d'orage en cache")
@@ -197,18 +227,36 @@ func _tests_matieres() -> void:
 	_verifier(MatieresPixel.chaussee(400, 16, 7).get_data() == MatieresPixel.chaussee(400, 16, 7).get_data(), "matières : chaussée déterministe")
 	_verifier(MatieresPixel.chaussee(400, 16, 7).get_data() != MatieresPixel.chaussee(400, 16, 8).get_data(), "matières : la graine change la chaussée")
 	# Ciel : bandes dans l'ordre, transitions tramées (deux couleurs alternées sur une même rangée)
-	var ciel := MatieresPixel.ciel(64, 300, 1)
-	var bas := PalettePixel.nom_de(ciel.get_pixel(0, 299))
+	var ciel := MatieresPixel.ciel(64, 440, 1)
+	var bas := PalettePixel.nom_de(ciel.get_pixel(0, 439))
 	var haut := PalettePixel.nom_de(ciel.get_pixel(0, 0))
 	_verifier(bas == "creme" and haut == "bleu_nuit", "matières : ciel de crème (horizon) à bleu nuit (haut)", bas + " / " + haut)
 	var trame := false
-	for y in 300:
+	for y in 440:
 		var c := {}
 		for x in 4:
 			c[PalettePixel.cle(ciel.get_pixel(x, y))] = true
 		if c.size() == 2:
 			trame = true
 	_verifier(trame, "matières : transitions du ciel tramées (Bayer 4 × 4)")
+	for g in ["meuliere", "tuiles", "zinc", "ardoise", "pierre_taille", "brique"]:
+		var mat: Script = load("res://scripts/pixel/matieres.gd")
+		var a: Image = mat.call(g, 40, 24, 5)
+		var b: Image = mat.call(g, 40, 24, 5)
+		_verifier(a.get_data() == b.get_data() and a.get_size() == Vector2i(40, 24), "matières : %s déterministe" % g)
+	# Décor de la rue (façades, arbres, mobilier) : généré, déterministe, enregistré
+	var facades: Script = load("res://scripts/pixel/facades.gd")
+	var m1: Dictionary = facades.maison_gerard(7)
+	var m2: Dictionary = facades.maison_gerard(7)
+	_verifier(m1["image"].get_size() == Vector2i(96, 124) and m1["image"].get_data() == m2["image"].get_data(), "décor : maison de Gérard 96 × 124, déterministe")
+	_verifier(m1["fenetres"].size() >= 5, "décor : fenêtres de la maison repérées pour la nuit (%d)" % m1["fenetres"].size())
+	_verifier(facades.platane(3, 0).get_size() == Vector2i(40, 64) and facades.platane(3, 0).get_data() != facades.platane(3, 1).get_data(), "décor : platane 40 × 64, 2 images")
+	RuePx0.generer_decor()
+	var nd := 0
+	for n in GrillePixel.noms():
+		if n.begins_with("decor/"):
+			nd += 1
+	_verifier(nd >= 30 and GrillePixel.existe("decor/maison") and GrillePixel.existe("miroir/gerard_marche_1"), "décor : %d images enregistrées (façades, fond, arbres, mobilier, halos)" % nd)
 	# Chaque pixel de chaque image du catalogue appartient à la palette de sa variante
 	for vi in VARIANTES.size():
 		var fautifs := PackedStringArray()

@@ -43,6 +43,10 @@ var _bordure_pc := false
 
 
 func _ready() -> void:
+	# Garde-fou posé en premier : même si un script échoue plus bas, une capture finit toujours.
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--px0-capture"):
+			get_tree().create_timer(GARDE_FOU, true, false, true).timeout.connect(_delai_depasse)
 	if not _lire_options():
 		return
 	_regler_fenetre()
@@ -64,8 +68,6 @@ func _ready() -> void:
 			interface.installer(vue, rue)
 	if _options.has("quitter-apres"):
 		get_tree().create_timer(float(_options["quitter-apres"]), true, false, true).timeout.connect(_quitter.bind(0))
-	if _options.has("capture"):
-		get_tree().create_timer(GARDE_FOU, true, false, true).timeout.connect(_delai_depasse)
 	_demarrer.call_deferred()
 
 

@@ -69,7 +69,8 @@ function Lancer([string[]]$arguments) {
 
 function Capturer([hashtable]$o) {
     # o : Nom, Etape, Taille, Telephone, Facteur, SansInterface, Libre, Controle, Fps, Attente, Montage
-    $a = @("--path", $projet, "res://scenes/px0.tscn", "--", "--px0-etape=$($o.Etape)", "--px0-capture=captures/$($o.Nom).png")
+    # Journal de Godot hors de user:// (sinon user://logs change à chaque lancement : CA-V11)
+    $a = @("--log-file", (Join-Path $tmp "godot.log"), "--path", $projet, "res://scenes/px0.tscn", "--","--px0-etape=$($o.Etape)", "--px0-capture=captures/$($o.Nom).png")
     if ($o.Taille) { $a += "--px0-taille=$($o.Taille)" }
     if ($o.Telephone) { $a += "--px0-telephone" }
     if ($o.Facteur -gt 0) { $a += "--px0-facteur=$($o.Facteur)" }
@@ -97,7 +98,7 @@ $script:resumes = @()
 $debut = Get-Date
 
 # Import (les polices et les scripts doivent être importés)
-$imp = Lancer @("--headless", "--path", $projet, "--import")
+$imp = Lancer @("--headless", "--log-file", (Join-Path $tmp "import.log"), "--path", $projet, "--import")
 $errImp = @($imp.sortie | Where-Object { $l = $_; $motifsErreur | Where-Object { $l -like "*$_*" } })
 $toutOk = ($imp.code -eq 0) -and ($errImp.Count -eq 0)
 

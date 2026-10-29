@@ -1,0 +1,74 @@
+# Sylvie à la fenêtre de l'étage (docs/15, docs/16 §2.2) : buste 12 × 14, de face, accoudée à l'appui.
+# Pull jaune moutarde (couleur signature), cheveux bruns. Trois humeurs qui ne changent que les sourcils
+# et la bouche (+ joues rosies quand elle est contente) ; clignement = calque posé sur les yeux.
+: e encre
+: b bois
+: c caramel
+: p peau_claire
+: o peau_ombre
+: k bois_sombre
+: R brique_sombre
+: T terre_cuite_claire
+: y or
+: Y orange
+
+image sylvie_contente 12x14 origine 6,13
+...eeeeee...
+..eccbbbbe..
+.ebbbbbbbbe.
+.ebpkppkpbe.
+.ebppppppbe.
+.ebpeppepbe.
+.ebTppppTbe.
+.ebpRppRpbe.
+.ebppRRppbe.
+.ebeooooebe.
+ebbyyyyyybbe
+ebyyyyyyyyYe
+eyyyyyyyyyYe
+eyyyyyyyyyYe
+image sylvie_neutre 12x14 origine 6,13
+...eeeeee...
+..eccbbbbe..
+.ebbbbbbbbe.
+.ebkkppkkbe.
+.ebppppppbe.
+.ebpeppepbe.
+.ebppppppbe.
+.ebppppppbe.
+.ebppRRppbe.
+.ebeooooebe.
+ebbyyyyyybbe
+ebyyyyyyyyYe
+eyyyyyyyyyYe
+eyyyyyyyyyYe
+image sylvie_contrariee 12x14 origine 6,13
+...eeeeee...
+..eccbbbbe..
+.ebbbbbbbbe.
+.ebkppppkbe.
+.ebpkppkpbe.
+.ebpeppepbe.
+.ebppppppbe.
+.ebppRRppbe.
+.ebpRppRpbe.
+.ebeooooebe.
+ebbyyyyyybbe
+ebyyyyyyyyYe
+eyyyyyyyyyYe
+eyyyyyyyyyYe
+image sylvie_cligne 12x14 origine 6,13
+............
+............
+............
+............
+............
+....o..o....
+............
+............
+............
+............
+............
+............
+............
+............
