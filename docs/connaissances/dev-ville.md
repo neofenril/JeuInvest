@@ -1,7 +1,7 @@
 # Base de connaissances de dev-ville
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-29 (lot PX0, étape A : atelier pixel).
+> Dernière mise à jour : 2026-10-29 (lot PX0 bis : rue de briques, personnages 24 × 42).
 
 ## 1. Atelier pixel (`godot/scripts/pixel/`, conservé après PX0)
 
@@ -37,6 +37,17 @@
 - Piège GDScript : `const M := MatieresPixel` refusé (« not a constant expression ») → `preload(...)` ; une variable locale ne peut pas porter le nom d'un paramètre ; `MatieresPixel.call(...)` interdit (passer par `load(...)`).
 - Ne jamais tuer de processus Godot (dev-interface tourne en parallèle) : le garde-fou de `px0.gd` est posé en tout premier dans `_ready`.
 
+## 2 ter. PX0 bis (rue de briques, docs/16 §8) — remplace la rue meulière de §2 bis
+
+- Palette 59 couleurs : 19 ajoutées **en fin** de `_NOMS`/`_HEX_*` (les 40 premières intouchables, CA-B2).
+- Repères : SOL 296, trottoir 296-308 + bordure 308-310, chaussée 310-332, maison x 0-152 (haut 124), ZONE (-130,124,462,212) → vue 640 : x -219..421. Pieds 304.
+- `facades.gd` : `batiment(cfg)` générique (l, etages, brique vive/classique/sombre/claire, toit ardoise/tuiles/plat/pignon à redents, rdc porte/boutique/garage/aveugle, enseigne, pub) ; `fenetre()` 4 carreaux (croisée visible la nuit) ; `arbre_ete()` = petites grappes triées par y dans un gabarit + éclairage local et global (`ombre` < 0 = plus sombre). `vehicules.gd` (nouveau) : caisse par polygone (`Geometry2D.is_point_in_polygon`), roues 12 px à part.
+- `matieres.gd` : `texte()` capitales 3 × 5 (enseignes), `lointain()` (plan 0,4), `cumulus()`, `skyline()`.
+- Arbre de premier plan : posé chaque image sur `get_viewport().get_camera_2d()` + taille du SubViewport (bord droit), même figé.
+- Grilles 24 × 42 / 18 × 21 / objets : générateurs PowerShell en suites dans le bloc-notes (non versionnés) ; le `.txt` fait foi. Scripts `.ps1` à écrire en UTF-8 **avec BOM** (sinon accents cassés en PS 5.1) ; tableau de lignes : `New-Object 'char[][]'` (sinon aplati).
+- Pièges : `var cx := tableau[i] * f` → type non inférable (typer `: float`) ; `Set-Content -Encoding UTF8` met un BOM dans les `.gd` (écrire via .NET sans BOM) ; `JEUCLAUDE_GODOT` ne persiste pas entre deux commandes ; `tests.ps1` de cette branche cherche Godot dans le worktree : lancer les 3 tests à la main.
+- Mesures : 2 467 im/s à 1080 ; figurine 72 × 126 à 1080, 96 × 168 à ×4.
+
 ## 3. Décisions (étape A)
 
 - Ciel : bandes crème 12, ciel clair 46, ciel 110, bleu ardoise 112, puis bleu nuit ; horizon posé au bas du trottoir. **À régler à l'étape B** avec les bâtiments (la partie claire est surtout cachée ; le haut bleu nuit est sous la barre).
@@ -48,3 +59,4 @@
 
 - Supposer l'échelle d'étirement identique sur les deux axes (voir §2).
 - Commiter un bouchon d'interface ou un `.ttf.import` (propriété de dev-interface PX0).
+- Remplacer un bloc de script par `IndexOf('} else {')` : la première occurrence peut être dans une sous-expression (ligne cassée).
