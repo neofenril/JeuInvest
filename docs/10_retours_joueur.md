@@ -61,6 +61,12 @@ Verbatim : « Tu peux garder les trois propositions, là, ces trois dernières q
 
 Interprétation retenue : (1) toutes les cartes de dilemme sont gardées, même si la partie dépasse un peu 20 min sans le bouton « Jusqu'au prochain courrier » ; (2) le classement de la rue est affiché en permanence ; (3) record personnel et collection des titres conservés d'une partie à l'autre. Recrutement de `dev-ville` validé.
 
+## 2026-10-29 — Validation de la bible graphique pixel art (docs/16)
+
+Verbatim : « Ouais, on dessine tout en pixels dans le code, on fournira plus tard les éléments. J'ai pas d'outil IA pour le moment, ni de budget en tête. Pour ce qui est de l'interface, on passe tout en pixels, oui. Comme proposé avec les chiffres et les textes longs dans une police nette. Il n'y a pas que la ville qui change. Pour ce qui est des personnages, ouais, on peut les mettre petits, comme ça on verra plus la rue. On peut garder un peu la taille qu'il y avait avant, c'était pas mal. Tu peux télécharger les polices et tu peux lancer le proof of concept. Et le lot technique 1 qui part en même temps. »
+
+Décisions : tout en pixel art dessiné dans le code (images fournies plus tard par le joueur, pas d'outil d'IA ni de budget pour l'instant) ; **l'interface aussi passe en pixel**, chiffres et textes longs dans une police nette ; **personnages petits dans la rue, à peu près à la taille de la version vectorielle actuelle** ; polices OFL téléchargées ; preuve de concept PX0 et lot 01 lancés en parallèle.
+
 Réponses aux questions du client (docs/12) :
 - « le cadre de la démo est ok » → démo janvier 1984 → décembre 1988 avec Gérard, papa en 1985 : validé.
 - « pas de questionnaire prévu pour le moment, garde ça de côté, peut-être à implémenter plus tard » → « adapté au profil » = selon la situation de vie uniquement (âge, couple, enfants, épargne). Questionnaire de risque : idée mise de côté.
