@@ -14,8 +14,8 @@ Cibles : PC (Windows) et mobile (Android, iOS plus tard). Langue du jeu et des d
   - `chef-de-projet` : **seul interlocuteur des développeurs** ; reçoit les demandes (joueur, client, game designer, UX, experts), arbitre, découpe en lots (`docs/lots/lot_NN.md`), répartit, contrôle.
   - `dev-logique` : simulation, données, état, sauvegarde, tests, exports.
   - `dev-interface` : écrans, HUD, ville, animations, captures.
-  - Les développeurs n'ont aucun contact avec le client ni les autres agents. Un agent ne pouvant pas en lancer un autre, le coordinateur (session principale) lance les développeurs selon le plan du chef de projet et lui transmet leurs comptes rendus.
-  - Pas de Git : jamais deux développeurs sur le même fichier en même temps (carte de propriété des fichiers tenue par le chef de projet).
+  - Les développeurs n'ont aucun contact avec le client ni les autres agents. Un agent ne pouvant pas en lancer un autre, le coordinateur (session principale) lance les développeurs selon le plan du chef de projet, lui transmet leurs comptes rendus, puis commite et pousse le lot validé.
+  - Jamais deux développeurs sur le même fichier en même temps (carte de propriété des fichiers tenue par le chef de projet) ; Git permet désormais de revenir en arrière, mais pas de fusionner proprement deux modifications simultanées d'un même fichier sans branches.
   - `docs/connaissances/developpeur.md` = socle technique commun aux deux développeurs.
 
 Chaque agent a une base de connaissances dans `docs/connaissances/<agent>.md` : il la lit au début de chaque mission et la met à jour à la fin (faits vérifiés, décisions, erreurs à ne pas refaire).
@@ -36,7 +36,11 @@ Chaque agent a une base de connaissances dans `docs/connaissances/<agent>.md` : 
 - **Moteur : Godot 4.7.2 (GDScript), projet dans `godot/`.** Choisi pour un rendu plus soigné et l'export PC + mobile.
 - Exécutable : `outils/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stable_win64_console.exe` (version console, utilisable en ligne de commande, ex. `--headless`).
 - `jeu/` : V1 web (HTML/JS) archivée. Sa logique (`jeu/js/moteur.js`, `marche.js`, `score.js`) et ses données (`jeu/data/`) servent de référence pour le portage, mais ne sont plus développées.
-- Machine : Windows 11, pas de Node.js, pas de Python fonctionnel, pas de Git.
+- Machine : Windows 11, pas de Node.js, pas de Python fonctionnel.
+- **Git** (depuis le 2026-10-29) : Git portable `outils/git/cmd/git.exe` (pas dans le PATH), dépôt `https://github.com/neofenril/JeuInvest.git`, branche `main`, identité locale neofenril. Connexion GitHub mémorisée par Git Credential Manager (l'utilisateur s'est connecté lui-même). `.gitignore` exclut `outils/`, `export/`, `godot/.godot/`, `godot/captures/`.
+  - Un commit par lot validé (message en français, décrivant le lot), puis push. Tests au vert avant tout commit.
+  - Jamais de `push --force`, de réécriture d'historique ni de suppression de branche distante sans accord explicite de l'utilisateur.
+  - Ne jamais commiter de secret (keystore de release, mots de passe, jetons).
 
 ## Décisions de l'utilisateur (joueur réel)
 - Orientation **paysage uniquement**, sur PC comme sur mobile.
