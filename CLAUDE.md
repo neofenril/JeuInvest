@@ -14,6 +14,8 @@ Cibles : PC (Windows) et mobile (Android, iOS plus tard). Langue du jeu et des d
   - `chef-de-projet` : **seul interlocuteur des développeurs** ; reçoit les demandes (joueur, client, game designer, UX, experts), arbitre, découpe en lots (`docs/lots/lot_NN.md`), répartit, contrôle.
   - `dev-logique` : simulation, données, état, sauvegarde, tests, exports.
   - `dev-interface` : écrans, HUD, ville, animations, captures.
+  - `testeur` (ajouté le 2026-10-29 à la demande de l'utilisateur) : vérifie chaque branche de développeur avant tout push ; verdict OK / KO dans `docs/lots/lot_NN_recette.md` ; rend compte au chef de projet ; ne corrige jamais le code.
+  - **Circuit d'un lot** : (1) le chef de projet écrit `docs/lots/lot_NN.md` ; (2) le coordinateur crée une branche par développeur depuis `main` (`lot/NN-logique`, `lot/NN-interface`) ; (3) le développeur travaille et **commite en local sur sa branche, sans push** ; (4) le testeur vérifie la branche → KO : retour au chef de projet, corrections, nouveau passage ; (5) **OK du testeur → push de la branche** sur GitHub ; (6) le chef de projet valide → fusion dans `main` (`--no-ff`), tests relancés sur `main`, push de `main`. Aucun push de branche de développeur sans OK du testeur.
   - Les développeurs n'ont aucun contact avec le client ni les autres agents. Un agent ne pouvant pas en lancer un autre, le coordinateur (session principale) lance les développeurs selon le plan du chef de projet, lui transmet leurs comptes rendus, puis commite et pousse le lot validé.
   - Jamais deux développeurs sur le même fichier en même temps (carte de propriété des fichiers tenue par le chef de projet) ; Git permet désormais de revenir en arrière, mais pas de fusionner proprement deux modifications simultanées d'un même fichier sans branches.
   - `docs/connaissances/developpeur.md` = socle technique commun aux deux développeurs.
@@ -38,7 +40,7 @@ Chaque agent a une base de connaissances dans `docs/connaissances/<agent>.md` : 
 - `jeu/` : V1 web (HTML/JS) archivée. Sa logique (`jeu/js/moteur.js`, `marche.js`, `score.js`) et ses données (`jeu/data/`) servent de référence pour le portage, mais ne sont plus développées.
 - Machine : Windows 11, pas de Node.js, pas de Python fonctionnel.
 - **Git** (depuis le 2026-10-29) : Git portable `outils/git/cmd/git.exe` (pas dans le PATH), dépôt `https://github.com/neofenril/JeuInvest.git`, branche `main`, identité locale neofenril. Connexion GitHub mémorisée par Git Credential Manager (l'utilisateur s'est connecté lui-même). `.gitignore` exclut `outils/`, `export/`, `godot/.godot/`, `godot/captures/`.
-  - Un commit par lot validé (message en français, décrivant le lot), puis push. Tests au vert avant tout commit.
+  - Branches de lot par développeur, commits locaux, push seulement après OK du testeur, fusion dans `main` après validation du chef de projet (voir « Circuit d'un lot »). Messages de commit en français. Tests au vert avant tout commit.
   - Jamais de `push --force`, de réécriture d'historique ni de suppression de branche distante sans accord explicite de l'utilisateur.
   - Ne jamais commiter de secret (keystore de release, mots de passe, jetons).
 
