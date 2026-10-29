@@ -110,7 +110,7 @@ Les `.bat` : `JEUCLAUDE_GODOT` s'il est défini, sinon le chemin actuel (comport
    - b) instancie `Hud`, `Modales`, `PanneauBanque` dans l'arbre et joue la démo complète (graine fixe) deux fois, joueur actif (`StrategieTest`) puis passif : chaque mois `hud.maj(e, false)` ; chaque modale rencontrée est affichée par la fonction de `Modales` que `principal.gd` utilise pour ce genre (présentation, nouvelle/héritage, journal, courrier, naissance), puis fermée par le choix que la stratégie a pris ; aux mois 1986-12 et 1988-06, fenêtre Banque construite sur chaque produit détenu (fiche, formulaire d'ordre, réglage « chaque mois ») ; historique ouvert avec chaque filtre et 5 entrées relues ; relevé de décembre affiché ; écran de fin affiché avec `Bilan.calculer` ;
    - c) au moins 20 vérifications (`OK` / `KO` comme `test_partie`), code de sortie 1 si une échoue.
    - CA-L8 : `test_interface` passe sur la branche (code 0, aucune erreur de script) en ≤ 60 s.
-   - CA-L9 (mutation, faite par le testeur dans un worktree jetable, jamais commitée) : renommer `EtatPartie.vie_en_attente` (et son appel interne l. 292) → `tests.ps1` échoue et désigne l'import ou `test_interface` ; même chose en remplaçant dans `hud.gd` une lecture de champ du dictionnaire `e.banque` par une clé inexistante.
+   - CA-L9 (mutation, faite par le testeur dans un worktree jetable, jamais commitée) : renommer `EtatPartie.vie_en_attente` (et son appel interne l. 292) → `tests.ps1` échoue et désigne l'import ou `test_interface` ; même chose en remplaçant par une clé inexistante une lecture de champ de `e.hist` dans `hud.gd` (ex. `e.hist["mis"]`) **et** une lecture de champ de `e.banque` dans `panneau_banque.gd` (ex. `e.banque["presentes"]`). *(Corrigé le 2026-10-29 : la version initiale visait `e.banque` dans `hud.gd`, qui ne le lit pas.)*
 6. Mettre à jour `dev-logique.md` et le socle `developpeur.md` (commandes depuis un worktree, `JEUCLAUDE_GODOT`, options de `tests.ps1`, `StrategieTest`, règle des fichiers `user://`).
 
 ### dev-interface (branche `lot/01-interface`, worktree `C:\Users\arthu\Documents\temp\JeuClaude_lots\lot01-interface`)
@@ -142,6 +142,44 @@ Supprimer D08 bis (retiré le 2026-10-27) des documents de conception, ou faire 
 - Par branche (testeur, `docs/lots/lot_01_recette.md`) : `git diff main...lot/01-<x> --stat` limité aux fichiers du §1 (plus les `.uid` des nouveaux scripts) ; CA de la branche ; non-régression (partie complète : `integrale`).
 - Après les deux fusions, sur `main` (chef de projet, puis testeur si doute) : `tests.ps1` (nouvelle version) au vert, y compris `test_interface` qui instancie désormais la scène principale **découpée** ; `tests.ps1 -Autocontrole` ; captures `titre`, `jouer`, `krach`, `fin`, `raccourcis` (avec et sans `--joueur`) ; `capture.ps1` lancé depuis un worktree neuf. Si `test_interface` échoue sur `main` à cause du découpage : correction par dev-interface sur `lot/01-interface-correctif`.
 - Comptes rendus : fichiers modifiés (comparés au §1), ce qui n'est pas vérifié, écarts d'interface, durée de `tests.ps1`.
+
+## Corrections — passage 2 (`lot/01-logique`, après le KO du passage 1 sur 6751074)
+
+Arbitrage du chef de projet (2026-10-29) sur `docs/lots/lot_01_recette.md` :
+
+| Point | Décision | Qui / où |
+|---|---|---|
+| A1 majeure : `Jouer_Godot.bat` cassé sans `JEUCLAUDE_GODOT` | **Corriger maintenant** (bloquant : c'est le lanceur du joueur) | dev-logique, `lot/01-logique` |
+| A4 mineure : « frais de l'année » affiche le cumul | **Corriger maintenant** (une ligne, un test qui ment est un défaut) | dev-logique, `lot/01-logique` |
+| A3 mineure : `test_interface` lit `_droite` / `_b_ok` de `PanneauBanque` | **Accepté pour le lot 01** (`panneau_banque.gd` est interdit aux deux développeurs) ; maintenant, seulement rendre l'échec lisible ; accesseurs publics au lot 02 (backlog T15) | dev-logique maintenant (balisage) ; dev-interface au lot 02 |
+| A2 mineure : `Exporter_Android.bat` échoue depuis un worktree | **Aucune correction** : échec propre et documenté ; l'export Android se fait depuis le dépôt principal (export 0.3 au lot 02) | — |
+| Écarts annoncés (CA-L9, plancher 2 500 F, `trouver_godot.ps1` sans `exit`) | **Acceptés** ; CA-L9 corrigé dans ce plan (§3, tâche 5) | — |
+| H1 : `modales.gd` l. 589, Échap sur un courrier relu pendant le vol de l'enveloppe → SCRIPT ERROR | Hors lot 01 (`modales.gd` interdit). **Lot 02, dev-interface, première tâche, avant le découpage de `modales.gd` (T9)** : reproduction par une étape de capture (famille `ecrans.gd`) puis correction (lambda gardée par `is_instance_valid(p)` ou tween porté par `p`, enveloppe libérée à la fermeture). Pas de correctif express : effet = une ligne d'erreur dans le journal, aucun blocage connu (backlog T16) | dev-interface, lot 02 |
+| H2 : `polices/**/*.ttf.import` non suivis | **Déjà couvert par PX0** (`lot_px0.md` §1 et CA-C1 : seul dev-interface PX0 les commite). Rappel : dev-logique ne les commite pas | — |
+| H3 : « DE 1978 À AUJOURD'HUI » sur le titre | Déjà au backlog (T12, arbitrage client) | — |
+
+### Consignes pour dev-logique (worktree `C:\Users\arthu\Documents\temp\JeuClaude_lots\lot01-logique`, nouveau commit sur `lot/01-logique`, pas d'amend, pas de push)
+
+1. **A1 — `Jouer_Godot.bat`** : ne plus jamais développer `%JEUCLAUDE_GODOT:...%` quand la variable est absente. Remplacer les lignes 7-8 par un saut :
+   ```bat
+   if not defined JEUCLAUDE_GODOT goto lancer
+   set "GODOT_FENETRE=%JEUCLAUDE_GODOT%"
+   set "CANDIDAT=%JEUCLAUDE_GODOT:_console.exe=.exe%"
+   if exist "%CANDIDAT%" set "GODOT_FENETRE=%CANDIDAT%"
+   :lancer
+   start "" "%GODOT_FENETRE%" --path "%~dp0godot"
+   ```
+   (`goto` saute les lignes sans les développer.) Fichier en CRLF. **Vérifier à sec** les deux cas, comme le testeur : copie temporaire du `.bat` (dans le scratchpad, pas commitée) où `start ""` est remplacé par `echo LANCE`, lancée par `cmd /c` (a) sans la variable : sortie `LANCE "<racine>\outils\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe" --path "<racine>\godot"`, code 0 ; (b) avec la variable vers la version console du dépôt principal : version sans console du même dossier choisie. Ne pas lancer le vrai jeu. Relire `Exporter_Windows.bat` et `Exporter_Android.bat` : aucune autre substitution `%VAR:a=b%` ni `%VAR:~n%` sur une variable possiblement absente.
+2. **A4 — `tests/test_interface.gd` l. 148** : libellé « frais payés depuis le début (cumul) : %s » au lieu de « frais de l'année : %s » (la valeur `frais_total` reste la bonne : c'est le cumul, comme le HUD).
+3. **A3 — `tests/test_interface.gd`, `_visiter_banque`** : ne pas changer l'approche, mais (a) commentaire au-dessus des lectures de `_droite` / `_b_ok` : « accès interne à PanneauBanque, toléré au lot 01 ; à remplacer par des accesseurs publics au lot 02 (T15) » ; (b) si `pb.get("_droite")` ou `pb.get("_b_ok")` renvoie `null`, la vérification échoue avec un message explicite (« PanneauBanque : champ interne _droite introuvable (renommé ?), voir T15 ») **sans erreur de script** : aujourd'hui la l. 215 appelle `droite.get_child_count()` sans tester `null`.
+4. `tests.ps1` (tous les tests) au vert, nombre de vérifications ≥ 202, puis commit en français (ex. « Lot 01 logique : Jouer_Godot.bat sans variable, libellés de test_interface »). `git diff main...lot/01-logique --stat` toujours limité au §1. Ne commiter aucun `*.ttf.import`, aucune capture, aucun exe.
+5. Compte rendu : les deux sorties à sec de l'étape 1, le résumé de `tests.ps1`, le hash du commit. Ajouter à `dev-logique.md` : « en .bat, `%VAR:a=b%` est développé avant l'évaluation du `if` : sauter par `goto` quand la variable peut être absente ».
+
+### Ce que le testeur revérifie (passage 2, rapide)
+- CA-P2-1 (A1) : `Jouer_Godot.bat` à sec, sans variable → `LANCE` avec le chemin `outils\` du dépôt, code 0 ; avec variable valide → version sans console choisie ; avec variable vers un fichier sans version sans console → chemin de la variable.
+- CA-P2-2 (A4) : la ligne du relevé dans la sortie de `test_interface` dit « cumul ».
+- CA-P2-3 (A3) : mutation jetable `_droite` → `_droite_x` dans `panneau_banque.gd` : `test_interface` KO avec le message « champ interne _droite introuvable », sans SCRIPT ERROR provenant de `test_interface.gd`.
+- CA-P2-4 : `tests.ps1` vert (≥ 202 vérifications), `-Autocontrole` vert ; diff limité au §1 ; le reste des CA du passage 1 est acquis (pas de nouvelle intégrale exigée, aucun script du jeu touché).
 
 ## 5. Validation (rempli par le chef de projet)
 - [ ] CA-L1 à CA-L9 · [ ] CA-I1 à CA-I7 · [ ] tests sur `main` après fusion · [ ] captures relues · [ ] bases de connaissances à jour · [ ] tâche documentaire D08 bis

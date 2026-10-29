@@ -1,13 +1,15 @@
 # Base de connaissances du chef de projet technique
 
 > À lire au début de chaque mission (après `CLAUDE.md`, avec le socle `developpeur.md`). À mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-29 (plan PX0, preuve de concept pixel art, en parallèle du lot 01).
+> Dernière mise à jour : 2026-10-29 (arbitrage du KO de `lot/01-logique`, passage 1).
 
 ## 0. Situation
 
 - Équipe : chef de projet (moi), `dev-logique`, `dev-interface`, `testeur`, **`dev-ville`** (recruté le 29/10, actif dès PX0).
 - Git (29/10) : `outils/git/cmd/git.exe`, dépôt GitHub, `main`. Circuit : plan → branches `lot/NN-<dev>` (worktrees dans `C:\Users\arthu\Documents\temp\JeuClaude_lots\`) → commits locaux → testeur (`lot_NN_recette.md`) → push de la branche → ma validation → fusion `--no-ff` dans `main`, tests relancés, push.
 - **Lot 01 lancé** (29/10, base `a515796`, worktrees `lot01-logique`, `lot01-interface`) : raccourcis de test retirés des versions exportées, découpage de `principal.gd`, worktrees, `tests.ps1` strict + `test_interface`.
+  - `lot/01-logique` : passage 1 **KO** (6751074, A1 `Jouer_Godot.bat` cassé sans variable). Arbitrage écrit dans `lot_01.md` § « Corrections — passage 2 » : A1 + A4 corrigés maintenant, A3 balisé (accesseurs au lot 02), A2 sans suite. CA-L9 corrigé dans le plan. 202 vérifications sur la branche (≈ 24 s).
+  - `lot/01-interface` : en recette.
 - **PX0 planifié** (`docs/lots/lot_px0.md`, docs/16 validée par le joueur : tout en pixel art dans le code, interface comprise, personnages ≈ taille actuelle) : scène autonome `scenes/px0.tscn`, aucun fichier commun avec le lot 01. Étape A dev-ville seul (atelier) → tag `px0-atelier` → étape B parallèle : `lot/px0-ville` (dev-ville) et `lot/px0-interface` (2e instance de dev-interface, **branche empilée sur le tag**). Ensuite décision du joueur, puis PX1 (rue, dev-ville) et PX2 (interface, dev-interface) en parallèle, avant les lots 03-04.
 - Feuille de route V3 : `docs/lots/feuille_de_route.md` (lots 02 à 07 : P4 → P2 → P1 → P3 + P9 → P6 → P5). Spec `docs/15_spec_game_design_v3.md` en cours chez le game designer.
 - Référence vérifiée le 29/10 sur `main` (b55ca7f) : 66 + 100 + 8 tests verts (≈ 12 s) ; import headless ≈ 5 s, sans erreur.
@@ -67,6 +69,9 @@ Chemins relatifs à `godot/` sauf mention. « Partagé » = un seul propriétair
 | T13 | P1 | Scénarios de capture sur `StrategieTest` (copie temporaire au lot 01) | lot 02, dev-interface |
 | T14 | P1 | Migration douce des sauvegardes | lot 02, dev-logique |
 | T9 | P1 | Découpage de `modales.gd` (puis `etat_partie.gd` si besoin) | lot 02 / 03 |
+| T16 | P1 | `modales.gd` l. 589 : Échap sur un courrier relu pendant le vol de l'enveloppe → SCRIPT ERROR (lambda capture `p` libéré). Reproduire par une étape de capture, puis corriger | lot 02, dev-interface, 1re tâche, avant T9 |
+| T15 | P2 | Accesseurs publics de `PanneauBanque` (zone de droite, bouton valider) et `test_interface` qui les utilise (au lieu de `_droite` / `_b_ok`) | lot 02, dev-interface (`test_interface` lui est attribué ce lot-là) |
+| T17 | P3 | `tests.ps1` : ajouter les lignes moteur `ERROR:` au motif d'erreurs ; `user://capture.sav` commun aux worktrees → nom unique par processus ; `Exporter_Android.bat` depuis un worktree (JDK/SDK cherchés dans le dépôt principal) | dev-logique / dev-interface (capture), à caser |
 | T5 | P2 | Restes P1 de docs/13 : jauge F03, tuile animée de la banque, piles dans le relevé | à re-prioriser face à la V3 |
 | T6 | P2 | Sons (autoload `Sons`, couper le son) | à proposer avec P4 / P6 |
 | T7 | P2 | VP-D (option 11 §8) | arbitrage client |
@@ -103,4 +108,5 @@ Chemins relatifs à `godot/` sauf mention. « Partagé » = un seul propriétair
 - Les retours du joueur (docs/10) priment ; un scénario confus se lit comme un bug (héritage à deux pots).
 - (29/10) Pixel art validé (docs/16) : **ne plus commander aucun dessin vectoriel**, même provisoire (sauf quelques lignes). PX0 : facteur N = max(1, floor(hauteur physique / 360)) ; téléphone simulé en 1600 × 720 ×1,7 (la fenêtre 1200 × 540 d'`Ecran` donne N = 1) ; options préfixées `--px0-` (l'autoload `Capture` réagit à `--capture`/`--etape`/`--telephone`) ; HUD de PX0 avec les valeurs de `v3_rue.png` (montage avant / après comparable), carte D08 avec les vrais chiffres (`Banquier.heritage_chiffres`, `Format.entier`). Dette : `include_filter` des exports à étendre à `data/pixel/**/*.txt` ; `capture_px0.ps1` à passer sur `trouver_godot.ps1`.
 - (29/10) Deux instances d'un même agent dans deux lots parallèles : jamais la même base de connaissances (fichier temporaire `<agent>_<lot>.md`).
+- (29/10) Recette lot 01 : vérifier un CA contre le code **avant** de l'écrire (CA-L9 visait `e.banque` dans `hud.gd`, qui ne le lit pas). Tout `.bat` modifié doit être vérifié « à sec » dans les deux cas (variable définie / absente) : `%VAR:a=b%` est développé avant le `if defined`. Un libellé de test faux = à corriger dans le lot. Les accès d'un test à des membres privés de l'UI sont tolérés s'ils échouent proprement et sont tracés au backlog.
 - Branche empilée (base = tag d'un commit d'une autre branche du lot) : acceptable quand l'API est petite et figée ; le testeur fait le `diff` depuis le tag.
