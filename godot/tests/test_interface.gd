@@ -145,7 +145,7 @@ func _test_demo_complete(actif: bool) -> void:
 			modales.releve(releve, e.ab_courant())
 			releve_ok = await _attendre_genre("info")
 			_fermer("fermer")
-		_verifier("%s : relevé de décembre affiché (frais de l'année : %s)" % [nom, Format.montant(frais, e.ab_courant())], releve_ok)
+		_verifier("%s : relevé de décembre affiché (frais payés depuis le début (cumul) : %s)" % [nom, Format.montant(frais, e.ab_courant())], releve_ok)
 	var bilan := Bilan.calculer(e)
 	modales.fin_demo(e)
 	var fin_ok := await _attendre_genre("fin")
@@ -208,8 +208,15 @@ func _visiter_banque(e: EtatPartie) -> Dictionary:
 		modales.ouvrir_banque(e, pid, -2.0)
 		var fiche_ok := await _attendre_genre("banque")
 		var pb := modales.banque
+		# Accès interne à PanneauBanque, toléré au lot 01 ; à remplacer par des accesseurs publics au lot 02 (T15).
+		# Champ introuvable (renommé ?) : la vérification échoue avec un message clair, sans erreur de script.
 		var droite: Control = pb.get("_droite")
-		fiche_ok = fiche_ok and droite != null and droite.get_child_count() > 0 and _textes(droite).size() >= 3
+		if droite == null:
+			ok = false
+			vus.append("PanneauBanque : champ interne _droite introuvable (renommé ?), voir T15")
+			pb.fermer_demande.emit()
+			break
+		fiche_ok = fiche_ok and droite.get_child_count() > 0 and _textes(droite).size() >= 3
 		pb.call("_afficher_automatique", pid)
 		await get_tree().process_frame
 		var auto_ok := droite.get_child_count() > 0 and _textes(droite).size() >= 2
@@ -219,8 +226,15 @@ func _visiter_banque(e: EtatPartie) -> Dictionary:
 		modales.ouvrir_banque(e, pid, -1.0)
 		var ordre_ok := await _attendre_genre("banque")
 		pb = modales.banque
+		# Accès interne à PanneauBanque, toléré au lot 01 ; à remplacer par des accesseurs publics au lot 02 (T15).
 		var b_ok: Variant = pb.get("_b_ok")
-		ordre_ok = ordre_ok and b_ok != null and is_instance_valid(b_ok) and (pb.get("_droite") as Control).is_ancestor_of(b_ok)
+		var droite_ordre: Control = pb.get("_droite")
+		if b_ok == null or droite_ordre == null:
+			ok = false
+			vus.append("PanneauBanque : champ interne %s introuvable (renommé ?), voir T15" % ("_b_ok" if b_ok == null else "_droite"))
+			pb.fermer_demande.emit()
+			break
+		ordre_ok = ordre_ok and is_instance_valid(b_ok) and droite_ordre.is_ancestor_of(b_ok)
 		pb.fermer_demande.emit()
 		var r2: Array = _recu.pop_back() if not _recu.is_empty() else []
 		if not (fiche_ok and auto_ok and ordre_ok and r1 == ["banque", "fermer"] and r2 == ["banque", "fermer"]):
