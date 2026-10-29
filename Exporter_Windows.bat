@@ -3,8 +3,11 @@ rem Exporte JeuClaude pour Windows : export\windows\JeuClaude.exe (un seul fichi
 setlocal
 chcp 65001 >nul
 set "RACINE=%~dp0"
+rem Godot : variable JEUCLAUDE_GODOT si elle est definie (worktree Git, autre emplacement), sinon outils\ du depot.
 set "GODOT=%RACINE%outils\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe"
+if defined JEUCLAUDE_GODOT set "GODOT=%JEUCLAUDE_GODOT%"
 set "SORTIE=%RACINE%export\windows\JeuClaude.exe"
+echo Godot : "%GODOT%"
 
 if not exist "%GODOT%" (
     echo ERREUR : Godot introuvable : "%GODOT%"

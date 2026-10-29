@@ -5,7 +5,11 @@ rem chemins renseignes dans les parametres de l'editeur Godot (export/android/..
 setlocal
 chcp 65001 >nul
 set "RACINE=%~dp0"
+rem Godot : variable JEUCLAUDE_GODOT si elle est definie (worktree Git, autre emplacement), sinon outils\ du depot.
+rem (Le JDK et le SDK Android restent cherches dans outils\ du dossier de ce fichier.)
 set "GODOT=%RACINE%outils\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe"
+if defined JEUCLAUDE_GODOT set "GODOT=%JEUCLAUDE_GODOT%"
+echo Godot : "%GODOT%"
 set "SORTIE=%RACINE%export\android\JeuClaude.apk"
 set "JAVA_HOME=%RACINE%outils\jdk-17"
 set "ANDROID_HOME=%RACINE%outils\android-sdk"

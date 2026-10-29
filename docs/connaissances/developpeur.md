@@ -1,7 +1,7 @@
 # Base de connaissances du développeur
 
 > À lire au début de chaque mission (après `CLAUDE.md`), à mettre à jour à la fin. Concise : remplacer ce qui est obsolète.
-> Dernière mise à jour : 2026-10-27 (export Windows et Android configurés et vérifiés).
+> Dernière mise à jour : 2026-10-29 (lot 01, dev-logique : worktrees, tests.ps1, StrategieTest, test_interface).
 
 ---
 
@@ -14,7 +14,7 @@
 | **Historique des pop-ups** | **Fait** (retour joueur) : `EtatPartie.historique`, fenêtre `Modales.historique`, relecture en lecture seule. |
 | **Versements automatiques** | **Faits** (11 §8, VP1-VP11) : `scripts/logique/versements.gd`, réglage « CHAQUE MOIS » dans la fiche. VP-D (option, nov. 1987) non fait. |
 | Sauvegarde | Automatique, `user://partie_en_cours.sav`, **format 2** (Sauvegarde.VERSION = 2, VERSION_ETAT = 2) : les sauvegardes 1 sont ignorées (nouvelle partie). |
-| Tests | `godot/outils/tests.ps1` : **66** (test_logique) + **100** (test_demo) + **8** (test_partie), tous au vert. |
+| Tests | `godot/outils/tests.ps1` (lot 01) : import + **66** (test_logique) + **107** (test_demo) + **21** (test_interface) + **8** (test_partie) = 202 vérifications, ≈ 24 s, toute erreur de script = échec. |
 | **Export** | **Fait** (voir §7) : `Exporter_Windows.bat` (exe unique vérifié), `Exporter_Android.bat` (APK debug exporté, non essayé sur téléphone). |
 | Reste à faire | P1/P2 partiels (voir §5) ; APK de release (keystore de publication) ; masquer les raccourcis de test (F6-F10) dans l'exe partagé ? |
 
@@ -55,9 +55,14 @@
 
 ## 6. Commandes et pièges Godot
 
-- Exe console : `outils\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe`. Importer d'abord (`--headless --path godot --import`).
-- Tests : lancer les 3 commandes de `godot/outils/tests.ps1` directement (`-ExecutionPolicy Bypass` refusé).
-- Capture : sans `--headless`, `--path godot --resolution 1280x720 -- --capture=captures/x.png --etape=y [--telephone]`. Garde-fou 420 s.
+- Exe console : `outils\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe` (seulement dans le dépôt principal : `outils\` n'est pas versionné). Importer d'abord (`--headless --path godot --import`).
+- **Localisation de Godot** (`godot/outils/trouver_godot.ps1`, inclus par `tests.ps1` et `capture.ps1`) : `$env:JEUCLAUDE_GODOT` (chemin inexistant = erreur, code 3), sinon `outils\` du dépôt, sinon, dans un **worktree Git**, `outils\` du dépôt principal (lu dans le fichier `.git`). Les `.bat` : `JEUCLAUDE_GODOT` sinon `outils\` (dans un worktree, définir la variable pour `Exporter_Windows.bat` : sortie dans `<worktree>\export\windows\`). `Exporter_Android.bat` cherche toujours JDK et SDK dans `outils\` du dossier du .bat.
+- **Tests** : `powershell -ExecutionPolicy Bypass -File godot\outils\tests.ps1` (marche, y compris depuis un worktree). Import à chaque fois (`-SansImport` pour le sauter), découverte `tests/test_*.tscn` (scènes) et `tests/test_*.gd` sans .tscn homonyme (`--script`), `-Recette` (+ `tests/recette/test_*`), `-Filtre motif`, `-Delai s` (120 s : un test bloqué par une erreur ne quitte jamais), `-Autocontrole` (vérifie que la détection marche). Échec si code ≠ 0 **ou** `SCRIPT ERROR` / `Parse Error` / `Failed to load script` / `Invalid call` / `Invalid access` / `Cannot call method` dans stdout+stderr ; résumé par test ; contrôle des fichiers `user://` restants et de l'empreinte de `partie_en_cours.sav`.
+- **Fichiers `user://`** : dossier commun au jeu exporté, à l'éditeur et à tous les worktrees. Un test n'écrit que `user://test_<nom>_<pid>.sav` (`OS.get_process_id()`) et l'efface ; jamais `partie_en_cours.sav` (`Partie.chemin_sauvegarde` redirigé avant d'instancier la scène principale).
+- **`StrategieTest`** (`scripts/logique/strategie_test.gd`) : joueurs automatiques sans nœud. `jouer_mois(e, actif)`, `aller_a(e, ab, actif)`, `aller_a_modale(e, id, actif) -> bool`, `choix_modale(e, actif) -> String` (choix pris, = resolution_auto pour le passif), `id_modale(e)`. Après un saut, l'appelant rafraîchit l'affichage.
+- **`test_interface`** : instancie la scène principale (écran titre), puis Hud / Modales / fenêtre Banque sur toute la démo (actif et passif) ; il casse si un champ ou une fonction de la logique lus par l'interface change (vérifié par mutation).
+- Capture : sans `--headless`, `--path godot --resolution 1280x720 -- --capture=captures/x.png --etape=y [--telephone]`. Garde-fou 420 s. `capture.ps1` écrit dans `godot\captures\` du dépôt ou du worktree d'où il est lancé.
+- Scripts `.ps1` : UTF-8 **avec** BOM et CRLF (Windows PowerShell 5.1 lit sinon les accents en ANSI). `exit` dans un script inclus par point ne quitte pas l'appelant : renvoyer une variable vide et laisser l'appelant faire `exit 3`. Sous PS 5.1, `Start-Process -PassThru` : lire `$p.Handle` juste après le lancement, sinon `ExitCode` reste vide.
 - GDScript 4 : `:=` sur une expression Variant = erreur ; pas de lambda multiligne en argument ; `Object.get("CONST")` ne lit pas une constante ; ne pas nommer une méthode statique `reference` ni `notification`.
 - `var_to_str` perd parfois 1 ulp : sauvegarde en `var_to_bytes`.
 - `"... 16 % d'impôt : %s" % x` : écrire `%%`.
