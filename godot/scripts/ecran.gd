@@ -2,6 +2,7 @@ extends Node
 ## Autoload « Ecran » : format d'affichage (09 §4.1).
 ## - Facteur d'échelle : 1,0 sur PC, 1,7 sur téléphone, 1,25 sur tablette (détecté sur mobile).
 ## - F10 (PC) : simule un téléphone 20:9 (fenêtre 1200 × 540 et facteur 1,7, soit ≈ 1410 × 635 logiques).
+##   Raccourci de test : absent de la version du joueur (Reglages.raccourcis_test()) ; --telephone des captures reste actif.
 ## - « compact » : largeur logique < 1600 (téléphone) → mise en page resserrée du HUD.
 
 signal format_change
@@ -45,7 +46,7 @@ func _on_taille() -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
-	if k != null and k.pressed and not k.echo and k.keycode == KEY_F10:
+	if k != null and k.pressed and not k.echo and k.keycode == KEY_F10 and Reglages.raccourcis_test():
 		basculer_telephone()
 		get_viewport().set_input_as_handled()
 
