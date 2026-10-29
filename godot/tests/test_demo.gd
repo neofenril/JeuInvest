@@ -25,6 +25,8 @@ func _initialize() -> void:
 	_tests_taux_pel()
 	_tests_versements()
 	_tests_repetitions()
+	_tests_strategie()
+	_effacer_fichiers_user()
 	print("")
 	print("=== %d OK, %d KO (%d ms) ===" % [_ok, _ko, Time.get_ticks_msec() - t0])
 	quit(1 if _ko > 0 else 0)
@@ -37,6 +39,17 @@ func verifier(nom: String, condition: bool, detail := "") -> void:
 	else:
 		_ko += 1
 		print("KO  ", nom, ("  [" + detail + "]") if detail != "" else "")
+
+
+## Fichier de test dans user:// (dossier commun au jeu du joueur, à l'éditeur et à tous les worktrees) :
+## nom unique par processus, effacé en fin de test. Jamais partie_en_cours.sav.
+func fichier_user(nom: String) -> String:
+	return "user://%s_%d.sav" % [nom, OS.get_process_id()]
+
+
+func _effacer_fichiers_user() -> void:
+	for nom in ["test_sauvegarde", "test_historique"]:
+		Sauvegarde.effacer(fichier_user(nom))
 
 
 func proche(a: float, b: float, tol := 1e-6) -> bool:
@@ -540,7 +553,7 @@ func _tests_sauvegarde() -> void:
 			detail += "mois %d%s : identique ; " % [arret, " (modale ouverte)" if modale_ouverte else ""]
 	verifier("Sauvegarde : jouer N mois, sauvegarder, recharger, jouer encore = partie jouée d'une traite", ok, detail)
 	# Fichier dans user:// : écriture, lecture, tolérance
-	var chemin := "user://test_sauvegarde.sav"
+	var chemin := fichier_user("test_sauvegarde")
 	Sauvegarde.effacer(chemin)
 	verifier("Sauvegarde absente : rien à reprendre, sans erreur", Sauvegarde.lire(chemin).is_empty() and not Sauvegarde.existe(chemin))
 	var ecrit := Sauvegarde.ecrire(e_ref, {"vitesse": 2}, chemin)
@@ -646,7 +659,7 @@ func _tests_historique() -> void:
 	var res := q.demarrer(Donnees.config_demo(7))
 	var debut := continuer(q, res, actif, actif_mois, q.m_depart + 30)
 	var e1: EtatPartie = debut["etat"]
-	var chemin := "user://test_historique.sav"
+	var chemin := fichier_user("test_historique")
 	Sauvegarde.ecrire(e1, {}, chemin)
 	var e2 := Sauvegarde.charger(Sauvegarde.lire(chemin))
 	verifier("Historique sauvegardé puis rechargé à l'identique (%d entrées au mois 30)" % e1.historique.size(),
@@ -888,3 +901,87 @@ func _tests_repetitions() -> void:
 			m_force = int(x["m"])
 	var proches := e7.calendrier.filter(func(x: Dictionary) -> bool: return x["type"] == "voiture" and absi(int(x["m"]) - m_force) < 24)
 	verifier("Graine des captures (11) : une seule panne dans les 24 mois autour de celle du krach (plus de seconde panne en janv. 1988)", m_force >= 0 and proches.size() == 1, str(pannes))
+
+# ---------------------------------------------------------------------
+# StrategieTest (lot 01) : joueurs automatiques partagés par les tests et les captures
+# ---------------------------------------------------------------------
+
+func _tests_strategie() -> void:
+	# Joueur actif sur 20 graines : démo finie sans faillite, au moins 7 des 9 produits détenus à un moment
+	var sans_faillite := 0
+	var min_detenus := 99
+	var detail := ""
+	for g in range(1, 21):
+		var e := EtatPartie.new()
+		e.demarrer(Donnees.config_demo(g))
+		var detenus := {}
+		var garde := 0
+		while e.fin == "" and garde < 100:
+			StrategieTest.aller_a(e, e.ab_courant() + 1, true)
+			for pid in Banquier.ordre_carnet():
+				if Banquier.detenu(e, pid):
+					detenus[pid] = true
+			garde += 1
+		if e.fin == "fin" and e.ab_courant() == Dates.lire("1988-12"):
+			sans_faillite += 1
+		else:
+			detail += "graine %d : fin « %s » en %s ; " % [g, e.fin, Dates.texte(e.ab_courant())]
+		min_detenus = mini(min_detenus, detenus.size())
+		if detenus.size() < 7:
+			detail += "graine %d : %d produits détenus %s ; " % [g, detenus.size(), str(detenus.keys())]
+	verifier("StrategieTest, joueur actif sur 20 graines : démo finie sans faillite, au moins 7 des 9 produits détenus (minimum %d)" % min_detenus,
+		sans_faillite == 20 and min_detenus >= 7, detail)
+	# Le choix par défaut annoncé (choix_modale) est bien celui d'EtatPartie.resolution_auto
+	var ok_choix := true
+	var n_modales := 0
+	var detail_choix := ""
+	for g in range(1, 6):
+		var e := EtatPartie.new()
+		e.demarrer(Donnees.config_demo(g))
+		var garde := 0
+		while e.fin == "" and garde < 100:
+			if not e.modale.is_empty():
+				var c := e.contenu_modale()
+				var attendu := StrategieTest.choix_modale(e, false)
+				e.resolution_auto()
+				n_modales += 1
+				var vu: String = e.historique[e.historique.size() - 1]["choix"]
+				if vu != e.libelle_choix(c, attendu):
+					ok_choix = false
+					detail_choix += "graine %d, %s : « %s » au lieu de « %s » ; " % [g, str(c.get("titre", "")), vu, e.libelle_choix(c, attendu)]
+			e.avancer()
+			garde += 1
+	verifier("StrategieTest.choix_modale (joueur passif) = choix de resolution_auto (%d modales, 5 graines)" % n_modales, ok_choix and n_modales > 50, detail_choix)
+	# Sauts : mois exact, modale du krach, présentation du PEL, identifiant inconnu
+	var e1 := EtatPartie.new()
+	e1.demarrer(Donnees.config_demo(7))
+	StrategieTest.aller_a(e1, Dates.lire("1986-03"), true)
+	var e1p := EtatPartie.new()
+	e1p.demarrer(Donnees.config_demo(7))
+	StrategieTest.aller_a(e1p, Dates.lire("1986-03"), false)
+	verifier("StrategieTest.aller_a(1986-03) arrive exactement en mars 1986 (joueur actif et passif)",
+		e1.ab_courant() == Dates.lire("1986-03") and e1p.ab_courant() == Dates.lire("1986-03") and e1.fin == "" and e1p.fin == "",
+		"%s / %s" % [Dates.texte(e1.ab_courant()), Dates.texte(e1p.ab_courant())])
+	var e2 := EtatPartie.new()
+	e2.demarrer(Donnees.config_demo(7))
+	var trouve_krach := StrategieTest.aller_a_modale(e2, "p1e6", true)
+	var c2 := e2.contenu_modale()
+	verifier("StrategieTest.aller_a_modale(« p1e6 », actif) s'arrête sur la modale du krach (octobre 1987, non résolue)",
+		trouve_krach and StrategieTest.id_modale(e2) == "p1e6" and c2.get("kind", "") == "marche" and c2.get("gravite", "") == "majeure" and e2.ab_courant() == Dates.lire("1987-10"),
+		"%s, %s" % [Dates.texte(e2.ab_courant()), str(c2.get("titre", "?"))])
+	var e3 := EtatPartie.new()
+	e3.demarrer(Donnees.config_demo(7))
+	var trouve_pel := StrategieTest.aller_a_modale(e3, "D02", false)
+	verifier("StrategieTest.aller_a_modale(« D02 », passif) s'arrête sur la présentation du PEL (au plus tard en juillet 1984)",
+		trouve_pel and e3.modale.get("id", "") == "D02" and e3.contenu_modale().get("kind", "") == "banquier" and e3.ab_courant() <= Dates.lire("1984-07"),
+		Dates.texte(e3.ab_courant()))
+	var e4 := EtatPartie.new()
+	e4.demarrer(Donnees.config_demo(7))
+	var t0 := Time.get_ticks_msec()
+	var trouve_inconnu := StrategieTest.aller_a_modale(e4, "inconnu", true)
+	verifier("StrategieTest.aller_a_modale(id inconnu) renvoie false, sans boucle infinie (partie menée jusqu'à la fin)",
+		not trouve_inconnu and e4.fin == "fin", "%s, %d ms" % [e4.fin, Time.get_ticks_msec() - t0])
+	var e5 := EtatPartie.new()
+	e5.demarrer(Donnees.config_demo(7))
+	StrategieTest.aller_a(e5, Dates.lire("2050-01"), false)
+	verifier("StrategieTest.aller_a au-delà de la démo : s'arrête à la fin de la partie (décembre 1988)", e5.fin == "fin" and e5.ab_courant() == Dates.lire("1988-12"))

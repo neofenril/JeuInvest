@@ -14,6 +14,7 @@
 #   jumeaux_anim / jumeaux_pose / jumeaux (touche F7), f10, fps,
 #   historique, historique_filtre, historique_entree (carte D08 relue), historique_journal, historique_courrier,
 #   carnet_pel (fiche du PEL), automatique (versement automatique sur la SICAV), automatique_pel.
+# Godot : voir trouver_godot.ps1 (variable JEUCLAUDE_GODOT, dépôt, ou dépôt principal depuis un worktree Git).
 # Si l'exécution de scripts est bloquée, lancer Godot directement :
 #   & $godot --path godot --resolution 1280x720 -- --capture=captures/x.png --frames=10 --etape=crash_anim
 param(
@@ -25,9 +26,9 @@ param(
     [double]$Attente = 0,
     [switch]$Telephone
 )
-$projet = Split-Path -Parent $PSScriptRoot
-$racine = Split-Path -Parent $projet
-$godot = Join-Path $racine "outils\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe"
+. (Join-Path $PSScriptRoot "trouver_godot.ps1")   # $godot, $projet (variable JEUCLAUDE_GODOT, dépôt ou worktree)
+if (-not $godot) { exit 3 }
+Write-Host "Godot : $godot ($godotSource)"
 $argsGodot = @("--path", $projet, "--resolution", $Taille)
 if ($Scene -ne "") { $argsGodot += $Scene }
 $argsGodot += @("--", "--capture=captures/$Nom.png", "--frames=$Frames", "--attente=$Attente")
