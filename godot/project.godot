@@ -37,6 +37,10 @@ window/handheld/orientation=4
 
 common/snap_controls_to_pixels=true
 
+[jeuclaude]
+
+raccourcis_test=true
+
 [input_devices]
 
 pointing/emulate_touch_from_mouse=false
