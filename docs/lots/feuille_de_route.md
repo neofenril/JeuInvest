@@ -16,6 +16,8 @@
 | **06** | **P6 Lundi noir, en direct** + « Le krach, un an après » | séries quotidiennes 19 → 23/10/1987 (Gazette), simulation contrefactuelle des 3 choix sur 12 mois avec l'argent du joueur (copie de l'état), carte d'octobre 1988 dans la cadence | carte « un an après » (3 colonnes, au conditionnel, sans jugement) | séquence de 15 s : écran de la Gazette qui chute jour après jour, file devant la banque, téléphone de la maison, Jean-Mi qui court (si lot 05 fait), sans compte à rebours | §P6 de docs/15 ; **boursier** : cours quotidiens (certitude) ; UX : découpage de la séquence | oui |
 | **07** | **P5 Score de la rue (allégé)** + équilibrage | rang dans la rue + titre d'époque (règles de la spec, jamais flatteur pour la spéculation), record personnel dans un fichier à part (`user://records.sav`), « Rejouer pour battre Jean-Mi » ; mesure de la durée d'une partie (**≤ 20 min à ×1**, sinon retirer des cartes) et du nombre d'interruptions | écran de fin refait (rang, titre, record) | — (ou finitions de la rue) | lots 03-06 (humeur, projets, voisins, sang-froid) ; §P5 de docs/15 ; client : liste des titres | **oui** : 1.0 de la démo V3 |
 
+**Pixel art (docs/16, validé le 29/10)** : PX0 (`lot_px0.md`, preuve de concept, dev-ville + dev-interface, en parallèle du lot 01, fichiers neufs) → décision du joueur → PX1 (rue, dev-ville, remplace la partie ville du lot 02) et PX2 (interface, dev-interface) en parallèle, **avant** les lots 03-04. Côté logique : aucun retard.
+
 Ordre retenu : celui du client (docs/14 §6.4 : P4 d'abord, puis P2, P1, P3 + P9, P6), P5 en dernier car il agrège tous les autres. P10 n'est pas un lot : ses traces arrivent avec P2 et P1 (réserve du client).
 
 ## 2. Ce qui peut démarrer avant la spec (docs/15)

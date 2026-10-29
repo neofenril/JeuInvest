@@ -1,13 +1,14 @@
 # Base de connaissances du chef de projet technique
 
 > À lire au début de chaque mission (après `CLAUDE.md`, avec le socle `developpeur.md`). À mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-29 (plan du lot 01, feuille de route V3, recrutement de dev-ville proposé).
+> Dernière mise à jour : 2026-10-29 (plan PX0, preuve de concept pixel art, en parallèle du lot 01).
 
 ## 0. Situation
 
-- Équipe : chef de projet (moi), `dev-logique`, `dev-interface`, `testeur` (depuis le 29/10) ; **`dev-ville` proposé** (fiche `docs/lots/recrutement/dev-ville.md`, à installer par le coordinateur, actif à partir du lot 02).
+- Équipe : chef de projet (moi), `dev-logique`, `dev-interface`, `testeur`, **`dev-ville`** (recruté le 29/10, actif dès PX0).
 - Git (29/10) : `outils/git/cmd/git.exe`, dépôt GitHub, `main`. Circuit : plan → branches `lot/NN-<dev>` (worktrees dans `C:\Users\arthu\Documents\temp\JeuClaude_lots\`) → commits locaux → testeur (`lot_NN_recette.md`) → push de la branche → ma validation → fusion `--no-ff` dans `main`, tests relancés, push.
-- **Lot 01 planifié** (`docs/lots/lot_01.md`), pas encore lancé : raccourcis de test retirés des versions exportées, découpage de `principal.gd`, worktrees, `tests.ps1` strict + `test_interface`. Parallèle (2 worktrees).
+- **Lot 01 lancé** (29/10, base `a515796`, worktrees `lot01-logique`, `lot01-interface`) : raccourcis de test retirés des versions exportées, découpage de `principal.gd`, worktrees, `tests.ps1` strict + `test_interface`.
+- **PX0 planifié** (`docs/lots/lot_px0.md`, docs/16 validée par le joueur : tout en pixel art dans le code, interface comprise, personnages ≈ taille actuelle) : scène autonome `scenes/px0.tscn`, aucun fichier commun avec le lot 01. Étape A dev-ville seul (atelier) → tag `px0-atelier` → étape B parallèle : `lot/px0-ville` (dev-ville) et `lot/px0-interface` (2e instance de dev-interface, **branche empilée sur le tag**). Ensuite décision du joueur, puis PX1 (rue, dev-ville) et PX2 (interface, dev-interface) en parallèle, avant les lots 03-04.
 - Feuille de route V3 : `docs/lots/feuille_de_route.md` (lots 02 à 07 : P4 → P2 → P1 → P3 + P9 → P6 → P5). Spec `docs/15_spec_game_design_v3.md` en cours chez le game designer.
 - Référence vérifiée le 29/10 sur `main` (b55ca7f) : 66 + 100 + 8 tests verts (≈ 12 s) ; import headless ≈ 5 s, sans erreur.
 
@@ -28,6 +29,10 @@ Chemins relatifs à `godot/` sauf mention. « Partagé » = un seul propriétair
 | `scripts/outils/` (`capture.gd`, `reglages.gd`, `raccourcis_test.gd`, `scenarios_capture.gd`), `outils/capture.ps1`, `captures/` | dev-interface | `capture.ps1` prêté à dev-logique au lot 01. Familles de scénarios `scripts/outils/scenarios/{titre,banque,ville,ecrans,outils}.gd` : une famille = un propriétaire (ville → dev-ville). |
 | `scripts/ville/*.gd` (dont `sequences.gd` après lot 01), `shaders/`, `scripts/juice.gd` | dev-interface jusqu'au lot 01 ; **dev-ville ensuite** | |
 | `project.godot` | **partagé** (défaut dev-interface) | `[display]`, `[gui]`, `[rendering]`, `[input]`, `[jeuclaude]` → interface ; `[autoload]` Partie, `config/version` → logique. Un seul propriétaire par lot. |
+| `scripts/pixel/*.gd` (`PalettePixel`, `GrillePixel`, `VuePixel`, `MatieresPixel`, `RuePx0`, `px0.gd`), `scenes/px0.tscn`, `data/pixel/ville/`, `data/pixel/LISEZMOI.md`, `tests/test_pixel.gd`, `outils/capture_px0.ps1`, `Voir_PX0.bat` (racine) | **dev-ville** (PX0) | Atelier pixel (conservé) ; `px0.gd` / `rue_px0.gd` jetables. |
+| `scripts/pixel/ui/*.gd` (sans class_name), `data/pixel/ui/`, `polices/**/*.ttf.import` | **dev-interface** (PX0) | Les `.import` des polices naissent au 1er `--import` de **tout** worktree : seul leur propriétaire les commite. |
+| `polices/*.ttf`, `OFL.txt`, `LISEZMOI.md` | coordinateur | Sur `main` depuis a515796. |
+| `docs/connaissances/dev-interface_px0.md` | dev-interface (PX0) | Temporaire, à fusionner dans `dev-interface.md` au lot 02. |
 | `.godot/` | personne | Cache par worktree, régénéré par `--import`. |
 | `docs/connaissances/developpeur.md` (socle) | un développeur nommé par lot | Les autres passent par leur base et leur compte rendu. |
 
@@ -96,3 +101,6 @@ Chemins relatifs à `godot/` sauf mention. « Partagé » = un seul propriétair
 - (29/10) Lot 01 en parallèle mais **sans dépendance croisée** : `Reglages` côté interface, `StrategieTest` côté logique, les scénarios gardent une copie de la stratégie jusqu'au lot 02.
 - (29/10) Recrutement : **un** développeur de plus, `dev-ville` (la V3 est surtout visuelle : P10, P3, P9, P6, pièces de P4). Pas de second développeur logique : `etat_partie.gd` et la cadence sont un goulot à un seul propriétaire. À réévaluer après le lot 03 (si les passages du testeur ou les demandes de contenu deviennent le goulot, ne pas recruter plus).
 - Les retours du joueur (docs/10) priment ; un scénario confus se lit comme un bug (héritage à deux pots).
+- (29/10) Pixel art validé (docs/16) : **ne plus commander aucun dessin vectoriel**, même provisoire (sauf quelques lignes). PX0 : facteur N = max(1, floor(hauteur physique / 360)) ; téléphone simulé en 1600 × 720 ×1,7 (la fenêtre 1200 × 540 d'`Ecran` donne N = 1) ; options préfixées `--px0-` (l'autoload `Capture` réagit à `--capture`/`--etape`/`--telephone`) ; HUD de PX0 avec les valeurs de `v3_rue.png` (montage avant / après comparable), carte D08 avec les vrais chiffres (`Banquier.heritage_chiffres`, `Format.entier`). Dette : `include_filter` des exports à étendre à `data/pixel/**/*.txt` ; `capture_px0.ps1` à passer sur `trouver_godot.ps1`.
+- (29/10) Deux instances d'un même agent dans deux lots parallèles : jamais la même base de connaissances (fichier temporaire `<agent>_<lot>.md`).
+- Branche empilée (base = tag d'un commit d'une autre branche du lot) : acceptable quand l'API est petite et figée ; le testeur fait le `diff` depuis le tag.
