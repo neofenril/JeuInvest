@@ -1,6 +1,9 @@
 class_name PalettePixel
 extends RefCounted
-## Palette « Rue 84 » (docs/16 §2.3) : 40 couleurs, en 3 variantes (jour, nuit, orage).
+## Palette « Rue 84 » (docs/16 §2.3 et §8.2) : 59 couleurs, en 3 variantes (jour, nuit, orage).
+## Les 40 premières (§2.3) ne changent jamais (l'interface s'en sert) ; les 19 suivantes (§8.2, révision
+## du 2026-10-29 : ciel d'été, nuages, lointain, briques vives, feuillage d'été, goudron, sarcelle, dalles)
+## sont ajoutées à la suite, pour le monde seulement, et ne sont pas émissives.
 ## Seul fichier de scripts/pixel/ où des couleurs sont écrites en dur : tout le reste passe par
 ## PalettePixel.couleur("nom"). Les variantes nuit et orage sont des tables de substitution couleur
 ## par couleur ; les couleurs émissives (lumières, néon, écrans, couleurs de l'interface) ne changent pas.
@@ -16,15 +19,22 @@ const _NOMS := [
 	"bois_sombre", "bois", "bleu_nuit", "bleu_ardoise", "ciel", "ciel_clair", "vert_sombre", "vert",
 	"vert_clair", "orange", "rouge_auvent", "bleu_vif", "peau_claire", "peau_ombre", "caramel",
 	"lumiere", "neon_rose", "ambre", "or", "gain", "perte", "gel", "cuivre", "gain_papier", "perte_papier",
+	# docs/16 §8.2 (n° 41 à 59)
+	"ciel_haut", "ciel_vif", "nuage", "nuage_ombre", "nuage_creux", "lointain_clair", "lointain",
+	"lointain_sombre", "brique_vive", "brique_claire", "feuille_sombre", "feuille", "feuille_vive",
+	"feuille_eclat", "goudron", "goudron_clair", "sarcelle", "dalle", "dalle_ombre",
 ]
 
-# Valeurs exactes de docs/16 §2.3, dans l'ordre de _NOMS.
+# Valeurs exactes de docs/16 §2.3 puis §8.2, dans l'ordre de _NOMS.
 const _HEX_JOUR := [
 	"1C1626", "2D2840", "46415C", "6B6880", "9C98A6", "C9C6CC", "F3E9D2", "FFF9EC",
 	"8C735A", "BFA27C", "E2CBA0", "6E2E2E", "A8483A", "D06A45", "E9A070",
 	"4E3226", "7A5034", "283A6B", "3F5C96", "6FA4D8", "A9D4EE", "2F5240", "4F8A4B",
 	"8DBF5A", "E2803A", "C7323F", "2F7FD1", "F4D0AE", "D49A74", "A8714E",
 	"FFD97A", "FF5FA2", "FFB547", "F2C14E", "46E08A", "FF5C5C", "7FD6FF", "C77B4A", "1B6E3E", "B3261E",
+	"3C8AD6", "5DAAE8", "F7FBFF", "CFE2F2", "A3C3E0", "B4CCE0", "8DA9C8",
+	"6A86A8", "C4573A", "DE7A4E", "23542A", "3E8C34", "6DBB3C",
+	"A9DC54", "5E626C", "7C808A", "2F7C80", "BDB7AD", "9E978C",
 ]
 const _HEX_NUIT := [
 	"120F1E", "1B1A30", "262842", "363A5C", "4A4E72", "5F6488", "6E7092", "7A7EA0",
@@ -32,6 +42,9 @@ const _HEX_NUIT := [
 	"241C2C", "36283A", "141C40", "1E2C5A", "22345E", "34466E", "16243A", "22364A",
 	"34485A", "64404E", "52263E", "1E3268", "6E6480", "5A4A66", "46344A",
 	"FFD97A", "FF5FA2", "FFB547", "6E5A5A", "46E08A", "FF5C5C", "7FD6FF", "C77B4A", "1B6E3E", "B3261E",
+	"1A2C58", "203A66", "7C80A2", "5A6488", "44507A", "3E4870", "323C64",
+	"283258", "563048", "66424C", "142236", "1E3444", "2C4450",
+	"3C5258", "2A2C46", "383C5A", "18344A", "50547A", "44466A",
 ]
 const _HEX_ORAGE := [
 	"1A1418", "2A2230", "3A3440", "565060", "7A7280", "9A929C", "B8AA9E", "C8BCB0",
@@ -39,6 +52,9 @@ const _HEX_ORAGE := [
 	"3A2624", "5A3C30", "22283E", "364056", "5A5A6E", "7A7484", "26362E", "3E5A3E",
 	"66804C", "A0603A", "8E2C34", "34507E", "B4988A", "96705E", "7A5444",
 	"FFD97A", "FF5FA2", "FFB547", "B08A48", "46E08A", "FF5C5C", "7FD6FF", "C77B4A", "1B6E3E", "B3261E",
+	"4A5266", "565C70", "B4B0B8", "9894A0", "7E7C8C", "8A8696", "706E80",
+	"5E5C6E", "8E4636", "A6644A", "22342A", "3A5634", "5A7A40",
+	"7A9450", "4C4A54", "64626C", "36545A", "8C8482", "76706E",
 ]
 const _EMISSIVES := ["lumiere", "neon_rose", "ambre", "gain", "perte", "gel", "cuivre", "gain_papier", "perte_papier"]
 
@@ -71,7 +87,7 @@ static func cle(c: Color) -> int:
 	return c.to_rgba32() >> 8
 
 
-## Les 40 identifiants, dans l'ordre de docs/16 §2.3.
+## Les 59 identifiants, dans l'ordre de docs/16 §2.3 puis §8.2.
 static func noms() -> PackedStringArray:
 	return PackedStringArray(_NOMS)
 

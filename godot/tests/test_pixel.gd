@@ -19,9 +19,30 @@ const ATTENDU_JOUR := {
 	"peau_ombre": "D49A74", "caramel": "A8714E", "lumiere": "FFD97A", "neon_rose": "FF5FA2",
 	"ambre": "FFB547", "or": "F2C14E", "gain": "46E08A", "perte": "FF5C5C", "gel": "7FD6FF",
 	"cuivre": "C77B4A", "gain_papier": "1B6E3E", "perte_papier": "B3261E",
+	# docs/16 §8.2 (révision du 2026-10-29), n° 41 à 59
+	"ciel_haut": "3C8AD6", "ciel_vif": "5DAAE8", "nuage": "F7FBFF", "nuage_ombre": "CFE2F2",
+	"nuage_creux": "A3C3E0", "lointain_clair": "B4CCE0", "lointain": "8DA9C8", "lointain_sombre": "6A86A8",
+	"brique_vive": "C4573A", "brique_claire": "DE7A4E", "feuille_sombre": "23542A", "feuille": "3E8C34",
+	"feuille_vive": "6DBB3C", "feuille_eclat": "A9DC54", "goudron": "5E626C", "goudron_clair": "7C808A",
+	"sarcelle": "2F7C80", "dalle": "BDB7AD", "dalle_ombre": "9E978C",
 }
-const ATTENDU_NUIT := {"encre": "120F1E", "creme": "6E7092", "or": "6E5A5A", "caramel": "46344A"}
-const ATTENDU_ORAGE := {"encre": "1A1418", "creme": "B8AA9E", "or": "B08A48", "caramel": "7A5444"}
+## Ordre des 59 identifiants (docs/16 §2.3 puis §8.2).
+const ORDRE := [
+	"encre", "nuit", "ardoise_sombre", "ardoise", "gris_pierre", "zinc_clair", "creme", "blanc_chaud",
+	"pierre_ombre", "pierre", "pierre_claire", "brique_sombre", "brique", "tuile", "terre_cuite_claire",
+	"bois_sombre", "bois", "bleu_nuit", "bleu_ardoise", "ciel", "ciel_clair", "vert_sombre", "vert",
+	"vert_clair", "orange", "rouge_auvent", "bleu_vif", "peau_claire", "peau_ombre", "caramel",
+	"lumiere", "neon_rose", "ambre", "or", "gain", "perte", "gel", "cuivre", "gain_papier", "perte_papier",
+	"ciel_haut", "ciel_vif", "nuage", "nuage_ombre", "nuage_creux", "lointain_clair", "lointain",
+	"lointain_sombre", "brique_vive", "brique_claire", "feuille_sombre", "feuille", "feuille_vive",
+	"feuille_eclat", "goudron", "goudron_clair", "sarcelle", "dalle", "dalle_ombre",
+]
+const ATTENDU_NUIT := {"encre": "120F1E", "creme": "6E7092", "or": "6E5A5A", "caramel": "46344A",
+	"ciel_haut": "1A2C58", "nuage": "7C80A2", "brique_vive": "563048", "feuille_vive": "2C4450",
+	"goudron": "2A2C46", "dalle_ombre": "44466A"}
+const ATTENDU_ORAGE := {"encre": "1A1418", "creme": "B8AA9E", "or": "B08A48", "caramel": "7A5444",
+	"ciel_haut": "4A5266", "nuage": "B4B0B8", "brique_vive": "8E4636", "feuille_vive": "5A7A40",
+	"goudron": "4C4A54", "dalle_ombre": "76706E"}
 const EMISSIVES := ["lumiere", "neon_rose", "ambre", "gain", "perte", "gel", "cuivre", "gain_papier", "perte_papier"]
 const VARIANTES := [PalettePixel.JOUR, PalettePixel.NUIT, PalettePixel.ORAGE]
 const NOMS_VARIANTES := ["jour", "nuit", "orage"]
@@ -55,17 +76,22 @@ func _hex(c: Color) -> String:
 
 func _tests_palette() -> void:
 	var noms := PalettePixel.noms()
-	_verifier(noms.size() == 40, "palette : 40 couleurs", str(noms.size()))
+	_verifier(noms.size() == 59, "palette : 59 couleurs", str(noms.size()))
 	var uniques := {}
 	for n in noms:
 		uniques[n] = true
-	_verifier(uniques.size() == 40, "palette : identifiants uniques")
-	_verifier(noms[0] == "encre" and noms[39] == "perte_papier" and noms[33] == "or", "palette : ordre de docs/16 §2.3")
+	_verifier(uniques.size() == 59, "palette : identifiants uniques")
+	_verifier(Array(noms) == ORDRE, "palette : ordre de docs/16 §2.3 (40 premières inchangées) puis §8.2")
 	var ecarts := PackedStringArray()
 	for n in ATTENDU_JOUR:
 		if not uniques.has(n) or _hex(PalettePixel.couleur(n)) != ATTENDU_JOUR[n]:
 			ecarts.append(n)
-	_verifier(ecarts.is_empty() and ATTENDU_JOUR.size() == 40, "palette : valeurs de jour = docs/16 §2.3", ", ".join(ecarts))
+	_verifier(ecarts.is_empty() and ATTENDU_JOUR.size() == 59, "palette : 59 valeurs de jour = docs/16 §2.3 et §8.2", ", ".join(ecarts))
+	var nouvelles_em := false
+	for i in range(40, 59):
+		if PalettePixel.emissive(ORDRE[i]):
+			nouvelles_em = true
+	_verifier(not nouvelles_em, "palette : les 19 couleurs de §8.2 ne sont pas émissives")
 	ecarts.clear()
 	for n in ATTENDU_NUIT:
 		if _hex(PalettePixel.couleur(n, PalettePixel.NUIT)) != ATTENDU_NUIT[n]:
@@ -78,7 +104,7 @@ func _tests_palette() -> void:
 		var vues := {}
 		for n in noms:
 			vues[PalettePixel.cle(PalettePixel.couleur(n, VARIANTES[vi]))] = true
-		_verifier(vues.size() == 40, "palette : 40 couleurs distinctes (%s)" % NOMS_VARIANTES[vi], str(vues.size()))
+		_verifier(vues.size() == 59, "palette : 59 couleurs distinctes (%s)" % NOMS_VARIANTES[vi], str(vues.size()))
 	var em_ok := true
 	var nb_em := 0
 	for n in noms:
@@ -97,8 +123,8 @@ func _tests_palette() -> void:
 	_verifier(inverse_ok, "palette : nom_de et contient retrouvent chaque couleur")
 	_verifier(PalettePixel.nom_de(Color(0.5, 0.5, 0.5)) == "" and not PalettePixel.contient(Color(0.5, 0.5, 0.5)), "palette : couleur hors palette reconnue")
 	# Conversion jour -> nuit -> jour, alpha conservé
-	var img := Image.create_empty(8, 5, false, Image.FORMAT_RGBA8)
-	for i in 40:
+	var img := Image.create_empty(8, 8, false, Image.FORMAT_RGBA8)
+	for i in 59:
 		img.set_pixel(i % 8, i / 8, PalettePixel.couleur(noms[i]))
 	img.set_pixel(0, 0, Color(0, 0, 0, 0))
 	var nuit := PalettePixel.convertir(img, PalettePixel.JOUR, PalettePixel.NUIT)

@@ -43,13 +43,22 @@ image gerard_repos_2 16x28
 - **Erreurs détectées** (test `tests/test_pixel.gd`, et `push_error` au chargement) : largeur ou nombre de
   rangées différents de l'annonce, lettre sans légende, couleur inconnue, nom en double, ligne inattendue.
 
-## Palette « Rue 84 » (docs/16 §2.3)
+## Palette « Rue 84 » (docs/16 §2.3 et §8.2)
 
-40 identifiants, dans cet ordre : `encre, nuit, ardoise_sombre, ardoise, gris_pierre, zinc_clair, creme,
+59 identifiants, dans cet ordre : `encre, nuit, ardoise_sombre, ardoise, gris_pierre, zinc_clair, creme,
 blanc_chaud, pierre_ombre, pierre, pierre_claire, brique_sombre, brique, tuile, terre_cuite_claire,
 bois_sombre, bois, bleu_nuit, bleu_ardoise, ciel, ciel_clair, vert_sombre, vert, vert_clair, orange,
 rouge_auvent, bleu_vif, peau_claire, peau_ombre, caramel, lumiere, neon_rose, ambre, or, gain, perte, gel,
-cuivre, gain_papier, perte_papier`.
+cuivre, gain_papier, perte_papier` (n° 1 à 40, inchangés), puis, pour le monde seulement (§8.2, révision du
+2026-10-29) : `ciel_haut, ciel_vif, nuage, nuage_ombre, nuage_creux, lointain_clair, lointain,
+lointain_sombre, brique_vive, brique_claire, feuille_sombre, feuille, feuille_vive, feuille_eclat, goudron,
+goudron_clair, sarcelle, dalle, dalle_ombre` (n° 41 à 59, non émissives).
+
+Rampes de la rue de briques (§8.2) : ciel `ciel_haut → ciel_vif → ciel → ciel_clair` ; nuages `nuage /
+nuage_ombre / nuage_creux` ; lointain `lointain_clair / lointain / lointain_sombre` ; brique `brique_claire /
+brique_vive / brique / brique_sombre` ; feuillage d'été `feuille_eclat / feuille_vive / feuille /
+feuille_sombre` ; sol `dalle / dalle_ombre`, `goudron_clair / goudron`, marquages `blanc_chaud` ; ardoise
+`ardoise / ardoise_sombre / nuit` ; tuiles `terre_cuite_claire / tuile / brique`. Jamais de noir pur.
 
 - Les grilles sont **toujours dessinées en couleurs de jour** ; nuit et orage sont calculées par substitution
   couleur par couleur (`PalettePixel.convertir`). Émissives (identiques dans les 3 variantes) : `lumiere,
@@ -64,8 +73,11 @@ cuivre, gain_papier, perte_papier`.
 - Lumière en haut à gauche ; 3 tons par matière (clair, moyen, sombre), 1 reflet au plus.
 - Personnages et petits objets : contour **encre** de 1 px, fermé ; bâtiments : contour dans le ton le plus
   sombre de leur matière. Pas de dégradé, pas de « pillow shading », marches régulières (1-1-1, 2-2-2).
-- Tailles : figurine 16 × 28 (origine au milieu des pieds), portrait de carte 48 × 48 (trois quarts),
-  portrait de bulle 32 × 32, maison de Gérard 96 × 124, réverbère 8 × 56, platane 40 × 64, R5 48 × 20.
+- Échelle de la rue (docs/16 §8.3) : « 1 m ≈ 24 px ». Figurine **24 × 42** (2,5 têtes, tête ≈ 16 × 15 ;
+  origine au milieu des pieds), Sylvie à la fenêtre : buste 18 × 21 dans une fenêtre de 26 × 32, porte
+  22 × 44, fenêtre 24 × 32, étage ≈ 50, maison de Gérard ≈ 152 × 172, lampadaire 10 × 84, arbre ≈ 70 × 110,
+  voitures ≈ 72 × 30 (roues 12), trottoir 12 + bordure 2, chaussée 22. Portraits inchangés : carte 48 × 48
+  (trois quarts), bulle 32 × 32.
 - Animations : une image par entrée, numérotée (`gerard_marche_1` … `_4`, `gerard_repos_1`, `_2`).
 - Expressions : un nom par expression (`lefranc_affable`, `lefranc_grave`, `lefranc_yeux_fermes`).
 
