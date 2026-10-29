@@ -1,11 +1,12 @@
 class_name MatieresPixel
 extends RefCounted
-## Générateurs de matières pixel (docs/16 §2.3, §2.4, §4.4) : ciel en bandes tramé (Bayer 4 × 4),
-## trottoir, chaussée, meulière, tuiles, pierre de taille, brique, ardoise, zinc, nuages ; et les
-## « pinceaux » (px, rect, cadre, coller, contour, recolorer, palir, disque) utilisés par facades.gd.
-## Règles : uniquement des couleurs de PalettePixel (jour) ; images opaques ou transparentes
-## (alpha 0 ou 1) ; déterministes (même graine, même image : RandomNumberGenerator à graine fixe,
-## jamais randi()). Les variantes nuit et orage sont obtenues par GrillePixel / PalettePixel.convertir.
+## Générateurs de matières pixel de la rue de briques (docs/16 §2.4, §4.4 et §8, révision PX0 bis) :
+## ciel d'été en bandes tramées (Bayer 4 × 4), cumulus en volumes, skyline lointaine bleutée, brique à
+## joints (4 variantes), ardoise, tuiles, dalles du trottoir, goudron de la chaussée ; et les « pinceaux »
+## (px, rect, cadre, coller, contour, recolorer, lointain, disque, texte) utilisés par facades.gd.
+## Règles : uniquement des couleurs de PalettePixel (jour) ; images opaques ou transparentes (alpha 0
+## ou 1) ; déterministes (même graine, même image : RandomNumberGenerator à graine fixe, jamais randi()).
+## Les variantes nuit et orage sont obtenues par GrillePixel / PalettePixel.convertir.
 
 ## Matrice de Bayer 4 × 4 (seuils 0 à 15).
 const BAYER := [
@@ -15,20 +16,28 @@ const BAYER := [
 	[15, 7, 13, 5],
 ]
 
-## Bandes du ciel de jour, du bas (horizon) vers le haut : [couleur, hauteur en px d'art].
-## La dernière bande remplit le reste. 5 bandes de la rampe 18 → 21, crème à l'horizon (docs/16 §2.3).
-## Réglées sur la rue (horizon au bas du trottoir, y 320) : crème visible entre les bâtiments, ciel clair
-## à hauteur des toits, ciel au-dessus, bleu ardoise puis bleu nuit sous la barre haute.
+## Bandes du ciel de jour, du bas (horizon) vers le haut : [couleur, hauteur en px d'art]. La dernière
+## bande remplit le reste. Rampe d'été de docs/16 §8.2 : ciel_haut → ciel_vif → ciel → ciel_clair
+## (horizon posé au sol de la rue, y 296).
 const BANDES_CIEL := [
-	["creme", 64],
-	["ciel_clair", 76],
-	["ciel", 150],
-	["bleu_ardoise", 40],
-	["bleu_nuit", 0],
+	["ciel_clair", 60],
+	["ciel", 64],
+	["ciel_vif", 76],
+	["ciel_haut", 0],
 ]
 const TRAME_CIEL := 8          # hauteur des transitions tramées entre deux bandes
-const LARGEUR_DALLE := 24      # dalles du trottoir
-const LARGEUR_BORDURE := 32    # pierres de la bordure
+const DALLE := 12              # largeur d'une dalle du trottoir
+const TIRET := 20              # tirets de la ligne médiane (20 peints, 14 vides)
+const TIRET_VIDE := 14
+
+## Briques : [corps, éclat, ombre, joint]. Rang de 3 px (2 de brique + 1 de joint), brique de 6 px
+## (5 + 1 joint vertical), en quinconce.
+const BRIQUES := {
+	"vive": ["brique_vive", "brique_claire", "brique", "brique"],
+	"classique": ["brique", "brique_vive", "brique_sombre", "brique_sombre"],
+	"sombre": ["brique_sombre", "brique", "bois_sombre", "bois_sombre"],
+	"claire": ["pierre", "pierre_claire", "pierre_ombre", "pierre_claire"],
+}
 
 
 static func _c(nom: String) -> Color:
@@ -40,11 +49,12 @@ static func trame(x: int, y: int, t: float) -> bool:
 	return float(BAYER[y & 3][x & 3]) + 0.5 < t * 16.0
 
 
+# --- Ciel, nuages, lointain ------------------------------------------------------------------------
+
 ## Ciel en bandes : l'horizon est la dernière rangée de l'image. Les transitions entre bandes sont
 ## tramées sur TRAME_CIEL px. Le motif ne dépend que de (x mod 4) : l'image se répète en largeur.
 static func ciel(largeur: int, hauteur: int, _graine := 0) -> Image:
 	var img := Image.create_empty(largeur, hauteur, false, Image.FORMAT_RGBA8)
-	# Limites des bandes, en distance depuis l'horizon
 	var limites: Array = []   # [distance, couleur du dessous, couleur du dessus]
 	var d := 0
 	for i in BANDES_CIEL.size() - 1:
@@ -52,7 +62,6 @@ static func ciel(largeur: int, hauteur: int, _graine := 0) -> Image:
 		limites.append([d, BANDES_CIEL[i][0], BANDES_CIEL[i + 1][0]])
 	for y in hauteur:
 		var dist := hauteur - 1 - y     # 0 = horizon
-		# bande de base
 		var nom: String = BANDES_CIEL[BANDES_CIEL.size() - 1][0]
 		var acc := 0
 		for i in BANDES_CIEL.size() - 1:
@@ -61,7 +70,6 @@ static func ciel(largeur: int, hauteur: int, _graine := 0) -> Image:
 				nom = BANDES_CIEL[i][0]
 				break
 		var c_base := _c(nom)
-		# transition tramée la plus proche
 		var lim: Array = []
 		for l in limites:
 			if absi(dist - int(l[0])) <= TRAME_CIEL / 2:
@@ -70,67 +78,225 @@ static func ciel(largeur: int, hauteur: int, _graine := 0) -> Image:
 		for x in largeur:
 			var c := c_base
 			if not lim.is_empty():
-				# t = part de la couleur du dessus (0 au bas de la transition, 1 en haut)
 				var t := (float(dist - int(lim[0])) + TRAME_CIEL / 2.0 + 0.5) / float(TRAME_CIEL + 1)
 				c = _c(lim[2]) if trame(x, y, t) else _c(lim[1])
 			img.set_pixel(x, y, c)
 	return img
 
 
-## Trottoir vu de face (hauteur 8 conseillée) : arête éclairée, dalles à joints, bordure de pierre,
-## ombre du caniveau. Graine : décalage des joints.
-static func trottoir(largeur: int, hauteur := 8, graine := 0) -> Image:
+## Cumulus de largeur l × h : boules empilées sur une base plate, chacune éclairée en haut à gauche
+## (nuage), volume (nuage_ombre), dessous (nuage_creux). Les petites boules du devant sont posées après
+## les grosses : leur arête éclairée découpe l'ombre des grosses (effet « chou-fleur »).
+static func cumulus(l: int, h: int, graine := 0) -> Image:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = graine
-	var decalage := rng.randi_range(0, LARGEUR_DALLE - 1)
-	var dec_bordure := rng.randi_range(0, LARGEUR_BORDURE - 1)
+	var img := vide(l, h)
+	var boules: Array = []   # [cx, cy, r]
+	var n := maxi(4, l / 13)
+	for i in n:
+		var t := (i + 0.5) / float(n)
+		var bombe := 1.0 - absf(t - 0.45) * 1.5
+		var r := maxi(4, int(h * 0.42 * bombe) + rng.randi_range(-2, 2))
+		var cx := int(l * (0.1 + 0.8 * t)) + rng.randi_range(-3, 3)
+		var cy := h - 4 - int(r * 0.75) - rng.randi_range(0, 3)
+		boules.append([cx, cy, r])
+	# Petites boules du devant, plus bas
+	for i in maxi(2, l / 30):
+		var r := rng.randi_range(maxi(3, h / 7), maxi(4, h / 5))
+		boules.append([rng.randi_range(r + 2, l - r - 3), h - 3 - r, r])
+	boules.sort_custom(func(a, b): return a[2] > b[2])
+	for b in boules:
+		var cx: int = b[0]
+		var cy: int = b[1]
+		var r: int = b[2]
+		for y in range(maxi(0, cy - r), mini(h, cy + r + 1)):
+			for x in range(maxi(0, cx - r - 2), mini(l, cx + r + 3)):
+				var dx := x - cx
+				var dy := y - cy
+				if dx * dx * 0.8 + dy * dy > r * r + r * 0.6:
+					continue
+				var q := (dx * 0.55 + dy) / float(r)
+				var nom := "nuage" if q < 0.05 else ("nuage_ombre" if q < 0.7 else "nuage_creux")
+				px(img, x, y, nom)
+	# Base plate (dessous) : bande de nuage_creux, ourlée de nuage_ombre, bords arrondis
+	var g := int(l * 0.07)
+	var d := l - int(l * 0.08)
+	for y in range(h - 4, h):
+		var retrait := (y - (h - 4)) * 2
+		for x in range(g + retrait, d - retrait):
+			px(img, x, y, "nuage_creux" if y >= h - 2 else "nuage_ombre")
+	return img
+
+
+## Skyline lointaine (plan 0,15) de l × h : silhouettes plates sans fenêtre, en 3 plans (lointain_clair
+## au fond : tours ; lointain : immeubles, grues, pylône ; lointain_sombre devant : toits bas, usine).
+static func skyline(l: int, h: int, graine := 0) -> Image:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = graine
+	var img := vide(l, h)
+	# Fond : tours hautes et fines
+	var x := rng.randi_range(0, 30)
+	while x < l:
+		var w := rng.randi_range(12, 30)
+		var th := rng.randi_range(h / 3, h - 10)
+		rect(img, x, h - th, w, th, "lointain_clair")
+		if rng.randf() < 0.35:
+			rect(img, x + w / 2, h - th - 10, 1, 10, "lointain_clair")      # antenne
+		elif rng.randf() < 0.5:
+			rect(img, x + 2, h - th - 4, w - 4, 4, "lointain_clair")         # édicule
+		x += w + rng.randi_range(10, 60)
+	# Milieu : immeubles, grues, pylône
+	x = rng.randi_range(0, 20)
+	var grues := 0
+	var pylone := false
+	while x < l:
+		var w := rng.randi_range(22, 56)
+		var bh := rng.randi_range(h / 5, h / 2)
+		rect(img, x, h - bh, w, bh, "lointain")
+		if rng.randf() < 0.3:
+			for k in range(x + 2, x + w - 6, 8):                          # sheds en dents de scie
+				for j in 4:
+					rect(img, k, h - bh - j, 6 - j, 1, "lointain")
+		x += w + rng.randi_range(4, 30)
+		if grues < 2 and x > l * (0.2 + grues * 0.45) and x < l - 80:
+			_grue(img, x + 10, h, rng.randi_range(h - 30, h - 6), rng.randi() % 2 == 0)
+			grues += 1
+			x += 30
+		elif not pylone and x > l * 0.55 and x < l - 40:
+			_pylone(img, x + 8, h, h * 2 / 3)
+			pylone = true
+			x += 30
+	# Devant : bâtiments bas, cheminée d'usine
+	x = rng.randi_range(0, 40)
+	while x < l:
+		var w := rng.randi_range(30, 80)
+		var bh := rng.randi_range(10, h / 4)
+		rect(img, x, h - bh, w, bh, "lointain_sombre")
+		if rng.randf() < 0.25:
+			rect(img, x + w - 8, h - bh - 30, 4, 30, "lointain_sombre")
+			rect(img, x + w - 9, h - bh - 31, 6, 2, "lointain_sombre")
+		x += w + rng.randi_range(0, 50)
+	return img
+
+
+## Grue à tour : mât en treillis 3 px, flèche et contre-flèche, câble et crochet (couleur lointain).
+static func _grue(img: Image, x: int, bas: int, haut: int, vers_gauche: bool) -> void:
+	var y0 := bas - haut
+	rect(img, x, y0, 1, haut, "lointain")
+	rect(img, x + 2, y0, 1, haut, "lointain")
+	for y in range(y0, bas, 4):
+		px(img, x + 1, y, "lointain")
+		px(img, x + 1, y + 2, "lointain")
+	var s := -1 if vers_gauche else 1
+	var fleche := 56
+	for i in fleche:
+		px(img, x + 1 + s * i, y0, "lointain")
+		if i % 4 == 0:
+			px(img, x + 1 + s * i, y0 + 1, "lointain")
+	rect(img, x + 1 + s * fleche - (1 if s < 0 else 0), y0 + 1, 1, 1, "lointain")
+	for i in 16:
+		px(img, x + 1 - s * i, y0, "lointain")
+	rect(img, x + 1 - s * 15 - (2 if s > 0 else 0), y0 + 1, 3, 3, "lointain")     # contrepoids
+	rect(img, x - 1, y0 - 5, 5, 5, "lointain")                                   # cabine et pointe
+	var cx := x + 1 + s * 38
+	rect(img, cx, y0 + 1, 1, 18, "lointain")
+	rect(img, cx - 1, y0 + 19, 3, 2, "lointain")
+
+
+## Pylône électrique : treillis qui s'affine, deux consoles.
+static func _pylone(img: Image, x: int, bas: int, haut: int) -> void:
+	for j in haut:
+		var e := 1 + j * 7 / haut
+		var y := bas - 1 - j
+		px(img, x - e, y, "lointain")
+		px(img, x + e, y, "lointain")
+		if j % 6 == 0:
+			rect(img, x - e, y, 2 * e + 1, 1, "lointain")
+		elif (j % 6) < 3:
+			px(img, x - e + (j % 6) * e / 2, y, "lointain")
+	var y0 := bas - haut
+	rect(img, x - 9, y0 + 6, 19, 1, "lointain")
+	rect(img, x - 7, y0 + 14, 15, 1, "lointain")
+	rect(img, x, y0 - 3, 1, 3, "lointain")
+
+
+# --- Sol -------------------------------------------------------------------------------------------
+
+## Trottoir de dalles (12 px) suivi de la bordure (2 px) : joints dalle_ombre tous les 12 px, en
+## quinconce sur deux rangs, quelques dalles tachées ; bordure : arête éclairée puis face.
+static func trottoir(largeur: int, hauteur := 14, graine := 0) -> Image:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = graine
 	var img := Image.create_empty(largeur, hauteur, false, Image.FORMAT_RGBA8)
-	var h := maxi(hauteur, 4)
+	var corps := hauteur - 2
+	var milieu := corps / 2
+	var taches := {}
+	for i in largeur / 40:
+		taches[Vector2i(rng.randi_range(0, largeur / DALLE), rng.randi_range(0, 1))] = true
 	for y in hauteur:
 		for x in largeur:
-			var nom := "gris_pierre"
-			if y == 0:
-				nom = "zinc_clair"                   # arête éclairée (lumière en haut)
-			elif y < h - 3:
-				nom = "ardoise" if (x + decalage) % LARGEUR_DALLE == 0 else "gris_pierre"
-				if y == h - 4 and (x + decalage) % LARGEUR_DALLE != 0:
-					nom = "gris_pierre"
-			elif y == h - 3:
-				nom = "zinc_clair"                   # dessus de la bordure
-			elif y == h - 2:
-				nom = "ardoise" if (x + dec_bordure) % LARGEUR_BORDURE == 0 else "gris_pierre"
+			var nom := "dalle"
+			if y < corps:
+				var rang := 0 if y < milieu else 1
+				var xx := x + (DALLE / 2 if rang == 1 else 0)
+				if y == milieu - 1 or y == corps - 1:
+					nom = "dalle_ombre"
+				elif xx % DALLE == 0:
+					nom = "dalle_ombre"
+				elif taches.has(Vector2i(xx / DALLE, rang)) and trame(x, y, 0.3):
+					nom = "dalle_ombre"
+			elif y == corps:
+				nom = "zinc_clair"
 			else:
-				nom = "ardoise_sombre"               # ombre portée dans le caniveau
+				nom = "goudron" if (x % 24) == 0 else "goudron_clair"
 			img.set_pixel(x, y, _c(nom))
 	return img
 
 
-## Chaussée vue de face (hauteur 16 conseillée) : caniveau, enrobé ardoise tramé finement
-## d'ardoise sombre (grande surface), quelques reprises d'enrobé (graine), bord inférieur sombre.
-static func chaussee(largeur: int, hauteur := 16, graine := 0) -> Image:
+## Chaussée de goudron (22 px) : ombre du caniveau, grain clair tramé, reprises d'enrobé, ligne médiane
+## en tirets blanc_chaud (le passage piéton est posé par la rue).
+static func chaussee(largeur: int, hauteur := 22, graine := 0) -> Image:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = graine
 	var img := Image.create_empty(largeur, hauteur, false, Image.FORMAT_RGBA8)
-	var ardoise := _c("ardoise")
-	var sombre := _c("ardoise_sombre")
+	var goudron := _c("goudron")
+	var clair := _c("goudron_clair")
 	for y in hauteur:
 		for x in largeur:
-			var c := ardoise
-			if y == 0 or y == hauteur - 1:
-				c = sombre
-			elif trame(x, y, 0.07):
-				c = sombre                           # grain régulier (1 pixel sur 16)
+			var c := goudron
+			if y <= 1:
+				c = _c("ardoise_sombre") if y == 0 else _c("ardoise")
+			elif trame(x + y * 3, y, 0.06):
+				c = clair
 			img.set_pixel(x, y, c)
-	# Reprises d'enrobé : rectangles d'ardoise sombre (un seul ton, pas d'arête : ce n'est pas un objet)
-	var n := maxi(1, largeur / 160)
+	var n := maxi(1, largeur / 140)
 	for i in n:
-		var l := rng.randi_range(12, 28)
-		var hh := rng.randi_range(2, 4)
+		var l := rng.randi_range(14, 34)
+		var hh := rng.randi_range(2, 3)
 		var x0 := rng.randi_range(0, maxi(0, largeur - l))
-		var y0 := rng.randi_range(3, maxi(3, hauteur - hh - 2))
-		for y in range(y0, mini(hauteur - 1, y0 + hh)):
-			for x in range(x0, mini(largeur, x0 + l)):
-				img.set_pixel(x, y, sombre)
+		var y0 := rng.randi_range(4, hauteur - hh - 2)
+		img.fill_rect(Rect2i(x0, y0, l, hh), clair if i % 2 == 0 else _c("ardoise"))
+	var ym := hauteur / 2
+	for x in largeur:
+		if x % (TIRET + TIRET_VIDE) < TIRET:
+			img.set_pixel(x, ym, _c("blanc_chaud"))
+			img.set_pixel(x, ym + 1, _c("blanc_chaud"))
+	return img
+
+
+## Bord d'en face (sous la chaussée) : bordure puis dalles, h px.
+static func bord_en_face(largeur: int, hauteur := 8) -> Image:
+	var img := Image.create_empty(largeur, hauteur, false, Image.FORMAT_RGBA8)
+	for y in hauteur:
+		for x in largeur:
+			var nom := "dalle"
+			if y == 0:
+				nom = "goudron_clair"
+			elif y == 1:
+				nom = "zinc_clair"
+			elif (x + 6) % DALLE == 0 or y == 5:
+				nom = "dalle_ombre"
+			img.set_pixel(x, y, _c(nom))
 	return img
 
 
@@ -174,20 +340,8 @@ static func coller(img: Image, src: Image, x: int, y: int) -> void:
 	img.blend_rect(src, Rect2i(Vector2i.ZERO, src.get_size()), Vector2i(x, y))
 
 
-## Copie une zone d'une matière (répétée si besoin) dans le rectangle donné, seulement là où masque
-## (facultatif) est opaque.
-static func remplir(img: Image, x: int, y: int, l: int, h: int, matiere: Image) -> void:
-	var ml := matiere.get_width()
-	var mh := matiere.get_height()
-	for j in h:
-		for i in l:
-			var c := matiere.get_pixel(i % ml, j % mh)
-			if c.a > 0.0 and x + i >= 0 and y + j >= 0 and x + i < img.get_width() and y + j < img.get_height():
-				img.set_pixel(x + i, y + j, c)
-
-
 ## Contour intérieur : chaque pixel opaque qui touche (4 voisins) un pixel transparent ou le bord
-## prend la couleur nom. bords : "tous" ou "cotes" (gauche, droite, haut seulement).
+## prend la couleur nom (bas = false : le bord inférieur n'est pas tracé).
 static func contour(img: Image, nom: String, bas := true) -> void:
 	var src := Image.new()
 	src.copy_from(img)
@@ -210,7 +364,7 @@ static func contour(img: Image, nom: String, bas := true) -> void:
 				img.set_pixel(x, y, c)
 
 
-## Remplace une couleur de la palette par une autre (recoloration d'un motif).
+## Remplace des couleurs de la palette par d'autres (recoloration d'un motif).
 static func recolorer(img: Image, table: Dictionary) -> Image:
 	var copie := Image.new()
 	copie.copy_from(img)
@@ -227,20 +381,21 @@ static func recolorer(img: Image, table: Dictionary) -> Image:
 	return copie
 
 
-## Lointain : ramène chaque couleur à 3 tons pâles selon sa luminance (immeubles de fond).
-static func palir(img: Image) -> Image:
+## Plan intermédiaire (0,4) : ramène chaque couleur à 3 tons bleutés selon sa luminance
+## (perspective atmosphérique : lointain_sombre, lointain, lointain_clair).
+static func lointain(img: Image) -> Image:
 	var copie := Image.new()
 	copie.copy_from(img)
-	var sombre := _c("ardoise")
-	var moyen := _c("gris_pierre")
-	var clair := _c("zinc_clair")
+	var sombre := _c("lointain_sombre")
+	var moyen := _c("lointain")
+	var clair := _c("lointain_clair")
 	for y in copie.get_height():
 		for x in copie.get_width():
 			var c := copie.get_pixel(x, y)
 			if c.a == 0.0:
 				continue
 			var lum := 0.299 * c.r + 0.587 * c.g + 0.114 * c.b
-			copie.set_pixel(x, y, sombre if lum < 0.42 else (moyen if lum < 0.72 else clair))
+			copie.set_pixel(x, y, sombre if lum < 0.2 else (moyen if lum < 0.5 else clair))
 	return copie
 
 
@@ -256,56 +411,106 @@ static func disque(r: int, nom: String) -> Image:
 	return img
 
 
+## Lettres capitales 3 × 5 (enseignes peintes). Inconnue : espace.
+const GLYPHES := {
+	"A": ["010", "101", "111", "101", "101"], "B": ["110", "101", "110", "101", "110"],
+	"C": ["011", "100", "100", "100", "011"], "D": ["110", "101", "101", "101", "110"],
+	"E": ["111", "100", "110", "100", "111"], "F": ["111", "100", "110", "100", "100"],
+	"G": ["011", "100", "101", "101", "011"], "H": ["101", "101", "111", "101", "101"],
+	"I": ["111", "010", "010", "010", "111"], "L": ["100", "100", "100", "100", "111"],
+	"N": ["101", "111", "111", "101", "101"], "O": ["010", "101", "101", "101", "010"],
+	"P": ["110", "101", "110", "100", "100"], "R": ["110", "101", "110", "101", "101"],
+	"S": ["011", "100", "010", "001", "110"], "T": ["111", "010", "010", "010", "010"],
+	"U": ["101", "101", "101", "101", "111"], "V": ["101", "101", "101", "101", "010"],
+	"É": ["010", "111", "110", "100", "111"], "Z": ["111", "001", "010", "100", "111"],
+	"M": ["101", "111", "111", "101", "101"],
+}
+
+
+## Écrit un texte en capitales 3 × 5 (espacement 1), renvoie la largeur écrite.
+static func texte(img: Image, x: int, y: int, t: String, nom: String, echelle := 1) -> int:
+	var cx := x
+	for ch in t:
+		var g: Array = GLYPHES.get(ch, [])
+		if not g.is_empty():
+			for j in 5:
+				for i in 3:
+					if String(g[j])[i] == "1":
+						rect(img, cx + i * echelle, y + j * echelle, echelle, echelle, nom)
+		cx += 4 * echelle
+	return cx - x - echelle
+
+
+static func largeur_texte(t: String, echelle := 1) -> int:
+	return t.length() * 4 * echelle - echelle
+
+
 # --- Matières de construction --------------------------------------------------------------------
 
-## Meulière (pavillon de Gérard) : pierres ocre irrégulières, joints rouges, arête claire en haut
-## (lumière en haut à gauche), ombre en bas des grosses pierres.
-static func meuliere(largeur: int, hauteur: int, graine := 0) -> Image:
+## Brique à joints visibles (docs/16 §8.2) : rangs de 3 px (2 de brique + 1 de joint), briques de 6 px
+## en quinconce, quelques briques éclairées ou sombres. Variantes : vive, classique, sombre, claire.
+static func brique(largeur: int, hauteur: int, graine := 0, variante := "classique") -> Image:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = graine
-	var img := uni(largeur, hauteur, "caramel")   # joints de rocaillage brun-rouge
-	var y := 0
-	while y < hauteur:
-		var hh := rng.randi_range(4, 6)
-		var x := -rng.randi_range(0, 6)
-		while x < largeur:
-			var w := rng.randi_range(5, 10)
-			var r := rng.randf()
-			var base := "pierre"
-			var clair := "pierre_claire"
-			var ombre := "pierre_ombre"
-			if r < 0.12:
-				base = "pierre_ombre"
-				clair = "pierre"
-				ombre = "bois"
-			elif r < 0.4:
-				base = "terre_cuite_claire"
-				clair = "pierre_claire"
-				ombre = "caramel"
-			for j in hh - 1:
-				for i in w - 1:
-					var nom := base
-					if j == 0 and i < w - 2:
-						nom = clair
-					elif j == hh - 2 and hh >= 4 and i > 0:
-						nom = ombre
-					elif i == w - 2 and j > 0 and w >= 6:
-						nom = ombre
-					px(img, x + i, y + j, nom)
-			x += w
-		y += hh
+	var t: Array = BRIQUES.get(variante, BRIQUES["classique"])
+	var corps := _c(t[0])
+	var eclat := _c(t[1])
+	var ombre := _c(t[2])
+	var joint := _c(t[3])
+	var img := Image.create_empty(maxi(1, largeur), maxi(1, hauteur), false, Image.FORMAT_RGBA8)
+	var marquees := {}
+	for i in largeur * hauteur / 30:
+		marquees[Vector2i(rng.randi_range(0, largeur / 6 + 1), rng.randi_range(0, hauteur / 3 + 1))] = 1 if rng.randf() < 0.6 else 2
+	for y in hauteur:
+		var r := y / 3
+		var dec := 3 if r % 2 == 1 else 0
+		for x in largeur:
+			var c := corps
+			if y % 3 == 2 or (x + dec) % 6 == 5:
+				c = joint
+			else:
+				var m: int = marquees.get(Vector2i((x + dec) / 6, r), 0)
+				if m == 1:
+					c = eclat
+				elif m == 2:
+					c = ombre
+			img.set_pixel(x, y, c)
 	return img
 
 
-## Tuiles mécaniques (tuiles de Marseille) : rangs de 4 px, côtes verticales tous les 6 px,
-## lèvre claire en haut, ombre du rang du dessus en bas ; quelques tuiles plus sombres.
+## Ardoise de toit (rampe ardoise / ardoise_sombre / nuit) : rangs de 4 px, ardoises de 6 px décalées,
+## bord bas de chaque rang éclairé, ombre du rang du dessus.
+static func ardoise(largeur: int, hauteur: int, graine := 0) -> Image:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = graine
+	var img := vide(largeur, hauteur)
+	var claires := {}
+	for i in largeur * hauteur / 50:
+		claires[Vector2i(rng.randi_range(0, largeur / 6 + 1), rng.randi_range(0, hauteur / 4 + 1))] = true
+	for y in hauteur:
+		var r := y / 4
+		var dec := 3 if r % 2 == 1 else 0
+		for x in largeur:
+			var nom := "ardoise_sombre"
+			var yy := y % 4
+			if yy == 0:
+				nom = "nuit"
+			elif (x + dec) % 6 == 0:
+				nom = "nuit"
+			elif yy == 3 or claires.has(Vector2i((x + dec) / 6, r)):
+				nom = "ardoise"
+			px(img, x, y, nom)
+	return img
+
+
+## Tuiles mécaniques rouges (rampe terre_cuite_claire / tuile / brique) : rangs de 4 px, côtes tous
+## les 6 px, lèvre claire en haut, ombre du rang du dessus en bas ; quelques tuiles plus sombres.
 static func tuiles(largeur: int, hauteur: int, graine := 0) -> Image:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = graine
 	var img := vide(largeur, hauteur)
-	var rangs := hauteur / 4 + 1
 	var sombres := {}
-	for r in rangs:
+	for r in hauteur / 4 + 1:
 		for t in largeur / 6 + 2:
 			if rng.randf() < 0.1:
 				sombres[Vector2i(r, t)] = true
@@ -315,143 +520,35 @@ static func tuiles(largeur: int, hauteur: int, graine := 0) -> Image:
 		var dec := 3 if r % 2 == 1 else 0
 		for x in largeur:
 			var xm := (x + dec) % 6
-			var t := (x + dec) / 6
-			var sombre := sombres.has(Vector2i(r, t))
-			var base := "brique" if sombre else "tuile"
-			var clair := "tuile" if sombre else "terre_cuite_claire"
-			var ombre := "brique_sombre" if sombre else "brique"
-			var nom := base
+			var sombre := sombres.has(Vector2i(r, (x + dec) / 6))
+			var nom := "brique" if sombre else "tuile"
 			if yy == 3:
-				nom = "brique_sombre"
+				nom = "brique_sombre" if xm == 0 else "brique"
 			elif xm == 0:
-				nom = ombre
+				nom = "brique"
 			elif yy == 0 or xm == 1:
-				nom = clair
+				nom = "tuile" if sombre else "terre_cuite_claire"
 			px(img, x, y, nom)
 	return img
 
 
-## Zinc (toits à la Mansart) : joints debout tous les 4 px (arête claire + ombre), corps gris bleu.
-static func zinc(largeur: int, hauteur: int, _graine := 0) -> Image:
-	var img := vide(largeur, hauteur)
-	for y in hauteur:
-		for x in largeur:
-			var nom := "gris_pierre"
-			if x % 4 == 0:
-				nom = "zinc_clair"
-			elif x % 4 == 1:
-				nom = "ardoise"
-			elif y % 12 == 11:
-				nom = "ardoise"
-			px(img, x, y, nom)
-	return img
-
-
-## Ardoise : rangs de 3 px, ardoises de 6 px décalées, quelques ardoises éclairées.
-static func ardoise(largeur: int, hauteur: int, graine := 0) -> Image:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = graine
-	var img := vide(largeur, hauteur)
-	for y in hauteur:
-		var r := y / 3
-		for x in largeur:
-			var dec := 3 if r % 2 == 1 else 0
-			var nom := "ardoise"
-			if y % 3 == 2 or (x + dec) % 6 == 0:
-				nom = "ardoise_sombre"
-			px(img, x, y, nom)
-	for i in largeur * hauteur / 60:
-		var x := rng.randi_range(0, largeur - 1) / 6 * 6
-		var y := rng.randi_range(0, hauteur - 1) / 3 * 3
-		for k in range(1, 5):
-			px(img, x + k + (3 if (y / 3) % 2 == 1 else 0), y, "gris_pierre")
-	return img
-
-
-## Pierre de taille (immeubles haussmanniens) : assises de 5 px, joints fins, harpage décalé.
-static func pierre_taille(largeur: int, hauteur: int, _graine := 0, refends := false) -> Image:
-	var img := vide(largeur, hauteur)
-	for y in hauteur:
-		var r := y / 5
-		for x in largeur:
-			var nom := "pierre_claire"
-			if y % 5 == 4:
-				nom = "pierre_ombre" if refends else "pierre"
-			elif refends and y % 5 == 0:
-				nom = "blanc_chaud" if x % 3 != 0 else "pierre_claire"
-			elif not refends and (x + (7 if r % 2 == 1 else 0)) % 14 == 0:
-				nom = "pierre"
-			px(img, x, y, nom)
-	return img
-
-
-## Brique : briques de 6 × 3, joints sombres, quelques briques claires.
-static func brique(largeur: int, hauteur: int, graine := 0) -> Image:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = graine
-	var img := vide(largeur, hauteur)
-	var claires := {}
-	for i in largeur * hauteur / 40:
-		claires[Vector2i(rng.randi_range(0, largeur / 6 + 1), rng.randi_range(0, hauteur / 3 + 1))] = true
-	for y in hauteur:
-		var r := y / 3
-		var dec := 3 if r % 2 == 1 else 0
-		for x in largeur:
-			var nom := "brique"
-			if y % 3 == 2 or (x + dec) % 6 == 5:
-				nom = "brique_sombre"
-			elif claires.has(Vector2i((x + dec) / 6, r)):
-				nom = "tuile"
-			px(img, x, y, nom)
-	return img
-
-
-## Nuage en marches d'escalier, 3 tons (blanc chaud, ciel clair dessous, zinc clair en bordure basse).
-static func nuage(largeur: int, hauteur: int, graine := 0) -> Image:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = graine
-	var img := vide(largeur, hauteur)
-	# marches : rectangles empilés, plus étroits vers le haut
-	var marches := maxi(2, hauteur / 4)
-	var g := 0
-	var d := largeur
-	for m in marches:
-		var y0 := hauteur - (m + 1) * (hauteur / marches)
-		if m == marches - 1:
-			y0 = 0
-		var y1 := hauteur - m * (hauteur / marches)
-		rect(img, g, y0, d - g, y1 - y0, "blanc_chaud")
-		g += rng.randi_range(2, maxi(3, largeur / (marches * 2)))
-		d -= rng.randi_range(2, maxi(3, largeur / (marches * 2)))
-		if d - g < 6:
-			break
-	# ombre : 2 rangées du bas et bord droit de chaque marche
-	for y in hauteur:
-		for x in largeur:
-			if img.get_pixel(x, y).a == 0.0:
-				continue
-			var droite_vide := x + 1 >= largeur or img.get_pixel(x + 1, y).a == 0.0
-			if y >= hauteur - 2:
-				img.set_pixel(x, y, _c("ciel_clair"))
-			elif droite_vide:
-				img.set_pixel(x, y, _c("ciel_clair"))
-	for x in largeur:
-		if img.get_pixel(x, hauteur - 1).a > 0.0:
-			img.set_pixel(x, hauteur - 1, _c("zinc_clair"))
-	return img
-
-
-## Génère et enregistre dans GrillePixel les matières standard de la ville (noms « matiere/… »).
+## Génère et enregistre dans GrillePixel les matières standard de la rue (noms « matiere/… »).
 ## Renvoie les noms enregistrés.
 static func generer_tout(graine := 1) -> PackedStringArray:
-	GrillePixel.enregistrer("matiere/ciel", ciel(64, 440, graine), Vector2i(0, 439))
-	GrillePixel.enregistrer("matiere/trottoir", trottoir(1280, 8, graine), Vector2i.ZERO)
-	GrillePixel.enregistrer("matiere/chaussee", chaussee(1280, 16, graine), Vector2i.ZERO)
-	GrillePixel.enregistrer("matiere/meuliere", meuliere(48, 32, graine), Vector2i.ZERO)
-	GrillePixel.enregistrer("matiere/tuiles", tuiles(48, 32, graine), Vector2i.ZERO)
-	GrillePixel.enregistrer("matiere/zinc", zinc(48, 32, graine), Vector2i.ZERO)
+	GrillePixel.enregistrer("matiere/ciel", ciel(64, 480, graine), Vector2i(0, 479))
+	GrillePixel.enregistrer("matiere/trottoir", trottoir(1280, 14, graine), Vector2i.ZERO)
+	GrillePixel.enregistrer("matiere/chaussee", chaussee(1280, 22, graine), Vector2i.ZERO)
+	GrillePixel.enregistrer("matiere/bord_en_face", bord_en_face(1280, 8), Vector2i.ZERO)
+	for v in BRIQUES:
+		GrillePixel.enregistrer("matiere/brique_" + v, brique(48, 30, graine, v), Vector2i.ZERO)
 	GrillePixel.enregistrer("matiere/ardoise", ardoise(48, 32, graine), Vector2i.ZERO)
-	GrillePixel.enregistrer("matiere/pierre_taille", pierre_taille(48, 32, graine), Vector2i.ZERO)
-	GrillePixel.enregistrer("matiere/brique", brique(48, 32, graine), Vector2i.ZERO)
-	return PackedStringArray(["matiere/ciel", "matiere/trottoir", "matiere/chaussee", "matiere/meuliere",
-		"matiere/tuiles", "matiere/zinc", "matiere/ardoise", "matiere/pierre_taille", "matiere/brique"])
+	GrillePixel.enregistrer("matiere/tuiles", tuiles(48, 32, graine), Vector2i.ZERO)
+	GrillePixel.enregistrer("matiere/skyline", skyline(1600, 200, graine + 83), Vector2i(0, 199))
+	for i in 3:
+		var t: Array = [[150, 56], [112, 44], [80, 32]][i]
+		GrillePixel.enregistrer("matiere/cumulus_%d" % (i + 1), cumulus(t[0], t[1], graine * 10 + i), Vector2i.ZERO)
+	var noms := PackedStringArray()
+	for n in GrillePixel.noms():
+		if n.begins_with("matiere/"):
+			noms.append(n)
+	return noms

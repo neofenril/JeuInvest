@@ -1,37 +1,72 @@
 class_name RuePx0
 extends Node2D
-## Le monde de la preuve de concept pixel (lot PX0, docs/16 §2.6 et §5.1), en px d'art.
-## Repères (y vers le bas) : bas des façades = SOL (312), trottoir 312-320, chaussée 320-336,
-## jardinet x 0-24, maison de Gérard x 24-120 (96 × 124, cheminée à y 188), platane glissé entre la
-## maison et la façade voisine (haussmannienne, boulangerie au rez-de-chaussée), immeubles de fond pâles,
-## décor habillé de x -480 à 816.
+## Le monde de la preuve de concept pixel, révision PX0 bis (docs/lots/lot_px0_bis.md, docs/16 §8), en
+## px d'art. Rue de briques en plein jour d'été. Repères (y vers le bas) : sol des façades SOL (296),
+## trottoir de dalles 296-308, bordure 308-310, chaussée 310-332, bord d'en face 332-340.
+## Maison de Gérard x 0-152 (152 × 172, cheminée à y 124) ; voisine de brique sombre à gauche ; muret à
+## chaperon, arbre et lampadaire à droite ; épicerie à auvent rouge ; pignon aveugle à publicité peinte ;
+## décor habillé de x -520 à 1040. Plans : ciel et cumulus, skyline bleutée (0,15), immeubles de fond
+## bleutés (0,4), arbres, rue, sol, mobilier et voitures, arbre de premier plan (1,15, posé contre le bord
+## droit de la vue, quel que soit le format).
 ##
 ## Jour / nuit : chaque élément est dessiné à partir des images de GrillePixel ; pendant le fondu, la
 ## version nuit est posée sur la version jour avec un alpha croissant, élément par élément (ordre de
-## superposition respecté). Fondu terminé : une seule version. Fenêtres allumées (couleur lumiere,
-## émissive) : opérations « nuit seulement ». Halos : calque additif (3 disques pixellisés).
+## superposition respecté). Fondu terminé : une seule version. Lumières (couleur lumiere, émissive) :
+## opérations « nuit seulement » ; halos : calque additif (3 disques pixellisés).
 
 const Facades := preload("res://scripts/pixel/facades.gd")
+const Vehicules := preload("res://scripts/pixel/vehicules.gd")
 
-const SOL := 312
-const TROTTOIR := 8
-const CHAUSSEE := 16
-const BAS_CHAUSSEE := SOL + TROTTOIR + CHAUSSEE          # 336
-const MONDE_GAUCHE := -480
-const MONDE_DROITE := 816
-const HAUTEUR_CIEL := 440
-const MAISON := Rect2(24, 188, 96, 124)
-const ZONE := Rect2(0, 188, 256, 148)                   # cheminée → bas de la chaussée, jardinet → façade voisine
-const TAILLE_GERARD := Vector2i(16, 28)
+const SOL := 296
+const TROTTOIR := 14                                     # 12 de dalles + 2 de bordure
+const CHAUSSEE := 22
+const BAS_CHAUSSEE := SOL + TROTTOIR + CHAUSSEE          # 332
+const MONDE_GAUCHE := -520
+const MONDE_DROITE := 1040
+const HAUTEUR_CIEL := 480
+const MAISON := Rect2(0, 124, 152, 172)
+const ZONE := Rect2(-130, 124, 462, 212)                # voisine de gauche → épicerie, cheminée → bas de la chaussée
+const TAILLE_GERARD := Vector2i(24, 42)
 const FONDU := 3.0
-const PIEDS := 317                                       # y des pieds des passants (milieu du trottoir)
+const PIEDS := 304                                       # y des pieds des passants (milieu du trottoir)
 const CADENCE_MARCHE := 8.0                              # images par seconde, 1 px d'art par image
 const CADENCE_REPOS := 2.0
-const GERARD_MIN := 34
-const GERARD_MAX := 112
-const PORTE_X := 87                                      # milieu de la porte de la maison
+const GERARD_MIN := 20
+const GERARD_MAX := 136
+const PORTE_X := 76                                      # milieu de la porte de la maison
 const HUMEURS := ["sylvie_contente", "sylvie_neutre", "sylvie_contrariee"]
-const HALOS := [[22, 0.08], [14, 0.18], [8, 0.30]]       # rayon, alpha (docs/16 §2.4)
+const HALOS := [[30, 0.08], [19, 0.16], [10, 0.28]]      # rayon, alpha (docs/16 §2.4)
+const HALOS_PHARE := [[10, 0.12], [5, 0.3]]              # phares : 2 disques plus petits
+const DERIVE_NUAGES := 2.0                               # secondes par px d'art
+const Y_VOITURE := 331                                   # bas des roues, voie proche
+const Y_VOITURE_GAREE := 321                             # bas des roues, le long du trottoir
+const VITESSE_VOITURE := 36.0                            # px d'art par seconde
+const PASSAGE_PIETON := Rect2i(168, 312, 60, 19)
+const PREMIER_PLAN_MARGE := 24                           # tronc à cette distance du bord droit de la vue
+
+## Bâtiments de la rue : [x gauche, réglages de Facades.batiment()].
+const BATIMENTS := [
+	[-520, {"l": 120, "brique": "claire", "etages": 2, "toit": "ardoise", "rdc": "porte", "porte": "vert", "graine": 31}],
+	[-400, {"l": 150, "brique": "classique", "etages": 3, "toit": "plat", "rdc": "boutique", "enseigne": "CAFE", "auvent": "vert", "devanture": "bois", "graine": 32}],
+	[-250, {"l": 120, "brique": "vive", "etages": 1, "toit": "tuiles", "rdc": "porte", "porte": "rouge", "graine": 21}],
+	[-130, {"l": 130, "brique": "sombre", "etages": 2, "toit": "ardoise", "h_toit": 40, "rdc": "porte", "porte": "bleu", "graine": 22}],
+	[204, {"l": 128, "brique": "claire", "etages": 1, "toit": "plat", "rdc": "boutique", "enseigne": "EPICERIE", "auvent": "rouge_auvent", "devanture": "sarcelle", "graine": 23}],
+	[332, {"l": 88, "brique": "classique", "etages": 3, "toit": "pignon", "h_toit": 30, "aveugle": true, "pub": "CHOCOLAT|AU LAIT", "rdc": "garage", "graine": 24}],
+	[440, {"l": 120, "brique": "vive", "etages": 2, "toit": "ardoise", "rdc": "porte", "porte": "sarcelle", "graine": 25}],
+	[560, {"l": 124, "brique": "sombre", "etages": 3, "toit": "plat", "rdc": "porte", "porte": "rouge", "graine": 26}],
+	[684, {"l": 116, "brique": "claire", "etages": 1, "toit": "tuiles", "rdc": "boutique", "enseigne": "BOULANGERIE", "auvent": "sarcelle", "devanture": "bois", "graine": 27}],
+	[800, {"l": 120, "brique": "classique", "etages": 2, "toit": "ardoise", "rdc": "porte", "porte": "vert", "graine": 28}],
+	[920, {"l": 120, "brique": "vive", "etages": 2, "toit": "plat", "rdc": "boutique", "enseigne": "TABAC", "auvent": "rouge_auvent", "devanture": "rouge_auvent", "graine": 29}],
+]
+## Immeubles de fond (plan 0,4, bleutés) : [x gauche, largeur, étages, toit, graine].
+const FONDS := [
+	[-470, 100, 2, "plat", 51], [-300, 110, 2, "ardoise", 52], [236, 84, 2, "ardoise", 54],
+	[500, 100, 3, "plat", 56], [740, 110, 2, "ardoise", 57], [890, 90, 2, "plat", 58],
+]
+## Arbres derrière les bâtiments : [x du milieu, largeur, hauteur, graine].
+const ARBRES := [[178, 96, 150, 3], [-150, 110, 170, 41], [430, 92, 146, 37], [690, 100, 160, 43], [-380, 90, 120, 47]]
+const LAMPADAIRES := [190, -300, 560, 900]
+const MURET := Rect2i(152, 268, 52, 28)
 
 var _melange := 0.0          # 0 = jour, 1 = nuit
 var _nuit := false
@@ -48,7 +83,9 @@ var _rng := RandomNumberGenerator.new()
 # Animation
 var _gerard: Mobile
 var _sylvie: Mobile
-var _r5: Mobile
+var _voiture: Mobile
+var _premier_plan: Mobile
+var _halo_phare: Halos
 var _nuages: Array = []
 var _arbres: Array = []
 var _g_x := 60.0
@@ -57,17 +94,17 @@ var _g_image := 0
 var _g_repos := 0.0          # temps de repos restant devant la porte
 var _g_passe_porte := false
 var _g_t := 0.0
-var _r5_x := -560.0
-var _r5_attente := 0.0
-var _r5_t := 0.0
-var _r5_image := 0
+var _v_x := -560.0
+var _v_attente := 0.0
+var _v_t := 0.0
+var _v_image := 0
 var _nuage_t := 0.0
 var _arbre_t := 0.0
 var _arbre_image := 0
 var _cligne_t := 3.0
 var _cligne_fin := 0.0
-var _nuage_n := 0
 static var _fenetres := {}   # nom d'image du décor -> fenêtres (Rect2i locaux), remplies par generer_decor()
+static var _voitures := {}   # modèle -> {"roues", "phare", "feu", "taille"}
 
 
 ## Élément fixe dessiné en version jour et nuit. ops : {"image": nom, "pos": Vector2i, "repeter_x": int,
@@ -117,10 +154,11 @@ class Couche extends Node2D:
 			x += l
 
 
-## Élément animé : une ou plusieurs images posées par leur origine (décalage), plus des rectangles
-## « nuit seulement » (phares). La position du nœud est toujours entière.
+## Élément animé : ombres au sol (rectangles jour et nuit), une ou plusieurs images posées par leur
+## origine (décalage), plus des rectangles « nuit seulement » (phares, globes). Position toujours entière.
 class Mobile extends Node2D:
 	var rue: RuePx0
+	var ombres: Array = []       # [Rect2i, couleur], dessinées avant les images
 	var parts: Array = []        # [nom, Vector2i décalage]
 	var nuit_rects: Array = []   # [Rect2i, couleur]
 
@@ -130,6 +168,11 @@ class Mobile extends Node2D:
 
 	func _draw() -> void:
 		var m := rue.melange()
+		for o in ombres:
+			if m < 1.0:
+				draw_rect(Rect2(o[0]), PalettePixel.couleur(o[1], PalettePixel.JOUR))
+			if m > 0.0:
+				draw_rect(Rect2(o[0]), PalettePixel.couleur_alpha(o[1], m, PalettePixel.NUIT))
 		for p in parts:
 			if m < 1.0:
 				_img(p, PalettePixel.JOUR, 1.0)
@@ -148,10 +191,11 @@ class Mobile extends Node2D:
 ## Halos de lumière (calque additif) : disques pixellisés couleur lumiere.
 class Halos extends Node2D:
 	var centres: Array = []      # Vector2i
+	var rayons: Array = RuePx0.HALOS
 
 	func _draw() -> void:
 		for c in centres:
-			for h in RuePx0.HALOS:
+			for h in rayons:
 				var nom := "decor/halo_%d" % h[0]
 				draw_texture(GrillePixel.texture(nom), Vector2(c - GrillePixel.origine(nom)), Color(1, 1, 1, h[1]))
 
@@ -173,25 +217,6 @@ func _ready() -> void:
 
 # --- Génération des images du décor (catalogue « decor/… », « miroir/… ») ---------------------------
 
-## Bâtiments de premier plan : [x gauche, type, largeur, étages, rez-de-chaussée, graine].
-const BATIMENTS := [
-	[-480, "haussmann", 112, 4, "boulangerie", 18],
-	[-368, "brique", 112, 3, "tabac", 11],
-	[-256, "haussmann", 112, 4, "porte", 12],
-	[-104, "haussmann", 104, 3, "pharmacie", 13],
-	[152, "haussmann", 112, 4, "boulangerie", 14],
-	[264, "brique", 96, 3, "magasin", 15],
-	[360, "haussmann", 112, 5, "porte", 16],
-	[512, "haussmann", 104, 4, "tabac", 17],
-	[616, "brique", 104, 3, "boulangerie", 19],
-	[720, "haussmann", 96, 4, "porte", 20],
-]
-## Arbres glissés entre deux bâtiments : [x du milieu, graine].
-const PLATANES := [[-124, 31], [136, 3], [492, 37]]
-const REVERBERES := [-150, 6, 300, 600]
-const POTELETS := [-60, -44, 170, 186, 340, 356]
-
-
 static func generer_decor() -> void:
 	if GrillePixel.existe("decor/maison"):
 		return
@@ -199,44 +224,45 @@ static func generer_decor() -> void:
 	GrillePixel.enregistrer("decor/maison", maison["image"], Vector2i(0, Facades.MAISON_H - 1))
 	_fenetres["decor/maison"] = maison["fenetres"]
 	for i in BATIMENTS.size():
-		var b: Array = BATIMENTS[i]
-		var r: Dictionary = Facades.haussmann(b[2], b[3], b[5], b[4]) if b[1] == "haussmann" else Facades.immeuble_brique(b[2], b[3], b[5], b[4])
+		var r: Dictionary = Facades.batiment(BATIMENTS[i][1])
 		var img: Image = r["image"]
 		GrillePixel.enregistrer("decor/batiment_%d" % i, img, Vector2i(0, img.get_height() - 1))
 		_fenetres["decor/batiment_%d" % i] = r["fenetres"]
-	# Immeubles de fond (plus hauts, pâlis), sauf derrière la maison (toit et cheminée sur le ciel)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 1984
-	var x := MONDE_GAUCHE - 16
-	var k := 0
-	while x < MONDE_DROITE:
-		var l := rng.randi_range(72, 120)
-		var et := rng.randi_range(5, 6)
-		if x + l > -6 and x < 150:
-			x = 150
-			continue
-		var r2: Dictionary = Facades.haussmann(l, et, 500 + k, "porte")
-		var pale := MatieresPixel.palir(r2["image"])
-		GrillePixel.enregistrer("decor/fond_%d" % k, pale, Vector2i(0, pale.get_height() - 1))
-		_fenetres["decor/fond_%d" % k] = r2["fenetres"]
-		k += 1
-		x += l + rng.randi_range(-8, 6)
-	for i in PLATANES.size():
+	# Immeubles de fond : mêmes générateurs, ramenés aux 3 tons du lointain
+	for i in FONDS.size():
+		var f: Array = FONDS[i]
+		var r2: Dictionary = Facades.batiment({"l": f[1], "etages": f[2], "toit": f[3], "rdc": "porte", "brique": "classique", "graine": f[4]})
+		var pale := MatieresPixel.lointain(r2["image"])
+		GrillePixel.enregistrer("decor/fond_%d" % i, pale, Vector2i(0, pale.get_height() - 1))
+		_fenetres["decor/fond_%d" % i] = r2["fenetres"]
+	for i in ARBRES.size():
+		var a: Array = ARBRES[i]
 		for im in 2:
-			GrillePixel.enregistrer("decor/platane_%d_%d" % [i, im], Facades.platane(PLATANES[i][1], im))
-	for im in 2:
-		GrillePixel.enregistrer("decor/arbre_jardin_%d" % im, Facades.arbre(30, 52, 41, im))
-	GrillePixel.enregistrer("decor/massif", Facades.massif(30, 16, 5))
-	GrillePixel.enregistrer("decor/grille_maison", Facades.grille_basse(124, [78, 14]), Vector2i(0, 15))
-	GrillePixel.enregistrer("decor/carotte", Facades.carotte_tabac(), Vector2i(0, 0))
-	GrillePixel.enregistrer("decor/chaise", Facades.chaise_bistrot())
-	GrillePixel.enregistrer("decor/gueridon", Facades.gueridon())
-	GrillePixel.enregistrer("decor/potelet", Facades.potelet())
-	GrillePixel.enregistrer("decor/plaque", Facades.plaque_rue(), Vector2i(0, 0))
-	GrillePixel.enregistrer("decor/nuage_1", MatieresPixel.nuage(56, 16, 2))
-	GrillePixel.enregistrer("decor/nuage_2", MatieresPixel.nuage(40, 12, 9))
-	for h in HALOS:
+			GrillePixel.enregistrer("decor/arbre_%d_%d" % [i, im], Facades.arbre_ete(a[1], a[2], a[3], im))
+	var pp: Dictionary = Facades.arbre_premier_plan(61)
+	GrillePixel.enregistrer("decor/premier_plan_tronc", pp["tronc"], Vector2i(0, 0))
+	GrillePixel.enregistrer("decor/premier_plan_0", pp["houppier"], Vector2i(0, 0))
+	GrillePixel.enregistrer("decor/premier_plan_1", pp["houppier_2"], Vector2i(0, 0))
+	GrillePixel.enregistrer("decor/muret", Facades.muret(MURET.size.x, MURET.size.y - 6, 9), Vector2i(0, MURET.size.y - 1))
+	GrillePixel.enregistrer("decor/haie", Facades.haie(48, 16, 5), Vector2i(0, 15))
+	# Plaque de rue bleue émaillée « RUE DES ÉPARGNANTS » (illisible à cette taille : simple plaque)
+	var plaque := MatieresPixel.vide(22, 9)
+	MatieresPixel.rect(plaque, 0, 0, 22, 9, "blanc_chaud")
+	MatieresPixel.rect(plaque, 1, 1, 20, 7, "bleu_vif")
+	MatieresPixel.cadre(plaque, 2, 2, 18, 5, "blanc_chaud")
+	for x in range(4, 18, 2):
+		MatieresPixel.px(plaque, x, 4, "blanc_chaud")
+	MatieresPixel.rect(plaque, 1, 8, 20, 1, "bleu_ardoise")
+	GrillePixel.enregistrer("decor/plaque", plaque, Vector2i(0, 0))
+	for h in HALOS + HALOS_PHARE:
 		GrillePixel.enregistrer("decor/halo_%d" % h[0], MatieresPixel.disque(h[0], "lumiere"), Vector2i(h[0], h[0]))
+	# Voitures (caisses et roues)
+	for modele in ["r5", "205"]:
+		var v: Dictionary = Vehicules.caisse(modele)
+		GrillePixel.enregistrer("decor/voiture_" + modele, v["image"], v["origine"])
+		_voitures[modele] = {"roues": v["roues"], "phare": v["phare"], "feu": v["feu"], "taille": (v["image"] as Image).get_size(), "origine": v["origine"]}
+	for i in 2:
+		GrillePixel.enregistrer("decor/roue_%d" % (i + 1), Vehicules.roue(i), Vector2i(6, 11))
 	# Miroirs des figurines (marche vers la gauche) : retournées au pixel près
 	for n in GrillePixel.noms():
 		if n.begins_with("ville/gerard_"):
@@ -256,57 +282,43 @@ static func fenetres(nom: String) -> Array:
 
 func _construire() -> void:
 	var largeur := MONDE_DROITE - MONDE_GAUCHE
-	# Ciel (plan 0)
+	# Ciel (plan 0) et étoiles (nuit seulement)
 	var ciel := _couche("Ciel")
-	ciel.rect(Rect2i(MONDE_GAUCHE, SOL + TROTTOIR - HAUTEUR_CIEL - 400, largeur, 400), "bleu_nuit")
-	ciel.image("matiere/ciel", Vector2i(MONDE_GAUCHE, SOL + TROTTOIR - 1), largeur)
-	for i in 70:
+	ciel.rect(Rect2i(MONDE_GAUCHE, SOL - HAUTEUR_CIEL - 400, largeur, 401), "ciel_haut")
+	ciel.image("matiere/ciel", Vector2i(MONDE_GAUCHE, SOL - 1), largeur)
+	for i in 50:
 		var ex := _rng.randi_range(MONDE_GAUCHE, MONDE_DROITE)
-		var ey := _rng.randi_range(-60, 150)
-		ciel.rect(Rect2i(ex, ey, 1, 1), "blanc_chaud", true)        # étoiles (nuit)
-	# Nuages
-	for i in 3:
+		var ey := _rng.randi_range(-60, 120)
+		ciel.rect(Rect2i(ex, ey, 1, 1), "blanc_chaud", true)
+	# Cumulus (dérive lente)
+	for i in 5:
 		var n := _mobile("Nuage%d" % (i + 1))
-		n.poser([["decor/nuage_%d" % (i % 2 + 1), Vector2i.ZERO]])
+		n.poser([["matiere/cumulus_%d" % ([1, 2, 3, 2, 1][i]), Vector2i.ZERO]])
 		_nuages.append(n)
-	# Immeubles de fond (pâles) et leurs fenêtres allumées la nuit
+	# Skyline lointaine (plan 0,15)
+	var loin := _couche("Skyline")
+	loin.image("matiere/skyline", Vector2i(MONDE_GAUCHE, SOL - 1), largeur)
+	# Immeubles de fond bleutés (plan 0,4) et quelques fenêtres allumées la nuit
 	var fond := _couche("Fond")
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 1984
-	var x := MONDE_GAUCHE - 16
-	var k := 0
-	while x < MONDE_DROITE:
-		var l := rng.randi_range(72, 120)
-		var _et := rng.randi_range(5, 6)
-		if x + l > -6 and x < 150:
-			x = 150
-			continue
-		fond.image("decor/fond_%d" % k, Vector2i(x, SOL - 1))
-		var img := GrillePixel.image("decor/fond_%d" % k)
-		_allumer(fond, fenetres("decor/fond_%d" % k), Vector2i(x, SOL - img.get_height()), 0.22, 600 + k)
-		k += 1
-		x += l + rng.randi_range(-8, 6)
-	# Arbres glissés entre les bâtiments (derrière les façades : seul l'espace libre les montre)
-	for i in PLATANES.size():
-		var a := _mobile("Platane%d" % i)
-		a.position = Vector2(PLATANES[i][0], SOL - 1)
-		a.poser([["decor/platane_%d_0" % i, Vector2i.ZERO]])
-		_arbres.append([a, "decor/platane_%d_" % i])
-	var aj := _mobile("ArbreJardin")
-	aj.position = Vector2(10, 300)
-	aj.poser([["decor/arbre_jardin_0", Vector2i.ZERO]])
-	_arbres.append([aj, "decor/arbre_jardin_"])
-	# Bâtiments de premier plan
+	for i in FONDS.size():
+		var nom := "decor/fond_%d" % i
+		var x: int = FONDS[i][0]
+		fond.image(nom, Vector2i(x, SOL - 1))
+		var img := GrillePixel.image(nom)
+		_allumer(fond, fenetres(nom), Vector2i(x, SOL - img.get_height()), 0.2, 600 + i)
+	# Arbres derrière les bâtiments (seul l'espace libre les montre)
+	for i in ARBRES.size():
+		var a := _mobile("Arbre%d" % i)
+		a.position = Vector2(ARBRES[i][0], SOL - 1)
+		_arbres.append([a, "decor/arbre_%d_" % i])
+	# Bâtiments de la rue
 	var rue := _couche("Batiments")
 	for i in BATIMENTS.size():
-		var b: Array = BATIMENTS[i]
 		var nom := "decor/batiment_%d" % i
-		rue.image(nom, Vector2i(b[0], SOL - 1))
+		var bx: int = BATIMENTS[i][0]
+		rue.image(nom, Vector2i(bx, SOL - 1))
 		var h := GrillePixel.image(nom).get_height()
-		_allumer(rue, fenetres(nom), Vector2i(b[0], SOL - h), 0.4, 700 + i)
-		if b[4] == "tabac":
-			rue.image("decor/carotte", Vector2i(b[0] + b[2] - 12, SOL - 52))
-	rue.image("decor/plaque", Vector2i(156, SOL - 74))
+		_allumer(rue, fenetres(nom), Vector2i(bx, SOL - h), 0.35, 700 + i)
 	# Maison de Gérard : toutes ses fenêtres s'allument la nuit
 	var maison := _couche("Maison")
 	maison.image("decor/maison", Vector2i(int(MAISON.position.x), SOL - 1))
@@ -314,40 +326,55 @@ func _construire() -> void:
 	# Sylvie à sa fenêtre (au-dessus de la lumière de la pièce)
 	_sylvie = _mobile("Sylvie")
 	var fs: Rect2i = Facades.FENETRE_SYLVIE
-	_sylvie.position = Vector2(MAISON.position.x + fs.position.x + 9, MAISON.position.y + fs.position.y + fs.size.y - 2)
+	_sylvie.position = Vector2(MAISON.position.x + fs.position.x + fs.size.x / 2, MAISON.position.y + fs.end.y - 1)
 	_maj_sylvie()
-	# Jardinet : massif, grille basse et portillon
-	var jardin := _couche("Jardin")
-	jardin.image("decor/massif", Vector2i(13, 300))
-	jardin.image("decor/grille_maison", Vector2i(0, SOL - 1))
-	# Sol : trottoir, chaussée, trottoir d'en face, puis remplissage sous la frise
+	# Haie et muret à chaperon
+	var jardin := _couche("Muret")
+	jardin.image("decor/haie", Vector2i(MURET.position.x + 2, SOL - 18))
+	jardin.image("decor/muret", Vector2i(MURET.position.x, SOL - 1))
+	# Sol : trottoir de dalles et bordure, chaussée, passage piéton, bord d'en face, remplissage
 	var sol := _couche("Sol")
 	sol.image("matiere/trottoir", Vector2i(MONDE_GAUCHE, SOL), largeur)
 	sol.image("matiere/chaussee", Vector2i(MONDE_GAUCHE, SOL + TROTTOIR), largeur)
-	sol.image("matiere/trottoir", Vector2i(MONDE_GAUCHE, BAS_CHAUSSEE), largeur)
-	sol.rect(Rect2i(MONDE_GAUCHE, BAS_CHAUSSEE + TROTTOIR, largeur, 400), "ardoise_sombre")
-	# Mobilier : terrasse du tabac, potelets, réverbères (lanternes allumées la nuit)
+	var pp := PASSAGE_PIETON
+	sol.rect(Rect2i(pp.position.x - 2, SOL + TROTTOIR + 10, pp.size.x + 4, 2), "goudron")
+	for y in range(pp.position.y, pp.end.y, 5):
+		sol.rect(Rect2i(pp.position.x, y, pp.size.x, 3), "blanc_chaud")
+		sol.rect(Rect2i(pp.position.x, y + 2, pp.size.x, 1), "zinc_clair")
+	sol.image("matiere/bord_en_face", Vector2i(MONDE_GAUCHE, BAS_CHAUSSEE), largeur)
+	sol.rect(Rect2i(MONDE_GAUCHE, BAS_CHAUSSEE + 8, largeur, 400), "dalle")
+	# Ombres portées en aplat au pied des façades (lumière en haut à gauche)
+	sol.rect(Rect2i(MONDE_GAUCHE, SOL, largeur, 1), "dalle_ombre")
+	# Mobilier : lampadaires (globes allumés la nuit), poteau d'incendie, boîte aux lettres
 	var mob := _couche("Mobilier")
-	for i in BATIMENTS.size():
-		if BATIMENTS[i][4] == "tabac":
-			var bx: int = BATIMENTS[i][0]
-			mob.image("decor/chaise", Vector2i(bx + 14, 317))
-			mob.image("decor/gueridon", Vector2i(bx + 20, 317))
-			mob.image("decor/chaise", Vector2i(bx + 26, 317))
-	for px0 in POTELETS:
-		mob.image("decor/potelet", Vector2i(px0, 318))
 	var centres: Array = []
-	for rx in REVERBERES:
-		mob.image("ville/reverbere", Vector2i(rx, 316))
-		var o := GrillePixel.origine("ville/reverbere")
-		var coin := Vector2i(rx, 316) - o
-		mob.rect(Rect2i(coin + Vector2i(1, 5), Vector2i(5, 2)), "lumiere", true)
-		mob.rect(Rect2i(coin + Vector2i(2, 7), Vector2i(3, 3)), "lumiere", true)
-		centres.append(coin + Vector2i(4, 7))
-	# Gérard, puis la R5 sur la chaussée
+	for lx in LAMPADAIRES:
+		mob.rect(Rect2i(lx - 2, 302, 10, 2), "dalle_ombre")
+		mob.image("ville/lampadaire", Vector2i(lx, 302))
+		if lx == LAMPADAIRES[0]:
+			mob.image("decor/plaque", Vector2i(lx - 11, 238))
+		var coin := Vector2i(lx, 302) - GrillePixel.origine("ville/lampadaire")
+		mob.rect(Rect2i(coin + Vector2i(2, 7), Vector2i(6, 2)), "lumiere", true)
+		mob.rect(Rect2i(coin + Vector2i(3, 9), Vector2i(4, 1)), "lumiere", true)
+		centres.append(coin + Vector2i(5, 8))
+	mob.rect(Rect2i(-26, 301, 10, 2), "dalle_ombre")
+	mob.image("ville/bouche_incendie", Vector2i(-22, 302))
+	mob.rect(Rect2i(344, 301, 10, 2), "dalle_ombre")
+	mob.image("ville/boite_poste", Vector2i(348, 302))
+	# Voiture grise garée le long du trottoir
+	var garee := _mobile("VoitureGrise")
+	garee.position = Vector2(-84, Y_VOITURE_GAREE)
+	garee.ombres = [[Rect2i(-30, -2, 60, 3), "ardoise_sombre"]]
+	garee.poser(_parts_voiture("205", 0, 0))
+	# Gérard, puis la R5 rouge qui passe sur la voie proche
 	_gerard = _mobile("Gerard")
-	_r5 = _mobile("R5")
-	_r5.nuit_rects = [[Rect2i(20, -10, 2, 2), "lumiere"]]
+	_gerard.ombres = [[Rect2i(-7, -1, 14, 3), "dalle_ombre"]]
+	_voiture = _mobile("VoitureRouge")
+	_voiture.ombres = [[Rect2i(-31, -2, 62, 3), "ardoise_sombre"]]
+	# Arbre de premier plan (plan 1,15), contre le bord droit de la vue
+	_premier_plan = _mobile("PremierPlan")
+	_premier_plan.z_index = 10
+	_premier_plan.poser([["decor/premier_plan_0", Vector2i(-160, -372)], ["decor/premier_plan_tronc", Vector2i(0, -344)]])
 	# Calque des lumières (mélange additif), visible la nuit seulement
 	_lumieres = Node2D.new()
 	_lumieres.name = "Lumieres"
@@ -360,14 +387,29 @@ func _construire() -> void:
 	halos.centres = centres
 	halos.use_parent_material = true
 	_lumieres.add_child(halos)
+	_halo_phare = Halos.new()
+	_halo_phare.rayons = HALOS_PHARE
+	_halo_phare.use_parent_material = true
+	_lumieres.add_child(_halo_phare)
 	_maj_lumieres()
 
 
-## Ajoute des fenêtres allumées (nuit seulement) : part = proportion allumée (1 = toutes).
-func _allumer(c: Couche, fenetres: Array, coin: Vector2i, part: float, graine: int) -> void:
+## Parties d'une voiture (caisse + 2 roues), roues à l'image im, caisse abaissée de bas px.
+func _parts_voiture(modele: String, im: int, bas: int) -> Array:
+	var v: Dictionary = _voitures[modele]
+	var o: Vector2i = v["origine"]
+	var roue := "decor/roue_%d" % (im % 2 + 1)
+	var parts := [["decor/voiture_" + modele, Vector2i(0, bas)]]
+	for rx in v["roues"]:
+		parts.append([roue, Vector2i(int(rx) - o.x, 0)])
+	return parts
+
+
+## Ajoute des vitres allumées (nuit seulement) : part = proportion allumée (1 = toutes).
+func _allumer(c: Couche, liste: Array, coin: Vector2i, part: float, graine: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = graine
-	for f in fenetres:
+	for f in liste:
 		var r: Rect2i = f
 		if part >= 1.0 or rng.randf() < part:
 			c.rect(Rect2i(coin + r.position, r.size), "lumiere", true)
@@ -413,22 +455,20 @@ func _maj_lumieres() -> void:
 # --- Animation -------------------------------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	_placer_premier_plan()
 	if _fige:
 		return
 	_animer_gerard(delta)
-	_animer_r5(delta)
-	# Nuages : 1 px d'art toutes les 0,5 s (le premier) et 0,8 s (le second), retour à gauche
+	_animer_voiture(delta)
+	# Cumulus : 1 px d'art toutes les DERIVE_NUAGES s, retour à gauche
 	_nuage_t += delta
-	if _nuage_t >= 0.5:
-		_nuage_t -= 0.5
-		_nuage_n += 1
-		for i in _nuages.size():
-			var n: Mobile = _nuages[i]
-			if i == 0 or _nuage_n % 3 != 0:
-				n.position.x += 1
+	if _nuage_t >= DERIVE_NUAGES:
+		_nuage_t -= DERIVE_NUAGES
+		for n in _nuages:
+			(n as Mobile).position.x += 1
 			if n.position.x > MONDE_DROITE:
-				n.position.x = MONDE_GAUCHE
-	# Arbres : 2 images à 1 im/s
+				n.position.x = MONDE_GAUCHE - 120
+	# Feuillages : 2 images à 1 im/s
 	_arbre_t += delta
 	if _arbre_t >= 1.0:
 		_arbre_t -= 1.0
@@ -444,6 +484,21 @@ func _process(delta: float) -> void:
 		_cligne_fin -= delta
 		if _cligne_fin <= 0.0:
 			_maj_sylvie()
+
+
+## Arbre de premier plan : tronc à PREMIER_PLAN_MARGE px du bord droit de la vue (lu sur la caméra du
+## SubViewport), à une position entière.
+func _placer_premier_plan() -> void:
+	if _premier_plan == null or not is_inside_tree():
+		return
+	var vp := get_viewport()
+	var cam := vp.get_camera_2d() if vp != null else null
+	if cam == null:
+		return
+	var droite := int(cam.position.x) + int(vp.get_visible_rect().size.x)
+	var p := Vector2(droite - PREMIER_PLAN_MARGE, 330)
+	if _premier_plan.position != p:
+		_premier_plan.position = p
 
 
 func _animer_gerard(delta: float) -> void:
@@ -483,32 +538,41 @@ func _maj_gerard() -> void:
 	_gerard.poser([[dossier + nom, Vector2i.ZERO]])
 
 
-func _animer_r5(delta: float) -> void:
-	if _r5_attente > 0.0:
-		_r5_attente -= delta
+func _animer_voiture(delta: float) -> void:
+	if _v_attente > 0.0:
+		_v_attente -= delta
 		return
-	_r5_x += 36.0 * delta
-	_r5_t += delta
-	if _r5_t >= 1.0 / 8.0:
-		_r5_t -= 1.0 / 8.0
-		_r5_image = (_r5_image + 1) % 4
-	if _r5_x > MONDE_DROITE + 60:
-		_r5_x = MONDE_GAUCHE - 60
-		_r5_attente = 4.0
-	_maj_r5()
+	_v_x += VITESSE_VOITURE * delta
+	_v_t += delta
+	if _v_t >= 1.0 / 8.0:
+		_v_t -= 1.0 / 8.0
+		_v_image = (_v_image + 1) % 4
+	if _v_x > MONDE_DROITE + 60:
+		_v_x = MONDE_GAUCHE - 60
+		_v_attente = 4.0
+	_maj_voiture()
 
 
-func _maj_r5() -> void:
-	_r5.position = Vector2(int(_r5_x), 333)
-	var roue := "ville/r5_roue_%d" % (_r5_image % 2 + 1)
-	var bas := Vector2i(0, -1) if _r5_image == 3 else Vector2i.ZERO      # caisse abaissée 1 image sur 4
-	_r5.poser([["ville/r5_caisse", bas], [roue, Vector2i(-14, 0)], [roue, Vector2i(14, 0)]])
-	_r5.nuit_rects = [[Rect2i(20, -10 + bas.y, 2, 2), "lumiere"]]
+func _maj_voiture() -> void:
+	_voiture.position = Vector2(int(_v_x), Y_VOITURE)
+	var bas := -1 if _v_image == 3 else 0      # caisse relevée 1 image sur 4 (suspension)
+	_voiture.poser(_parts_voiture("r5", _v_image, bas))
+	var v: Dictionary = _voitures["r5"]
+	var o: Vector2i = v["origine"]
+	var ph: Rect2i = v["phare"]
+	var fe: Rect2i = v["feu"]
+	_voiture.nuit_rects = [[Rect2i(ph.position - o + Vector2i(0, bas), ph.size), "lumiere"],
+		[Rect2i(fe.position - o + Vector2i(0, bas), fe.size), "ambre"]]
+	if _halo_phare != null:
+		_halo_phare.centres = [Vector2i(int(_v_x), Y_VOITURE) + ph.position - o + Vector2i(2, 1 + bas)]
+		_halo_phare.queue_redraw()
 
 
 func _maj_arbres() -> void:
 	for a in _arbres:
 		(a[0] as Mobile).poser([[a[1] + str(_arbre_image), Vector2i.ZERO]])
+	if _premier_plan != null:
+		_premier_plan.poser([["decor/premier_plan_%d" % _arbre_image, Vector2i(-160, -372)], ["decor/premier_plan_tronc", Vector2i(0, -344)]])
 
 
 func _maj_sylvie() -> void:
@@ -518,10 +582,10 @@ func _maj_sylvie() -> void:
 	_sylvie.poser(parts)
 
 
-# --- API (lot PX0 §2.4) ----------------------------------------------------------------------------
+# --- API (lot PX0 §2.4, signatures inchangées) -----------------------------------------------------
 
 ## Zone qui doit toujours être visible (px d'art) : du haut de la cheminée au bas de la chaussée,
-## du jardinet à la façade voisine.
+## de la voisine de gauche à l'épicerie.
 func zone_utile() -> Rect2:
 	return ZONE
 
@@ -572,25 +636,26 @@ func est_fige() -> bool:
 
 ## Pose déterministe pour les captures : Gérard devant la maison (marche, image 2), nuages et R5 placés.
 func preparer_capture() -> void:
-	_g_x = 60.0
+	_g_x = 44.0
 	_g_dir = 1
 	_g_image = 1
 	_g_repos = 0.0
 	_g_t = 0.0
 	_g_passe_porte = true
 	_maj_gerard()
-	_r5_x = 214.0
-	_r5_attente = 0.0
-	_r5_image = 0
-	_maj_r5()
-	_nuages[0].position = Vector2(-120, 58)
-	_nuages[1].position = Vector2(170, 44)
-	_nuages[2].position = Vector2(390, 70)
+	_v_x = 296.0
+	_v_attente = 0.0
+	_v_image = 0
+	_maj_voiture()
+	var poses := [Vector2(-196, 40), Vector2(40, 52), Vector2(214, 72), Vector2(420, 46), Vector2(-440, 60)]
+	for i in _nuages.size():
+		(_nuages[i] as Mobile).position = poses[i]
 	_arbre_image = 0
 	_maj_arbres()
 	_cligne_fin = 0.0
 	_cligne_t = 3.0
 	_maj_sylvie()
+	_placer_premier_plan()
 
 
 ## Affiche ou masque le calque additif (masqué pendant le contrôle de palette).
@@ -613,8 +678,9 @@ func position_gerard() -> Vector2i:
 	return Vector2i(int(_g_x), PIEDS)
 
 
-## Planche des sprites (étape « planche ») : fond crème couvrant la vue, sprites agrandis ×2 en px d'art
-## (×6 à l'écran en 1080), rangés de gauche à droite.
+## Planche des sprites (étape « planche ») : fond crème couvrant la vue, sprites agrandis (Gérard ×3,
+## Sylvie ×3, M. Lefranc ×2, voitures et lampadaire ×1, petits objets ×2 ou ×3, module de brique ×8),
+## rangés de gauche à droite.
 func afficher_planche(v: bool, vue: Rect2) -> void:
 	if _planche != null:
 		_planche.queue_free()
@@ -629,55 +695,76 @@ func afficher_planche(v: bool, vue: Rect2) -> void:
 	fond.rue = self
 	fond.rect(Rect2i(vue.position.floor(), vue.size.ceil()), "creme")
 	_planche.add_child(fond)
-	var marge := 10
+	var marge := 8
 	var x := int(vue.position.x) + marge
 	var y := int(vue.position.y) + 36
 	var hauteur_rangee := 0
-	for n in sprites_planche():
+	for e in sprites_planche_echelles():
+		var n: String = e[0]
+		var k: int = e[1]
 		var tex := GrillePixel.texture(n)
-		var t := tex.get_size() * 2
+		var t := tex.get_size() * k
 		if x + t.x > vue.end.x - marge and x > int(vue.position.x) + marge:
 			x = int(vue.position.x) + marge
-			y += hauteur_rangee + 10
+			y += hauteur_rangee + 8
 			hauteur_rangee = 0
 		var s := Sprite2D.new()
 		s.texture = tex
 		s.centered = false
-		s.scale = Vector2(2, 2)
+		s.scale = Vector2(k, k)
 		s.position = Vector2(x, y)
 		_planche.add_child(s)
-		x += int(t.x) + 10
+		x += int(t.x) + 8
 		hauteur_rangee = maxi(hauteur_rangee, int(t.y))
 
 
-## Sprites montrés sur la planche : Gérard (marche 4, repos 2), Sylvie (3 humeurs), M. Lefranc
-## (3 expressions), R5 (2 images de roue, montées), réverbère.
-func sprites_planche() -> PackedStringArray:
-	if not GrillePixel.existe("planche/r5_1"):
-		for i in 2:
-			var c := GrillePixel.image("ville/r5_caisse")
+## Sprites montrés sur la planche et leur agrandissement (en px d'art).
+func sprites_planche_echelles() -> Array:
+	if not GrillePixel.existe("planche/r5"):
+		for modele in ["r5", "205"]:
 			var img := Image.new()
-			img.copy_from(c)
-			var roue := GrillePixel.image("ville/r5_roue_%d" % (i + 1))
-			MatieresPixel.coller(img, roue, 6, 12)
-			MatieresPixel.coller(img, roue, 34, 12)
-			GrillePixel.enregistrer("planche/r5_%d" % (i + 1), img)
-	return PackedStringArray([
-		"ville/gerard_marche_1", "ville/gerard_marche_2", "ville/gerard_marche_3", "ville/gerard_marche_4",
-		"ville/gerard_repos_1", "ville/gerard_repos_2", "ville/sylvie_contente", "ville/sylvie_neutre",
-		"ville/sylvie_contrariee", "ville/reverbere", "ville/lefranc_affable", "ville/lefranc_grave",
-		"ville/lefranc_yeux_fermes", "planche/r5_1", "planche/r5_2",
-	])
+			img.copy_from(GrillePixel.image("decor/voiture_" + modele))
+			var v: Dictionary = _voitures[modele]
+			var roue := GrillePixel.image("decor/roue_1")
+			for rx in v["roues"]:
+				MatieresPixel.coller(img, roue, int(rx) - 6, img.get_height() - 12)
+			GrillePixel.enregistrer("planche/" + modele, img)
+		var module := GrillePixel.image("matiere/brique_vive").get_region(Rect2i(0, 0, 12, 9))
+		GrillePixel.enregistrer("planche/brique", module)
+	return [
+		["ville/gerard_marche_1", 3], ["ville/gerard_marche_2", 3], ["ville/gerard_marche_3", 3],
+		["ville/gerard_marche_4", 3], ["ville/gerard_repos_1", 3], ["ville/gerard_repos_2", 3],
+		["planche/brique", 8],
+		["ville/sylvie_contente", 3], ["ville/sylvie_neutre", 3], ["ville/sylvie_contrariee", 3],
+		["ville/lefranc_affable", 2], ["planche/r5", 1], ["planche/205", 1], ["ville/lampadaire", 1],
+		["ville/bouche_incendie", 3], ["ville/boite_poste", 2],
+	]
+
+
+## Noms des sprites de la planche (compatibilité PX0).
+func sprites_planche() -> PackedStringArray:
+	var noms := PackedStringArray()
+	for e in sprites_planche_echelles():
+		noms.append(e[0])
+	return noms
 
 
 ## Lignes « PX0 … » propres au monde (imprimées par px0.gd avec --px0-controle).
 func lignes_controle() -> PackedStringArray:
 	var maison := GrillePixel.taille("decor/maison")
+	var r5: Vector2i = _voitures["r5"]["taille"]
+	var g205: Vector2i = _voitures["205"]["taille"]
 	return PackedStringArray([
 		"PX0 animation gerard marche=4 repos=2 cadence=%d" % int(CADENCE_MARCHE),
 		"PX0 maison=%dx%d" % [maison.x, maison.y],
-		"PX0 rue zone=%dx%d decor=%d..%d batiments=%d platanes=%d reverberes=%d nuit=%s humeur=%d" % [
-			int(ZONE.size.x), int(ZONE.size.y), MONDE_GAUCHE, MONDE_DROITE, BATIMENTS.size() + 1,
-			PLATANES.size(), REVERBERES.size(), "oui" if _nuit else "non", _humeur],
+		"PX0 cadrage maison_haut=%d sol=%d trottoir=%d..%d chaussee=%d..%d passage=%d..%d" % [
+			int(MAISON.position.y), SOL, SOL, SOL + TROTTOIR, SOL + TROTTOIR, BAS_CHAUSSEE,
+			PASSAGE_PIETON.position.y, PASSAGE_PIETON.end.y],
+		"PX0 echelle porte=%d voiture_rouge=%dx%d voiture_grise=%dx%d lampadaire=%d maison=%dx%d" % [
+			Facades.PORTE.size.y, r5.x, r5.y, g205.x, g205.y, GrillePixel.taille("ville/lampadaire").y, maison.x, maison.y],
+		"PX0 rue zone=%dx%d decor=%d..%d batiments=%d fonds=%d arbres=%d lampadaires=%d nuit=%s humeur=%d" % [
+			int(ZONE.size.x), int(ZONE.size.y), MONDE_GAUCHE, MONDE_DROITE, BATIMENTS.size() + 1, FONDS.size(),
+			ARBRES.size() + 1, LAMPADAIRES.size(), "oui" if _nuit else "non", _humeur],
 		"PX0 gerard pieds=%d,%d" % [int(_g_x), PIEDS],
+		"PX0 premier_plan x=%d" % int(_premier_plan.position.x),
 	])

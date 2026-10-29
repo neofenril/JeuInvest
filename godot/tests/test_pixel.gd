@@ -196,26 +196,25 @@ func _tests_catalogue() -> void:
 	_verifier(GrillePixel.charger_dossier("ville") == nb and GrillePixel.erreurs().is_empty(), "catalogue : recharger un dossier ne crée pas de doublon")
 	_verifier(GrillePixel.existe("ville/lefranc_affable") and GrillePixel.taille("ville/lefranc_affable") == Vector2i(48, 48), "catalogue : ville/lefranc_affable 48 × 48")
 	var tailles := {
-		"ville/gerard_marche_1": Vector2i(16, 28), "ville/gerard_marche_2": Vector2i(16, 28),
-		"ville/gerard_marche_3": Vector2i(16, 28), "ville/gerard_marche_4": Vector2i(16, 28),
-		"ville/gerard_repos_1": Vector2i(16, 28), "ville/gerard_repos_2": Vector2i(16, 28),
-		"ville/sylvie_contente": Vector2i(12, 14), "ville/sylvie_neutre": Vector2i(12, 14),
-		"ville/sylvie_contrariee": Vector2i(12, 14), "ville/sylvie_cligne": Vector2i(12, 14),
+		"ville/gerard_marche_1": Vector2i(24, 42), "ville/gerard_marche_2": Vector2i(24, 42),
+		"ville/gerard_marche_3": Vector2i(24, 42), "ville/gerard_marche_4": Vector2i(24, 42),
+		"ville/gerard_repos_1": Vector2i(24, 42), "ville/gerard_repos_2": Vector2i(24, 42),
+		"ville/sylvie_contente": Vector2i(18, 21), "ville/sylvie_neutre": Vector2i(18, 21),
+		"ville/sylvie_contrariee": Vector2i(18, 21), "ville/sylvie_cligne": Vector2i(18, 21),
 		"ville/lefranc_grave": Vector2i(48, 48), "ville/lefranc_yeux_fermes": Vector2i(48, 48),
-		"ville/r5_caisse": Vector2i(48, 20), "ville/r5_roue_1": Vector2i(8, 8), "ville/r5_roue_2": Vector2i(8, 8),
-		"ville/reverbere": Vector2i(8, 56),
+		"ville/lampadaire": Vector2i(10, 84), "ville/bouche_incendie": Vector2i(8, 14), "ville/boite_poste": Vector2i(10, 24),
 	}
 	var manquants := PackedStringArray()
 	for n in tailles:
 		if GrillePixel.taille(n) != tailles[n]:
 			manquants.append(n)
-	_verifier(manquants.is_empty(), "catalogue : %d sprites de la rue à la taille de docs/16 §2.2" % tailles.size(), ", ".join(manquants))
-	_verifier(GrillePixel.origine("ville/gerard_marche_1") == Vector2i(8, 27), "catalogue : origine de Gérard au milieu des pieds")
+	_verifier(manquants.is_empty(), "catalogue : %d sprites de la rue à la taille de docs/16 §8.3" % tailles.size(), ", ".join(manquants))
+	_verifier(GrillePixel.origine("ville/gerard_marche_1") == Vector2i(12, 41), "catalogue : origine de Gérard au milieu des pieds")
 	var diff := 0
 	var a := GrillePixel.image("ville/gerard_marche_1")
 	var b := GrillePixel.image("ville/gerard_marche_3")
-	for y in 28:
-		for x in 16:
+	for y in 42:
+		for x in 24:
 			if a.get_pixel(x, y) != b.get_pixel(x, y):
 				diff += 1
 	_verifier(diff >= 20, "catalogue : les deux contacts de la marche diffèrent (%d px)" % diff)
@@ -249,14 +248,42 @@ func _tests_matieres() -> void:
 	var noms := MatieresPixel.generer_tout(1)
 	_verifier(noms.size() >= 3 and GrillePixel.existe("matiere/ciel") and GrillePixel.existe("matiere/trottoir") and GrillePixel.existe("matiere/chaussee"), "matières : ciel, trottoir, chaussée enregistrés")
 	_verifier(MatieresPixel.ciel(64, 200, 7).get_data() == MatieresPixel.ciel(64, 200, 7).get_data(), "matières : ciel déterministe")
-	_verifier(MatieresPixel.trottoir(200, 8, 7).get_data() == MatieresPixel.trottoir(200, 8, 7).get_data(), "matières : trottoir déterministe")
-	_verifier(MatieresPixel.chaussee(400, 16, 7).get_data() == MatieresPixel.chaussee(400, 16, 7).get_data(), "matières : chaussée déterministe")
-	_verifier(MatieresPixel.chaussee(400, 16, 7).get_data() != MatieresPixel.chaussee(400, 16, 8).get_data(), "matières : la graine change la chaussée")
+	_verifier(MatieresPixel.trottoir(200, 14, 7).get_data() == MatieresPixel.trottoir(200, 14, 7).get_data(), "matières : trottoir déterministe")
+	_verifier(MatieresPixel.chaussee(400, 22, 7).get_data() == MatieresPixel.chaussee(400, 22, 7).get_data(), "matières : chaussée déterministe")
+	_verifier(MatieresPixel.chaussee(400, 22, 7).get_data() != MatieresPixel.chaussee(400, 22, 8).get_data(), "matières : la graine change la chaussée")
+	# Sol de docs/16 §8.3 : dalles 12 + bordure 2, goudron 22 à ligne médiane blanche
+	var tr := MatieresPixel.trottoir(48, 14, 1)
+	var ch := MatieresPixel.chaussee(68, 22, 1)
+	_verifier(PalettePixel.nom_de(tr.get_pixel(5, 2)) == "dalle" and PalettePixel.nom_de(tr.get_pixel(12, 2)) == "dalle_ombre" and PalettePixel.nom_de(tr.get_pixel(5, 12)) == "zinc_clair", "matières : trottoir en dalles (joints tous les 12 px), bordure éclairée")
+	_verifier(PalettePixel.nom_de(ch.get_pixel(30, 15)) in ["goudron", "goudron_clair"] and PalettePixel.nom_de(ch.get_pixel(2, 11)) == "blanc_chaud", "matières : chaussée de goudron, marquage blanc_chaud")
+	# Brique : rangs de 3 px (joint au 3e), briques de 6 px en quinconce, 4 variantes
+	var br := MatieresPixel.brique(24, 9, 1, "vive")
+	var joint := PalettePixel.nom_de(br.get_pixel(1, 2))
+	_verifier(joint == "brique" and PalettePixel.nom_de(br.get_pixel(5, 0)) == "brique" and PalettePixel.nom_de(br.get_pixel(2, 4)) == "brique", "matières : brique à joints (rang de 3 px, brique de 6 px, quinconce)")
+	var variantes_ok := true
+	for v in ["vive", "classique", "sombre", "claire"]:
+		if MatieresPixel.brique(30, 12, 3, v).get_data() != MatieresPixel.brique(30, 12, 3, v).get_data():
+			variantes_ok = false
+	_verifier(variantes_ok and MatieresPixel.brique(30, 12, 3, "vive").get_data() != MatieresPixel.brique(30, 12, 3, "sombre").get_data(), "matières : 4 variantes de brique déterministes et différentes")
+	var cu := MatieresPixel.cumulus(100, 40, 2)
+	var tons := {}
+	for y in 40:
+		for x in 100:
+			if cu.get_pixel(x, y).a > 0.0:
+				tons[PalettePixel.nom_de(cu.get_pixel(x, y))] = true
+	_verifier(tons.has("nuage") and tons.has("nuage_ombre") and tons.has("nuage_creux") and tons.size() == 3, "matières : cumulus en 3 tons (nuage, ombre, creux)", str(tons.keys()))
+	var sk := MatieresPixel.skyline(400, 160, 5)
+	var tons_sk := {}
+	for y in 160:
+		for x in 400:
+			if sk.get_pixel(x, y).a > 0.0:
+				tons_sk[PalettePixel.nom_de(sk.get_pixel(x, y))] = true
+	_verifier(tons_sk.size() == 3 and tons_sk.has("lointain_clair") and tons_sk.has("lointain") and tons_sk.has("lointain_sombre"), "matières : skyline en 3 tons de lointain, sans détail", str(tons_sk.keys()))
 	# Ciel : bandes dans l'ordre, transitions tramées (deux couleurs alternées sur une même rangée)
 	var ciel := MatieresPixel.ciel(64, 440, 1)
 	var bas := PalettePixel.nom_de(ciel.get_pixel(0, 439))
 	var haut := PalettePixel.nom_de(ciel.get_pixel(0, 0))
-	_verifier(bas == "creme" and haut == "bleu_nuit", "matières : ciel de crème (horizon) à bleu nuit (haut)", bas + " / " + haut)
+	_verifier(bas == "ciel_clair" and haut == "ciel_haut", "matières : ciel d'été de ciel_clair (horizon) à ciel_haut (haut)", bas + " / " + haut)
 	var trame := false
 	for y in 440:
 		var c := {}
@@ -265,24 +292,35 @@ func _tests_matieres() -> void:
 		if c.size() == 2:
 			trame = true
 	_verifier(trame, "matières : transitions du ciel tramées (Bayer 4 × 4)")
-	for g in ["meuliere", "tuiles", "zinc", "ardoise", "pierre_taille", "brique"]:
+	for g in ["tuiles", "ardoise", "brique", "cumulus", "skyline"]:
 		var mat: Script = load("res://scripts/pixel/matieres.gd")
 		var a: Image = mat.call(g, 40, 24, 5)
 		var b: Image = mat.call(g, 40, 24, 5)
 		_verifier(a.get_data() == b.get_data() and a.get_size() == Vector2i(40, 24), "matières : %s déterministe" % g)
-	# Décor de la rue (façades, arbres, mobilier) : généré, déterministe, enregistré
+	# Décor de la rue (façades, arbres, voitures) : généré, déterministe, enregistré
 	var facades: Script = load("res://scripts/pixel/facades.gd")
 	var m1: Dictionary = facades.maison_gerard(7)
 	var m2: Dictionary = facades.maison_gerard(7)
-	_verifier(m1["image"].get_size() == Vector2i(96, 124) and m1["image"].get_data() == m2["image"].get_data(), "décor : maison de Gérard 96 × 124, déterministe")
-	_verifier(m1["fenetres"].size() >= 5, "décor : fenêtres de la maison repérées pour la nuit (%d)" % m1["fenetres"].size())
-	_verifier(facades.platane(3, 0).get_size() == Vector2i(40, 64) and facades.platane(3, 0).get_data() != facades.platane(3, 1).get_data(), "décor : platane 40 × 64, 2 images")
+	_verifier(m1["image"].get_size() == Vector2i(152, 172) and m1["image"].get_data() == m2["image"].get_data(), "décor : maison de Gérard 152 × 172, déterministe")
+	_verifier(m1["fenetres"].size() >= 12, "décor : vitres de la maison repérées pour la nuit (%d)" % m1["fenetres"].size())
+	_verifier(facades.PORTE.size == Vector2i(22, 44) and facades.FENETRE_SYLVIE.size == Vector2i(26, 32), "décor : porte 22 × 44, fenêtre de Sylvie 26 × 32 (docs/16 §8.3)")
+	_verifier(facades.arbre_ete(70, 110, 3, 0).get_size() == Vector2i(70, 110) and facades.arbre_ete(70, 110, 3, 0).get_data() != facades.arbre_ete(70, 110, 3, 1).get_data(), "décor : arbre d'été 70 × 110, 2 images")
+	var hauteurs := {}
+	for b in RuePx0.BATIMENTS:
+		var r: Dictionary = facades.batiment(b[1])
+		hauteurs[r["image"].get_height()] = true
+	_verifier(hauteurs.size() >= 5, "décor : bâtiments de hauteurs variées (%s)" % str(hauteurs.keys()))
+	var vehicules: Script = load("res://scripts/pixel/vehicules.gd")
+	var r5: Dictionary = vehicules.caisse("r5")
+	var g205: Dictionary = vehicules.caisse("205")
+	_verifier(r5["image"].get_width() >= 66 and r5["image"].get_height() >= 28 and g205["image"].get_width() >= 66 and g205["image"].get_height() >= 28, "décor : voitures d'au moins 66 × 28")
+	_verifier(vehicules.roue(0).get_size() == Vector2i(12, 12) and vehicules.roue(0).get_data() != vehicules.roue(1).get_data(), "décor : roues de 12 px, 2 images")
 	RuePx0.generer_decor()
 	var nd := 0
 	for n in GrillePixel.noms():
 		if n.begins_with("decor/"):
 			nd += 1
-	_verifier(nd >= 30 and GrillePixel.existe("decor/maison") and GrillePixel.existe("miroir/gerard_marche_1"), "décor : %d images enregistrées (façades, fond, arbres, mobilier, halos)" % nd)
+	_verifier(nd >= 30 and GrillePixel.existe("decor/maison") and GrillePixel.existe("miroir/gerard_marche_1"), "décor : %d images enregistrées (façades, fond, arbres, mobilier, voitures, halos)" % nd)
 	# Chaque pixel de chaque image du catalogue appartient à la palette de sa variante
 	for vi in VARIANTES.size():
 		var fautifs := PackedStringArray()
