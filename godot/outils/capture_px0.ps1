@@ -3,7 +3,10 @@
 #   powershell -File godot\outils\capture_px0.ps1 -Etape jour -Nom px0_a -Taille 1920x1080 -Controle -SansInterface
 #   ... -Telephone (facteur 1,7 ; fenêtre 1600 x 720 sans -Taille)  -Facteur 4  -Libre  -Fps  -Attente 1.5
 #   ... -Montage <png de référence>  -Godot <chemin de Godot console>
-#   ... -Serie : toute la série du §5 et le journal godot\captures\px0_serie.log
+#   ... -Serie : toute la série PX0 bis (docs/lots/lot_px0_bis.md §7, préfixe px0_bis_), ses montages et le
+#       journal godot\captures\px0_bis_serie.log
+#   ... -Reference <image> : montage côté à côte (référence à gauche, à la hauteur de la capture) ; par défaut,
+#       avec -Serie : docs\sources\graphisme\references\rue_pixel_v2.jpg du dépôt principal
 # Étapes : jour, nuit, sylvie_0, sylvie_1, sylvie_2, planche (ville) ; carte, carte_fermee, jersey, polices
 # (interface : sans elle, la rue est capturée seule et le journal le signale).
 # Code de sortie 0 seulement si chaque lancement rend 0, sans erreur de script, et si tous les contrôles
@@ -23,7 +26,8 @@ param(
     [double]$Attente = 0,
     [string]$Montage = "",
     [string]$Godot = "",
-    [switch]$Serie
+    [switch]$Serie,
+    [string]$Reference = ""
 )
 $ErrorActionPreference = "Continue"
 $projet = Split-Path -Parent $PSScriptRoot
@@ -45,7 +49,8 @@ if (-not $exe) {
 $depot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $exe))
 $refs = Join-Path $depot "godot\captures"
 
-$motifsErreur = @("SCRIPT ERROR", "Parse Error", "Failed to load", "Invalid call", "Invalid access", "Cannot call method")
+$motifsErreur = @("SCRIPT ERROR", "Parse Error", "Failed to load", "Invalid call", "Invalid access", "Cannot call method",
+    "PalettePixel : couleur inconnue", "GrillePixel : image inconnue")
 $journal = $null
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("px0_" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force $tmp | Out-Null
@@ -102,51 +107,76 @@ $imp = Lancer @("--headless", "--log-file", (Join-Path $tmp "import.log"), "--pa
 $errImp = @($imp.sortie | Where-Object { $l = $_; $motifsErreur | Where-Object { $l -like "*$_*" } })
 $toutOk = ($imp.code -eq 0) -and ($errImp.Count -eq 0)
 
+function Monter([string]$gauche, [string]$droite, [string]$sortie) {
+    # Montage côte à côte : image de gauche mise à la hauteur de celle de droite (bilinéaire pour une photo,
+    # plus proche voisin pour une capture pixel), 16 px de séparation couleur encre.
+    if (-not (Test-Path -LiteralPath $gauche) -or -not (Test-Path -LiteralPath $droite)) {
+        Ecrire "    montage non produit (image absente) : $gauche + $droite"; return $false
+    }
+    Add-Type -AssemblyName System.Drawing
+    $g = [Drawing.Image]::FromFile($gauche); $d = [Drawing.Image]::FromFile($droite)
+    $h = $d.Height; $lg = [int][math]::Round($g.Width * $h / $g.Height)
+    $m = New-Object Drawing.Bitmap ($lg + 16 + $d.Width), $h
+    $gr = [Drawing.Graphics]::FromImage($m)
+    $gr.Clear([Drawing.Color]::FromArgb(0x1C, 0x16, 0x26))
+    $gr.InterpolationMode = $(if ($gauche -like "*.jpg") { 'HighQualityBicubic' } else { 'NearestNeighbor' })
+    $gr.PixelOffsetMode = 'Half'
+    $gr.DrawImage($g, (New-Object Drawing.Rectangle 0, 0, $lg, $h))
+    $gr.InterpolationMode = 'NearestNeighbor'
+    $gr.DrawImage($d, (New-Object Drawing.Rectangle ($lg + 16), 0, $d.Width, $h))
+    $m.Save($sortie, [Drawing.Imaging.ImageFormat]::Png)
+    $largeur = $m.Width
+    $gr.Dispose(); $m.Dispose(); $g.Dispose(); $d.Dispose()
+    Ecrire ("montage : {0} ({1}x{2})" -f (Split-Path -Leaf $sortie), $largeur, $h)
+    return $true
+}
+
 if ($Serie) {
-    $journal = Join-Path $captures "px0_serie.log"
-    Set-Content -LiteralPath $journal -Value ("Série PX0 du {0:yyyy-MM-dd HH:mm:ss}, Godot : {1}" -f $debut, $exe) -Encoding UTF8
+    $journal = Join-Path $captures "px0_bis_serie.log"
+    Set-Content -LiteralPath $journal -Value ("Série PX0 bis du {0:yyyy-MM-dd HH:mm:ss}, Godot : {1}" -f $debut, $exe) -Encoding UTF8
     Ecrire ("import : code {0}{1}" -f $imp.code, $(if ($errImp.Count) { " ; " + ($errImp -join " / ") } else { "" }))
-    $refPc = Join-Path $refs "v3_rue.png"; $refTel = Join-Path $refs "v3_rue_tel.png"
+    $p = "px0_bis_"
     $liste = @(
-        @{ Nom = "px0_jour_1080"; Etape = "jour"; Taille = "1920x1080"; Controle = $true; Fps = $true; Montage = $refPc },
-        @{ Nom = "px0_nuit_1080"; Etape = "nuit"; Taille = "1920x1080"; Controle = $true },
-        @{ Nom = "px0_carte_1080"; Etape = "carte"; Taille = "1920x1080"; Controle = $true },
-        @{ Nom = "px0_jersey_1080"; Etape = "jersey"; Taille = "1920x1080"; Controle = $true },
-        @{ Nom = "px0_sylvie_1"; Etape = "sylvie_1"; Taille = "1920x1080"; Controle = $true },
-        @{ Nom = "px0_sylvie_2"; Etape = "sylvie_2"; Taille = "1920x1080"; Controle = $true },
-        @{ Nom = "px0_jour_720"; Etape = "jour"; Taille = "1280x720"; Controle = $true },
-        @{ Nom = "px0_jour_1366"; Etape = "jour"; Taille = "1366x768"; Controle = $true },
-        @{ Nom = "px0_jour_tel"; Etape = "jour"; Telephone = $true; Controle = $true; Montage = $refTel },
-        @{ Nom = "px0_nuit_tel"; Etape = "nuit"; Telephone = $true; Controle = $true },
-        @{ Nom = "px0_carte_tel"; Etape = "carte"; Telephone = $true; Controle = $true },
-        @{ Nom = "px0_grille_x2"; Etape = "jour"; Taille = "1280x720"; SansInterface = $true; Libre = $true; Controle = $true },
-        @{ Nom = "px0_grille_x3"; Etape = "jour"; Taille = "1920x1080"; SansInterface = $true; Libre = $true; Controle = $true },
-        @{ Nom = "px0_grille_x4"; Etape = "jour"; Taille = "1920x1080"; Facteur = 4; SansInterface = $true; Libre = $true; Controle = $true },
-        @{ Nom = "px0_grille_1366"; Etape = "jour"; Taille = "1366x768"; SansInterface = $true; Libre = $true; Controle = $true },
-        @{ Nom = "px0_grille_tel"; Etape = "jour"; Telephone = $true; SansInterface = $true; Libre = $true; Controle = $true },
-        @{ Nom = "px0_libre_0"; Etape = "jour"; Taille = "1920x1080"; Libre = $true },
-        @{ Nom = "px0_libre_15"; Etape = "jour"; Taille = "1920x1080"; Libre = $true; Attente = 1.5 },
-        @{ Nom = "px0_planche"; Etape = "planche"; Taille = "1920x1080"; Controle = $true },
-        @{ Nom = "px0_polices"; Etape = "polices"; Taille = "1920x1080"; Controle = $true }
+        @{ Nom = "${p}jour_1080"; Etape = "jour"; Taille = "1920x1080"; Controle = $true; Fps = $true },
+        @{ Nom = "${p}nuit_1080"; Etape = "nuit"; Taille = "1920x1080"; Controle = $true },
+        @{ Nom = "${p}carte_1080"; Etape = "carte"; Taille = "1920x1080"; Controle = $true },
+        @{ Nom = "${p}jersey_1080"; Etape = "jersey"; Taille = "1920x1080"; Controle = $true },
+        @{ Nom = "${p}sylvie_0"; Etape = "sylvie_0"; Taille = "1920x1080"; Controle = $true },
+        @{ Nom = "${p}sylvie_1"; Etape = "sylvie_1"; Taille = "1920x1080"; Controle = $true },
+        @{ Nom = "${p}sylvie_2"; Etape = "sylvie_2"; Taille = "1920x1080"; Controle = $true },
+        @{ Nom = "${p}jour_720"; Etape = "jour"; Taille = "1280x720"; Controle = $true },
+        @{ Nom = "${p}jour_1366"; Etape = "jour"; Taille = "1366x768"; Controle = $true },
+        @{ Nom = "${p}jour_tel"; Etape = "jour"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}nuit_tel"; Etape = "nuit"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}grille_x2"; Etape = "jour"; Taille = "1280x720"; SansInterface = $true; Libre = $true; Controle = $true },
+        @{ Nom = "${p}grille_x3"; Etape = "jour"; Taille = "1920x1080"; SansInterface = $true; Libre = $true; Controle = $true },
+        @{ Nom = "${p}grille_x4"; Etape = "jour"; Taille = "1920x1080"; Facteur = 4; SansInterface = $true; Libre = $true; Controle = $true },
+        @{ Nom = "${p}grille_1366"; Etape = "jour"; Taille = "1366x768"; SansInterface = $true; Libre = $true; Controle = $true },
+        @{ Nom = "${p}grille_tel"; Etape = "jour"; Telephone = $true; SansInterface = $true; Libre = $true; Controle = $true },
+        @{ Nom = "${p}libre_0"; Etape = "jour"; Taille = "1920x1080"; Libre = $true },
+        @{ Nom = "${p}libre_15"; Etape = "jour"; Taille = "1920x1080"; Libre = $true; Attente = 1.5 },
+        @{ Nom = "${p}planche"; Etape = "planche"; Taille = "1920x1080"; Controle = $true }
     )
     foreach ($o in $liste) {
-        if ($o.Montage -and -not (Test-Path -LiteralPath $o.Montage)) {
-            Ecrire "    référence absente : $($o.Montage) (montage non produit)"
-            $o.Remove("Montage")
-        }
         if (-not (Capturer $o)) { $toutOk = $false }
     }
-    # Montages avant / après sous leur nom de série
-    foreach ($m in @(@("px0_jour_1080_montage.png", "px0_montage_pc.png"), @("px0_jour_tel_montage.png", "px0_montage_tel.png"))) {
-        $src = Join-Path $captures $m[0]
-        if (Test-Path $src) { Move-Item -Force -LiteralPath $src -Destination (Join-Path $captures $m[1]); Ecrire "montage : $($m[1])" }
-    }
+    # Montages (référence ou capture de PX0 à gauche, capture PX0 bis à droite)
+    if (-not $Reference) { $Reference = Join-Path $depot "docs\sources\graphisme\references\rue_pixel_v2.jpg" }
+    $jour = Join-Path $captures "${p}jour_1080.png"
+    $px0 = Join-Path $captures "px0_jour_1080.png"
+    if (-not (Test-Path -LiteralPath $px0)) { $px0 = Join-Path $refs "px0_jour_1080.png" }
+    [void](Monter $Reference $jour (Join-Path $captures "${p}montage_ref.png"))
+    [void](Monter $px0 $jour (Join-Path $captures "${p}montage_px0.png"))
+    [void](Monter (Join-Path $refs "v3_rue.png") $jour (Join-Path $captures "${p}montage_pc.png"))
 } else {
     if ($errImp.Count) { Write-Host ("import : " + ($errImp -join " / ")) }
     $o = @{ Nom = $Nom; Etape = $Etape; Taille = $Taille; Telephone = [bool]$Telephone; Facteur = $Facteur;
             SansInterface = [bool]$SansInterface; Libre = [bool]$Libre; Controle = [bool]$Controle; Fps = [bool]$Fps;
             Attente = $Attente; Montage = $Montage }
     if (-not (Capturer $o)) { $toutOk = $false }
+    if ($Reference) {
+        [void](Monter $Reference (Join-Path $captures "$Nom.png") (Join-Path $captures "${Nom}_montage_ref.png"))
+    }
 }
 
 Ecrire ""
