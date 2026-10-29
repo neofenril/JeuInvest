@@ -55,6 +55,12 @@ Verbatim :
 
 Questions 1 à 3 du game designer (moral du foyer, voisins rivaux, fréquence des cartes) : pas de réponse explicite ; en retenant P2, P3 et P5, le joueur valide le principe. Par défaut, on applique les réserves du client (docs/14 §6) : moral en 3 humeurs de Sylvie, 8 à 10 cartes par démo, Jean-Mi finit derrière Tata Livret, P5 et P10 dans leur version allégée — à confirmer par le joueur sur la démo.
 
+## 2026-10-29 — Réponses aux 3 questions de docs/15 §12, recrutement, graphisme
+
+Verbatim : « Tu peux garder les trois propositions, là, ces trois dernières questions. Et pas de problème pour garder le nouveau développeur que le chef de projet a décidé de recruter. » — et : « J'ai déposé les photos » (références graphiques dans `docs/sources/graphisme/references/`), avec la volonté de **modifier les graphismes avant d'aller plus loin** (« la vue de face est pas mal mais le style est trop "générique" »).
+
+Interprétation retenue : (1) toutes les cartes de dilemme sont gardées, même si la partie dépasse un peu 20 min sans le bouton « Jusqu'au prochain courrier » ; (2) le classement de la rue est affiché en permanence ; (3) record personnel et collection des titres conservés d'une partie à l'autre. Recrutement de `dev-ville` validé.
+
 Réponses aux questions du client (docs/12) :
 - « le cadre de la démo est ok » → démo janvier 1984 → décembre 1988 avec Gérard, papa en 1985 : validé.
 - « pas de questionnaire prévu pour le moment, garde ça de côté, peut-être à implémenter plus tard » → « adapté au profil » = selon la situation de vie uniquement (âge, couple, enfants, épargne). Questionnaire de risque : idée mise de côté.

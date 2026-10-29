@@ -1,40 +1,50 @@
 # Base de connaissances du game designer
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `docs/10_retours_joueur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-28 (première mission).
+> Dernière mise à jour : 2026-10-29 (spécification V3, docs/15).
 
 ## 1. Faits vérifiés sur le jeu (démo V2, 2026-10-28)
 
-- Rythme : `godot/data/rythme.json`, ×1 = 8 s/mois, ×2 = 4 s, ×3 = 2 s. Le joueur a trouvé 4 s/mois « trop rapide » (26/10) : **ne pas proposer d'accélérer le défilement par défaut** ; donner plutôt le contrôle (saut jusqu'au prochain événement).
-- 60 mois (janv. 1984 → déc. 1988) = 8 min de défilement à ×1 ; 11 à 13 interruptions (moyenne 11,3 sur 40 graines, base du développeur).
-- Tunnels vides : 11/1986 → 10/1987 (11 mois) et 05/1988 → 12/1988 (8 mois).
-- Un seul événement de marché en 1984-1988 (krach 10/1987) ; dans la V1 (`jeu/data/periode_p1.js`), rien d'autre dans cette fenêtre (Saint-Gobain est déjà D07).
-- Événements de vie aléatoires de la démo : 3 types (prime, voiture, dentiste), écart de 24 mois. La V1 en a 8 de plus, dont **« Le beau-frère et ses escargots »** (vrai dilemme, issue 6 à 12 mois plus tard), augmentation, chômage, déménagement, gain au jeu.
-- Choix réels : 7 présentations (Ouvrir / Pas maintenant), krach (3 choix), courriers (payer, parfois vendre). Naissance et héritage : « Compris ».
-- Capture `v2_fin` : 195 342 F, dont 175 025 F d'épargne mise de côté (90 %) ; écart avec Tata Livret +7 617 F (3,9 %). **Les choix pèsent peu sur le résultat.**
-- Les versements automatiques rendent le jeu jouable sans aucune action après mi-1986.
-- Témoins déjà en données : `godot/data/temoins.json` (Matelas, Livret, Indice, avec répliques). Tata Livret calculée en permanence.
+- Rythme : `godot/data/rythme.json`, ×1 = 8 s/mois, ×2 = 4 s, ×3 = 2 s. Le joueur a trouvé 4 s/mois « trop rapide » (26/10) : **ne pas accélérer le défilement par défaut** ; donner le contrôle (bouton de saut).
+- 60 mois = 8 min de défilement à ×1 ; 11 à 13 interruptions (moyenne 11,3 sur 40 graines). Durée totale actuelle estimée 19-20 min.
+- Tunnels vides actuels : 11/1986 → 10/1987 et 05 → 12/1988.
+- Gérard : 6 790 F/mois en 1984, 8 490 F en 1988 ; épargne possible 24 % (≈ 1 630 F/mois), 15 % avec un enfant (≈ 1 150 F), 6 % avec jumeaux (≈ 480 F). Départ : 11 000 F sur le compte courant.
+- Peugeot dans le jeu : ancrages annuels seulement (300 F fin 1985, 600 fin 1986, 450 fin 1987, 800 fin 1988) ; indice : ancrages mensuels 1987 (1 500 en 03, 1 033 en 10, 963 en 11).
+- Présentations dynamiques (déclencheurs + dates limites 12 §2.2) : D02 ≤ 07/1984, D03 ≤ 02/1985, D04 ≤ 07/1985, D05 ≤ 02/1986, D06 ≤ 08/1986 ; dates fixes : naissance 04/1985, Saint-Gobain 11/1986, krach 10/1987 + panne forcée 11/1987, héritage 04/1988.
+- V1 (`jeu/data/evenements_vie.js`) : escargots avec 10 % de gain (à ne pas reprendre : ils perdent toujours) ; `jeu/data/titres.js` : titres humoristiques réutilisables.
 
 ## 2. Diagnostic de l'ennui (doc 14 §1)
 
-Spectateur plutôt que joueur ; tunnels vides ; ≈ 8 décisions dont 1 forte ; résultat à ±4 % ; l'argent ne sert à rien (aucun projet, aucune dépense choisie, pas d'échec) ; le jeu se joue seul ; peu de hasard et de rejouabilité ; un seul personnage vivant, pas de son, pas de célébration.
+Spectateur ; tunnels vides ; ≈ 8 décisions dont 1 forte ; résultat à ±4 % ; l'argent ne sert à rien ; le jeu se joue seul ; peu de rejouabilité ; un seul personnage vivant.
 
-## 3. Propositions faites (doc 14, 2026-10-28)
+## 3. Propositions et spécification
 
-13 propositions P1 à P13. Top 5 : **P2 dilemmes du foyer + jauge de moral**, **P1 projets du foyer**, **P3 voisins rivaux (Jean-Mi le flambeur, Tonton Matelas)**, **P4 le mois utile (pièces d'intérêts, bouton « Jusqu'au prochain courrier »)**, **P5 score de la rue (5 axes, titre, record)**. Ensuite : P6 krach en direct + « un an après », P11 épilogue jusqu'en 2025.
-Décisions sur lesquelles je propose de revenir : budget de 15 interruptions (13 §5.3) → catégorie « micro-décision » ; témoins hors démo (12 §4) ; pas d'étoiles ni de titre (12 §3.5) ; 9 lignes de produits (12 §3.3, pour P7).
+- Doc 14 (28/10) : P1 à P13.
+- **Doc 15 (29/10) : spécification de P1, P2, P3, P4, P5 allégée, P6, P9, P10 réduite.** Points clés :
+  - **R-MIROIR** : les 3 voisins ont le même salaire, la même vie et les mêmes dépenses (cartes de consommation, projets) ; seules les cartes de placement (escargots) ne sont pas recopiées. Le classement ne mesure que le placement ; dépenser n'est jamais puni.
+  - **R-CADENCE** : jamais deux interruptions le même mois ni deux mois de suite (sauf krach → panne) ; priorités marché > historique > échéance de projet > vie > présentation > choix de projet > carte ; pas de carte le mois avant une interruption datée (invisible, A5 respecté).
+  - Humeur de Sylvie : valeur cachée −3..+3, 3 visages, érosion chaque janvier, seule conséquence en argent = carte C00 « Sylvie fait la tête » (week-end à Deauville).
+  - 10 créneaux de cartes (S1-S10, fenêtre + mois préféré + 1-2 candidates), 16 cartes C00-C15 ; 8 à 10 jouées.
+  - Projets : P1 (choix 03/1984, échéance 04/1986 : 12 / 20 / 30 kF), P2 (choix 01/1987 : Club Med 07/1987 14 kF, break 02/1988 40 kF, apport T3 12/1988 90 kF) ; report unique de 4 mois ; vente automatique ordonnée au jour J.
+  - Jean-Mi : vendeur Peugeot, règlement mensuel 09/1986, Porsche 04/1987, liquidation 10/1987, dette ; contraintes J1 (devant Tata 03-09/1987) et J2 (derrière Tata ≥ 10 % fin 1988, visé dernier).
+  - 16 passages de voisins (5 clés historisés), kiosque d'époque, bulles ≤ 1 tous les 2 mois.
+  - 9 titres de fin (ordre d'évaluation ; « Ne rien faire » et « Renforcer » comptent ensemble).
+  - Durée estimée : ≈ 22 min à ×1 pur, ≈ 19 min avec le bouton de temps en temps ; ordre de retrait des créneaux S1, S3, S5, S9.
 
 ## 4. Décisions du joueur et du client
 
-- (en attente) Réponses aux 4 questions de 14 §5 : jauge de moral, voisins rivaux, fréquence des cartes, propositions préférées et rejetées.
+- (29/10) Joueur : on fait P1, P2, P3, P4, P5, P6, P9, P10 ; plus tard P7, P11, P12, P13 ; **P8 abandonnée**. Réserves du client appliquées par défaut (humeur en 3 états, 8-10 cartes dans les tunnels, Jean-Mi derrière Tata, P5 = rang + titre sans étoiles, P10 réduite), à confirmer par le joueur sur la démo.
+- Client (14 §6) : un seul projet à la fois, 2 par démo ; Tata reste le comparateur permanent ; Cousin Indice hors démo ; pas d'étoiles ; budget 20 min max mesuré, sinon retirer des cartes.
+- En attente (doc 15 §12) : durée sans bouton (garder ou retirer 2 cartes), classement permanent ou non, collection de titres sur l'écran titre. À confirmer par le client : R-MIROIR, apport du T3 fin 1988 sans crédit, barre « Renforcé » dans « un an après ».
 
 ## 5. Principes retenus pour ce projet
 
-- Le joueur aime : les pop-ups d'événements, leurs animations (crash, cigogne), le banquier didactique, la comparaison avec le Livret A. Construire dessus.
-- Garde-fous : jamais de récompense au market timing ni d'annonce de krach (A5) ; pas de pari ; pas de conseil personnalisé (les « tuyaux » viennent de Jean-Mi, montré en échec sur de vrais prix) ; dépenser n'est pas une faute.
-- Toute nouvelle interruption se compte face à la cible 15-20 min (A45).
-- Les faits historiques proposés (privatisations Paribas, Suez, règlement mensuel) sont à faire vérifier par le boursier ou le banquier avant d'être écrits en données.
+- Le joueur aime : pop-ups d'événements, animations (crash, cigogne), banquier didactique, comparaison avec le Livret A. Construire dessus.
+- Garde-fous : jamais de récompense au market timing ni d'annonce de krach (A5) ; pas de pari ; pas de conseil (seul Jean-Mi donne des tuyaux, et il échoue) ; dépenser n'est pas une faute ; coût d'opportunité au conditionnel, au taux du mois courant (jamais un taux futur) ; pas de compte à rebours ni de mécanique d'accroche.
+- Toute nouvelle interruption se compte face à la cible de 20 min ; un bouton de saut qui s'arrête **au** mois de l'événement, sans calcul à l'avance.
+- Prix d'époque, données de marché et dates historiques : toujours à faire valider (banquier, boursier) avec certitude A/B/C ; le code se fait sur des valeurs provisoires remplaçables en données.
 
 ## 6. Erreurs à ne pas refaire
 
-- (rien encore)
+- Ne pas oublier que la démo vouvoie le joueur (textes de cartes écrits d'abord au tutoiement, corrigé).
+- Un projet coûteux réalisé en fin de démo fait chuter le patrimoine affiché : l'apport immobilier reste un actif (ligne « Apport du T3 »), pas une dépense.

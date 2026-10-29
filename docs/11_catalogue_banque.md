@@ -485,7 +485,7 @@ Pour les pictogrammes du carnet du banquier. Rendement : 1 faible, 3 élevé (es
 | 6 | Actions (Elf, L'Oréal, Peugeot) | SICAV détenue depuis 3 mois ; au plus tard mois 32 (08/1986) | D06 | Le minimum de courtage de 50 F est la meilleure leçon de frais (§5.4). |
 | — | Saint-Gobain | Historique | D07 | **Petit écart proposé** : l'offre a été **mise en vente le 24/11/1986** et close début décembre ; un appel en **11/1986** est plus juste qu'en 12/1986 (avec 1 tour = 1 mois, un appel en 12/1986 reste acceptable s'il dit « derniers jours »). |
 | — | Krach (10/1987) | Média, puis appel si le joueur détient des actions | L17 | Inchangé. |
-| — | Héritage de tante Odette | Décès 03/1988 ; assurance-vie versée en 04/1988 ; succession en 09/1988 | D08, D08 bis | Montants §1.7.4. |
+| — | Héritage de tante Odette | Décès 03/1988 ; assurance-vie versée en 04/1988 (un seul pot) | D08 | Montants §1.7.4. |
 | — | Bilan annuel et frais de l'année | Décembre, notification sans pause | L21, F02 | §5.4. |
 
 **Garde-fou « coussin » et dates limites** : le client garantit que tout joueur a vu les 6 familles avant le krach, même sans épargne. Je m'y range : quand une date limite force une présentation de produit risqué alors que `coussin_mois < 3`, M. Lefranc ajoute une seule phrase : « Avant cela, votre roue de secours n'est pas encore complète : ce placement ne concerne que l'argent au-delà. »
@@ -576,8 +576,8 @@ Variables calculées par le moteur à la date de l'appel ; l'exemple entre croch
 | **D05** | Étape 5 (SICAV actions) | « Votre {produit_fixe} vous rapporte {t} %, garanti. La SICAV actions, elle, ne garantit rien : avec {m} F, vous possédez un morceau de dizaines d'entreprises françaises. Une année peut faire +50 % comme −30 % (1974). Comptez {m × 0,02} F de droits d'entrée et 1,5 % de frais par an, pour de l'argent qui peut attendre 8 à 10 ans. » | 5 000 F → 100 F |
 | **D06** | Étape 6 (actions) | « Après la SICAV, les actions en direct : Elf, L'Oréal, Peugeot. Vous choisissez votre entreprise, sans frais de gestion annuels, et touchez ses dividendes. Mais une entreprise peut chuter seule, alors que la SICAV en mélange des dizaines. Chaque ordre coûte 1,3 %, au moins 50 F : sur {m} F, {max(50, m × 0,013)} F. » | 2 000 F → 50 F (2,5 %) |
 | **D07** | Saint-Gobain (11/1986) | « Grande première : l'État vend Saint-Gobain au public, 310 F l'action, prix fixe, au guichet jusqu'au début décembre. Par rapport à vos achats en Bourse : pas de courtage, et le prix est connu d'avance. Mais c'est une action comme les autres : son cours pourra monter ou baisser. Avec {m} F, vous pourriez en prendre {floor(m / 310)}. » | 5 000 F → 16 actions |
-| **D08** | 04/1988 (héritage, 1) | « {civ} {nom}, toutes mes condoléances pour votre tante Odette. Elle vous avait désigné sur son assurance-vie : 60 000 F, versés ce mois-ci, sans un centime de droits. Sa succession passera chez le notaire : comptez six mois, et l'État prendra 55 % de votre part, car un neveu est peu favorisé. Vous voyez de l'autre côté ce que je vous expliquais en 1985. » | §1.7.4 |
-| **D08 bis** | 09/1988 (héritage, 2) | « Le notaire a réglé la succession de votre tante : sur votre part de 100 000 F, 55 000 F de droits ; il vous revient 45 000 F, six mois après. Comparez : son assurance-vie vous a versé 60 000 F entiers, en un mois. Pour un franc transmis : 1 F d'un côté, 0,45 F de l'autre. » | §1.7.4 |
+| **D08** | 04/1988 (héritage, un seul pot) | « {prenom}, toutes mes condoléances pour votre tante Odette. Elle vous avait désigné sur son assurance-vie : 60 000 F, versés ce mois-ci, sans un centime de droits. Si cette somme était passée par sa succession, l'État aurait pris 27 500 F, car un neveu est peu favorisé : il vous serait resté 32 500 F, six mois plus tard. » | §1.7.4 |
+| ~~**D08 bis**~~ (supprimé le 2026-10-27 : un seul pot) | 09/1988 (héritage, 2) | « Le notaire a réglé la succession de votre tante : sur votre part de 100 000 F, 55 000 F de droits ; il vous revient 45 000 F, six mois après. Comparez : son assurance-vie vous a versé 60 000 F entiers, en un mois. Pour un franc transmis : 1 F d'un côté, 0,45 F de l'autre. » | §1.7.4 |
 
 ### 4.1 Répliques détaillées (jeu complet et « En savoir plus »)
 
@@ -743,7 +743,7 @@ Vérifications : 1,065^20 = 3,5236 ; 1,045^20 = 2,4117 ; 1,07^20 = 3,8697 ; 1,05
 | 2 | **Assurance-vie** : 4 % sur versements, taux crédités au 31/12 (§1.7.1), **rachats à 45 / 25 / 15 / 0 %** selon l'âge du contrat (§1.7.2, D5), badge « hors succession » | Demande explicite du joueur |
 | 3 | Réponse du client à **D4** (Gérard et Sylvie mariés ou non) | Change le texte D04 |
 | 4 | **Héritage de tante Odette** : 60 000 F d'assurance-vie en 04/1988, comparés à 32 500 F nets par succession (§1.7.4, un seul pot) | Exigence de 12 §3.2 |
-| 5 | Présentations **D01 à D08 bis** (§4.0), avec les calculs sur l'argent du joueur | R3 |
+| 5 | Présentations **D01 à D08** (§4.0), avec les calculs sur l'argent du joueur | R3 |
 | 6 | Notes de comparaison sur 4 critères (§2.4) | R8 |
 | 7 | **Jumeau sans frais** (formule 7), relevé F02, avertissement F03, ligne F06 | Retour du 27/10 sur les frais |
 | 8 | Bulles (?) des simplifications (§1.3.3) et de D3 (Livret A au guichet) | Honnêteté historique |

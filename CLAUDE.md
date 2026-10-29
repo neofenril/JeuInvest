@@ -13,7 +13,8 @@ Cibles : PC (Windows) et mobile (Android, iOS plus tard). Langue du jeu et des d
 - Équipe technique (réorganisée le 2026-10-28 à la demande de l'utilisateur, remplace l'ancien agent `developpeur`) :
   - `chef-de-projet` : **seul interlocuteur des développeurs** ; reçoit les demandes (joueur, client, game designer, UX, experts), arbitre, découpe en lots (`docs/lots/lot_NN.md`), répartit, contrôle.
   - `dev-logique` : simulation, données, état, sauvegarde, tests, exports.
-  - `dev-interface` : écrans, HUD, ville, animations, captures.
+  - `dev-interface` : écrans, HUD, modales, fenêtres, `principal.gd`, captures (et la ville pendant le lot 01 seulement).
+  - `dev-ville` (recruté par le chef de projet, validé par l'utilisateur le 2026-10-29, actif à partir du lot 02) : rue, bâtiments, personnages, véhicules, séquences animées, shaders.
   - `testeur` (ajouté le 2026-10-29 à la demande de l'utilisateur) : vérifie chaque branche de développeur avant tout push ; verdict OK / KO dans `docs/lots/lot_NN_recette.md` ; rend compte au chef de projet ; ne corrige jamais le code.
   - **Circuit d'un lot** : (1) le chef de projet écrit `docs/lots/lot_NN.md` ; (2) le coordinateur crée une branche par développeur depuis `main` (`lot/NN-logique`, `lot/NN-interface`) ; (3) le développeur travaille et **commite en local sur sa branche, sans push** ; (4) le testeur vérifie la branche → KO : retour au chef de projet, corrections, nouveau passage ; (5) **OK du testeur → push de la branche** sur GitHub ; (6) le chef de projet valide → fusion dans `main` (`--no-ff`), tests relancés sur `main`, push de `main`. Aucun push de branche de développeur sans OK du testeur.
   - Les développeurs n'ont aucun contact avec le client ni les autres agents. Un agent ne pouvant pas en lancer un autre, le coordinateur (session principale) lance les développeurs selon le plan du chef de projet, lui transmet leurs comptes rendus, puis commite et pousse le lot validé.
@@ -55,7 +56,7 @@ Chaque agent a une base de connaissances dans `docs/connaissances/<agent>.md` : 
 - Retours du joueur sur la démo V2 traités (2026-10-27) : **historique des pop-ups** (bouton HISTORIQUE au bout de la frise, touche H, menu, bâtiment média, carnet de la banque ; filtres maison / banque / média ; relecture en lecture seule ; sauvegardé) ; **héritage à un seul pot** (60 000 F d'assurance-vie ; la carte montre, en hypothèse barrée, les 32 500 F nets qu'aurait laissés une succession ; plus de D08 bis) ; un même événement de vie aléatoire ne se répète pas en moins de 24 mois ; **versements automatiques mensuels** (docs/11 §8 : Livret A, assurance-vie, SICAV, PEL obligatoire ; bouton CHAQUE MOIS des fiches). Taux du PEL écrit partout « 6,30 % + prime d'État ≈ 8,25 % » ; « DANS 20 ANS » ne chevauche plus la 1re pile.
 - Tests : `godot/outils/tests.ps1` (66 logique + 100 démo + 8 partie, tous au vert).
 - Écart validé par le coordinateur : la présentation du PEL a lieu au plus tard en juillet 1984 (après, un PEL neuf rapportait moins que le Livret A).
-- Restes P1/P2 de docs/13 : jauge de l'avertissement de frais, tuile animée qui sort de la banque, piles dans le relevé de décembre, sons ; VP-D (option de 11 §8). docs/13 §1.6 et §5.3 mentionnent encore D08 bis (supprimé). Non vérifié sur un vrai téléphone : défilement tactile de l'historique.
+- Restes P1/P2 de docs/13 : jauge de l'avertissement de frais, tuile animée qui sort de la banque, piles dans le relevé de décembre, sons ; VP-D (option de 11 §8). Non vérifié sur un vrai téléphone : défilement tactile de l'historique.
 - Prochaine étape : nouveaux retours du joueur.
 
 ## État du projet

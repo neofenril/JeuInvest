@@ -1,6 +1,6 @@
 # Plans de lot
 
-Un lot = un plan `lot_NN.md` écrit par le chef de projet, exécuté par le coordinateur (qui lance `dev-logique` et `dev-interface`), validé par le chef de projet. Règles complètes : `docs/connaissances/chef-de-projet.md` §4.
+Un lot = un plan `lot_NN.md` écrit par le chef de projet, commité sur `main`, exécuté par le coordinateur (une branche `lot/NN-<dev>` et un worktree par développeur), vérifié branche par branche par le testeur (`lot_NN_recette.md`), validé par le chef de projet, puis fusionné. Règles complètes : `docs/connaissances/chef-de-projet.md` §4 ; exemple complet : `lot_01.md` ; suite prévue : `feuille_de_route.md`.
 
 ## Modèle
 
@@ -11,7 +11,7 @@ Un lot = un plan `lot_NN.md` écrit par le chef de projet, exécuté par le coor
 - Objectif (1 à 3 phrases, ce que le joueur verra) :
 - Hors périmètre :
 - Mode : parallèle | séquentiel (dev-logique puis dev-interface)
-- Instantané avant lot : sauvegardes/avant_lot_NN/ (fait le JJ/MM)
+- Branches et worktrees : lot/NN-logique, lot/NN-interface (, lot/NN-ville) ; ordre de fusion
 
 ## Fichiers attribués (tout fichier absent de ce tableau est interdit)
 | Fichier | Propriétaire | Nature du changement |

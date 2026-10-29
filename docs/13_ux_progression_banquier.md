@@ -1,6 +1,6 @@
 # 13 : UX de la progression par le banquier, des frais et de la comparaison avec le Livret A
 
-> Rédigé par le UX designer le 2026-10-27 pour la démo V2 (janv. 1984 → déc. 1988, Gérard). Sources, par ordre de priorité : retours du joueur (`10_retours_joueur.md`), arbitrages du client (`12_arbitrages_v2_demo.md`, y compris §7 : A40 à A45), catalogue et textes du banquier (`11_catalogue_banque.md` : D01 à D08 bis, §2.4, §5). Direction artistique, effets et mise en page : `09_direction_artistique_godot.md`.
+> Rédigé par le UX designer le 2026-10-27 pour la démo V2 (janv. 1984 → déc. 1988, Gérard). Sources, par ordre de priorité : retours du joueur (`10_retours_joueur.md`), arbitrages du client (`12_arbitrages_v2_demo.md`, y compris §7 : A40 à A45), catalogue et textes du banquier (`11_catalogue_banque.md` : D01 à D08, §2.4, §5). Direction artistique, effets et mise en page : `09_direction_artistique_godot.md`.
 > **Ce document modifie 09 sur un point** : toucher la banque ouvre la **fenêtre Banque** (carnet et guichet, § 2), et non plus directement le marché.
 > Zones de référence : PC 1 920 × 1 080 ; téléphone en paysage, zone effective ≈ 1 410 × 635 (09 §4.1). Tailles en px virtuels.
 
@@ -104,8 +104,8 @@ Elle prolonge l'appel de 09 effet 1 :
 | Carte | Contenu | Pause |
 |---|---|---|
 | **Présentation** (D01 à D07) | § 1.2 | Oui (compte dans le budget d'interruptions, § 5) |
-| **Nouvelle** (D08 : héritage de tante Odette) | Portrait, texte, ticket à 2 colonnes « assurance-vie : 60 000 F, ce mois-ci · succession : 45 000 F nets dans 6 mois », un seul bouton `COMPRIS` | Oui |
-| **Message** (baisses du Livret A, D04 bis, D08 bis, L17 après le krach, relevé de décembre) | Notification légère venue de la banque (§ 5.2) ; le toucher ouvre une carte de lecture | Non |
+| **Nouvelle** (D08 : héritage de tante Odette) | Portrait, texte, ticket à 2 colonnes « Reçu par assurance-vie : 60 000 F, ce mois-ci, sans droits · Si ça avait été par succession : 32 500 F nets (barré), vous auriez attendu 6 mois et payé 27 500 F de droits » (un seul pot depuis le 2026-10-27), un seul bouton `COMPRIS` | Oui |
+| **Message** (baisses du Livret A, D04 bis, L17 après le krach, relevé de décembre) | Notification légère venue de la banque (§ 5.2) ; le toucher ouvre une carte de lecture | Non |
 
 ---
 
@@ -309,7 +309,7 @@ Le développeur y travaille : ce qui suit est la cible, alignée sur 12 R12.
 | Présentations D01 à D07 | Baisses du Livret A (A43), avec le taux et l'inflation de l'année ; si le joueur détient un PEL ou un emprunt : « … votre PEL, lui, garde 8,25 % » (D02 bis) |
 | Krach et autres événements de marché en modale | Relevé de décembre : bilan annuel L21 et frais F02, **fusionnés** en une seule notification |
 | Naissance (cigogne), panne de voiture (accident), autres événements de vie à décision ou coûtant plus d'un mois de salaire | Plafond du Livret A (L03, 06/1987), CAC 40 (06/1988), « Le saviez-vous ? » (1 tous les 18 mois au maximum) |
-| Héritage D08 (04/1988) | D04 bis (complément sur l'assurance-vie), L17 (message après le krach), D08 bis (succession réglée) : **messages persistants du banquier** |
+| Héritage D08 (04/1988) | D04 bis (complément sur l'assurance-vie), L17 (message après le krach) : **messages persistants du banquier** (D08 bis supprimé le 2026-10-27 : un seul pot) |
 
 Ouvrir soi-même une notification ou la banque met en pause **mais ne compte pas** : c'est le joueur qui choisit.
 
@@ -317,7 +317,7 @@ Ouvrir soi-même une notification ou la banque met en pause **mais ne compte pas
 
 - Elles **partent de la banque** : une onde depuis le toit (0,4 s), puis la notification vole vers sa place sous la barre haute (09 effet 3). Bordure gauche à l'accent de la banque, mini-portrait de 32 px.
 - **Ordinaires** (taux, relevé) : affichées 8 s (1 mois à ×1), 3 au maximum à l'écran.
-- **Persistantes** (messages D04 bis, L17, D08 bis) : elles restent jusqu'au toucher ; un point de notification reste sur l'étiquette « MA BANQUE », et le message est rangé dans le carnet (onglet « Messages », 5 derniers).
+- **Persistantes** (messages D04 bis, L17) : elles restent jusqu'au toucher ; un point de notification reste sur l'étiquette « MA BANQUE », et le message est rangé dans l'historique (bouton HISTORIQUE du carnet, filtre banque).
 
 ### 5.3 Règles de cadence (budget de 15 interruptions pour 60 mois)
 
@@ -340,7 +340,7 @@ Ouvrir soi-même une notification ou la banque met en pause **mais ne compte pas
 | 11/1986 | D07 Saint-Gobain (24/11/1986, A43) | 06/1987 : plafond du Livret A |
 | 10/1987 | Krach | |
 | 11/1987 | Panne de voiture (coïncidence forcée, 03 §6.2) | L17 |
-| 04/1988 | D08 Héritage | 06/1988 : CAC 40 ; 09/1988 : D08 bis |
+| 04/1988 | D08 Héritage | 06/1988 : CAC 40 |
 | | **11 interruptions scriptées + 1 à 3 aléatoires = 12 à 14** | + 4 relevés de décembre (1984 à 1987) |
 
 ---
