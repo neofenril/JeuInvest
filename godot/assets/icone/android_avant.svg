@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+  <!-- Icône adaptative Android, premier plan : la pièce d'or (fond transparent, dans la zone sûre de 264 px). -->
+  <defs>
+    <linearGradient id="or" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe08a"/>
+      <stop offset="1" stop-color="#e0a83a"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(45.33,63.33) scale(1.3333)">
+    <circle cx="128" cy="96" r="62" fill="#0f1522" fill-opacity="0.35"/>
+    <circle cx="128" cy="92" r="60" fill="url(#or)" stroke="#b8862b" stroke-width="6"/>
+    <circle cx="128" cy="92" r="46" fill="none" stroke="#b8862b" stroke-width="3" stroke-opacity="0.7"/>
+    <polyline points="98,116 116,98 130,106 158,72" fill="none" stroke="#7a4f12" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="162,62 166,86 144,74" fill="#7a4f12"/>
+    <ellipse cx="108" cy="58" rx="16" ry="7" fill="#ffffff" fill-opacity="0.35" transform="rotate(-28 108 58)"/>
+  </g>
+</svg>

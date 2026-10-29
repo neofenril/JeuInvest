@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JeuClaude</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-era="1980">
+  <div id="app">
+    <section id="ecran-titre" class="ecran"></section>
+    <section id="ecran-creation" class="ecran" hidden></section>
+    <section id="ecran-jeu" class="ecran" hidden></section>
+    <section id="ecran-bilan" class="ecran" hidden></section>
+  </div>
+  <aside id="tiroir" aria-label="Marché" hidden></aside>
+  <div id="modale-fond" hidden><div id="modale" role="dialog" aria-modal="true"></div></div>
+  <div id="toasts" aria-live="polite"></div>
+  <div id="bulle-glossaire" role="tooltip" hidden></div>
+  <div id="coach" role="dialog" aria-label="Tutoriel" hidden></div>
+  <div id="annonce" class="sr" aria-live="polite"></div>
+  <noscript><p style="padding:2rem">JeuClaude a besoin de JavaScript pour fonctionner.</p></noscript>
+
+  <!-- Données (modifiables sans toucher au moteur) -->
+  <script src="data/series.js"></script>
+  <script src="data/salaires.js"></script>
+  <script src="data/regles.js"></script>
+  <script src="data/periode_p1.js"></script>
+  <script src="data/periode_p2.js"></script>
+  <script src="data/periode_p3.js"></script>
+  <script src="data/evenements_vie.js"></script>
+  <script src="data/titres.js"></script>
+  <script src="data/lecons.js"></script>
+  <script src="data/glossaire.js"></script>
+  <script src="data/textes.js"></script>
+  <!-- Moteur (sans affichage) -->
+  <script src="js/util.js"></script>
+  <script src="js/marche.js"></script>
+  <script src="js/moteur.js"></script>
+  <script src="js/score.js"></script>
+  <!-- Interface -->
+  <script src="js/ui_commun.js"></script>
+  <script src="js/ui_jeu.js"></script>
+  <script src="js/ui_tiroir.js"></script>
+  <script src="js/ui_evenements.js"></script>
+  <script src="js/ui_ecrans.js"></script>
+  <script src="js/tutoriel.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

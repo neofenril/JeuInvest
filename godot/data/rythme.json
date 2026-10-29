@@ -1,0 +1,9 @@
+{
+  "_note": "Rythme du jeu : SEUL endroit où régler la vitesse du temps. Les tableaux sont indexés par la vitesse : [pause, ×1, ×2, ×3].",
+  "_duree_mois_s": "Durée d'un mois de jeu, en secondes réelles. La frise, l'aiguille de l'horloge de la banque, la courbe et les compteurs s'y adaptent. Retour du joueur (26/10/2026) : « le temps défile trop rapidement » → durées doublées (avant : 4 / 2 / 1 s).",
+  "duree_mois_s": [0, 8, 4, 2],
+  "_trafic": "Facteur de vitesse des voitures dans la rue (0 = arrêtées en pause ; elles freinent et repartent en douceur). Les passants suivent à moitié (ils marchent, ils ne courent pas). Retour du joueur (27/10/2026) : « encore augmenter la vitesse des véhicules » → 1 / 2,5 / 4,5 (avant : 1 / 1,8 / 2,8).",
+  "trafic": [0, 1.0, 2.5, 4.5],
+  "_transition_trafic_s": "Temps pour passer d'un facteur de trafic à l'autre (freinage à la pause, accélération).",
+  "transition_trafic_s": 0.6
+}

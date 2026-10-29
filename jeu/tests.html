@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>JeuClaude · tests</title>
+  <style>
+    body { font-family: "Segoe UI", system-ui, sans-serif; margin: 1.5rem; background: #F6F1E7; color: #1E1B16; }
+    table { border-collapse: collapse; width: 100%; background: #fff; }
+    td, th { border: 1px solid #D8CFBF; padding: .3rem .5rem; vertical-align: top; text-align: left; font-size: .9rem; }
+    .ok { color: #1B7A3E; font-weight: 700; } .ko { color: #B3261E; font-weight: 700; }
+    #resume { font-size: 1.2rem; font-weight: 700; margin: .5rem 0 1rem; }
+    pre { margin: 0; white-space: pre-wrap; font-size: .8rem; }
+  </style>
+</head>
+<body>
+  <h1>JeuClaude · tests automatiques des critères d'acceptation</h1>
+  <p>Ouvrez cette page par double-clic. Chaque ligne exécute un test du cahier des charges (03 §10, critères marqués [auto]).</p>
+  <div id="resume">Tests en cours…</div>
+  <table><thead><tr><th>Critère</th><th>Description</th><th>Résultat</th><th>Détail</th></tr></thead><tbody id="corps"></tbody></table>
+
+  <script src="data/series.js"></script>
+  <script src="data/salaires.js"></script>
+  <script src="data/regles.js"></script>
+  <script src="data/periode_p1.js"></script>
+  <script src="data/periode_p2.js"></script>
+  <script src="data/periode_p3.js"></script>
+  <script src="data/evenements_vie.js"></script>
+  <script src="data/titres.js"></script>
+  <script src="data/lecons.js"></script>
+  <script src="data/glossaire.js"></script>
+  <script src="data/textes.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/marche.js"></script>
+  <script src="js/moteur.js"></script>
+  <script src="js/score.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    var resultats = [];
+    var PER = ["P1", "P2", "P3"], PROF = ["jeune", "cadre", "heritier"];
+    function F(x) { return x / U.TAUX_EURO; }
+    function proche(a, b, tol) { return Math.abs(a - b) <= tol; }
+
+    /* Joue une partie entière sans action du joueur (résolution automatique des modales) */
+    function jouer(cfg, chaqueMois) {
+      var r = Moteur.nouvellePartie(cfg), S = r.S, res = r.res, journal = [];
+      var n = 0;
+      while (!S.fin && n < 400) {
+        journal.push({ m: S.m, res: res });
+        if (chaqueMois) chaqueMois(S, res);
+        if (S.modale) Moteur.resolutionAuto(S, S.modale);
+        res = Moteur.avancer(S);
+        n++;
+      }
+      journal.push({ m: S.m, res: res });
+      return { S: S, journal: journal };
+    }
+    function test(id, desc, fn) {
+      var ok = false, detail = "";
+      try {
+        var r = fn();
+        if (typeof r === "object" && r !== null) { ok = !!r.ok; detail = r.detail || ""; } else ok = !!r;
+      } catch (e) { ok = false; detail = "Exception : " + (e && e.stack || e); }
+      resultats.push({ id: id, desc: desc, ok: ok, detail: detail });
+    }
+    function cfg(p, pf, extra) {
+      var c = { periode: p, profil: pf, objectif: "inflation", graineVie: 424242, tutoriel: false };
+      if (extra) Object.keys(extra).forEach(function (k) { c[k] = extra[k]; });
+      return c;
+    }
+    function aller(S, mCible) {
+      while (S.m < mCible && !S.fin) { if (S.modale) Moteur.resolutionAuto(S, S.modale); Moteur.avancer(S); }
+    }
+
+    test("CA-02", "Partie complète de 180 mois sans erreur pour les 9 combinaisons, sans action du joueur", function () {
+      var d = [], ok = true;
+      PER.forEach(function (p) {
+        PROF.forEach(function (pf) {
+          [424242, 7, 99].forEach(function (g) {
+            var j = jouer(cfg(p, pf, { graineVie: g }));
+            var B = Score.bilan(j.S);
+            var fini = j.S.fin === "fin" || j.S.fin === "faillite";
+            if (!fini || !B.titre || B.lecons.length > 3 || isNaN(B.auj.vous)) ok = false;
+            d.push(p + "/" + pf + "/graine " + g + " : " + j.S.fin + " au mois " + j.S.m + ", " + Math.round(B.auj.vous) + " € d'auj., titre « " + B.titre.titre + " », " + B.nbEtoiles + " étoiles");
+          });
+        });
+      });
+      return { ok: ok, detail: d.join("\n") };
+    });
+
+    test("CA-05", "Le PEA n'est proposé nulle part avant juillet 1992", function () {
+      var ok = true;
+      PER.forEach(function (p) {
+        var S = Moteur.nouvellePartie(cfg(p, "jeune", { sansVie: true })).S;
+        for (var m = 0; m < 180; m++) {
+          S.m = m;
+          var a = Moteur.abC(S), avant = a < U.ab(1992, 7);
+          if (avant && Moteur.peaExiste(S)) ok = false;
+          if (avant && Moteur.devisAchat(S, Moteur.produitsDisponibles(S)[2], "PEA", 10000).ok) ok = false;
+          if (!avant && !Moteur.peaExiste(S)) ok = false;
+        }
+      });
+      return ok;
+    });
+
+    test("CA-06", "L'ETF CAC 40 n'est pas proposé avant janvier 2001", function () {
+      var ok = true;
+      PER.forEach(function (p) {
+        var S = Moteur.nouvellePartie(cfg(p, "jeune", { sansVie: true })).S;
+        for (var m = 0; m < 180; m++) {
+          S.m = m;
+          var a = Moteur.abC(S), dispo = Moteur.produitsDisponibles(S).indexOf("etf") >= 0;
+          if (a < U.ab(2001, 1) && dispo) ok = false;
+        }
+      });
+      return ok;
+    });
+
+    test("CA-07", "France Télécom pas avant 10/1997 (premier cours 27,75 €), Saint-Gobain pas avant 12/1986 (310 F)", function () {
+      var S1 = Moteur.nouvellePartie(cfg("P1", "jeune", { sansVie: true })).S, S2 = Moteur.nouvellePartie(cfg("P2", "jeune", { sansVie: true })).S;
+      var ok = true, d = [];
+      for (var m = 0; m < 180; m++) {
+        S1.m = m; S2.m = m;
+        var sg = Moteur.produitsDisponibles(S1).indexOf("saintgobain") >= 0, ft = Moteur.produitsDisponibles(S2).indexOf("francetelecom") >= 0;
+        if (sg !== (Moteur.abC(S1) >= U.ab(1986, 12))) ok = false;
+        if (ft !== (Moteur.abC(S2) >= U.ab(1997, 10))) ok = false;
+      }
+      var pSG = Moteur.cours(S1, "saintgobain", U.ab(1986, 12) - S1.abDebut) * U.TAUX_EURO;
+      var pFT = Moteur.cours(S2, "francetelecom", U.ab(1997, 10) - S2.abDebut);
+      d.push("Saint-Gobain 12/1986 : " + pSG.toFixed(2) + " F ; France Télécom 10/1997 : " + pFT.toFixed(2) + " € (" + (pFT * U.TAUX_EURO).toFixed(2) + " F)");
+      if (!proche(pSG, 310, 0.01) || !proche(pFT, 27.75, 0.001)) ok = false;
+      return { ok: ok, detail: d.join("") };
+    });
+
+    test("CA-08", "Le libellé « CAC 40 » n'apparaît pas avant juin 1988 (textes générés en P1)", function () {
+      var fautes = [];
+      jouer(cfg("P1", "heritier"), function (S, res) {
+        var a = Moteur.abC(S);
+        if (a >= U.ab(1988, 6)) return;
+        var textes = [Marche.nomIndice(a)];
+        (res.notifs || []).forEach(function (n) { textes.push(n.titre || "", n.texte || ""); });
+        if (res.modale && res.modale.kind === "marche") { var ev = Moteur.evenement(S, res.modale.id); textes.push(ev.titre, ev.texte); }
+        Moteur.produitsDisponibles(S).forEach(function (id) { var p = Moteur.produit(S, id); textes.push(p.nom, p.court || "", p.description || ""); });
+        textes.forEach(function (t) { if (/CAC\s*40/.test(t)) fautes.push(U.dateTxt(a) + " : " + t); });
+      });
+      window.DATA_P1.evenements.concat(window.DATA_P1.contexte).forEach(function (e) {
+        if (U.parseD(e.d) < U.ab(1988, 6) && /CAC\s*40/.test((e.titre || "") + (e.texte || ""))) fautes.push(e.d + " : " + e.titre);
+      });
+      return { ok: fautes.length === 0, detail: fautes.join("\n") || "Aucune occurrence." };
+    });
+
+    test("CA-09", "F jusqu'en 12/1998, double affichage 1999-2001, € dès 01/2002 ; modale euro une seule fois en 01/2002", function () {
+      var ok = true;
+      for (var a = U.ab(1978, 1); a <= U.ab(2025, 12); a++) {
+        var d = U.deviseAffichee(a), s = U.secondaire(a);
+        if (a < U.ab(1999, 1) && (d !== "F" || s !== null)) ok = false;
+        if (a >= U.ab(1999, 1) && a < U.ab(2002, 1) && (d !== "F" || s !== "€")) ok = false;
+        if (a >= U.ab(2002, 1) && d !== "€") ok = false;
+      }
+      var euros = [];
+      jouer(cfg("P2", "cadre"), function (S, res) { if (res.modale && res.modale.kind === "euro") euros.push(U.dateTxt(Moteur.abC(S))); });
+      // la modale euro peut être reportée d'un mois si une autre modale occupe janvier 2002
+      return { ok: ok && euros.length === 1, detail: "Modale euro affichée : " + euros.join(", ") };
+    });
+
+    test("CA-10", "L'indice passe par chaque clôture annuelle de 02 §4.2 (tolérance 0,1 %)", function () {
+      var ok = true, d = [];
+      PER.forEach(function (p) {
+        var mk = Marche.generer(p);
+        for (var y = mk.P.debut - 1; y <= mk.P.debut + 14; y++) {
+          var v = mk.indice[U.ab(y, 12) - mk.ab0], c = window.DATA_SERIES.annuel[y][0];
+          if (Math.abs(v / c - 1) > 0.001) { ok = false; d.push(p + " " + y + " : " + v + " au lieu de " + c); }
+        }
+      });
+      return { ok: ok, detail: d.join("\n") };
+    });
+
+    test("CA-11", "Deux générations de la même période donnent des cours identiques", function () {
+      var avant = PER.map(function (p) { return JSON.stringify(Marche.generer(p).prix) + JSON.stringify(Marche.generer(p).indice); });
+      Marche.viderCache();
+      var apres = PER.map(function (p) { return JSON.stringify(Marche.generer(p).prix) + JSON.stringify(Marche.generer(p).indice); });
+      return avant.join() === apres.join();
+    });
+
+    function calendrierTxt(S) {
+      return S.calendrier.map(function (e) { return e.m + ":" + e.type + ":" + (e.M || e.SMN || e.duree || e.pct || 0).toFixed(6) + ":" + (e.montant || 0).toFixed(2); }).join("|");
+    }
+    test("CA-12 / CA-29", "Même graine de vie = même calendrier (dates et montants), quels que soient les choix du joueur", function () {
+      var a = jouer(cfg("P2", "cadre", { graineVie: 31337 }));
+      var b = jouer(cfg("P2", "cadre", { graineVie: 31337 }), function (S) {
+        // joueur actif : achète des actions chaque mois et dépose sur le livret
+        var J = S.joueur;
+        if (J.cc > 200) Moteur.acheter(S, J, "total", "CTO", J.cc * 0.3);
+        if (J.cc > 100) Moteur.deposerLivret(S, J, Math.min(J.cc * 0.2, Math.max(0, Marche.plafondLivret(Moteur.abC(S)) - J.livret)));
+      });
+      var ca = calendrierTxt(a.S), cb = calendrierTxt(b.S);
+      return { ok: ca === cb && a.S.calendrier.length > 10, detail: a.S.calendrier.length + " événements de vie ; joueur passif " + Math.round(a.S.hist.j[179]) + " €, joueur actif " + Math.round(b.S.hist.j[b.S.m]) + " €" };
+    });
+
+    test("CA-13", "Un dépôt sur le Livret A au-delà du plafond daté est refusé", function () {
+      var S = Moteur.nouvellePartie(cfg("P1", "heritier", { sansVie: true })).S, J = S.joueur;
+      J.cc = F(100000);
+      var r1 = Moteur.deposerLivret(S, J, F(38000));    // plafond 38 000 F en janvier 1978
+      var r2 = Moteur.deposerLivret(S, J, F(1000));
+      return { ok: r1.ok && !r2.ok && r2.refus === "plafond" && proche(J.livret * U.TAUX_EURO, 38000, 0.01), detail: r2.msg };
+    });
+
+    test("CA-14", "10 000 F sur le Livret A le 1er janvier 1982 valent 10 850 F le 31 décembre 1982", function () {
+      var S = Moteur.nouvellePartie(cfg("P1", "jeune", { sansVie: true })).S, J = S.joueur;
+      aller(S, U.ab(1982, 1) - S.abDebut);
+      J.livret = 0; J.livretInt = 0; J.cc += F(10000);
+      Moteur.deposerLivret(S, J, F(10000));
+      aller(S, U.ab(1983, 1) - S.abDebut);   // l'intérêt de 1982 est crédité au passage du 31/12
+      var v = J.livret * U.TAUX_EURO;
+      return { ok: proche(v, 10850, 0.01), detail: "Livret au 31/12/1982 : " + v.toFixed(2) + " F" };
+    });
+
+    test("CA-15", "Plus-value sur compte-titres en 1995 taxée à 16 % ; dans un PEA de plus de 5 ans en 2018 : 17,2 %", function () {
+      var t1995 = Marche.impot(1995).cto;
+      var S2 = Moteur.nouvellePartie(cfg("P2", "jeune", { sansVie: true })).S, J2 = S2.joueur;   // janvier 1996, même barème
+      J2.lignes["loreal|CTO"] = { id: "loreal", env: "CTO", qte: 10, cout: 1, depuis: 0 };
+      var d2 = Moteur.devisVente(S2, J2, "loreal", "CTO", 0, true);
+      var S3 = Moteur.nouvellePartie(cfg("P3", "jeune", { sansVie: true })).S, J3 = S3.joueur;
+      J3.lignes["lvmh|PEA"] = { id: "lvmh", env: "PEA", qte: 10, cout: 1, depuis: 0 }; J3.peaDebut = 0;
+      S3.m = U.ab(2018, 6) - S3.abDebut;
+      var d3 = Moteur.devisVente(S3, J3, "lvmh", "PEA", 0, true);
+      var ok = t1995 === 16 && d2.taux === 16 && proche(d2.impot, d2.pv * 0.16, 1e-6) && d3.taux === 17.2 && proche(d3.impot, d3.pv * 0.172, 1e-6);
+      return { ok: ok, detail: "1995 : " + t1995 + " % ; vente CTO 1996 : " + d2.taux + " % ; vente PEA 2018 : " + d3.taux + " %" };
+    });
+
+    test("CA-16", "En 1985, frais de 50 F sur un achat de 1 000 F et de 130 F sur un achat de 10 000 F", function () {
+      var a = U.ab(1985, 6), f1 = Moteur.fraisCourtage(a, F(1000)) * U.TAUX_EURO, f2 = Moteur.fraisCourtage(a, F(10000)) * U.TAUX_EURO;
+      return { ok: proche(f1, 50, 0.01) && proche(f2, 130, 0.01), detail: f1.toFixed(2) + " F et " + f2.toFixed(2) + " F" };
+    });
+
+    test("CA-17", "Achat de LVMH en 2013 avec TTF de 0,2 % ; achat d'ETF sans TTF", function () {
+      var S = Moteur.nouvellePartie(cfg("P3", "cadre", { sansVie: true })).S;
+      S.m = U.ab(2013, 3) - S.abDebut;
+      var d1 = Moteur.devisAchat(S, "lvmh", "CTO", 5000), d2 = Moteur.devisAchat(S, "etf", "CTO", 5000);
+      return { ok: d1.ok && proche(d1.ttf, d1.brut * 0.002, 1e-6) && d2.ok && d2.ttf === 0, detail: "TTF LVMH : " + d1.ttf.toFixed(2) + " € sur " + d1.brut.toFixed(2) + " € ; ETF : " + d2.ttf };
+    });
+
+    test("CA-18", "3 mois consécutifs au-delà du découvert toléré déclenchent la faillite", function () {
+      var S = Moteur.nouvellePartie(cfg("P1", "jeune", { sansVie: true })).S, n = 0, res = null;
+      aller(S, 20);
+      while (!S.fin && n < 5) {
+        S.joueur.cc = -3 * S.vie.salaireBase;
+        if (S.modale) Moteur.resolutionAuto(S, S.modale);
+        res = Moteur.avancer(S); n++;
+      }
+      return { ok: S.fin === "faillite" && n === 3 && res.fin === "faillite", detail: "Faillite après " + n + " mois" };
+    });
+
+    test("CA-19", "Tonton Matelas finit avec exactement la somme des épargnes nettes ; Tata Livret ne dépasse jamais le plafond", function () {
+      var ok = true, d = [];
+      PER.forEach(function (p) {
+        PROF.forEach(function (pf) {
+          var depasse = false;
+          var j = jouer(cfg(p, pf, { graineVie: 2024 }), function (S) {
+            var L = S.temoins.livret, plaf = Marche.plafondLivret(Moteur.abC(S));
+            if (L.livret > plaf + L.interetsTotal + 0.01) depasse = true;
+          });
+          var T = j.S.temoins.matelas, ecart = Math.abs(T.cc - j.S.epargneNette);
+          if (ecart > 0.01 || depasse || Moteur.patrimoine(j.S, T) !== T.cc) ok = false;
+          d.push(p + "/" + pf + " : écart Matelas " + ecart.toExponential(1) + " €" + (depasse ? " ; PLAFOND DÉPASSÉ" : ""));
+        });
+      });
+      return { ok: ok, detail: d.join("\n") };
+    });
+
+    test("CA-20", "En P1 sans événements de vie : Cousin Indice > Tata Livret > Tonton Matelas, en € d'aujourd'hui", function () {
+      var ok = true, d = [];
+      PROF.forEach(function (pf) {
+        var j = jouer(cfg("P1", pf, { sansVie: true })), B = Score.bilan(j.S);
+        if (!(B.auj.indice > B.auj.livret && B.auj.livret > B.auj.matelas)) ok = false;
+        d.push(pf + " : Cousin " + Math.round(B.auj.indice) + " € ; Tata " + Math.round(B.auj.livret) + " € ; Tonton " + Math.round(B.auj.matelas) + " €");
+      });
+      return { ok: ok, detail: d.join("\n") };
+    });
+
+    test("CA-21", "Profils : Peugeot −50 % (1979-1984), France Télécom ≥ 200 € en 03/2000 puis ≤ 10 € en 09-10/2002, Alcatel −90 % du sommet 2000 à fin 2002", function () {
+      var m1 = Marche.generer("P1"), m2 = Marche.generer("P2");
+      function px(mk, id, y, mo) { return mk.prix[id][U.ab(y, mo) - mk.ab0]; }
+      var peu = px(m1, "peugeot", 1984, 12) / px(m1, "peugeot", 1979, 12) - 1;
+      var ft00 = px(m2, "francetelecom", 2000, 3), ft02 = Math.min(px(m2, "francetelecom", 2002, 9), px(m2, "francetelecom", 2002, 10));
+      var maxAl = 0; for (var mo = 1; mo <= 12; mo++) maxAl = Math.max(maxAl, px(m2, "alcatel", 2000, mo));
+      var al = px(m2, "alcatel", 2002, 12) / maxAl - 1;
+      return { ok: peu <= -0.5 && ft00 >= 200 && ft02 <= 10 && al <= -0.9,
+        detail: "Peugeot " + (peu * 100).toFixed(0) + " % ; FT " + ft00.toFixed(0) + " € puis " + ft02.toFixed(1) + " € ; Alcatel " + (al * 100).toFixed(0) + " %" };
+    });
+
+    test("CA-22", "Chaque action passe par ses ancrages (tolérance 10 %)", function () {
+      var ok = true, d = [];
+      PER.forEach(function (p) {
+        var mk = Marche.generer(p);
+        mk.P.produits.forEach(function (pr) {
+          if (pr.type !== "action") return;
+          pr.ancrages.forEach(function (an) {
+            var v = mk.prix[pr.id][U.parseD(an[0]) - mk.ab0], c = U.versEuros(an[1], pr.devise);
+            if (Math.abs(v / c - 1) > 0.10) { ok = false; d.push(p + " " + pr.id + " " + an[0] + " : " + v.toFixed(2) + " au lieu de " + c.toFixed(2)); }
+          });
+        });
+      });
+      return { ok: ok, detail: d.join("\n") || "Tous les ancrages sont respectés." };
+    });
+
+    test("CA-25", "Jamais plus d'une modale par mois ; aucun marqueur d'événement de marché futur", function () {
+      var ok = true;
+      PER.forEach(function (p) {
+        jouer(cfg(p, "jeune", { graineVie: 5 }), function (S, res) {
+          S.marqueurs.forEach(function (mq) { if (mq.m > S.m) ok = false; });
+          if (res.modale && S.modale !== res.modale) ok = false;
+        });
+      });
+      return ok;
+    });
+
+    test("CA-26", "Chaque événement de marché se déclenche au mois indiqué, avec sa manchette et le bon jeu de choix", function () {
+      var ok = true, d = [];
+      PER.forEach(function (p) {
+        var vus = {};
+        jouer(cfg(p, "heritier", { graineVie: 77 }), function (S, res) {
+          if (res.modale && res.modale.kind === "marche") {
+            var ev = Moteur.evenement(S, res.modale.id), a = Moteur.abC(S);
+            if (U.parseD(ev.d) !== a) { ok = false; d.push(ev.id + " affiché en " + U.dateTxt(a)); }
+            var ch = Moteur.choixMarche(S, ev).map(function (c) { return c.id; }).join(",");
+            var attendu = ev.type === "-" ? (Moteur.valeurRisquee(S, S.joueur) > 0.005 ? "vendre,rien,renforcer" : "ecart,soldes")
+              : ev.type === "+opportunite" ? "souscrire,rien" : "encaisser,rien,suivre";
+            if (ch !== attendu) { ok = false; d.push(ev.id + " : choix " + ch); }
+            vus[ev.id] = true;
+          }
+          (res.notifs || []).forEach(function (n) { if (n.type === "silencieux") vus["silencieux" + U.dateTxt(Moteur.abC(S))] = true; });
+        });
+        Marche.periode(p).evenements.forEach(function (ev) {
+          if (ev.type !== "-silencieux" && !vus[ev.id]) { ok = false; d.push(ev.id + " jamais affiché"); }
+        });
+        d.push(p + " : " + Object.keys(vus).length + " événements vus");
+      });
+      return { ok: ok, detail: d.join("\n") };
+    });
+
+    test("CA-27", "Le rappel à 12 mois s'affiche après chaque choix de marché, avec la variation réelle de l'indice", function () {
+      var ok = true, d = [], choix = 0, rappels = 0;
+      jouer(cfg("P2", "cadre", { graineVie: 3 }), function (S, res) {
+        (res.notifs || []).forEach(function (n) {
+          if (n.type !== "rappel") return;
+          rappels++;
+          var c = S.choix.filter(function (x) { return x.id === n.evt; })[0], mk = Moteur.mkt(S);
+          var v = Marche.indice(mk, c.m + 12) / c.indice - 1;
+          if (S.m !== c.m + 12 || n.texte.indexOf(U.pct(v)) < 0) { ok = false; d.push(n.texte); }
+        });
+      });
+      var S2 = jouer(cfg("P2", "cadre", { graineVie: 3 })).S;
+      choix = S2.choix.filter(function (c) { return c.m + 12 <= 179; }).length;
+      return { ok: ok && rappels === choix && choix > 0, detail: choix + " choix (hors derniers 12 mois), " + rappels + " rappels" + (d.length ? "\n" + d.join("\n") : "") };
+    });
+
+    test("CA-03 (moteur)", "Sauvegarde : l'état sérialisé en JSON puis relu reprend à l'identique", function () {
+      var r = Moteur.nouvellePartie(cfg("P1", "cadre", { graineVie: 11 })), S = r.S;
+      aller(S, 50);
+      var copie = JSON.parse(JSON.stringify(S));
+      var p1 = Moteur.patrimoine(S, S.joueur), p2 = Moteur.patrimoine(copie, copie.joueur);
+      aller(S, 120); aller(copie, 120);
+      return { ok: copie.m === S.m && proche(p1, p2, 1e-9) && proche(Moteur.patrimoine(S, S.joueur), Moteur.patrimoine(copie, copie.joueur), 1e-6),
+        detail: "Mois 50 : " + p1.toFixed(2) + " € ; mois 120 : " + Moteur.patrimoine(S, S.joueur).toFixed(2) + " € et " + Moteur.patrimoine(copie, copie.joueur).toFixed(2) + " €" };
+    });
+
+    test("Objectifs", "Les cibles maison et retraite sont calculées et arrondies à 2 chiffres significatifs", function () {
+      var d = [], ok = true;
+      PER.forEach(function (p) {
+        PROF.forEach(function (pf) {
+          var c = Moteur.calculerCibles({ periode: p, profil: pf }), mk = Marche.generer(p);
+          var dm = U.deviseAffichee(mk.abDebut + c.mLimite.maison), dr = U.deviseAffichee(mk.abDebut + 179);
+          var vm = U.enDevise(c.maison, dm), vr = U.enDevise(c.retraite, dr);
+          if (!(vm > 0 && vr > 0) || Math.abs(U.arrondi2(vm) - vm) > 1e-6 * vm) ok = false;
+          d.push(p + "/" + pf + " : maison " + Math.round(vm) + " " + dm + ", retraite " + Math.round(vr) + " " + dr);
+        });
+      });
+      return { ok: ok, detail: d.join("\n") };
+    });
+
+    // Affichage
+    var corps = document.getElementById("corps"), nOk = 0;
+    resultats.forEach(function (r) {
+      if (r.ok) nOk++;
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + r.id + "</td><td>" + U.esc(r.desc) + '</td><td class="' + (r.ok ? "ok" : "ko") + '">' + (r.ok ? "OK" : "KO") +
+        "</td><td><pre>" + U.esc(r.detail) + "</pre></td>";
+      corps.appendChild(tr);
+    });
+    var resume = nOk + " / " + resultats.length + " tests OK";
+    document.getElementById("resume").textContent = resume;
+    document.getElementById("resume").className = nOk === resultats.length ? "ok" : "ko";
+    document.title = "Tests JeuClaude : " + resume;
+    window.RESULTATS = resultats;
+  })();
+  </script>
+</body>
+</html>

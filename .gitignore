@@ -1,0 +1,20 @@
+# Outils locaux (Godot, Java, SDK Android, Git portable, téléchargements) : à réinstaller, voir README
+/outils/
+
+# Fichiers produits par les exports
+/export/
+
+# Cache et import de Godot (régénérés à l'ouverture du projet)
+godot/.godot/
+*.translation
+
+# Captures d'écran de contrôle (régénérées par godot/outils/capture.ps1)
+godot/captures/
+
+# Réglages locaux de Claude Code
+.claude/settings.local.json
+
+# Divers
+*.tmp
+Thumbs.db
+desktop.ini

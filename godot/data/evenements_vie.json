@@ -1,0 +1,38 @@
+{
+  "_note": "Événements de vie de la version minimale (01 §7.6, 03 §6.2). M = mois de salaire normal. freq = probabilité par an. effet : cout | gain. courrier : true = toujours en modale courrier (sinon : courrier si le montant dépasse seuilCourrierM ou si le compte ne suffit pas). source : bâtiment de la ville qui porte l'événement (maison | banque | media). Dans les textes : {montant}. Les 8 autres types de la V1 sont dans jeu/data/evenements_vie.js (leurs effets demandent du code).",
+  "parAn": { "min": 1, "max": 3 },
+  "_pool": "Si aucun type n'est tiré pour une année, on en prend un au hasard dans cette liste (au moins 1 événement par an).",
+  "pool": ["prime", "voiture", "medical"],
+  "_coincidence": "Une panne de voiture est forcée le mois suivant un événement de marché « - » survenant après ce nombre de mois (03 §6.2, A22).",
+  "coincidenceApresMois": 12,
+  "_ecartRepetitionMois": "Un même événement de vie aléatoire ne revient pas moins de ce nombre de mois après le précédent du même type (retour du coordinateur sur v3_historique : deux pannes identiques à 2 mois d'écart). Les événements forcés ou scriptés sont toujours gardés ; c'est l'événement aléatoire trop proche qui est retiré. 0 = pas de règle.",
+  "ecartRepetitionMois": 24,
+  "types": {
+    "voiture": { "freq": 0.15, "effet": "cout", "coutM": [0.6, 1.2], "picto": "voiture", "source": "maison", "courrier": true,
+      "titre": "La voiture rend l'âme",
+      "texte": "Le garagiste est formel : embrayage et courroie. La facture s'élève à {montant}." },
+    "medical": { "freq": 0.10, "effet": "cout", "coutM": [0.2, 0.6], "picto": "coeur", "source": "maison",
+      "titre": "Frais de dentiste",
+      "texte": "Une couronne, deux plombages : après la Sécurité sociale et la mutuelle, il reste {montant} à payer." },
+    "prime": { "freq": 0.30, "effet": "gain", "gainM": [0.5, 1.0], "picto": "billet", "source": "maison",
+      "titre": "Prime exceptionnelle",
+      "texte": "Bonne année pour votre entreprise : une prime de {montant} est versée sur votre compte courant." }
+  },
+  "_naissance": "Naissance (03 §6.2 : dépenses de vie courante + 9 % du salaire par enfant, définitivement ; 2 enfants au plus). Tirée à part (graine de vie décalée) pour ne pas changer le calendrier des autres événements. freq = probabilité par an, si l'âge du personnage est dans « age ». jumeaux_proba = probabilité qu'une naissance soit gémellaire (si le maximum d'enfants le permet). cout_mensuel_par_enfant = part du salaire ajoutée aux dépenses, par enfant. Dans les textes : {prenoms}, {cout} (hausse mensuelle des dépenses). Touches de débogage dans la démo : F6 naissance, F7 jumeaux.",
+  "naissance": {
+    "freq": 0.08, "age": [25, 40], "max_enfants": 2, "jumeaux_proba": 0.015,
+    "cout_mensuel_par_enfant": 0.09,
+    "_budget_positif_requis": "true : le tirage écarte une naissance qui rendrait l'épargne possible du mois négative jusqu'à la fin de la période (décision 05 de la V1). Le profil « jeune » des années 1980 (8 % d'épargne) n'a donc pas de naissance tirée ; les touches F6 / F7 passent outre.",
+    "budget_positif_requis": true,
+    "effet": "naissance", "picto": "bebe", "source": "maison", "courrier": true,
+    "titre": "Une naissance !",
+    "titre_jumeaux": "Des jumeaux !",
+    "texte": "Bienvenue à {prenoms} ! Couches, garde, vêtements : vos dépenses de vie courante augmentent de {cout} par mois, allocations déduites.",
+    "texte_jumeaux": "Deux berceaux d'un coup : bienvenue à {prenoms} ! Couches, garde, vêtements, tout est en double : vos dépenses de vie courante augmentent de {cout} par mois, allocations déduites.",
+    "_prenoms": "Prénoms courants des naissances des années 1980 en France (F = fille, G = garçon).",
+    "prenoms": {
+      "F": ["Aurélie", "Émilie", "Céline", "Julie", "Élodie", "Audrey", "Mélanie", "Sophie", "Laetitia", "Caroline"],
+      "G": ["Julien", "Nicolas", "Sébastien", "Guillaume", "Romain", "Jérémy", "Thomas", "Maxime", "Mickaël", "Anthony"]
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "_note": "Démo V2 (12 §3) : P1, janvier 1984 -> décembre 1988, Gérard, 26 ans, technicien, en couple non marié avec Sylvie. Le banquier présente les produits un par un (data/banque.json). Naissance scriptée au printemps 1985 (jumeaux 1 fois sur 4, tirés par la graine), héritage de tante Odette en 1988. Les autres événements de vie restent tirés par la graine de vie. Une nouvelle partie tire une graine au hasard ; graine_test sert aux tests et aux captures.",
+  "config": { "periode": "P1", "profil": "technicien", "debut": "1984-01", "fin": "1988-12", "banquier": true, "naissances_aleatoires": false },
+  "graine_test": 11,
+  "depart_F": { "cc": 11000, "livret": 0 },
+  "_depart_F": "Environ 1,5 mois de salaire sur le compte courant (12 §3.2) ; aucun livret : le Livret A est présenté au premier mois.",
+  "vitesse_depart": 1,
+  "naissance": { "d": "1985-04", "jumeaux_proba": 0.25 },
+  "_moments": "Moments forts : F8 ou triple toucher sur la date saute au mois qui précède le prochain.",
+  "moments": ["1984-08", "1985-04", "1986-11", "1987-10", "1987-11", "1988-04", "1988-06", "1988-12"],
+  "banquier": { "nom": "M. LEFRANC" },
+  "journal": { "nom": "LA GAZETTE", "prix": "4,50 F", "bandeau": "SPÉCIAL" },
+  "titre": {
+    "accroche": "Ma rue, de 1978 à aujourd'hui",
+    "sous_titre": "Démonstration · janvier 1984 → décembre 1988 · Gérard, 26 ans"
+  }
+}

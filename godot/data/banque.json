@@ -1,0 +1,219 @@
+{
+  "_note": "Catalogue de la banque de la démo V2 (11 §1.7, §2.4, §4.0, §5 ; 12 §2.2 ; 13 §1-3). Textes de M. Lefranc : il informe, il ne conseille jamais (A33), 60 mots au plus par présentation (12 R3). Variables entre accolades, calculées par scripts/logique/banquier.gd avec l'argent du joueur. Montants en francs. Cert. : A vérifié, B probable, C reconstitué.",
+
+  "appel_client": "Gérard",
+  "conjointe": "Sylvie",
+
+  "_ordre_carnet": "Les 9 lignes de la démo (12 §3.3) dans l'ordre de la grille 3 × 3 du carnet (13 §2.2).",
+  "ordre_carnet": ["livret", "pel", "emprunt", "av", "sicav", "elf", "loreal", "peugeot", "saintgobain"],
+
+  "_familles": "Couleur de famille (cartes du carnet, tuiles, répartition).",
+  "familles": {
+    "cc": "8c96a8", "livret": "4ea8de", "pel": "8f8cf2", "emprunt": "d9b44a", "av": "c48bd6", "sicav": "5cc8a0", "action": "ff8a65"
+  },
+
+  "_produits": "type : livret | pel | emprunt | av | sicav | action. notes (11 §2.4, de 1 à 3) : rendement (3 = élevé), risque (3 = élevé), dispo (3 = immédiate), fisc (3 = sans impôt). mots : un mot par critère (variables possibles). indice : besoin affiché sur la silhouette (13 §2.2), jamais une date.",
+  "produits": {
+    "cc": { "nom": "Compte courant", "court": "Compte", "type": "cc", "famille": "cc",
+      "notes": { "rendement": 0, "risque": 1, "dispo": 3, "fisc": 3 },
+      "mots": { "rendement": "0 %", "risque": "aucun", "dispo": "immédiate", "fisc": "rien à payer" },
+      "frais": "aucun (tenue de compte gratuite)" },
+    "livret": { "nom": "Livret A", "court": "Livret A", "type": "livret", "famille": "livret", "presentation": "D01",
+      "notes": { "rendement": 1, "risque": 1, "dispo": 3, "fisc": 3 },
+      "mots": { "rendement": "{taux_livret} %", "risque": "aucun", "dispo": "immédiate", "fisc": "sans impôt" },
+      "frais": "aucun", "indice": "",
+      "definition": "Un compte d'épargne garanti par l'État : la valeur ne baisse jamais. Intérêts versés au 31 décembre." },
+    "pel": { "nom": "Plan épargne logement", "court": "PEL", "type": "pel", "famille": "pel", "presentation": "D02",
+      "notes": { "rendement": 2, "risque": 1, "dispo": 1, "fisc": 3 },
+      "mots": { "rendement": "{taux_pel_detail}", "risque": "aucun", "dispo": "bloqué 4 ans", "fisc": "sans impôt" },
+      "frais": "aucun", "indice": "Pour un projet de logement",
+      "definition": "Un plan à taux fixe, prime de l'État comprise, avec un versement chaque mois. Un retrait ferme le plan." },
+    "emprunt": { "nom": "Emprunt d'État 10 ans", "court": "Emprunt d'État", "type": "emprunt", "famille": "emprunt", "presentation": "D03",
+      "notes": { "rendement": 2, "risque": 1, "dispo": 2, "fisc": 1 },
+      "notes_1984": { "rendement": 3 },
+      "mots": { "rendement": "{taux_emprunt} % fixe", "risque": "faible", "dispo": "si revendu", "fisc": "16 %" },
+      "frais": "aucun", "indice": "Prêter à l'État",
+      "definition": "Vous prêtez à l'État pour 10 ans : il verse chaque année un intérêt fixe (le coupon), puis rend la mise." },
+    "av": { "nom": "Assurance-vie (fonds en francs)", "court": "Assurance-vie", "type": "av", "famille": "av", "presentation": "D04",
+      "notes": { "rendement": 3, "risque": 1, "dispo": 2, "fisc": 2 },
+      "mots": { "rendement": "{taux_av} % l'an dernier", "risque": "faible", "dispo": "quelques jours", "fisc": "0 % après 6 ans" },
+      "frais": "4 % sur chaque versement", "indice": "Penser à sa famille",
+      "definition": "Une enveloppe garantie par l'assureur : intérêts acquis chaque 31 décembre ; transmise hors succession, sans droits." },
+    "sicav": { "nom": "SICAV actions France", "court": "SICAV", "type": "sicav", "famille": "sicav", "presentation": "D05",
+      "notes": { "rendement": 3, "risque": 2, "dispo": 2, "fisc": 1 },
+      "mots": { "rendement": "espéré*", "risque": "moyen", "dispo": "en 2 jours", "fisc": "16 %" },
+      "frais": "2 % à l'entrée + 1,5 % par an", "indice": "Un panier d'entreprises",
+      "definition": "Un fonds qui achète pour vous des dizaines d'actions françaises. Aucune garantie : la valeur monte et baisse." },
+    "elf": { "nom": "Elf Aquitaine", "court": "Elf", "type": "action", "famille": "action", "presentation": "D06",
+      "notes": { "rendement": 3, "risque": 3, "dispo": 2, "fisc": 1 },
+      "mots": { "rendement": "espéré*", "risque": "élevé", "dispo": "en 2 jours", "fisc": "16 %" },
+      "frais": "1,3 % par ordre, 50 F au moins", "indice": "Une entreprise à soi",
+      "definition": "Une action du pétrolier Elf : un morceau d'une seule entreprise, qui verse un dividende chaque année." },
+    "loreal": { "nom": "L'Oréal", "court": "L'Oréal", "type": "action", "famille": "action", "presentation": "D06",
+      "notes": { "rendement": 3, "risque": 3, "dispo": 2, "fisc": 1 },
+      "mots": { "rendement": "espéré*", "risque": "élevé", "dispo": "en 2 jours", "fisc": "16 %" },
+      "frais": "1,3 % par ordre, 50 F au moins", "indice": "Une entreprise à soi",
+      "definition": "Une action du groupe de cosmétiques : un morceau d'une seule entreprise, qui verse un dividende." },
+    "peugeot": { "nom": "Peugeot", "court": "Peugeot", "type": "action", "famille": "action", "presentation": "D06",
+      "notes": { "rendement": 3, "risque": 3, "dispo": 2, "fisc": 1 },
+      "mots": { "rendement": "espéré*", "risque": "élevé", "dispo": "en 2 jours", "fisc": "16 %" },
+      "frais": "1,3 % par ordre, 50 F au moins", "indice": "Une entreprise à soi",
+      "definition": "Une action du constructeur automobile : un morceau d'une seule entreprise, très sensible à la conjoncture." },
+    "saintgobain": { "nom": "Saint-Gobain", "court": "Saint-Gobain", "type": "action", "famille": "action", "presentation": "D07",
+      "notes": { "rendement": 3, "risque": 3, "dispo": 2, "fisc": 1 },
+      "mots": { "rendement": "espéré*", "risque": "élevé", "dispo": "en 2 jours", "fisc": "16 %" },
+      "frais": "aucun pendant l'offre, puis 1,3 % par ordre", "indice": "Une grande première",
+      "definition": "Le verrier privatisé en décembre 1986 : à l'offre, 310 F l'action, sans courtage ; ensuite, une action cotée comme les autres." }
+  },
+
+  "_parametres": "Paramètres datés (11 §1.7.1-1.7.2). pel : [date d'ouverture, taux prime comprise, taux hors prime]. av : taux net crédité au 31/12 par année (C : réseau = AFER − 0,5 pt). Emprunt d'État : taux long de l'année d'achat (series.json, A13).",
+  "parametres": {
+    "pel": {
+      "taux": [["1984-01", 8.25, 6.30], ["1984-08", 7.0, 5.30], ["1985-07", 6.0, 4.75], ["1986-06", 6.0, 4.62]],
+      "duree_mois": 48, "taux_cloture_anticipee": 2.75, "mensuel_min_F": 300, "mensuels_F": [300, 500, 1000], "plafond_F": 400000,
+      "_cert": "B (hors prime), C (prime comprise avant 1985)"
+    },
+    "av": {
+      "taux": { "1983": 15.5, "1984": 12.5, "1985": 11.5, "1986": 11.0, "1987": 9.75, "1988": 9.5, "1989": 9.0 },
+      "entree": 4.0,
+      "_rachat": "Prélèvement sur les gains d'un retrait selon l'âge du contrat (contrats 1983-1989, A42) : [mois d'ancienneté minimum, taux %].",
+      "rachat": [[0, 45], [24, 25], [48, 15], [72, 0]],
+      "_cert": "C (taux réseau), A/B (fiscalité)"
+    },
+    "emprunt": { "impot_coupons": 16, "_note": "Coupon annuel à la date anniversaire, imposé à 16 % (A6). Revente au prix d'achat plus les intérêts courus (A13, simplifié)." },
+    "succession": { "abattement_ligne_directe_F": 275000, "concubin_pct": 60, "neveu_pct": 55 }
+  },
+
+  "_presentations": "Une présentation = un appel de M. Lefranc (13 §1). declencheur et echeance : 12 §2.2 (mois comptés à partir de 0 = janvier 1984). compare : produits de référence, dans l'ordre (le premier détenu, sinon le premier déjà présenté). risque : true = phrase du coussin si le coussin fait moins de 3 mois (11 §2.5).",
+  "presentations": {
+    "D01": { "produits": ["livret"], "titre": "LIVRET A", "bouton": "OUVRIR UN LIVRET A", "compare": ["cc"],
+      "texte": "Bonjour {prenom}, Lefranc, de la banque ! Vos {cc} dorment à 0 % sur votre compte courant. Sur un Livret A, ils rapporteraient {taux_livret} % sans impôt, soit {interets_cc} par an, disponibles à tout moment. Seul bémol : les prix montent d'environ {inflation} % par an ; le Livret A protège votre argent plus qu'il ne l'enrichit.",
+      "ticket": ["{cc}", "+ {interets_cc} par an, sans impôt"],
+      "plus": "Le Livret A est garanti par l'État et plafonné à {plafond}. Les intérêts courent chaque quinzaine (le jeu simplifie : chaque mois) et sont versés au 31 décembre, sans impôt. Son taux est fixé par l'État, qui peut le baisser. Simplifié : en 1984, le Livret A s'ouvrait à la Caisse d'épargne ou à la Poste ; toutes les banques ne le proposent que depuis 2009." },
+    "D02": { "produits": ["pel"], "titre": "PLAN ÉPARGNE LOGEMENT", "bouton": "SOUSCRIRE UN PEL", "compare": ["livret"],
+      "texte": "Votre Livret A couvre maintenant trois mois de dépenses : votre roue de secours est prête. Pour un projet de logement, le PEL rapporte {taux_pel} % prime de l'État comprise, contre {taux_livret} % au Livret A, et ce taux est garanti jusqu'au bout. Avec {v} par mois pendant 4 ans : {fv_pel}. Mais un seul retrait ferme le plan.",
+      "texte_sans_coussin": "Si vous pensez acheter un logement un jour, regardez le PEL : il rapporte {taux_pel} % prime de l'État comprise, contre {taux_livret} % au Livret A, et ce taux est garanti jusqu'au bout. Avec {v} par mois pendant 4 ans : {fv_pel}. Mais un seul retrait ferme le plan.",
+      "ticket": ["{v} par mois", "pendant 4 ans → {fv_pel}"],
+      "plus": "Le taux est fixé le jour de l'ouverture, pour toute la vie du plan, même si les taux baissent ensuite. Le PEL donne droit à un prêt immobilier, et la prime de l'État est versée même sans prêt. Simplifié : la prime est comprise dans le taux ; un retrait avant 4 ans clôt le plan au taux réduit de 2,75 %, sans prime ; le versement mensuel est prélevé automatiquement." },
+    "D03": { "produits": ["emprunt"], "titre": "EMPRUNT D'ÉTAT", "bouton": "PRÊTER À L'ÉTAT", "compare": ["livret", "pel"],
+      "texte": "L'État emprunte en ce moment à {taux_emprunt} % sur 10 ans. Prêtez-lui {m} : il vous verse {coupon} chaque année jusqu'en {annee10}, {coupon_net} après impôt, puis vous rend votre mise. Par rapport au Livret A : un taux plus élevé et fixe, mais imposé, et un argent prêté pour longtemps.",
+      "ticket": ["{m} prêtés", "{coupon} par an jusqu'en {annee10} ({coupon_net} après impôt)"],
+      "plus": "C'est un prêt à l'État, garanti à l'échéance. Le coupon est versé chaque année, à la date anniversaire, et imposé à 16 %. Revendu avant l'échéance, le titre vaut le prix du jour : plus bas si les taux ont monté, plus haut s'ils ont baissé. Simplifié : dans le jeu, la revente se fait au prix d'achat, plus les intérêts courus." },
+    "D04": { "produits": ["av"], "titre": "ASSURANCE-VIE", "bouton": "SOUSCRIRE", "compare": ["livret", "pel", "emprunt"],
+      "texte": "Félicitations pour {enfants} ! Une question délicate : si vous disparaissiez, {conjointe}, qui n'est pas votre épouse, n'hériterait de rien de vos {e}. L'assurance-vie verse son capital à qui vous désignez, hors succession et sans droits : {conjointe} recevrait {e}. Le fonds en francs a rapporté {taux_av_an_dernier} % l'an dernier ; 4 % de frais à l'entrée.",
+      "ticket_succession": true,
+      "ticket": ["Si vous disparaissiez, {conjointe} recevrait :", "par succession", "0 F", "par assurance-vie", "{e}"],
+      "ligne_enfant": "Pour {enfants} : pas d'écart sous 275 000 F.",
+      "ligne_jumeaux": "Pour vos jumeaux : pas d'écart sous 275 000 F chacun.",
+      "plus": "Le capital est garanti par l'assureur et les intérêts crédités chaque 31 décembre sont acquis. C'est un placement fait pour durer : un retrait n'est imposé que sur ses gains, à 45 % avant 2 ans, 25 % de 2 à 4 ans, 15 % de 4 à 6 ans, puis 0 %. Pour un enfant, l'écart vient au-delà de 275 000 F : 675 000 F transmis par succession, c'est 68 750 F de droits ; 0 F si 400 000 F passent par l'assurance-vie." },
+    "D05": { "produits": ["sicav"], "titre": "SICAV ACTIONS", "bouton": "OUVRIR", "compare": ["emprunt", "pel", "livret"], "risque": true,
+      "texte": "Votre {produit_fixe} vous rapporte {taux_fixe} %, garanti. La SICAV actions, elle, ne garantit rien : avec {m}, vous possédez un morceau de dizaines d'entreprises françaises. Une année peut faire +50 % comme −30 % (1974). Comptez {frais_m} de droits d'entrée et 1,5 % de frais par an, pour de l'argent qui peut attendre 8 à 10 ans.",
+      "ticket": ["{m}", "{frais_m} de droits d'entrée, puis 1,5 % par an"],
+      "plus": "Personne, moi compris, ne sait ce que fera la Bourse l'an prochain. Un mot sur les frais : sur 10 000 F et 20 ans, avec 7 % de hausse par an (une hypothèse, pas une promesse), 0,5 % de frais par an laissent 35 236 F ; 2,5 % n'en laissent que 24 117 F. Un frais annuel se prend chaque année sur tout le capital, gains compris." },
+    "D06": { "produits": ["elf", "loreal", "peugeot"], "titre": "ACTIONS", "bouton": "ACHETER", "compare": ["sicav"], "risque": true,
+      "texte": "Après la SICAV, les actions en direct : Elf, L'Oréal, Peugeot. Vous choisissez votre entreprise, sans frais de gestion annuels, et touchez ses dividendes. Mais une entreprise peut chuter seule, alors que la SICAV en mélange des dizaines. Chaque ordre coûte 1,3 %, au moins 50 F : sur {m}, {courtage_m}.",
+      "ticket": ["Un ordre de {m}", "{courtage_m} de courtage ({pct_courtage})"],
+      "plus": "Chaque ordre passe par l'agent de change. Avec le minimum de 50 F, un petit ordre coûte cher : pour 1 000 F, 50 F à l'achat et 50 F à la revente, l'action doit monter d'environ 10,5 % avant de vous rapporter un franc. Un ordre de 10 000 F ne coûte que 130 F. Mieux vaut des ordres moins nombreux et plus gros." },
+    "D07": { "produits": ["saintgobain"], "titre": "SAINT-GOBAIN", "bouton": "SOUSCRIRE", "compare": ["elf", "loreal", "peugeot", "sicav"], "historique": "1986-11", "risque": true,
+      "texte": "Grande première : l'État vend Saint-Gobain au public, 310 F l'action, prix fixe, au guichet jusqu'au début décembre. Par rapport aux achats en Bourse : pas de courtage, et le prix est connu d'avance. Mais c'est une action comme les autres : son cours pourra monter ou baisser. Avec {m}, vous pourriez en prendre {nb_sg}.",
+      "ticket": ["{m}", "{nb_sg} actions à 310 F, sans courtage"],
+      "plus": "On fait la queue au guichet jusque sur le trottoir ! C'est une privatisation : l'État vend au public une entreprise qu'il possédait. Ensuite, l'action est cotée et son prix bouge comme les autres. Simplifié : l'action gratuite pour 10 conservées 18 mois n'est pas dans la démo." }
+  },
+
+  "_garde_fou_coussin": "Phrase ajoutée quand une présentation de produit risqué arrive alors que le coussin fait moins de 3 mois de dépenses (11 §2.5).",
+  "phrase_coussin": "Avant cela, votre roue de secours n'est pas encore complète : ce placement ne concerne que l'argent au-delà.",
+
+  "_declencheurs": "12 §2.2. Mois comptés depuis le premier mois joué (0 = janvier 1984). echeance : date limite (présentée même si le déclencheur n'est pas atteint).",
+  "declencheurs": {
+    "D02": { "coussin_livret_mois": 3, "echeance": 6, "_echeance": "Juillet 1984 (« au plus tard mois 8 » de 12 §2.2) : en août, le PEL nouvellement ouvert tombe à 7 % quand le Livret A est encore à 7,5 % (11 §1.7.1)." },
+    "D03": { "produits_detenus": 2, "cc_mois_salaire": 2, "echeance": 13 },
+    "D04": { "apres_naissance_mois": 1, "echeance_apres_naissance": 3 },
+    "D05": { "taux_fixe_depuis_mois": 6, "echeance": 25 },
+    "D06": { "sicav_depuis_mois": 3, "echeance": 31 }
+  },
+
+  "_cadence": "13 §5.3 : au plus une interruption par mois ; au moins ecart_min mois entre deux interruptions (sauf marché, dates historiques et événements scriptés) ; au-delà de plafond_interruptions, les événements de vie aléatoires sans décision passent en notification.",
+  "cadence": { "ecart_min": 2, "plafond_interruptions": 13 },
+
+  "_heritage": "Tante Odette, version « un seul pot » (11 §1.7.4, décision du coordinateur après le retour du joueur du 27/10/2026) : l'assurance-vie verse 60 000 F en avril 1988 (appel D08, pause), au joueur comme aux témoins ; plus aucun versement de succession. La carte compare, sur la même somme, ce qu'il serait resté par succession : abattement de 10 000 F pour un neveu (art. 788 CGI, A), puis 55 % (A) : 27 500 F de droits, 32 500 F nets. Frais de notaire ignorés (C).",
+  "heritage": {
+    "av": { "d": "1988-04", "montant_F": 60000 },
+    "comparaison_succession": { "abattement_F": 10000, "droits_pct": 55, "_cert": "A (règles de 1988), C (montant du scénario)" },
+    "D08": { "titre": "TANTE ODETTE",
+      "texte": "{prenom}, toutes mes condoléances pour votre tante Odette. Elle vous avait désigné sur son assurance-vie : {av_montant}, versés ce mois-ci, sans un centime de droits. Si cette somme était passée par sa succession, l'État aurait pris {droits}, car un neveu est peu favorisé : il vous serait resté {succ_net}, six mois plus tard.",
+      "_ticket": "Colonne de droite hypothétique (retour du coordinateur : ne pas laisser croire à un second versement) : titre conditionnel, montant atténué.",
+      "ticket": ["Reçu par assurance-vie", "{av_montant}", "ce mois-ci, sans droits", "Si ça avait été par succession", "{succ_net} nets", "vous auriez attendu 6 mois et payé {droits} de droits"],
+      "resume": "Reçu par assurance-vie : {av_montant} ; par succession, il ne vous serait resté que {succ_net}" }
+  },
+
+  "_versements": "Versements automatiques mensuels (11 §8) : règles VP1-VP11, textes VP-A à VP-C. Exécutés au début du mois, après le salaire et le versement du PEL, dans l'ordre de création ; tout ou rien, seulement si le compte reste positif ; 3 refus de suite = plan suspendu ; Livret A : versement réduit au plafond, suspendu à 0. Frais d'entrée prélevés sur chaque versement. Le PEL garde son versement obligatoire (300 F au moins, 3 600 F par an, B/C).",
+  "versements": {
+    "eligibles": {
+      "livret": { "min_F": 100, "frais_pct": 0 },
+      "av": { "min_F": 300, "frais_pct": 4 },
+      "sicav": { "min_F": 300, "frais_pct": 2 }
+    },
+    "montants_F": [100, 200, 300, 500, 1000],
+    "pel_montants_F": [300, 500, 1000],
+    "pel_min_annuel_F": 3600,
+    "refus_max": 3,
+    "vpa_apres_mois": 3,
+    "non_eligibles": {
+      "pel": "Le versement mensuel du PEL est obligatoire : au moins 300 F par mois, 3 600 F par an. Vous pouvez changer son montant (effet le mois suivant).",
+      "emprunt": "Pas de versement automatique sur l'emprunt d'État : l'État n'emprunte qu'à dates fixes, et chaque achat ouvrirait une nouvelle ligne de 10 ans.",
+      "action": "Pas de versement automatique en actions : chaque ordre coûte au moins 50 F. Pour investir un peu chaque mois en Bourse, on passait par une SICAV."
+    },
+    "simplifie_sicav": "Simplifié : en 1984-1988, une SICAV s'achetait souvent par parts entières ; le jeu achète des fractions de part.",
+    "VPA": { "titre": "Épargner sans y penser",
+      "texte": "{prenom}, la banque peut virer automatiquement une somme le 1er de chaque mois, juste après votre paye. Avec {v} par mois, vous aurez {v12} de côté dans un an, sans y penser : l'épargne passe avant les dépenses, pas après. Montant et placement à votre choix ; vous arrêtez quand vous voulez." },
+    "VPB": "Avec un versement fixe chaque mois, vous achetez plus de parts quand la SICAV baisse, moins quand elle monte. Exemple : 500 F par mois à 100, 80 puis 125 F la part : 15,25 parts, payées 98,36 F en moyenne, contre 101,67 F de prix moyen. Aucune garantie de gain, mais on évite de tout acheter au plus haut.",
+    "VPC": "Rappel : {e_pct} % de frais d'entrée sur chaque versement, soit {frais_v} sur vos {v} chaque mois, {frais_an} par an.",
+    "programme": { "titre": "Versement automatique programmé", "texte": "{v} par mois vers {produit}, le 1er du mois, juste après la paye, à partir de {debut}." },
+    "modifie": { "titre": "Versement automatique modifié", "texte": "{v} par mois vers {produit}, à partir de {debut}." },
+    "arrete": { "titre": "Versement automatique arrêté", "texte": "Plus de versement automatique vers {produit}. L'argent reste sur votre compte courant." },
+    "reactive": { "titre": "Versement automatique réactivé", "texte": "{v} par mois vers {produit}, de nouveau, à partir de {debut}." },
+    "refus": { "titre": "Versement non effectué", "texte": "Versement de {v} vers {produit} non effectué : compte insuffisant." },
+    "suspendu_refus": { "titre": "Versement automatique suspendu", "texte": "Trois mois de suite, votre compte ne suffisait pas pour verser {v} vers {produit} : le versement est suspendu. Vous pouvez le réactiver depuis sa fiche, à la banque." },
+    "suspendu_plafond": { "titre": "Livret A plein", "texte": "Votre Livret A est plein ({plafond}) : le versement est suspendu, l'argent reste sur votre compte courant." },
+    "plafond_releve": { "titre": "Livret A : versement à réactiver", "texte": "Le plafond du Livret A passe à {plafond} : vous pouvez réactiver votre versement automatique depuis sa fiche, à la banque." },
+    "pel_regularise": { "titre": "PEL : versement annuel complété", "texte": "Votre PEL demande 3 600 F de versements par an. Il manquait {manque} : je les ai prélevés sur votre compte courant pour garder votre plan." },
+    "pel_clos": { "titre": "PEL clos", "texte": "Votre PEL demande 3 600 F de versements par an ; il manquait {manque} et le compte ne suffisait pas : le plan est clos. Vous récupérez {recu}." },
+    "releve": " Versements automatiques de l'année : {total} ({detail})."
+  },
+
+  "_messages": "Notifications de la banque sans pause (13 §5.1). persistant : reste à l'écran jusqu'au toucher et se range dans le carnet (Messages).",
+  "messages": {
+    "baisses_livret": [
+      { "d": "1984-09", "ancien": 7.5, "nouveau": 6.5, "depuis": "16 août" },
+      { "d": "1985-07", "ancien": 6.5, "nouveau": 6.0, "depuis": "1er juillet" },
+      { "d": "1986-06", "ancien": 6.0, "nouveau": 4.5, "depuis": "31 mai" }
+    ],
+    "baisse_titre": "Le Livret A baisse",
+    "baisse_texte": "Depuis le {depuis}, le Livret A passe de {ancien} % à {nouveau} %, quand les prix montent d'environ {inflation} % par an. Sur {base}, c'est {perte} d'intérêts en moins par an.",
+    "baisse_fixe": " Votre {produit_fixe}, lui, garde son taux de {taux_fixe} % : c'est tout l'intérêt d'un taux fixe.",
+    "plafond": { "d": "1987-07", "titre": "Plafond du Livret A relevé",
+      "texte": "Depuis le 30 juin, le plafond du Livret A passe de 72 000 à 80 000 F. On peut y loger 8 000 F de plus, toujours à 4,5 % et sans impôt : 360 F d'intérêts de plus par an." },
+    "D04bis": { "titre": "L'assurance-vie, pour les grosses sommes",
+      "texte": "Pour un enfant, l'assurance-vie compte surtout pour les grosses sommes : 675 000 F transmis par succession, c'est 68 750 F de droits après l'abattement de 275 000 F ; si 400 000 F passent par une assurance-vie qui le désigne, 0 F. Mais c'est un placement fait pour durer : avant 6 ans, les gains retirés sont imposés de 45 % à 15 %." },
+    "L17": { "titre": "Un mot après le krach",
+      "texte": "{prenom}, vous avez vu les journaux. Je ne sais pas plus que vous ce que fera la Bourse demain, et je me méfie de ceux qui prétendent le savoir. Votre coussin sur le Livret A, lui, n'a pas bougé d'un centime ; vos actions et SICAV ont perdu {x} %. Vendre aujourd'hui, c'est encaisser cette baisse ; garder, c'est accepter de ne pas savoir quand elle sera rattrapée : c'est à vous de décider." },
+    "releve_titre": "Relevé {annee}",
+    "releve_interets": "Votre épargne vous a rapporté {interets} d'intérêts cette année.",
+    "releve_sans_interets": "Aucun intérêt cette année : votre argent est resté sur le compte courant.",
+    "releve_frais": " Frais de l'année : {frais_annee}. Depuis le début : {frais_total} payés + {manque} de gains qui n'ont jamais existé.",
+    "releve_sans_frais": " Aucun frais payé cette année."
+  },
+
+  "_frais_pedagogie": "Encart F01 (13 §3.3) : 3 piles sur 20 ans, V = C × (1 − e) × (1 + r − f)^20, r = 7 % (une hypothèse, pas une promesse). Pile 3 « plus chargé » : SICAV « maison » de 11 §5.3 C (4,5 % + 2,5 %/an) ; pour l'assurance-vie et les actions, 11 §5 ne donne pas de produit plus chargé : frais du produit + 1,5 point par an (arbitrage du coordinateur). Courtage des actions payé à l'achat et à la revente.",
+  "frais_pedagogie": {
+    "r": 0.07, "annees": 20,
+    "sicav": { "e": 0.02, "f": 0.015, "e3": 0.045, "f3": 0.025, "nom3": "SICAV PLUS CHARGÉE", "detail3": "4,5 % + 2,5 %/an" },
+    "av": { "e": 0.04, "f": 0.0, "e3": 0.04, "f3": 0.015, "nom3": "CONTRAT PLUS CHARGÉ", "detail3": "4 % + 1,5 %/an" },
+    "action": { "f": 0.0, "f3": 0.015, "nom3": "PLUS CHARGÉ", "detail3": "courtage + 1,5 %/an" },
+    "seuil_alerte": 0.02,
+    "exemple_F": 10000
+  },
+
+  "_references": "Repères hors démo (silhouettes possibles plus tard, jamais achetables) : SICAV monétaire nette corrigée par le boursier (docs/connaissances/boursier.md §2.7, A/B).",
+  "references": { "sicav_monetaire_nette": { "1984": 11.0, "1985": 9.5, "1986": 7.0, "1987": 7.0, "1988": 7.5, "1989": 9.0 } }
+}

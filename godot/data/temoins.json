@@ -1,0 +1,21 @@
+{
+  "_note": "Les témoins du bilan (03 §7.8) et leurs répliques selon leur rang (04 §1 Q4). devant : le témoin est devant le joueur ; derriere : le joueur est premier et ce témoin est deuxième.",
+  "matelas": {
+    "nom": "Tonton Matelas", "initiale": "M",
+    "regle": "Garde tout sur son compte courant.",
+    "devant": "Au moins, mes billets, je peux les toucher !",
+    "derriere": "Bah… sous le matelas, au moins, je dors tranquille."
+  },
+  "livret": {
+    "nom": "Tata Livret", "initiale": "L",
+    "regle": "Met tout sur le Livret A, dans la limite du plafond.",
+    "devant": "Le Livret A, mon petit, ça ne fait jamais de mauvaise surprise.",
+    "derriere": "Tu as pris des risques… et ça a payé. Bravo !"
+  },
+  "indice": {
+    "nom": "Cousin Indice", "initiale": "C",
+    "regle": "Garde 3 mois de dépenses sur le livret, puis place tout le reste chaque mois dans un fonds indiciel, sans jamais paniquer.",
+    "devant": "J'ai tout mis dans l'indice chaque mois, sans jamais regarder les cours. Ennuyeux, mais efficace !",
+    "derriere": "Chapeau ! Tu as fait mieux que l'indice. Peu de gens y arrivent."
+  }
+}

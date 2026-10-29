@@ -1,0 +1,37 @@
+{
+  "_note": "Salaires, dépenses et profils (01 §7.3, 03 §5). Montants mensuels nets dans la devise de la ligne ; interpolation géométrique entre les lignes ; indexation chaque janvier sur smn. Profil « technicien » : Gérard de la démo V2 (12 §3.2), entre « jeune » et « cadre » ; 11 §1.7.4 : 8 000 à 9 000 F nets en 1988 (calé : 6 790 F en janv. 1984, 8 490 F en 1988).",
+  "table": [
+    { "annee": 1975, "devise": "F", "smn": 2500,  "jeune": 1300, "technicien": 2900,  "cadre": 5700,  "heritier": 2250, "capital": 45000 },
+    { "annee": 1980, "devise": "F", "smn": 4300,  "jeune": 2200, "technicien": 4800,  "cadre": 9500,  "heritier": 3900, "capital": 80000 },
+    { "annee": 1985, "devise": "F", "smn": 7200,  "jeune": 4000, "technicien": 7400,  "cadre": 15000, "heritier": 6500, "capital": 130000 },
+    { "annee": 1990, "devise": "F", "smn": 8800,  "jeune": 4800, "technicien": 9300,  "cadre": 17000, "heritier": 8000, "capital": 160000 },
+    { "annee": 1995, "devise": "F", "smn": 10000, "jeune": 5500, "technicien": 10500, "cadre": 19000, "heritier": 9000, "capital": 180000 },
+    { "annee": 2000, "devise": "€", "smn": 1700,  "jeune": 950,  "technicien": 1750,  "cadre": 3200,  "heritier": 1550, "capital": 30000 },
+    { "annee": 2005, "devise": "€", "smn": 1900,  "jeune": 1050, "technicien": 1900,  "cadre": 3500,  "heritier": 1700, "capital": 34000 },
+    { "annee": 2010, "devise": "€", "smn": 2080,  "jeune": 1150, "technicien": 2050,  "cadre": 3800,  "heritier": 1900, "capital": 37000 },
+    { "annee": 2015, "devise": "€", "smn": 2250,  "jeune": 1250, "technicien": 2200,  "cadre": 4000,  "heritier": 2000, "capital": 40000 },
+    { "annee": 2020, "devise": "€", "smn": 2500,  "jeune": 1350, "technicien": 2350,  "cadre": 4300,  "heritier": 2250, "capital": 45000 },
+    { "annee": 2025, "devise": "€", "smn": 2750,  "jeune": 1550, "technicien": 2600,  "cadre": 4700,  "heritier": 2500, "capital": 50000 }
+  ],
+  "_depenses": "Par décennie : part du loyer (% du salaire) et épargne possible (% du salaire) par profil. Technicien (démo V2) : Gérard vit en couple avec Sylvie, qui travaille aussi ; le ménage peut mettre de côté 24 % du salaire de Gérard, soit 15 % après une naissance (+ 9 % de dépenses par enfant) et 6 % avec des jumeaux (12 §7.2 R14 : au moins 10 % avec un enfant, 5 % avec des jumeaux).",
+  "depenses": [
+    { "de": 1970, "loyer": 14, "epargne": { "jeune": 10, "technicien": 24, "cadre": 18, "heritier": 12 } },
+    { "de": 1980, "loyer": 17, "epargne": { "jeune": 8,  "technicien": 24, "cadre": 15, "heritier": 12 } },
+    { "de": 1990, "loyer": 20, "epargne": { "jeune": 8,  "technicien": 22, "cadre": 15, "heritier": 12 } },
+    { "de": 2000, "loyer": 23, "epargne": { "jeune": 8,  "technicien": 20, "cadre": 15, "heritier": 12 } },
+    { "de": 2010, "loyer": 26, "epargne": { "jeune": 6,  "technicien": 18, "cadre": 15, "heritier": 12 } }
+  ],
+  "_ajustLoyer": "Points de loyer ajoutés selon le profil",
+  "ajustLoyer": { "jeune": 3, "technicien": 3, "cadre": 5, "heritier": 0 },
+  "profils": {
+    "jeune": { "libelle": "Le jeune salarié", "court": "jeune salarié", "age": 22, "feminin": false,
+      "prenoms": { "P1": "Gérard", "P2": "Sébastien", "P3": "Kevin" }, "accroche": "« Tout à construire. »" },
+    "technicien": { "libelle": "Le technicien", "court": "technicien", "age": 20, "feminin": false,
+      "_age": "Âge au début de la période (janv. 1978) : 26 ans en janvier 1984 (démo V2).",
+      "prenoms": { "P1": "Gérard", "P2": "Sébastien", "P3": "Kevin" }, "accroche": "« Un CDI, Sylvie, et tout à construire. »" },
+    "cadre": { "libelle": "La cadre pressée", "court": "cadre pressée", "age": 30, "feminin": true,
+      "prenoms": { "P1": "Martine", "P2": "Nathalie", "P3": "Julie" }, "accroche": "« Gagne bien, dépense autant. »" },
+    "heritier": { "libelle": "L'héritier", "court": "héritier", "age": 25, "feminin": false,
+      "prenoms": { "P1": "Bernard", "P2": "Christophe", "P3": "Thomas" }, "accroche": "« Un coup de pouce de mamie. »" }
+  }
+}

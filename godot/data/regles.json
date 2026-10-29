@@ -1,0 +1,36 @@
+{
+  "_note": "Règles chiffrées (03 §7). Montants en euros sauf mention. Taux en %.",
+  "_impots": "Fiscalité simplifiée « taux unique » (01 §7.4, arbitrage A6). cto = compte-titres (dividendes, coupons, plus-values) ; pea5 = PEA de plus de 5 ans (null : PEA inexistant).",
+  "impots": [
+    { "de": 1978, "cto": 16, "pea5": null },
+    { "de": 1992, "cto": 16, "pea5": 0 },
+    { "de": 1998, "cto": 26, "pea5": 11 },
+    { "de": 2008, "cto": 30, "pea5": 13 },
+    { "de": 2013, "cto": 35, "pea5": 15.5 },
+    { "de": 2018, "cto": 30, "pea5": 17.2 }
+  ],
+  "_frais": "Courtage des actions et ETF = max(minimum, taux × montant) (03 §7.5). Minimum en euros (50 F = 7,62245 €).",
+  "frais": [
+    { "de": "1978-01", "taux": 1.3, "min": 7.62245 },
+    { "de": "2000-01", "taux": 0.8, "min": 10 },
+    { "de": "2008-01", "taux": 0.5, "min": 5 },
+    { "de": "2019-01", "taux": 0.1, "min": 1 }
+  ],
+  "_decouvert": "Découvert toléré en mois de salaire ; faillite après N mois consécutifs au-delà (03 §7.6). Agios : taux annuel.",
+  "decouvertTolereM": 1,
+  "failliteMois": 3,
+  "agios": [
+    { "de": 1970, "taux": 20 },
+    { "de": 1991, "taux": 15 },
+    { "de": 2009, "taux": 16 }
+  ],
+  "_sicav": "SICAV (03 §7.3) : frais d'entrée et frais de gestion annuels (déjà déduits de la valeur liquidative), vente sans frais.",
+  "sicav": { "entree": 2, "gestion": 1.5 },
+  "_coussinMois": "Coussin de Cousin Indice, en mois de dépenses",
+  "coussinMois": 3,
+  "_seuilCourrierM": "Un événement de vie devient un courrier (modale) si son montant dépasse ce nombre de mois de salaire, ou si le compte ne suffit pas à payer un coût (03 §6.2).",
+  "seuilCourrierM": 1,
+  "_partSuggeree": "Part du compte courant proposée dans le formulaire d'achat après « Renforcer » ou « Profiter des soldes » (03 §6.1).",
+  "partSuggeree": 0.25,
+  "_vitesses": "La durée d'un mois à chaque vitesse est réglée dans rythme.json (03 §3.2)."
+}
