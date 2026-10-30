@@ -1,0 +1,336 @@
+# Cadres 9-patch de l'interface (docs/16 §3.3), en texels ; affichés ×3 (StyleBoxTexture, filtre Nearest).
+# Marges 9-patch indiquées dans le commentaire de chaque image (gauche, haut, droite, bas).
+# Lumière en haut à gauche ; ombre portée encre à 60 % décalée de 2 texels vers le bas (alpha déclaré).
+
+# --- Panneau (barre haute, frise, aide) : marges 6 ---------------------------------------------
+: e encre
+: n nuit
+: b ardoise_sombre
+: o encre 60
+image panneau 24x24
+..eeeeeeeeeeeeeeeeeeee..
+.ebbbbbbbbbbbbbbbbbbbbe.
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+ebnnnnnnnnnnnnnnnnnnnnne
+oennnnnnnnnnnnnnnnnnnneo
+ooeeeeeeeeeeeeeeeeeeeeoo
+.oooooooooooooooooooooo.
+..oooooooooooooooooooo..
+
+# --- Carte papier (carte du banquier) : marges 8 ; coin supérieur droit corné, liseré or (banque) ---
+: e encre
+: g or
+: c creme
+: p pierre_claire
+: o encre 60
+image carte_papier 32x32
+.eeeeeeeeeeeeeeeeeeeeeeeeeee....
+eggccccccccccccccccccccccccee...
+eggccccccccccccccccccccccccepe..
+eggcccccccccccccccccccccccceppe.
+eggcccccccccccccccccccccccceeeee
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+eggcccccccccccccccccccccccccccce
+oeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeo
+oooooooooooooooooooooooooooooooo
+.oooooooooooooooooooooooooooooo.
+
+# --- Bouton principal (ambre) et sa version enfoncée : marges 5, 5, 5, 7 ---------------------------
+: e encre
+: l lumiere
+: a ambre
+: r orange
+: o encre 60
+image bouton_principal 16x20
+.eeeeeeeeeeeeee.
+elllllllllllllle
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+errrrrrrrrrrrrre
+errrrrrrrrrrrrre
+.eeeeeeeeeeeeee.
+.oooooooooooooo.
+image bouton_principal_enfonce 16x20
+................
+................
+.eeeeeeeeeeeeee.
+errrrrrrrrrrrrre
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+.eeeeeeeeeeeeee.
+................
+
+# --- Bouton secondaire (ardoise sombre) : marges 5, 5, 5, 7 ---------------------------------------
+: e encre
+: l ardoise
+: a ardoise_sombre
+: r nuit
+: o encre 60
+image bouton_secondaire 16x20
+.eeeeeeeeeeeeee.
+elllllllllllllle
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+errrrrrrrrrrrrre
+errrrrrrrrrrrrre
+.eeeeeeeeeeeeee.
+.oooooooooooooo.
+image bouton_secondaire_enfonce 16x20
+................
+................
+.eeeeeeeeeeeeee.
+errrrrrrrrrrrrre
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+.eeeeeeeeeeeeee.
+................
+
+# --- Bouton sur papier (croix de la carte) : crème, contour encre : marges 5, 5, 5, 7 -------------
+: e encre
+: l blanc_chaud
+: a creme
+: r pierre_claire
+: o encre 60
+image bouton_papier 16x20
+.eeeeeeeeeeeeee.
+elllllllllllllle
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+elaaaaaaaaaaaaae
+errrrrrrrrrrrrre
+errrrrrrrrrrrrre
+.eeeeeeeeeeeeee.
+.oooooooooooooo.
+image bouton_papier_enfonce 16x20
+................
+................
+.eeeeeeeeeeeeee.
+errrrrrrrrrrrrre
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+eraaaaaaaaaaaaae
+.eeeeeeeeeeeeee.
+................
+
+# --- Pastille « vs tout au Livret A » : pilule en escalier, contour gain, fond gain à 20 % : marges 4 ---
+: g gain
+: f gain 20
+image pastille 12x12
+..gggggggg..
+.gffffffffg.
+gffffffffffg
+gffffffffffg
+gffffffffffg
+gffffffffffg
+gffffffffffg
+gffffffffffg
+gffffffffffg
+gffffffffffg
+.gffffffffg.
+..gggggggg..
+
+# --- Plaquette de la date à volets (fond encre, arête claire en haut à gauche) : marges 4 -----------
+: h ardoise_sombre
+: k encre
+image plaquette 12x12
+.hhhhhhhhhh.
+hkkkkkkkkkkk
+hkkkkkkkkkkk
+hkkkkkkkkkkk
+hkkkkkkkkkkk
+hkkkkkkkkkkk
+hkkkkkkkkkkk
+hkkkkkkkkkkk
+hkkkkkkkkkkk
+hkkkkkkkkkkk
+hkkkkkkkkkkk
+.kkkkkkkkkk.
+
+# --- Étiquette de bâtiment posée sur la chaussée (« MA MAISON ») : marges 4 --------------------------
+: e encre
+: z gris_pierre
+: n nuit
+image etiquette 12x12
+..eeeeeeee..
+.ezzzzzzzze.
+eznnnnnnnnze
+eznnnnnnnnze
+eznnnnnnnnze
+eznnnnnnnnze
+eznnnnnnnnze
+eznnnnnnnnze
+eznnnnnnnnze
+eznnnnnnnnze
+.ezzzzzzzze.
+..eeeeeeee..
+
+# --- Cadre du portrait (crème vide si le portrait manque) : marges 2 --------------------------------
+: e encre
+: p pierre_claire
+: c creme
+image cadre_portrait 8x8
+eeeeeeee
+eppppppe
+epccccpe
+epccccpe
+epccccpe
+epccccpe
+eppppppe
+eeeeeeee
+
+# --- Tampon (double filet bleu ardoise, centre transparent) : marges 4 ------------------------------
+: b bleu_ardoise
+image tampon 16x16
+.bbbbbbbbbbbbbb.
+b..............b
+b.bbbbbbbbbbbb.b
+b.b..........b.b
+b.b..........b.b
+b.b..........b.b
+b.b..........b.b
+b.b..........b.b
+b.b..........b.b
+b.b..........b.b
+b.b..........b.b
+b.b..........b.b
+b.b..........b.b
+b.bbbbbbbbbbbb.b
+b..............b
+.bbbbbbbbbbbbbb.
+
+# --- Ticket à bord dentelé (haut et bas, motif de 4 texels répété) : marges 6 ----------------------
+: s gris_pierre
+: w blanc_chaud
+image ticket 24x24
+.ss..ss..ss..ss..ss..ss.
+swwsswwsswwsswwsswwsswws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwwwwwwwwwwwwwwwwwwwwws
+swwsswwsswwsswwsswwsswws
+.ss..ss..ss..ss..ss..ss.
