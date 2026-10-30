@@ -218,6 +218,7 @@ static func executer(e: EtatPartie, notifs: Array) -> void:
 				var d := e.acheter(w, "sicav", v)
 				frais = float(d.get("frais", 0.0))
 		noter(e, pid, v, frais)
+		e.noter_flux("frais_versement", pid, frais)
 		e._noter_utilise(pid)
 	e._enregistrer_hist()
 

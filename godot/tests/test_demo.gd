@@ -580,7 +580,8 @@ func _tests_sauvegarde() -> void:
 	_ecrire_brut(chemin, 1, {"jeu": "JeuClaude", "version": 1, "resume": {"ab": 0}, "partie": {}, "etat": ancien})
 	verifier("Sauvegarde au format 1 (sans historique) : ignorée proprement, nouvelle partie", Sauvegarde.lire(chemin).is_empty() and Sauvegarde.charger(Sauvegarde.lire(chemin)) == null)
 	_ecrire_brut(chemin, Sauvegarde.VERSION, {"jeu": "JeuClaude", "version": Sauvegarde.VERSION, "resume": {}, "partie": {}, "etat": {"version_etat": 1}})
-	verifier("Sauvegarde incomplète : rechargement refusé proprement", not Sauvegarde.lire(chemin).is_empty() and Sauvegarde.charger(Sauvegarde.lire(chemin)) == null)
+	verifier("Sauvegarde d'un état de version inconnue : ignorée proprement (format 3 : un champ absent prend sa valeur par défaut, voir test_sauvegarde)",
+		Sauvegarde.lire(chemin).is_empty() and Sauvegarde.charger(Sauvegarde.lire(chemin)) == null)
 	Sauvegarde.effacer(chemin)
 	verifier("Effacer la sauvegarde", not FileAccess.file_exists(chemin))
 

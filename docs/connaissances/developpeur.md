@@ -1,7 +1,7 @@
 # Base de connaissances du développeur
 
 > À lire au début de chaque mission (après `CLAUDE.md`), à mettre à jour à la fin. Concise : remplacer ce qui est obsolète.
-> Dernière mise à jour : 2026-10-29 (lot 01, dev-logique : worktrees, tests.ps1, StrategieTest, test_interface).
+> Dernière mise à jour : 2026-10-30 (lot 02-L, dev-logique : flux du mois, saut, Cadence, format 3, tests.ps1, export 0.3).
 
 ---
 
@@ -13,8 +13,9 @@
 | **Démo V2** (`godot/`) | **Faite** : janv. 1984 → déc. 1988, Gérard 26 ans technicien, Sylvie (non mariés). M. Lefranc présente les 9 lignes (D01 → D07), carte à 2 colonnes, carnet 3 × 3, fiches, ordres, frais (F01 3 piles, relevé, F03, compteur cuivre), naissance scriptée 04/1985 (jumeaux 1/4), héritage Odette **un seul pot** (D08 04/1988), baisses du Livret A, plafond, L17, D04 bis, fin de démo. |
 | **Historique des pop-ups** | **Fait** (retour joueur) : `EtatPartie.historique`, fenêtre `Modales.historique`, relecture en lecture seule. |
 | **Versements automatiques** | **Faits** (11 §8, VP1-VP11) : `scripts/logique/versements.gd`, réglage « CHAQUE MOIS » dans la fiche. VP-D (option, nov. 1987) non fait. |
-| Sauvegarde | Automatique, `user://partie_en_cours.sav`, **format 2** (Sauvegarde.VERSION = 2, VERSION_ETAT = 2) : les sauvegardes 1 sont ignorées (nouvelle partie). |
-| Tests | `godot/outils/tests.ps1` (lot 01) : import + **66** (test_logique) + **107** (test_demo) + **21** (test_interface) + **8** (test_partie) = 202 vérifications, ≈ 24 s, toute erreur de script = échec. |
+| Sauvegarde | Automatique, `user://partie_en_cours.sav`, **format 3** (lot 02 : VERSION = VERSION_ETAT = 3) : les sauvegardes 2 sont ignorées. **Migration douce** ensuite : champ absent = valeur d'une partie neuve (`EtatPartie.defauts_etat`), `banque`/`stats`/`hist` complétés clé par clé, `_reparer()`, résumé recalculé. Un nouveau champ : l'ajouter à `CHAMPS_ETAT` et l'initialiser dans `demarrer()`, **sans changer de version**. |
+| Tests | `godot/outils/tests.ps1` : import + 66 (logique) + 107 (demo) + 21 (interface) + 8 (partie) + 13 (cadence) + 22 (mois_utile) + 10 (sauvegarde) = **247** vérifications, ≈ 27 s ; `-Recette` : + 11. |
+| **V3, lot 02-L (logique seule, rien de visible)** | Flux du mois, saut « jusqu'au prochain courrier », non-lus, `Cadence` (R-CADENCE), format 3. L'affichage arrive en 02-I / 02-V. |
 | **Export** | **Fait** (voir §7) : `Exporter_Windows.bat` (exe unique vérifié), `Exporter_Android.bat` (APK debug exporté, non essayé sur téléphone). |
 | Reste à faire | P1/P2 partiels (voir §5) ; APK de release (keystore de publication) ; masquer les raccourcis de test (F6-F10) dans l'exe partagé ? |
 
@@ -37,6 +38,9 @@
 - `Versements` (statique) : `eligible`, `reglable`, `minimum`, `montants`, `plan`, `actif`, `total_mensuel`, `programmer` / `arreter` / `reactiver` (historisés, effet le mois suivant), `executer` (appelé dans `_entrer_mois` après `Produits.entree_mois`), `_controle_pel`, `messages_du_mois` (VP-A, plafond relevé), `texte_releve`. Plans : `Portefeuille.versements` (sauvegardé) ; PEL : `pel.mensuel`, `pel.verse_annee`.
 - `Produits` : PEL (taux figé, mensuel auto, clôture < 4 ans à 2,75 %), emprunt, assurance-vie ; inchangé sauf `verse_annee`.
 - `Sauvegarde` : binaire `var_to_bytes` + « JCSV », version, SHA-256 ; fichier temporaire puis renommage.
+- **Flux du mois** (lot 02) : `res["flux"]` de `avancer()`/`demarrer()` et `EtatPartie.flux_du_mois()` = { revenus, frais, lignes [{ id, nom, genre interets|coupon|dividende|frais|frais_versement, montant ≥ 0, verse_en_decembre }] } ; alimenté par `noter_flux()` (moteur, `Produits.fin_de_mois`/`entree_mois`, `Versements.executer`). Aucun dividende dans le moteur (cours de bourse seuls).
+- **Saut** (Partie) : `saut_actif`, `saut_change`, `sauter_jusqu_au_prochain_arret()`, `arreter_saut()`, `saut_possible()` ; `_process` avance même à la vitesse 0 pendant le saut ; `duree_mois_s()`/`facteur_trafic()` lisent `rythme.json > saut` ; arrêt dans `_diffuser` avant `modale_ouverte` (ou à la fin). `changer_vitesse` / `basculer_pause` du joueur arrêtent le saut ; les appels internes passent par `_regler_vitesse`. `EtatPartie.saut_en_cours` (non sauvegardé) → entrées d'historique `lu = false` ; `non_lues(source)`, `marquer_lues(source)`.
+- **`Cadence`** (`scripts/logique/cadence.gd`, statique) : `choisir`, `peut_passer`, `rang`, `datee`, `date_connue(e, mm, sauf)`, `categorie`, `noter` ; réglages `rythme.json > cadence` (déplacés de `banque.json`). Dates limites connues : `Banquier.dates_connues(e)` (mêmes règles que `verifier`, à tenir ensemble). Liste `banque.interruptions_liste` : + `rang`, `datee`, `categorie` ; `banque.compteurs` par catégorie.
 
 ## 4. Interface (scripts/, scenes/)
 
@@ -57,7 +61,7 @@
 
 - Exe console : `outils\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe` (seulement dans le dépôt principal : `outils\` n'est pas versionné). Importer d'abord (`--headless --path godot --import`).
 - **Localisation de Godot** (`godot/outils/trouver_godot.ps1`, inclus par `tests.ps1` et `capture.ps1`) : `$env:JEUCLAUDE_GODOT` (chemin inexistant = erreur, code 3), sinon `outils\` du dépôt, sinon, dans un **worktree Git**, `outils\` du dépôt principal (lu dans le fichier `.git`). Les `.bat` : `JEUCLAUDE_GODOT` sinon `outils\` (dans un worktree, définir la variable pour `Exporter_Windows.bat` : sortie dans `<worktree>\export\windows\`). `Exporter_Android.bat` cherche toujours JDK et SDK dans `outils\` du dossier du .bat.
-- **Tests** : `powershell -ExecutionPolicy Bypass -File godot\outils\tests.ps1` (marche, y compris depuis un worktree). Import à chaque fois (`-SansImport` pour le sauter), découverte `tests/test_*.tscn` (scènes) et `tests/test_*.gd` sans .tscn homonyme (`--script`), `-Recette` (+ `tests/recette/test_*`), `-Filtre motif`, `-Delai s` (120 s : un test bloqué par une erreur ne quitte jamais), `-Autocontrole` (vérifie que la détection marche). Échec si code ≠ 0 **ou** `SCRIPT ERROR` / `Parse Error` / `Failed to load script` / `Invalid call` / `Invalid access` / `Cannot call method` dans stdout+stderr ; résumé par test ; contrôle des fichiers `user://` restants et de l'empreinte de `partie_en_cours.sav`.
+- **Tests** : `powershell -ExecutionPolicy Bypass -File godot\outils\tests.ps1` (marche, y compris depuis un worktree). Import à chaque fois (`-SansImport` pour le sauter), découverte `tests/test_*.tscn` (scènes) et `tests/test_*.gd` sans .tscn homonyme (`--script`), `-Recette` (+ `tests/recette/test_*`), `-Joueur` (avec `-Recette` : `-- --joueur` passé aux tests de recette), `-Filtre motif`, `-Delai s` (120 s : un test bloqué par une erreur ne quitte jamais), `-Autocontrole` (erreur de script et ligne `ERROR:` volontaires). Échec si code ≠ 0 **ou** `SCRIPT ERROR` / `Parse Error` / `Failed to load script` / `Invalid call` / `Invalid access` / `Cannot call method` / ligne `ERROR:` du moteur (donc tout `push_error`) dans stdout+stderr ; résumé par test ; contrôle des fichiers `user://` restants et de l'empreinte de `partie_en_cours.sav`.
 - **Fichiers `user://`** : dossier commun au jeu exporté, à l'éditeur et à tous les worktrees. Un test n'écrit que `user://test_<nom>_<pid>.sav` (`OS.get_process_id()`) et l'efface ; jamais `partie_en_cours.sav` (`Partie.chemin_sauvegarde` redirigé avant d'instancier la scène principale).
 - **`StrategieTest`** (`scripts/logique/strategie_test.gd`) : joueurs automatiques sans nœud. `jouer_mois(e, actif)`, `aller_a(e, ab, actif)`, `aller_a_modale(e, id, actif) -> bool`, `choix_modale(e, actif) -> String` (choix pris, = resolution_auto pour le passif), `id_modale(e)`. Après un saut, l'appelant rafraîchit l'affichage.
 - **`test_interface`** : instancie la scène principale (écran titre), puis Hud / Modales / fenêtre Banque sur toute la démo (actif et passif) ; il casse si un champ ou une fonction de la logique lus par l'interface change (vérifié par mutation).
@@ -74,7 +78,7 @@
 
 ## 7. Export (2026-10-27)
 
-- `godot/export_presets.cfg` : « Windows » (release x86_64, `binary_format/embed_pck=true`, icône `assets/icone/icone.ico`, version 0.2.0.0) et « Android » (APK debug, `fr.jeuclaude.demo`, version 0.2 / code 2, arm64 + armv7, immersif, icônes adaptatives `assets/icone/android_avant.png` + `android_fond.png`). Filtres : `include_filter="data/*.json"`, `exclude_filter="tests/*, captures/*, outils/*"` (motif relatif à res://, ne touche pas `scripts/outils/capture.gd`, autoload nécessaire).
+- `godot/export_presets.cfg` : « Windows » (release x86_64, `binary_format/embed_pck=true`, icône `assets/icone/icone.ico`, version **0.3.0.0**) et « Android » (APK debug, `fr.jeuclaude.demo`, version **0.3 / code 3**, arm64 + armv7, immersif, icônes adaptatives `assets/icone/android_avant.png` + `android_fond.png`). `project.godot > config/version` : dev-interface. Filtres : `include_filter="data/*.json, data/pixel/*/*.txt"` (vérifié par un .txt témoin retrouvé dans l'exe), `exclude_filter="tests/*, captures/*, outils/*"` (motif relatif à res://, ne touche pas `scripts/outils/capture.gd`, autoload nécessaire).
 - Orientation : `display/window/handheld/orientation=4` (paysage capteur) ; Godot l'écrit `userLandscape` (0xb) dans le manifeste.
 - Icônes : SVG source (`icon.svg`, `assets/icone/*.svg`) → `outils/generer_icones.gd` (PNG + ICO à entrées PNG écrit en GDScript). `application/config/windows_native_icon` pointe sur l'ICO.
 - Paramètres éditeur : `%APPDATA%\Godot\editor_settings-4.7.tres` (`export/android/java_sdk_path`, `android_sdk_path` vers `outils\`). Godot a généré lui-même le keystore de debug (`%APPDATA%\Godot\keystores\debug.keystore`) dès que le JDK était renseigné ; pas de Gradle (`use_gradle_build=false`) : ni NDK ni cmake requis.
