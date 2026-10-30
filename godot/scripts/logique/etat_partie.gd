@@ -54,6 +54,12 @@ var banque: Dictionary = {"actif": false}   # état du banquier (Banquier.etat_i
 ## Historique des pop-ups (retour du joueur du 27/10/2026), du plus ancien au plus récent : chaque
 ## notification et chaque modale résolue, avec le contenu complet pour la relecture (voir _historiser).
 var historique: Array = []
+## Flux du dernier changement de mois (P4, docs/15 §1.1) : revenus (intérêts acquis, coupons, dividendes) et
+## frais (gestion, versements automatiques) du joueur. Voir flux_du_mois().
+var flux_mois: Dictionary = {}
+## Vrai pendant le saut « jusqu'au prochain courrier » (réglé par l'autoload Partie, jamais sauvegardé) :
+## les entrées d'historique créées pendant ce temps sont « non lues ».
+var saut_en_cours := false
 
 
 # =====================================================================
@@ -87,8 +93,10 @@ func demarrer(config: Dictionary = {}) -> Dictionary:
 		for k in temoins:
 			temoins[k].cc += cc0 + livret0
 		_compter_epargne(cc0 + livret0, ab_courant())
+	flux_mois = _flux_vide()
 	var res := _entrer_mois(true)
 	_historiser_notifs(res["notifs"], m)
+	res["flux"] = flux_du_mois()
 	return res
 
 
@@ -611,9 +619,11 @@ func _apres_ordre(r: Dictionary, utilise: String) -> Dictionary:
 # =====================================================================
 
 ## Passe au mois suivant. Renvoie { notifs, modale, fin, m }. Ne fait rien si une modale est ouverte.
+## res["flux"] : flux du changement de mois (voir flux_du_mois).
 func avancer() -> Dictionary:
 	if fin != "" or not modale.is_empty():
-		return {"notifs": [], "modale": modale, "fin": fin, "m": m}
+		return {"notifs": [], "modale": modale, "fin": fin, "m": m, "flux": _flux_vide()}
+	flux_mois = _flux_vide()
 	var notifs := []
 	_fin_de_mois(notifs)
 	_historiser_notifs(notifs, m)
@@ -621,12 +631,62 @@ func avancer() -> Dictionary:
 		_allouer_temoins()
 		_enregistrer_hist()
 		fin = "fin"
-		return {"notifs": notifs, "modale": {}, "fin": fin, "m": m}
+		return {"notifs": notifs, "modale": {}, "fin": fin, "m": m, "flux": flux_du_mois()}
 	m += 1
 	var res := _entrer_mois(false)
 	_historiser_notifs(res["notifs"], m)
 	res["notifs"] = notifs + res["notifs"]
+	res["flux"] = flux_du_mois()
 	return res
+
+
+# =====================================================================
+# Flux du mois (P4 « Le mois utile », docs/15 §1.1)
+# =====================================================================
+# Un changement de mois = la fin du mois écoulé (intérêts acquis, frais de gestion) puis l'entrée dans le
+# nouveau (coupons, versements automatiques). Les variations de cours n'en font pas partie. Joueur seulement.
+# { revenus, frais (euros, ≥ 0), lignes: [{ id, nom, genre (interets | coupon | dividende | frais |
+#   frais_versement), montant (≥ 0), verse_en_decembre }] }. verse_en_decembre : intérêts acquis ce mois-ci
+# mais crédités au 31/12 (Livret A, PEL, assurance-vie, hors décembre). Le moteur ne verse pas de dividende
+# (les cours des actions sont des cours de bourse) : aucune ligne « dividende » pour l'instant.
+
+const GENRES_REVENUS := ["interets", "coupon", "dividende"]
+
+
+static func _flux_vide() -> Dictionary:
+	return {"revenus": 0.0, "frais": 0.0, "lignes": []}
+
+
+## Même contenu que res["flux"] du dernier changement de mois (copie).
+func flux_du_mois() -> Dictionary:
+	if flux_mois.is_empty():
+		return _flux_vide()
+	return flux_mois.duplicate(true)
+
+
+## Compte un mouvement du mois du joueur (appelé par le moteur, Produits et Versements).
+func noter_flux(genre: String, id: String, montant: float, verse_en_decembre := false) -> void:
+	if montant <= 0.0:
+		return
+	if flux_mois.is_empty():
+		flux_mois = _flux_vide()
+	var revenu := GENRES_REVENUS.has(genre)
+	flux_mois["revenus" if revenu else "frais"] = float(flux_mois["revenus" if revenu else "frais"]) + montant
+	for l: Dictionary in flux_mois["lignes"]:
+		if l["id"] == id and l["genre"] == genre:
+			l["montant"] = float(l["montant"]) + montant
+			return
+	flux_mois["lignes"].append({"id": id, "nom": nom_ligne(id), "genre": genre, "montant": montant,
+		"verse_en_decembre": verse_en_decembre})
+
+
+## Nom court d'une ligne (« Livret A », « SICAV », « Elf »).
+func nom_ligne(id: String) -> String:
+	var court := str(Banquier.info_produit(id).get("court", ""))
+	if court != "":
+		return court
+	var p := produit(id)
+	return str(p.get("court", p.get("nom", id)))
 
 
 func abandonner() -> void:
@@ -641,6 +701,7 @@ func _fin_de_mois(notifs: Array) -> void:
 	var decembre := Dates.mois(a) == 12
 	var t := Marche.taux_livret(a) / 100.0 / 12.0
 	var interets_joueur := 0.0
+	noter_flux("interets", "livret", joueur.livret * t, not decembre)
 	for w in tous():
 		w.livret_int += w.livret * t
 		if decembre:
@@ -653,7 +714,9 @@ func _fin_de_mois(notifs: Array) -> void:
 	var g := float(regles["sicav"]["gestion"]) / 100.0 / 12.0
 	for id in joueur.lignes:
 		if produit(id).get("type", "") == "sicav":
-			_noter_frais(joueur, valeur_ligne(joueur, id) * g / (1.0 - g))
+			var gestion := valeur_ligne(joueur, id) * g / (1.0 - g)
+			_noter_frais(joueur, gestion)
+			noter_flux("frais", id, gestion)
 	var credite := Produits.fin_de_mois(self, joueur)
 	if banquier_actif():
 		banque["interets_annee"] = float(banque.get("interets_annee", 0.0)) + interets_joueur + credite
