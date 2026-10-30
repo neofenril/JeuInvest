@@ -11,7 +11,7 @@ extends RefCounted
 ## M. Lefranc (Banquier), la cadence des interruptions suit 13 §5.3, la naissance et l'héritage sont scriptés.
 
 const EPS := 0.005
-const VERSION_ETAT := 2          # 2 : historique des pop-ups, versements automatiques (préparés)
+const VERSION_ETAT := 3          # 2 : historique, versements automatiques ; 3 (lot 02) : flux du mois, cadence V3, migration douce
 const HISTORIQUE_MAX := 600
 
 # --- Configuration ---
@@ -1534,7 +1534,8 @@ func historiser_evenement(n: Dictionary) -> void:
 # =====================================================================
 
 const CHAMPS_ETAT := ["m", "m_depart", "m_fin", "salaire_base", "calendrier", "file", "modale", "choix", "panique",
-	"epargne_nette", "bag_mis", "decouvert_mois", "enfants", "fin", "hist", "stats", "journal", "banque", "historique"]
+	"epargne_nette", "bag_mis", "decouvert_mois", "enfants", "fin", "hist", "stats", "journal", "banque", "historique",
+	"flux_mois"]
 
 
 func vers_dict() -> Dictionary:
@@ -1547,23 +1548,76 @@ func vers_dict() -> Dictionary:
 	return d
 
 
-## Recrée une partie à partir d'une sauvegarde. Renvoie null si le contenu est inutilisable.
+## Valeurs par défaut de l'état sauvegardé (migration douce, T14) : TABLE UNIQUE = l'état d'une partie neuve de
+## même configuration (premier mois joué). Tout champ absent d'une sauvegarde de format 3 (ou d'un type
+## inattendu) prend la valeur d'ici ; un dictionnaire présent mais incomplet est complété clé par clé.
+## Un champ ajouté par un lot suivant n'a donc qu'à être déclaré dans CHAMPS_ETAT et initialisé par demarrer().
+## Exceptions : aucune modale ni file d'attente par défaut (la présentation du Livret A du premier mois ne doit
+## pas resurgir au milieu d'une partie).
+static func defauts_etat(config: Dictionary) -> Dictionary:
+	var neuf := EtatPartie.new()
+	neuf.demarrer(config)
+	var d := neuf.vers_dict()
+	d["modale"] = {}
+	d["file"] = []
+	return d
+
+
+## Dictionnaires d'état complétés clé par clé lors d'une migration (les autres sont pris tels quels).
+const CHAMPS_COMPLETES := ["banque", "stats", "hist"]
+
+
+## Recrée une partie à partir d'une sauvegarde. Renvoie null si le contenu est inutilisable (autre version
+## de l'état). Champs absents : valeurs par défaut (defauts_etat), puis réparation des références (_reparer).
 static func depuis_dict(d: Dictionary) -> EtatPartie:
-	if int(d.get("version_etat", -1)) != VERSION_ETAT or not d.get("config", null) is Dictionary:
+	if int(d.get("version_etat", VERSION_ETAT)) != VERSION_ETAT:
 		return null
-	for k in CHAMPS_ETAT + ["joueur", "temoins"]:
-		if not d.has(k):
-			return null
+	var config: Dictionary = d["config"] if d.get("config", null) is Dictionary else Donnees.config_demo()
+	var defaut := defauts_etat(config)
 	var e := EtatPartie.new()
-	e._configurer(d["config"])
-	e.joueur.depuis_dict(d["joueur"])
+	e._configurer(config)
+	e.joueur.depuis_dict(defaut["joueur"])
+	if d.get("joueur", null) is Dictionary:
+		e.joueur.depuis_dict(d["joueur"])
+	var tem: Dictionary = d["temoins"] if d.get("temoins", null) is Dictionary else {}
 	e.temoins = {}
 	for k in ["matelas", "livret", "indice"]:
 		var w := Portefeuille.new()
-		if d["temoins"].has(k):
-			w.depuis_dict(d["temoins"][k])
+		w.depuis_dict(defaut["temoins"][k])
+		if tem.get(k, null) is Dictionary:
+			w.depuis_dict(tem[k])
 		e.temoins[k] = w
 	for k in CHAMPS_ETAT:
-		var v: Variant = d[k]
+		var v: Variant = defaut[k]
+		if d.has(k) and typeof(d[k]) == typeof(defaut[k]):
+			v = d[k]
+			if v is Dictionary and CHAMPS_COMPLETES.has(k):
+				var complet: Dictionary = (v as Dictionary).duplicate(true)
+				complet.merge(defaut[k], false)
+				v = complet
 		e.set(k, v.duplicate(true) if (v is Dictionary or v is Array) else v)
+	e._reparer()
 	return e
+
+
+## Après une migration : écarte les références devenues incohérentes (événement de vie absent ou pas encore
+## déclenché, présentation « en file » qui n'y est plus), pour que la partie aille jusqu'au bout.
+func _reparer() -> void:
+	var valide := func(it: Dictionary) -> bool:
+		if it.get("kind", "") != "vie":
+			return it.has("kind")
+		var i := int(it.get("idx", -1))
+		return i >= 0 and i < calendrier.size() and calendrier[i].get("declenche", false) and calendrier[i].has("montant")
+	if not modale.is_empty() and not valide.call(modale):
+		modale = {}
+	file = file.filter(func(it: Variant) -> bool: return it is Dictionary and valide.call(it))
+	if banquier_actif():
+		var en_file: Dictionary = banque.get("en_file", {})
+		for id in en_file.keys():
+			var present := str(modale.get("id", "")) == str(id)
+			for it: Dictionary in file:
+				if str(it.get("id", "")) == str(id):
+					present = true
+			if not present:
+				en_file.erase(id)
+	m = clampi(m, m_depart, m_fin)

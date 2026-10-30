@@ -9,7 +9,11 @@ extends RefCounted
 ## fichier temporaire puis remplacement.
 
 const CHEMIN := "user://partie_en_cours.sav"
-const VERSION := 2   # 2 (27/10/2026) : historique des pop-ups, versements automatiques ; les sauvegardes 1 sont ignorées
+## 2 (27/10/2026) : historique des pop-ups, versements automatiques ; les sauvegardes 1 sont ignorées.
+## 3 (lot 02, V3) : flux du mois, cadence V3, « lu » de l'historique ; les sauvegardes 2 sont ignorées. À partir
+## du format 3, migration douce : un champ absent prend sa valeur par défaut (EtatPartie.depuis_dict), sans
+## changer de version, pour que les lots suivants ne cassent plus les parties du joueur.
+const VERSION := 3
 const MAGIQUE := "JCSV"
 const SIGNATURE := "JeuClaude"
 
@@ -25,9 +29,8 @@ static func _empreinte(octets: PackedByteArray) -> PackedByteArray:
 static func ecrire(etat: EtatPartie, partie: Dictionary = {}, chemin := CHEMIN) -> bool:
 	if etat == null:
 		return false
-	var a := etat.ab_courant()
 	var d := {"jeu": SIGNATURE, "version": VERSION, "ecrite_le": Time.get_datetime_string_from_system(),
-		"resume": {"ab": a, "date": Dates.texte(a), "patrimoine": etat.patrimoine(etat.joueur), "prenom": etat.prenom()},
+		"resume": _resume(etat),
 		"partie": partie.duplicate(true), "etat": etat.vers_dict()}
 	var contenu := var_to_bytes(d)
 	var tmp := chemin + ".tmp"
@@ -71,9 +74,21 @@ static func lire(chemin := CHEMIN) -> Dictionary:
 	var d: Dictionary = v
 	if d.get("jeu", "") != SIGNATURE or int(d.get("version", -1)) != VERSION or not d.get("etat", null) is Dictionary:
 		return {}
-	if not d.get("resume", null) is Dictionary or not d.get("partie", null) is Dictionary:
-		return {}
+	# Migration douce : réglages de l'interface absents = vides ; résumé absent ou incomplet = recalculé
+	if not d.get("partie", null) is Dictionary:
+		d["partie"] = {}
+	var r: Variant = d.get("resume", null)
+	if not r is Dictionary or not (r as Dictionary).has_all(["ab", "date", "patrimoine", "prenom"]):
+		var e := EtatPartie.depuis_dict(d["etat"])
+		if e == null:
+			return {}
+		d["resume"] = _resume(e)
 	return d
+
+
+static func _resume(etat: EtatPartie) -> Dictionary:
+	var a := etat.ab_courant()
+	return {"ab": a, "date": Dates.texte(a), "patrimoine": etat.patrimoine(etat.joueur), "prenom": etat.prenom()}
 
 
 static func existe(chemin := CHEMIN) -> bool:
