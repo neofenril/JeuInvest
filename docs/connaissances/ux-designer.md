@@ -21,6 +21,9 @@
 12. **Les frais sans culpabiliser** : cuivre `#C77B4A`, jamais le rouge des pertes.
 13. **Comparer au choix du débutant** : référence permanente « tout au Livret A » (Tata Livret).
 14. **Le monde en pixels, les chiffres en net** (16) : aucune information nécessaire n'est seulement dans la ville ; montants et textes longs en police nette.
+15. **La caméra ne bouge que pour une pause** (17 §3) : pièces, petites news, bulles ne la déplacent pas ; ce qui vient d'un bâtiment hors champ entre ou sort par sa **flèche de bord**.
+16. **Trois indices pour un état dessiné petit** (17 §4.2) : à ×1 sur téléphone un buste fait 3 mm ; visage + posture + décor, et un picto dans l'interface (étiquette de la maison).
+17. **Pas de mise à l'échelle des cadres pixel** dans les animations d'interface : on déplie (découpe en 3 images), on saute d'1 texel, on fait voler un petit sprite.
 
 ---
 
@@ -55,7 +58,7 @@
 
 ---
 
-## 4. Direction artistique (16, en attente de validation)
+## 4. Direction artistique (16, validée ; §9 prime pour la rue, chiffres ci-dessous de 16 §2 en partie remplacés)
 
 - **Grille** : ville rendue dans un `SubViewport` de ≈ 360 px d'art de haut (640 de large en 16:9, jusqu'à 800 en 20:9), agrandie d'un **facteur entier N** en pixels physiques (×2 sur 720p, ×3 sur 1080p, ×4 sur 1440p) ; affichée par un `TextureRect` Nearest de taille `physique / facteur_interface` pour annuler le 1,7 du téléphone. Zone utile 448 × 232 px d'art. Caméra et objets arrondis au pixel ; zoom entier au repos.
 - **Échelle** : figurine 16 × 28 (2,5 têtes) ; portraits 32 × 32 (bulles, classement) et 48 × 48 (cartes) ; maison 96 × 124, Gazette 112 × 216, banque 128 × 150 ; R5 48 × 20 (véhicules raccourcis).
@@ -68,6 +71,10 @@
 - **Classement permanent** : PC, bloc « LA RUE » en haut à gauche (4 lignes, portrait, nom, patrimoine, Tata soulignée) ; téléphone, ruban de 4 portraits classés ; jamais devant un bâtiment jouable ; notifications en dessous.
 - **Provenance recommandée** : tout en code (grilles de texte en données + générateurs de façades + contrôle de palette) ; packs seulement comme références (aucun pack « rue française 80 », les mélanger referait du générique) ; portraits, vignettes du journal et écran titre fournis plus tard par le joueur (IA ou graphiste) selon le cahier des charges de 16 §4.3.
 - **Migration** : PX0 preuve de concept (scène à part, fichiers neufs : maison + Gérard + Sylvie + bout de rue + HUD + carte du banquier), puis PX1 la rue (dev-ville) et PX2 l'interface (dev-interface) en parallèle ; logique non retardée ; plus aucun nouveau dessin vectoriel.
+
+**État validé (16 §9, 2026-10-30)** : rue en grille 960 × 540 (N = 2 à 1080p, ×1 en 720p et sur téléphone), Gérard 36 × 63, Sylvie à la fenêtre 27 × 32 (`personnages.gd` de PX0 : cheveux bois, pull moutarde), palette 67 couleurs (les 40 premières réservées à l'interface), relief « mini 3D », rue **plus large que l'écran** (Gazette | maison | banque, 600-900 px d'écart, caméra qui glisse, défilement manuel). Interface en grille 640 × 360 (texel ×3 à 1080p), barre haute et frise sombres, Atkinson pour date et patrimoine (Jersey abandonnée), étiquettes sur la chaussée, flèches de bord pour les bâtiments hors champ (PX2). Téléphone simulé : 1 600 × 720 à 267 dpi.
+
+**Vague 2-3 (17)** : bouton **COURRIER** (icône » + enveloppe) dans le groupe du temps, la baguette quitte la barre PC ; badge ambre chiffré sur HISTORIQUE (non-lus = franchis pendant le saut ou débordés, remis à zéro à l'ouverture) ; dilemme = pense-bête aimanté qui sort de la porte ; pictos d'humeur = tête de Sylvie 16 × 16 ; jauge de projet sous l'étiquette « MA MAISON » ; « Mon foyer » = porte du frigo en 2 colonnes.
 
 Ce qui reste valable de 09 : intention (un lieu par message), ville qui vit (cycle de 60 s réel, saisons, trafic, pause gelée), époque par tables, les 10 effets, mise en page adaptative (base 1 920 × 1 080, facteur 1,7 téléphone, zone 1 410 × 635, F10).
 
@@ -109,14 +116,14 @@ Ce qui reste valable de 09 : intention (un lieu par message), ville qui vit (cyc
 | # | Question | Pour qui |
 |---|---|---|
 | G1 | Provenance des images : tout en code + portraits et vignettes fournis plus tard (IA ou graphiste) ? outil ou budget ? (16 §7 q1) | Joueur |
-| G2 | Interface habillée en pixel (cadres, titres) avec chiffres nets, ou seulement la ville ? (16 §7 q2) | Joueur |
-| G3 | Personnages petits dans la rue + grands portraits, ou personnages plus grands dans la rue ? (16 §7 q3) | Joueur |
-| G4 | Lisibilité du visage de Sylvie à la fenêtre à ×3 ; Jersey 10 contre Atkinson pour la date et le patrimoine ; accents de Pixelify et Doto | Preuve de concept PX0 |
+(G2, G3, G4 clos : interface en pixel, personnages plus grands 36 × 63, Atkinson pour la date. Reste à juger : lisibilité de Sylvie à ×1 sur téléphone.)
 | U1 | Sons à 60 % par défaut avec bouton muet | Client |
 | U3 | Bruitages CC0 (une quinzaine) | Joueur |
 | U4 | Tutoriel rejoué à travers les bâtiments | UX, plus tard |
 | U5 | Employeur et Bourse comme bâtiments jouables | UX, client |
 | U6 | 3e pile de F01 pour l'action et l'assurance-vie | Banquier |
+| U8 | Retour auto de la caméra à la maison après 10 s sans toucher (écart à lot_px1 §3) | Chef de projet (17 Q1) |
+| U9 | Couleur de la source `rue` (sarcelle si le seul vert est `gain`) | dev-interface (17 Q2) |
 
 (O9 « style A, B ou C » est clos : le joueur garde la vue de face, en pixel art. U2 clos : M. Lefranc. U7 appliqué : frais en 5e ligne.)
 
@@ -129,4 +136,5 @@ Ce qui reste valable de 09 : intention (un lieu par message), ville qui vit (cyc
 | (avant 2026-10) | Design UX de la V1 web | `docs/04_ux_design.md` |
 | 2026-10-26 | Direction artistique Godot | `docs/09`, réécrit le jour même (ville, paysage, tranche 1986-1988) |
 | 2026-10-27 | Progression par le banquier, frais, Livret A | `docs/13` |
+| 2026-10-30 | UX vague 2 (P4 dans la rue large) et préparation vague 3 | `docs/17_ux_vague2.md` : bouton COURRIER, badge des non-lus, caméra et flèches de bord, trajet des pièces, carte de dilemme, Sylvie 3 humeurs, jauge de projet, « Mon foyer » |
 | 2026-10-29 | Bible graphique pixel art (style jugé « générique ») | `docs/16_bible_graphique_pixel.md` : lecture des références, grille 640 × 360 à facteur entier, palette de 40 couleurs (jour, nuit, orage), échelle, animations, interface en cadres pixel et polices OFL, comparaison des 3 provenances (recommandation : code d'abord, packs en référence, portraits fournis plus tard), maquettes (rue, classement permanent, carte du banquier, journal du krach), migration PX0 / PX1 / PX2, 3 questions au joueur |
