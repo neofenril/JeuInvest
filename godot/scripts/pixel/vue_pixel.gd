@@ -7,14 +7,16 @@ extends Control
 ## pixel d'art. Les réglages pixel (snap, filtre Nearest) sont posés sur le SubViewport, pas dans
 ## project.godot.
 ##
-## N = max(1, floor(hauteur_physique / 360)) : la vue fait toujours ≈ 360 px d'art de haut ;
+## N = max(1, floor(hauteur_physique / 540)) : la vue fait ≈ 540 px d'art de haut (PX0 quater) ;
 ## forçable (forcer_facteur). La caméra (Camera2D, ancrée en haut à gauche) est arrondie au pixel d'art.
 ## Recalcul automatique à chaque changement de taille de fenêtre ou de facteur d'interface.
 
 signal facteur_change(n: int)
 signal vue_change          ## après chaque recalcul (taille, facteur, échelle, cadrage)
 
-const HAUTEUR_ART := 360
+## PX0 quater : la rue a sa grille fine (≈ 540 px d'art de haut ; 960 × 540 à ×2 en 1080p). L'interface
+## garde sa propre grille 640 × 360 en px virtuels (elle ne lit que monde_vers_ecran et marges_art).
+const HAUTEUR_ART := 540
 
 var monde: Node2D        ## racine du monde, dans le SubViewport, coordonnées en px d'art
 var camera: Camera2D

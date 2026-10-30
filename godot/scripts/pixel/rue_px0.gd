@@ -1,11 +1,10 @@
 class_name RuePx0
 extends Node2D
 ## Le monde de la preuve de concept pixel, révision PX0 bis (docs/lots/lot_px0_bis.md, docs/16 §8), en
-## px d'art. Rue de briques en plein jour d'été. Repères (y vers le bas) : sol des façades SOL (296),
-## trottoir de dalles 296-308, bordure 308-310, chaussée 310-332, bord d'en face 332-340.
-## Maison de Gérard x 0-152 (152 × 172, cheminée à y 124) ; voisine de brique sombre à gauche ; muret à
+## px d'art de la grille fine PX0 quater (960 × 540 à 1080p). Repères : sol des façades SOL (402), trottoir
+## 402-428, chaussée 428-518 (visible jusqu'à 504). Maison de Gérard x 0-228 (228 × 258, cheminée à y 144) ; voisine de brique sombre à gauche ; muret à
 ## chaperon, arbre et lampadaire à droite ; épicerie à auvent rouge ; pignon aveugle à publicité peinte ;
-## décor habillé de x -520 à 1040. Plans : ciel et cumulus, skyline bleutée (0,15), immeubles de fond
+## décor habillé de x -780 à 1620. Plans : ciel et cumulus, skyline bleutée (0,15), immeubles de fond
 ## bleutés (0,4), arbres, rue, sol, mobilier et voitures, arbre de premier plan (1,15, posé contre le bord
 ## droit de la vue, quel que soit le format).
 ##
@@ -16,62 +15,64 @@ extends Node2D
 
 const Facades := preload("res://scripts/pixel/facades.gd")
 const Vehicules := preload("res://scripts/pixel/vehicules.gd")
+const Personnages := preload("res://scripts/pixel/personnages.gd")
 
-const SOL := 268
-const TROTTOIR := 17                                     # 14 de dalles + 3 de bordure
-const CHAUSSEE := 60                                     # 51 visibles au-dessus de la frise (y 336)
-const BAS_CHAUSSEE := SOL + TROTTOIR + CHAUSSEE          # 345
-const MONDE_GAUCHE := -520
-const MONDE_DROITE := 1080
-const HAUTEUR_CIEL := 480
-const MAISON := Rect2(0, 96, 152, 172)
-const ZONE := Rect2(-130, 96, 494, 240)                # voisine de gauche → épicerie, cheminée → bas de la chaussée
-const TAILLE_GERARD := Vector2i(24, 42)
+const SOL := 402
+const TROTTOIR := 26                                     # 23 de dalles + 3 de bordure
+const CHAUSSEE := 90                                     # visible jusqu'au haut de la frise (y 504 à 1080p)
+const BAS_CHAUSSEE := SOL + TROTTOIR + CHAUSSEE          # 518
+const MONDE_GAUCHE := -780
+const MONDE_DROITE := 1620
+const HAUTEUR_CIEL := 720
+const MAISON := Rect2(0, 144, 228, 258)
+const ZONE := Rect2(-195, 144, 741, 360)                # voisine de gauche → épicerie, cheminée → bas visible (504)
+const TAILLE_GERARD := Vector2i(36, 63)
 const FONDU := 3.0
-const PIEDS := 276                                       # y des pieds des passants (milieu du trottoir)
+const PIEDS := 414                                       # y des pieds des passants (milieu du trottoir)
 const CADENCE_MARCHE := 8.0                              # images par seconde, 1 px d'art par image
 const CADENCE_REPOS := 2.0
-const GERARD_MIN := 20
-const GERARD_MAX := 136
-const PORTE_X := 76                                      # milieu de la porte de la maison
+const GERARD_MIN := 30
+const GERARD_MAX := 204
+const PORTE_X := 113                                     # milieu de la porte de la maison
 const HUMEURS := ["sylvie_contente", "sylvie_neutre", "sylvie_contrariee"]
-const HALOS := [[30, 0.08], [19, 0.16], [10, 0.28]]      # rayon, alpha (docs/16 §2.4)
-const HALOS_PHARE := [[10, 0.12], [5, 0.3]]              # phares : 2 disques plus petits
-const DERIVE_NUAGES := 2.0                               # secondes par px d'art
-const Y_VOITURE := 331                                   # bas des roues, voie proche
-const Y_VOITURE_GAREE := 303                             # bas des roues, le long du trottoir
-const VITESSE_VOITURE := 36.0                            # px d'art par seconde
-const PASSAGE_PIETON := Rect2i(170, 290, 70, 46)
-const PREMIER_PLAN_MARGE := 24                           # tronc à cette distance du bord droit de la vue
+const HALOS := [[45, 0.08], [28, 0.16], [15, 0.28]]      # rayon, alpha (docs/16 §2.4)
+const HALOS_PHARE := [[15, 0.12], [7, 0.3]]              # phares : 2 disques plus petits
+const DERIVE_NUAGES := 1.4                               # secondes par px d'art
+const Y_VOITURE := 497                                   # bas des roues, voie proche
+const Y_VOITURE_GAREE := 455                             # bas des roues, le long du trottoir
+const VITESSE_VOITURE := 54.0                            # px d'art par seconde
+const PASSAGE_PIETON := Rect2i(255, 436, 105, 68)
+const PREMIER_PLAN_MARGE := 36                           # tronc à cette distance du bord droit de la vue
+const GLOBE := Rect2i(3, 12, 9, 6)                       # globe du lampadaire (local)
 
-## Bâtiments de la rue : [x gauche, réglages de Facades.batiment()].
+## Bâtiments de la rue : [x gauche de l'image, réglages de Facades.batiment()] ; « retour » : pan de mur
+## latéral en perspective (bâtiment qui avance), dessiné après les autres.
 const BATIMENTS := [
-	[-520, {"l": 120, "brique": "claire", "etages": 2, "toit": "ardoise", "rdc": "porte", "porte": "vert", "graine": 31}],
-	[-400, {"l": 150, "brique": "classique", "etages": 3, "toit": "plat", "rdc": "boutique", "enseigne": "CAFE", "auvent": "vert", "devanture": "bois", "graine": 32}],
-	[-250, {"l": 120, "brique": "vive", "etages": 1, "toit": "tuiles", "rdc": "porte", "porte": "rouge", "graine": 21}],
-	[-130, {"l": 130, "brique": "sombre", "etages": 2, "toit": "ardoise", "h_toit": 40, "rdc": "porte", "porte": "bleu", "graine": 22}],
-	[236, {"l": 128, "brique": "claire", "etages": 1, "toit": "plat", "rdc": "boutique", "enseigne": "EPICERIE", "auvent": "rouge_auvent", "devanture": "sarcelle", "graine": 23}],
-	[364, {"l": 88, "brique": "classique", "etages": 2, "toit": "pignon", "h_toit": 30, "aveugle": true, "pub": "CHOCOLAT|AU LAIT", "rdc": "garage", "graine": 24}],
-	[472, {"l": 120, "brique": "vive", "etages": 2, "toit": "ardoise", "rdc": "porte", "porte": "sarcelle", "graine": 25}],
-	[592, {"l": 124, "brique": "sombre", "etages": 3, "toit": "plat", "rdc": "porte", "porte": "rouge", "graine": 26}],
-	[716, {"l": 116, "brique": "claire", "etages": 1, "toit": "tuiles", "rdc": "boutique", "enseigne": "BOULANGERIE", "auvent": "sarcelle", "devanture": "bois", "graine": 27}],
-	[832, {"l": 120, "brique": "classique", "etages": 2, "toit": "ardoise", "rdc": "porte", "porte": "vert", "graine": 28}],
-	[952, {"l": 120, "brique": "vive", "etages": 2, "toit": "plat", "rdc": "boutique", "enseigne": "TABAC", "auvent": "rouge_auvent", "devanture": "rouge_auvent", "graine": 29}],
+	[-780, {"l": 180, "brique": "claire", "etages": 2, "toit": "ardoise", "rdc": "porte", "porte": "vert", "graine": 31, "retour": "droite"}],
+	[-600, {"l": 225, "brique": "classique", "etages": 3, "toit": "plat", "rdc": "boutique", "enseigne": "CAFE", "auvent": "vert", "devanture": "bois", "graine": 32}],
+	[-375, {"l": 180, "brique": "vive", "etages": 1, "toit": "tuiles", "rdc": "porte", "porte": "rouge", "graine": 21, "retour": "droite"}],
+	[-195, {"l": 195, "brique": "sombre", "etages": 2, "toit": "ardoise", "h_toit": 60, "rdc": "porte", "porte": "bleu", "graine": 22}],
+	[354, {"l": 192, "brique": "claire", "etages": 1, "toit": "plat", "rdc": "boutique", "enseigne": "EPICERIE", "auvent": "rouge_auvent", "devanture": "sarcelle", "graine": 23}],
+	[530, {"l": 132, "brique": "classique", "etages": 2, "toit": "pignon", "h_toit": 45, "aveugle": true, "pub": "CHOCOLAT|AU LAIT", "rdc": "garage", "graine": 24, "retour": "gauche"}],
+	[692, {"l": 180, "brique": "vive", "etages": 2, "toit": "ardoise", "rdc": "porte", "porte": "sarcelle", "graine": 25, "retour": "gauche"}],
+	[888, {"l": 186, "brique": "sombre", "etages": 3, "toit": "plat", "rdc": "porte", "porte": "rouge", "graine": 26}],
+	[1074, {"l": 174, "brique": "claire", "etages": 1, "toit": "tuiles", "rdc": "boutique", "enseigne": "BOULANGERIE", "auvent": "sarcelle", "devanture": "bois", "graine": 27}],
+	[1232, {"l": 180, "brique": "classique", "etages": 2, "toit": "ardoise", "rdc": "porte", "porte": "vert", "graine": 28, "retour": "gauche"}],
+	[1428, {"l": 180, "brique": "vive", "etages": 2, "toit": "plat", "rdc": "boutique", "enseigne": "TABAC", "auvent": "rouge_auvent", "devanture": "rouge_auvent", "graine": 29}],
 ]
 ## Immeubles de fond (plan 0,4, bleutés) : [x gauche, largeur, étages, toit, graine].
 const FONDS := [
-	[-470, 100, 2, "plat", 51], [-300, 110, 2, "ardoise", 52], [250, 84, 3, "ardoise", 54],
-	[540, 100, 3, "plat", 56], [770, 110, 3, "ardoise", 57], [920, 90, 3, "plat", 58],
+	[-705, 150, 2, "plat", 51], [-450, 165, 2, "ardoise", 52], [375, 126, 3, "ardoise", 54],
+	[810, 150, 3, "plat", 56], [1155, 165, 3, "ardoise", 57], [1380, 135, 3, "plat", 58],
 ]
-## Arbres derrière les bâtiments : [x du milieu, largeur, hauteur, graine].
 ## Arbres : [x du milieu, largeur, hauteur, graine, devant] (devant : posé sur les façades de la rue, derrière
 ## la maison de Gérard ; sinon derrière tous les bâtiments).
-const ARBRES := [[200, 150, 216, 3, true], [-150, 140, 210, 41, false], [462, 120, 200, 37, false],
-	[720, 130, 210, 43, false], [-380, 110, 170, 47, false]]
-const LAMPADAIRES := [232, -300, 600, 940]
-const MURET := Rect2i(152, 238, 84, 30)
-const ARMOIRE := Rect2i(206, 240, 18, 28)
-const PORTAIL := Rect2i(170, 236, 28, 32)
+const ARBRES := [[300, 225, 324, 3, true], [-225, 210, 315, 41, false], [693, 180, 300, 37, false],
+	[1080, 195, 315, 43, false], [-570, 165, 255, 47, false]]
+const LAMPADAIRES := [348, -450, 900, 1410]
+const MURET := Rect2i(228, 357, 126, 45)
+const ARMOIRE := Rect2i(309, 360, 27, 42)
+const PORTAIL := Rect2i(255, 354, 42, 48)
 
 var _melange := 0.0          # 0 = jour, 1 = nuit
 var _nuit := false
@@ -110,6 +111,7 @@ var _arbre_image := 0
 var _cligne_t := 3.0
 var _cligne_fin := 0.0
 static var _fenetres := {}   # nom d'image du décor -> fenêtres (Rect2i locaux), remplies par generer_decor()
+static var _auvents := {}    # nom -> étendue x de l'auvent (Vector2i, -1 si aucun)
 static var _voitures := {}   # modèle -> {"roues", "phare", "feu", "taille"}
 
 
@@ -226,6 +228,10 @@ func _ready() -> void:
 static func generer_decor() -> void:
 	if GrillePixel.existe("decor/maison"):
 		return
+	Personnages.enregistrer()
+	GrillePixel.enregistrer("ville/lampadaire", Facades.lampadaire(), Vector2i(7, 125))
+	GrillePixel.enregistrer("ville/bouche_incendie", Facades.bouche_incendie(), Vector2i(6, 20))
+	GrillePixel.enregistrer("ville/boite_poste", Facades.boite_poste(), Vector2i(6, 35))
 	var maison: Dictionary = Facades.maison_gerard(7)
 	GrillePixel.enregistrer("decor/maison", maison["image"], Vector2i(0, Facades.MAISON_H - 1))
 	_fenetres["decor/maison"] = maison["fenetres"]
@@ -234,6 +240,7 @@ static func generer_decor() -> void:
 		var img: Image = r["image"]
 		GrillePixel.enregistrer("decor/batiment_%d" % i, img, Vector2i(0, img.get_height() - 1))
 		_fenetres["decor/batiment_%d" % i] = r["fenetres"]
+		_auvents["decor/batiment_%d" % i] = r["auvent"]
 	# Immeubles de fond : mêmes générateurs, ramenés aux 3 tons du lointain
 	for i in FONDS.size():
 		var f: Array = FONDS[i]
@@ -249,7 +256,7 @@ static func generer_decor() -> void:
 	for im in 2:
 		GrillePixel.enregistrer("decor/premier_plan_%d" % im, pp["image%d" % im], Vector2i(Facades.PP_TRONC, 0))
 	GrillePixel.enregistrer("decor/muret", Facades.muret(MURET.size.x, MURET.size.y - 6, 9), Vector2i(0, MURET.size.y - 1))
-	GrillePixel.enregistrer("decor/haie", Facades.haie(80, 18, 5), Vector2i(0, 17))
+	GrillePixel.enregistrer("decor/haie", Facades.haie(120, 27, 5), Vector2i(0, 26))
 	GrillePixel.enregistrer("decor/portail", Facades.portail(PORTAIL.size.x, PORTAIL.size.y), Vector2i(0, PORTAIL.size.y - 1))
 	GrillePixel.enregistrer("decor/armoire", Facades.armoire(ARMOIRE.size.x, ARMOIRE.size.y), Vector2i(0, ARMOIRE.size.y - 1))
 	# Feuilles qui volettent (2 images)
@@ -260,14 +267,7 @@ static func generer_decor() -> void:
 		MatieresPixel.px(fe, 2 - im, 2, "feuille_profonde")
 		GrillePixel.enregistrer("decor/feuille_%d" % im, fe, Vector2i(1, 1))
 	# Plaque de rue bleue émaillée « RUE DES ÉPARGNANTS » (illisible à cette taille : simple plaque)
-	var plaque := MatieresPixel.vide(22, 9)
-	MatieresPixel.rect(plaque, 0, 0, 22, 9, "blanc_chaud")
-	MatieresPixel.rect(plaque, 1, 1, 20, 7, "bleu_vif")
-	MatieresPixel.cadre(plaque, 2, 2, 18, 5, "blanc_chaud")
-	for x in range(4, 18, 2):
-		MatieresPixel.px(plaque, x, 4, "blanc_chaud")
-	MatieresPixel.rect(plaque, 1, 8, 20, 1, "bleu_ardoise")
-	GrillePixel.enregistrer("decor/plaque", plaque, Vector2i(0, 0))
+	GrillePixel.enregistrer("decor/plaque", Facades.plaque(), Vector2i(0, 0))
 	for h in HALOS + HALOS_PHARE:
 		GrillePixel.enregistrer("decor/halo_%d" % h[0], MatieresPixel.disque(h[0], "lumiere"), Vector2i(h[0], h[0]))
 	# Voitures (caisses et roues)
@@ -302,7 +302,7 @@ func _construire() -> void:
 	ciel.image("matiere/ciel", Vector2i(MONDE_GAUCHE, SOL - 1), largeur)
 	for i in 50:
 		var ex := _rng.randi_range(MONDE_GAUCHE, MONDE_DROITE)
-		var ey := _rng.randi_range(-60, 120)
+		var ey := _rng.randi_range(-200, 200)
 		ciel.rect(Rect2i(ex, ey, 1, 1), "blanc_chaud", true)
 	# Cumulus (dérive lente)
 	for i in 5:
@@ -326,7 +326,14 @@ func _construire() -> void:
 			_arbre(i)
 	# Bâtiments de la rue
 	var rue := _couche("Batiments")
+	var ordre: Array = []
 	for i in BATIMENTS.size():
+		if not BATIMENTS[i][1].has("retour"):
+			ordre.append(i)
+	for i in BATIMENTS.size():
+		if BATIMENTS[i][1].has("retour"):
+			ordre.append(i)                            # les bâtiments qui avancent recouvrent leurs voisins
+	for i in ordre:
 		var nom := "decor/batiment_%d" % i
 		var bx: int = BATIMENTS[i][0]
 		rue.image(nom, Vector2i(bx, SOL - 1))
@@ -347,7 +354,7 @@ func _construire() -> void:
 	_maj_sylvie()
 	# Haie et muret à chaperon
 	var jardin := _couche("Muret")
-	jardin.image("decor/haie", Vector2i(MURET.position.x + 2, SOL - 16))
+	jardin.image("decor/haie", Vector2i(MURET.position.x + 3, SOL - 24))
 	jardin.image("decor/muret", Vector2i(MURET.position.x, SOL - 1))
 	jardin.image("decor/portail", Vector2i(PORTAIL.position.x, SOL - 1))
 	# Sol : trottoir de dalles et bordure, chaussée, passage piéton, bord d'en face, remplissage
@@ -355,44 +362,51 @@ func _construire() -> void:
 	sol.image("matiere/trottoir", Vector2i(MONDE_GAUCHE, SOL), largeur)
 	sol.image("matiere/chaussee", Vector2i(MONDE_GAUCHE, SOL + TROTTOIR), largeur)
 	var pp := PASSAGE_PIETON
-	sol.rect(Rect2i(pp.position.x - 4, SOL + TROTTOIR + 25, pp.size.x + 8, 2), "goudron")
-	for y in range(pp.position.y, pp.end.y, 7):
-		var r := (y - pp.position.y) / 7                    # léger biais : bandes vues en perspective
-		sol.rect(Rect2i(pp.position.x - r, y, pp.size.x, 4), "blanc_chaud")
-		sol.rect(Rect2i(pp.position.x - r, y + 3, pp.size.x, 1), "zinc_clair")
-		for k in 4:
-			sol.rect(Rect2i(pp.position.x - r + 7 + k * 17 + (y % 5), y + 1, 2, 1), "goudron_clair")
+	sol.rect(Rect2i(pp.position.x - 6, SOL + TROTTOIR + 41, pp.size.x + 12, 2), "goudron")
+	for y in range(pp.position.y, pp.end.y, 10):
+		var r := (y - pp.position.y) / 5                    # léger biais : bandes vues en perspective
+		sol.rect(Rect2i(pp.position.x - r, y, pp.size.x, 6), "blanc_chaud")
+		sol.rect(Rect2i(pp.position.x - r, y, pp.size.x, 1), "zinc_clair")
+		sol.rect(Rect2i(pp.position.x - r, y + 5, pp.size.x, 1), "dalle")
+		for k in 6:
+			sol.rect(Rect2i(pp.position.x - r + 7 + k * 17 + (y % 7), y + 2, 3, 1), "dalle")
+	# Ombres des auvents sur le trottoir (parallélogramme vers la droite : lumière en haut à gauche)
+	for i in BATIMENTS.size():
+		var au: Vector2i = _auvents.get("decor/batiment_%d" % i, Vector2i(-1, -1))
+		if au.x >= 0:
+			for j in 12:
+				sol.rect(Rect2i(BATIMENTS[i][0] + au.x + 6 + j, SOL + j, au.y - au.x - 8, 1), "dalle_ombre")
 	sol.rect(Rect2i(MONDE_GAUCHE, BAS_CHAUSSEE, largeur, 400), "goudron_sombre")
 	# Ombres portées en aplat au pied des façades (lumière en haut à gauche)
-	sol.rect(Rect2i(MONDE_GAUCHE, SOL, largeur, 1), "dalle_ombre")
+	sol.rect(Rect2i(MONDE_GAUCHE, SOL, largeur, 2), "dalle_ombre")
 	# Mobilier : lampadaires (globes allumés la nuit), poteau d'incendie, boîte aux lettres
 	var mob := _couche("Mobilier")
 	var centres: Array = []
 	mob.image("decor/armoire", Vector2i(ARMOIRE.position.x, SOL + 1))
-	var yl := SOL + 12
+	var yl := SOL + 18
 	for lx in LAMPADAIRES:
-		mob.rect(Rect2i(lx - 2, yl, 12, 2), "dalle_ombre")
+		for k in 40:                                     # ombre portée du fût sur le trottoir
+			mob.rect(Rect2i(lx + 4 + k, yl - k / 8, 1, 2), "dalle_ombre")
 		mob.image("ville/lampadaire", Vector2i(lx, yl))
 		if lx == LAMPADAIRES[0]:
-			mob.image("decor/plaque", Vector2i(lx - 11, yl - 62))
+			mob.image("decor/plaque", Vector2i(lx - 16, yl - 92))
 		var coin := Vector2i(lx, yl) - GrillePixel.origine("ville/lampadaire")
-		mob.rect(Rect2i(coin + Vector2i(2, 7), Vector2i(6, 2)), "lumiere", true)
-		mob.rect(Rect2i(coin + Vector2i(3, 9), Vector2i(4, 1)), "lumiere", true)
-		centres.append(coin + Vector2i(5, 8))
-	mob.rect(Rect2i(-26, yl - 1, 10, 2), "dalle_ombre")
-	mob.image("ville/bouche_incendie", Vector2i(-22, yl))
-	mob.rect(Rect2i(376, yl - 1, 10, 2), "dalle_ombre")
-	mob.image("ville/boite_poste", Vector2i(380, yl))
+		mob.rect(Rect2i(coin + GLOBE.position, GLOBE.size), "lumiere", true)
+		centres.append(coin + GLOBE.get_center())
+	mob.rect(Rect2i(-36, yl - 1, 16, 3), "dalle_ombre")
+	mob.image("ville/bouche_incendie", Vector2i(-33, yl))
+	mob.rect(Rect2i(566, yl - 1, 16, 3), "dalle_ombre")
+	mob.image("ville/boite_poste", Vector2i(570, yl))
 	# Voiture grise garée le long du trottoir
 	var garee := _mobile("VoitureGrise")
-	garee.position = Vector2(-74, Y_VOITURE_GAREE)
-	garee.ombres = [[Rect2i(-40, -2, 80, 3), "ombre_froide"]]
+	garee.position = Vector2(-111, Y_VOITURE_GAREE)
+	garee.ombres = [[Rect2i(-60, -3, 124, 5), "ombre_froide"]]
 	garee.poser(_parts_voiture("205", 0, 0))
 	# Gérard, puis la R5 rouge qui passe sur la voie proche
 	_gerard = _mobile("Gerard")
-	_gerard.ombres = [[Rect2i(-7, -1, 14, 3), "dalle_ombre"]]
+	_gerard.ombres = [[Rect2i(-11, -1, 22, 4), "dalle_ombre"], [Rect2i(-8, 3, 16, 1), "dalle_ombre"]]
 	_voiture = _mobile("VoitureRouge")
-	_voiture.ombres = [[Rect2i(-42, -2, 84, 3), "ombre_froide"]]
+	_voiture.ombres = [[Rect2i(-62, -3, 128, 5), "ombre_froide"]]
 	# Feuilles qui volettent (devant la rue, sous l'arbre de premier plan)
 	for i in 3:
 		var fe := _mobile("Feuille%d" % i)
@@ -401,7 +415,7 @@ func _construire() -> void:
 	# Arbre de premier plan (plan 1,15), contre le bord droit de la vue
 	_premier_plan = _mobile("PremierPlan")
 	_premier_plan.z_index = 10
-	_premier_plan.poser([["decor/premier_plan_0", Vector2i(0, -390)]])
+	_premier_plan.poser([["decor/premier_plan_0", Vector2i(0, -585)]])
 	# Calque des lumières (mélange additif), visible la nuit seulement
 	_lumieres = Node2D.new()
 	_lumieres.name = "Lumieres"
@@ -435,11 +449,11 @@ func _animer_feuilles(delta: float) -> void:
 		var m: Mobile = f[0]
 		f[3] += delta
 		if f[2] <= 0.0 or f[2] > SOL + 10:
-			f[1] = _premier_plan.position.x - _rng.randi_range(30, 260)
-			f[2] = _rng.randi_range(40, 110)
-		f[1] -= (9.0 + 4.0 * sin(f[3] * 1.7)) * delta
-		f[2] += (7.0 + 5.0 * sin(f[3] * 2.3)) * delta
-		m.position = Vector2(int(f[1] + 3.0 * sin(f[3] * 2.0)), int(f[2]))
+			f[1] = _premier_plan.position.x - _rng.randi_range(45, 390)
+			f[2] = _rng.randi_range(60, 165)
+		f[1] -= (14.0 + 6.0 * sin(f[3] * 1.7)) * delta
+		f[2] += (10.0 + 7.0 * sin(f[3] * 2.3)) * delta
+		m.position = Vector2(int(f[1] + 4.0 * sin(f[3] * 2.0)), int(f[2]))
 		m.poser([["decor/feuille_%d" % (int(f[3] * 3.0) % 2), Vector2i.ZERO]])
 
 
@@ -517,7 +531,7 @@ func _process(delta: float) -> void:
 		for n in _nuages:
 			(n as Mobile).position.x += 1
 			if n.position.x > MONDE_DROITE:
-				n.position.x = MONDE_GAUCHE - 120
+				n.position.x = MONDE_GAUCHE - 460
 	# Feuillages : 2 images à 1 im/s
 	_arbre_t += delta
 	if _arbre_t >= 1.0:
@@ -546,7 +560,7 @@ func _placer_premier_plan() -> void:
 	if cam == null:
 		return
 	var droite := int(cam.position.x) + int(vp.get_visible_rect().size.x)
-	var p := Vector2(droite - PREMIER_PLAN_MARGE, 330)
+	var p := Vector2(droite - PREMIER_PLAN_MARGE, 495)
 	if _premier_plan.position != p:
 		_premier_plan.position = p
 
@@ -622,7 +636,7 @@ func _maj_arbres() -> void:
 	for a in _arbres:
 		(a[0] as Mobile).poser([[a[1] + str(_arbre_image), Vector2i.ZERO]])
 	if _premier_plan != null:
-		_premier_plan.poser([["decor/premier_plan_%d" % _arbre_image, Vector2i(0, -390)]])
+		_premier_plan.poser([["decor/premier_plan_%d" % _arbre_image, Vector2i(0, -585)]])
 
 
 func _maj_sylvie() -> void:
@@ -686,18 +700,18 @@ func est_fige() -> bool:
 
 ## Pose déterministe pour les captures : Gérard devant la maison (marche, image 2), nuages et R5 placés.
 func preparer_capture() -> void:
-	_g_x = 44.0
+	_g_x = 66.0
 	_g_dir = 1
 	_g_image = 1
 	_g_repos = 0.0
 	_g_t = 0.0
 	_g_passe_porte = true
 	_maj_gerard()
-	_v_x = 296.0
+	_v_x = 444.0
 	_v_attente = 0.0
 	_v_image = 0
 	_maj_voiture()
-	var poses := [Vector2(-250, 24), Vector2(40, 46), Vector2(250, 30), Vector2(330, 70), Vector2(-560, 30)]
+	var poses := [Vector2(-375, 36), Vector2(60, 69), Vector2(375, 45), Vector2(495, 105), Vector2(-840, 45)]
 	for i in _nuages.size():
 		(_nuages[i] as Mobile).position = poses[i]
 	_arbre_image = 0
@@ -706,7 +720,7 @@ func preparer_capture() -> void:
 	_cligne_t = 3.0
 	_maj_sylvie()
 	_placer_premier_plan()
-	var poses_f := [Vector2(-70, 150), Vector2(-170, 212), Vector2(-250, 120)]
+	var poses_f := [Vector2(-105, 225), Vector2(-255, 318), Vector2(-375, 180)]
 	for i in _feuilles.size():
 		var fe: Array = _feuilles[i]
 		fe[1] = _premier_plan.position.x + poses_f[i].x

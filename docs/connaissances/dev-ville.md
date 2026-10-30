@@ -1,7 +1,7 @@
 # Base de connaissances de dev-ville
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-30 (PX0 ter : plus près de rue_pixel_v2, cadrage serré).
+> Dernière mise à jour : 2026-10-30 (PX0 quater : grille fine 960 × 540, relief).
 
 ## 1. Atelier pixel (`godot/scripts/pixel/`, conservé après PX0)
 
@@ -56,6 +56,13 @@
 - Arbre de premier plan = une seule image (tronc + branche de Bézier + masses `arbre_ete`), origine au tronc. Arbres `devant` posés entre la couche Batiments et la Maison. Feuilles qui volettent : 3 mobiles, placés aussi par `preparer_capture`.
 - Pièges : `R` est un alias PowerShell (Invoke-History) : ne pas nommer une fonction ainsi ; `WriteAllLines` écrit en CRLF (les remplacements en LF échouent ensuite) ; un paramètre `[string]$Godot` masque le `$godot` de trouver_godot.ps1 (l'inclure dans un bloc `& { . … ; $godot }`) ; une boucle `for k` dans une fonction qui a déjà `var k` = erreur de parse.
 - tests.ps1 + trouver_godot.ps1 recopiés à l'identique de main (fusion sans conflit) ; capture_px0.ps1 les utilise.
+
+## 2 quinquies. PX0 quater (grille fine, relief « mini 3D »)
+
+- `VuePixel.HAUTEUR_ART` = 540 : N = floor(h / 540) → 1080p ×2 (vue 960 × 540), 2160p ×4 ; **720p et téléphone 1600 × 720 : N = 1** (vue 1280 × 720 ou 1600 × 720 : plus de monde visible, personnages 2/3 de leur taille 1080p). L'interface ne lit que `monde_vers_ecran`, `marges_art` et les constantes SOL/TROTTOIR/BAS_CHAUSSEE (vérifié sur lot/px0-interface) : pas d'impact sur sa grille.
+- Tout ×1,5 : SOL 402, trottoir 26, chaussée 90, maison 228 × 258, étage 75, rdc 90, fenêtre 36 × 48, porte 33 × 66, ZONE (-195,144,741,360) (bas = 504 = haut de la frise à 1080p). Motifs (brique 6 × 3, tuiles, dalles) gardés à leur taille → plus fins à l'écran.
+- Personnages et mobilier **générés en code** (`personnages.gd` : Gérard 36 × 63, Sylvie 27 × 32 ; `facades.lampadaire/bouche_incendie/boite_poste/plaque`) ; grilles gerard/sylvie/objets.txt supprimées, lefranc.txt gardé. Contour « teinté » (`contour_teinte`).
+- Relief : `ombre_portee()` tramée sous toute saillie ; `_retour()` pan latéral en fuite (cfg "retour" : bâtiments qui avancent, dessinés après les autres) ; toits avec bord, gouttière, sous-face ; cheminée à joue ; embrasures ; marquise ; marches ; auvent avec sous-face, joues et ombre au sol (renvoyé par `batiment()["auvent"]`).
 
 ## 3. Décisions (étape A)
 

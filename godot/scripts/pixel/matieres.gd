@@ -20,17 +20,17 @@ const BAYER := [
 ## bande remplit le reste. Rampe d'été de docs/16 §8.2 : ciel_haut → ciel_vif → ciel → ciel_clair
 ## (horizon posé au sol de la rue).
 const BANDES_CIEL := [
-	["ciel_clair", 46],
-	["ciel", 58],
-	["ciel_vif", 66],
+	["ciel_clair", 69],
+	["ciel", 87],
+	["ciel_vif", 99],
 	["ciel_haut", 0],
 ]
 ## Voiles tramés dans le ciel (dégradé moins uniforme) : [distance à l'horizon, hauteur, couleur, densité].
-const VOILES_CIEL := [[78, 10, "ciel_clair", 0.3], [138, 12, "ciel", 0.35], [196, 8, "ciel_vif", 0.3], [240, 14, "ciel_vif", 0.2]]
-const TRAME_CIEL := 10         # hauteur des transitions tramées entre deux bandes
-const DALLE := 14              # largeur d'une dalle du trottoir
-const TIRET := 22              # tirets de la ligne médiane (22 peints, 16 vides)
-const TIRET_VIDE := 16
+const VOILES_CIEL := [[117, 15, "ciel_clair", 0.3], [207, 18, "ciel", 0.35], [294, 12, "ciel_vif", 0.3], [360, 21, "ciel_vif", 0.2]]
+const TRAME_CIEL := 14         # hauteur des transitions tramées entre deux bandes
+const DALLE := 21              # largeur d'une dalle du trottoir
+const TIRET := 33              # tirets de la ligne médiane (22 peints, 16 vides)
+const TIRET_VIDE := 24
 
 ## Briques : [corps, éclat, ombre, joint, brune]. Rang de 3 px (2 de brique + 1 de joint), brique de 6 px
 ## (5 + 1 joint vertical), en quinconce ; chaque brique prend un ton au hasard (corps le plus souvent).
@@ -251,7 +251,7 @@ static func _pylone(img: Image, x: int, bas: int, haut: int) -> void:
 ## Trottoir (PX0 ter) : dalles sur 2 rangs (joints dalle_ombre tous les DALLE px, en quinconce), dalles
 ## tachées, fissures et touffes d'herbe dans les joints, puis bordure de 3 px (arête éclairée, face,
 ## ombre froide du caniveau). hauteur = dalles + 3.
-static func trottoir(largeur: int, hauteur := 17, graine := 0) -> Image:
+static func trottoir(largeur: int, hauteur := 26, graine := 0) -> Image:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = graine
 	var img := Image.create_empty(largeur, hauteur, false, Image.FORMAT_RGBA8)
@@ -300,7 +300,7 @@ static func trottoir(largeur: int, hauteur := 17, graine := 0) -> Image:
 
 ## Chaussée de goudron (PX0 ter, hauteur 60) : caniveau dans l'ombre froide, grain tramé, reprises
 ## d'enrobé, fissures, ligne médiane en tirets blanc_chaud au milieu (le passage piéton est posé par la rue).
-static func chaussee(largeur: int, hauteur := 60, graine := 0) -> Image:
+static func chaussee(largeur: int, hauteur := 90, graine := 0) -> Image:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = graine
 	var img := Image.create_empty(largeur, hauteur, false, Image.FORMAT_RGBA8)
@@ -600,17 +600,17 @@ static func tuiles(largeur: int, hauteur: int, graine := 0) -> Image:
 ## Génère et enregistre dans GrillePixel les matières standard de la rue (noms « matiere/… »).
 ## Renvoie les noms enregistrés.
 static func generer_tout(graine := 1) -> PackedStringArray:
-	GrillePixel.enregistrer("matiere/ciel", ciel(64, 480, graine), Vector2i(0, 479))
-	GrillePixel.enregistrer("matiere/trottoir", trottoir(1288, 17, graine), Vector2i.ZERO)
-	GrillePixel.enregistrer("matiere/chaussee", chaussee(1292, 60, graine), Vector2i.ZERO)
+	GrillePixel.enregistrer("matiere/ciel", ciel(64, 720, graine), Vector2i(0, 719))
+	GrillePixel.enregistrer("matiere/trottoir", trottoir(1932, 26, graine), Vector2i.ZERO)
+	GrillePixel.enregistrer("matiere/chaussee", chaussee(1938, 90, graine), Vector2i.ZERO)
 	GrillePixel.enregistrer("matiere/bord_en_face", bord_en_face(1280, 8), Vector2i.ZERO)
 	for v in BRIQUES:
 		GrillePixel.enregistrer("matiere/brique_" + v, brique(48, 30, graine, v), Vector2i.ZERO)
 	GrillePixel.enregistrer("matiere/ardoise", ardoise(48, 32, graine), Vector2i.ZERO)
 	GrillePixel.enregistrer("matiere/tuiles", tuiles(48, 32, graine), Vector2i.ZERO)
-	GrillePixel.enregistrer("matiere/skyline", skyline(1600, 200, graine + 83), Vector2i(0, 199))
+	GrillePixel.enregistrer("matiere/skyline", skyline(2400, 300, graine + 83), Vector2i(0, 299))
 	for i in 3:
-		var t: Array = [[300, 84], [220, 66], [130, 46]][i]
+		var t: Array = [[450, 126], [330, 99], [195, 69]][i]
 		GrillePixel.enregistrer("matiere/cumulus_%d" % (i + 1), cumulus(t[0], t[1], graine * 10 + i), Vector2i.ZERO)
 	var noms := PackedStringArray()
 	for n in GrillePixel.noms():

@@ -7,9 +7,9 @@ extends RefCounted
 const M := preload("res://scripts/pixel/matieres.gd")
 
 ## Modèles : profil de la caisse (polygone), vitres, roues, couleurs [corps, éclat, ombre].
-## Agrandissement PX0 ter (cadrage plus serré : voitures ≈ 1/7 de la largeur de la vue).
-const ECHELLE := 1.3
-const ROUE := 16
+## Agrandissement : PX0 ter ×1,3 (cadrage serré), PX0 quater ×1,5 de plus (grille 960 × 540).
+const ECHELLE := 1.95
+const ROUE := 24
 
 const MODELES := {
 	# Renault 5 rouge : hayon presque vertical, pare-chocs en plastique gris foncé
