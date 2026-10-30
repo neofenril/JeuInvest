@@ -78,3 +78,10 @@ Verbatim : « Plutôt ca comme style graphique, fait une nouvelle proposition en
 
 Verbatim (complément, même jour) : « Personnages un peu plus grand cette fois-ci » → remplace la décision précédente « petits, taille de la version vectorielle » pour la nouvelle proposition PX0 bis.
 
+
+Verbatim (verdict sur PX0 bis, 2026-10-29) : « Style bien mais approche toi encore plus de la dernière image que je t'ai fournie si possible. L'ambiance est ok, garde la taille des personnages elle est bien. Largeur rue avec défilement bien. Interface ok. »
+Décisions : style PX0 bis validé sous réserve de se rapprocher de rue_pixel_v2.jpg ; ambiance briques Nord/banlieue années 1980 OK ; personnages 24x42 conservés ; rue plus large que l'écran avec défilement de la caméra (pour PX1) ; interface PX0 (barre du haut/frise sombres) conservée.
+
+
+Verbatim (retour sur PX0 ter, 2026-10-30) : « Tu peux faire encore plus proche, l'image d'origine est libre de droit, inspire-toi à fond, en particulier le mini effet 3D qui est présent sur les bâtiments, pour donner plus de relief à l'ensemble. Des graphismes un peu moins pixelisés si possible. »
+

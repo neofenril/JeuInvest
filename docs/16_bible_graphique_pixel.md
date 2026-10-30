@@ -631,3 +631,15 @@ Le joueur demande des **personnages plus grands** : la figurine passe à **24 ×
 
 ### 8.5 Interface
 Rien ne change dans §3 tant que le joueur n'a pas vu la rue claire sous le HUD. Points à juger sur la preuve PX0 bis : panneaux `nuit` foncés au-dessus d'un ciel clair (garder, teinter vers `bleu_nuit` ou passer la barre haute en papier crème) ; contraste de l'étiquette « MA MAISON » sur le goudron ; ombre portée des panneaux (encre α 0,5 → `bleu_nuit` α 0,35). Aucune de ces options ne demande de couleur en plus.
+
+---
+
+## 9. Révision 2026-10-30 : PX0 ter et quater validés (référence pour PX1 et PX2)
+
+> Auteur : chef de projet. Retours du joueur (docs/10) : « style bien… approche-toi encore plus » (PX0 ter), « inspire-toi à fond, mini effet 3D, un peu moins pixelisé » (PX0 quater, commit 45f5120), puis validation et ordre de tout continuer. **Prime sur §2.1, §2.2, §2.6 et §8.3 pour la rue.** L'interface garde §3 et la grille de 640 × 360 (« Interface ok », barre haute et frise sombres conservées).
+
+- **Deux grilles** : la **rue** a sa grille fine `VuePixel.HAUTEUR_ART = 540` : N_rue = max(1, floor(hauteur physique / 540)) → 1080p ×2 (vue 960 × 540), 1440p ×2 (vue 1280 × 720), 2160p ×4, **720p et téléphone 1600 × 720 : ×1** (vue 1280 × 720 ou 1600 × 720 : plus de rue visible, personnages aux 2/3). L'**interface** garde des texels de 640 × 360 (×3 à 1080p). Les deux tailles de pixel coexistent : c'est voulu.
+- **Échelle de la rue = §8.3 × 1,5** : figurine adulte **36 × 63** (Gérard), Sylvie à la fenêtre 27 × 32, maison de Gérard 228 × 258, étage 75, rez-de-chaussée 90, fenêtre 36 × 48, porte 33 × 66, sol à y = 402, trottoir 26, chaussée 90 (visible jusqu'au haut de la frise : y = 504 à 1080p). Les motifs (brique 6 × 3, tuiles, dalles) restent à leur taille : plus fins à l'écran (« moins pixelisé »).
+- **Palette 67 couleurs** : les 59 de §2.3 + §8.2, puis 8 ajoutées en PX0 ter (n° 60 à 67, monde seulement, non émissives) : `brique_brune` 8E4A32, `ombre_froide` 4F5B78, `goudron_sombre` 4A4E5A, `feuille_profonde` 1A3F2A, `mousse` 6E8A3A, `nuage_soleil` FFF3D2, `bleu_gris` 7A90AC, `vitre_reflet` 9CCBF0 (jour ; nuit et orage dans `palette.gd`, qui fait foi). Les 40 premières restent intouchables (interface).
+- **Relief « mini 3D »** : pans de mur latéraux en fuite (bâtiments qui avancent), toits avec épaisseur, gouttière et sous-face, cheminées à joue, corniches, bandeaux, linteaux et appuis en saillie avec ombre portée tramée, embrasures, auvents en volume avec ombre au sol, ombres des lampadaires. Personnages, mobilier et façades **générés en code** ; seules les grilles de portraits (M. Lefranc 48 × 48) restent en `.txt`.
+- **Rue plus large que l'écran** (décision du joueur) : la caméra glisse vers le bâtiment qui parle (banque, Gazette) puis revient ; le joueur peut faire défiler la rue (glisser, molette, flèches). Tailles cibles : banque ≈ 270 × 285, Gazette ≈ 225 × 330 (journal lumineux compris : son sommet reste sous la barre haute). Composition et API : `docs/lots/lot_px1.md`.

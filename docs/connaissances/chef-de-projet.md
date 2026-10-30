@@ -1,7 +1,7 @@
 # Base de connaissances du chef de projet technique
 
 > À lire au début de chaque mission (après `CLAUDE.md`, avec le socle `developpeur.md`). À mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-29 (validation de la fusion du lot 01).
+> Dernière mise à jour : 2026-10-30 (plans PX1, PX2, 02-L ; feuille de route en vagues).
 
 ## 0. Situation
 
@@ -11,7 +11,8 @@
   - Après fusion : `principal.gd` 585 l. ; `EcranTitre`, `Sequences`, `RaccourcisTest`, `Reglages`, `ScenariosCapture` + 5 familles ; `StrategieTest` ; `tests.ps1` découvre les tests et détecte les erreurs de script ; `test_interface` 21 vérifications. Référence attendue sur `main` : **202 vérifications** (107 + 21 + 66 + 8), ≈ 24 s.
 - **PX0 étape B en cours** (`docs/lots/lot_px0.md`) : `lot/px0-ville` (dev-ville) et `lot/px0-interface` (2e instance de dev-interface), empilées sur le tag `px0-atelier` (9fc6ed8, base 020f8d4 = **avant** le lot 01). Fichiers disjoints du lot 01 (vérifié : 20 fichiers neufs). À la fusion de PX0 : le `tests.ps1` du lot 01 découvrira `tests/test_pixel.gd` tout seul → la recette PX0 doit simuler la fusion avec `main` post-lot 01 (test_pixel doit quitter seul, imprimer OK/KO, aucune erreur de script). Ensuite décision du joueur, puis PX1 (rue, dev-ville) et PX2 (interface, dev-interface) en parallèle, avant les lots 03-04.
 - **PX0 bis** (29/10, `docs/lots/lot_px0_bis.md`) : style de rue PX0 rejeté par le joueur ; nouvelle référence `rue_pixel_v2.jpg` (plein jour, briques, arbres verts) + « personnages plus grands ». docs/16 §8 : palette **59 couleurs** (19 ajoutées en fin, les 40 premières intouchables car l'interface PX0 s'en sert), figurine **24 × 42** (1 m ≈ 24 px), maison ≈ 152 × 172, sol à y = 296. dev-ville seul, reprend `lot/px0-ville` (base b586055) ; `lot/px0-interface` (0ad6db7) inchangée (n'utilise que `figer()` et `point_etiquette_maison()`). Recette : CA-B1 à B15 dont fusion simulée avec `main` post-lot 01. Questions au joueur après captures : style, taille, **largeur de rue** (maison + banque + Gazette ne tiennent plus dans 448 px : caméra qui glisse ou bâtiments étroits, à trancher avant PX1), brique « Nord/banlieue », panneaux du HUD foncés sur ciel clair.
-- Feuille de route V3 : `docs/lots/feuille_de_route.md` (lots 02 à 07 : P4 → P2 → P1 → P3 + P9 → P6 → P5). Spec `docs/15_spec_game_design_v3.md` en cours chez le game designer.
+- **PX0 ter / quater** (30/10, `lot/px0-ville` 45f5120) : rue sur grille fine 960 × 540 (N_rue = floor(h/540) : 1080p ×2, 720p et téléphone 1600 × 720 ×1), Gérard 36 × 63, palette **67** (8 ajoutées en PX0 ter), relief « mini 3D », personnages et mobilier générés en code. **Validé par le joueur**, rue large avec défilement, interface PX0 (grille 640 × 360) conservée, « tout continuer ». Reporté dans docs/16 §9. Recette PX0 en cours (testeur : `lot/px0-ville` 45f5120 + `lot/px0-interface` 0ad6db7, fusion simulée avec `main`).
+- **Feuille de route en vagues** (30/10, `docs/lots/feuille_de_route.md`) : 3 branches par vague, logique une vague en avance. Vague 1 = **PX1** (`lot_px1.md`, dev-ville) ∥ **PX2** (`lot_px2.md`, dev-interface, commence par T16 et T9) ∥ **02-L** (feuille de route §2, dev-logique : flux du mois, saut, non-lus, `Cadence`, format 3 + migration douce, T17/T18 tests.ps1, export 0.3). 02-L lançable tout de suite ; PX1/PX2 après F0 (fusion PX0). F1 → export 0.3 « tout en pixel ». Vague 2 : 03-L ∥ 02-I ∥ 02-V (pièces du mois, nettoyage vitrine PX0). Puis P1, P3+P9, P6, P5 (vagues 3 à 7).
 - Référence avant lot 01 (b55ca7f) : 66 + 100 + 8 (≈ 12 s). Après lot 01 : 202 (voir ci-dessus) ; `-Recette` : + 11.
 
 ## 1. Carte de propriété des fichiers
@@ -38,6 +39,9 @@ Chemins relatifs à `godot/` sauf mention. « Partagé » = un seul propriétair
 | `.godot/` | personne | Cache par worktree, régénéré par `--import`. |
 | `docs/connaissances/developpeur.md` (socle) | un développeur nommé par lot | Les autres passent par leur base et leur compte rendu. |
 
+**Vague 1 (PX1 ∥ PX2 ∥ 02-L)** : carte exacte dans `feuille_de_route.md` §3. Écarts à la carte ci-dessus pendant la vague : `test_interface.*` et `test_partie.*` → dev-interface ; `project.godot` entier (dont `config/version` 0.3) → dev-interface ; `juice.gd` (secousse seulement), `shaders/ciel.gdshader` → dev-ville ; `shaders/papier.gdshader` → dev-interface ; `socle developpeur.md` → dev-logique. Nouveaux outils : `capture_ville.ps1` (dev-ville), `capture_interface.ps1` (dev-interface), tests `test_rue` (dev-ville), `test_ecran` (dev-interface), `test_{mois_utile,cadence,sauvegarde}` (dev-logique).
+Règles permanentes : `principal.gd`, `ui/*`, `project.godot` → dev-interface ; `sequences.gd`, `ville/*`, `juice.gd` → dev-ville ; `partie.gd`, `logique/*`, `data/*.json` → dev-logique. Nouvelle sorte de modale : `Modales.<sorte>(c, depart)` (interface), appelée par `Sequences` via `has_method` avec repli sur `courrier`.
+
 **Règle** : le développeur qui porte l'essentiel du changement d'un fichier le reçoit ; l'autre décrit son besoin (signature exacte) dans le plan ou son compte rendu. Deux développeurs qui doivent écrire le même fichier : séquentiel (branche du second créée depuis `main` après fusion du premier).
 
 ### Fichiers qui freinent le parallélisme
@@ -56,9 +60,12 @@ Chemins relatifs à `godot/` sauf mention. « Partagé » = un seul propriétair
 - **Statiques lues par l'UI** : `Banquier.*`, `Produits.*`, `Versements.*`, `Marche.*`, `Sauvegarde.lire/existe/effacer`, `Donnees.charger/config_demo`, `Format`, `Dates`, `Hasard`.
 - **Signaux UI internes** : `Hud` (vitesse_demandee, marche_demande, menu_demande, raccourci_demo, batiment_touche, disposition_changee, comparaison_demandee, frais_demandes, notif_touchee, historique_demande), `Modales.choix_fait(genre, id)`, `PanneauBanque` (fermer_demande, ordre_passe, relire, historique_demande), `ville.batiment_touche`, `Ecran.format_change`, `DateVolets.triple_touche`, `CarteProduit.touchee`, `Batiment.touche`.
 - **Lot 01** : `Reglages.raccourcis_test()` (faux si tag `template` ou `--joueur`, sinon `jeuclaude/raccourcis_test`) ; `StrategieTest.jouer_mois / aller_a / aller_a_modale`.
-- Sauvegarde : format 2. Migration douce (champ absent → défaut) prévue au lot 02 ; d'ici là, tout nouveau champ = décision de version dans le plan.
+- Sauvegarde : format 2. **02-L** : format 3 (format 2 ignoré, docs/15 §0.1) + migration douce ensuite (champ absent → défaut).
+- **Figées pour la vague 1** : API de la ville (`lot_px1.md` §2.1 conservée, §2.2 ajouts : `point_etiquette`, `est_visible`, `aller_vers`, `position_camera`, `bornes_rue`, `camera_bougee`, `regler_humeur_sylvie` 0/1/2, `faire_passer`, `point_tete`, `PERSONNAGES`) ; ce que PX2 garde pour `Sequences`/`Juice`/ville (`lot_px2.md` §2.2 : `Style` complet, `Hud`, façade `Modales`, `Piece.voler`) ; `Ecran.facteur_texel/dp/cible_min`, téléphone simulé 1600 × 720 à 267 dpi (1 dp = 1,67 px, 48 dp = 80 px) ; 02-L : `Partie.saut_*`, `res["flux"]`, `n["pendant_saut"]`, `EtatPartie.flux_du_mois/non_lues/marquer_lues`, `Cadence`.
 
 ## 3. Backlog technique (priorisé)
+
+> Affectation du 30/10 (prime sur la colonne « Où ») : T16, T9, T15, B1, B3 → PX2 ; T14, T17 et T18 côté `tests.ps1` → 02-L ; T13, T17 (`capture.sav`), T18 (`capture.ps1`) → 02-I ; B2 → PX1 ou 02-V ; T2 → F1 (export 0.3) ; dettes PX0 (`include_filter` `data/pixel`) → 02-L, (`capture_px0` sur `trouver_godot`) faite en PX0 ter, (facteur N téléphone) → réglée par docs/16 §9 et `Ecran.dp` (PX2).
 
 | # | Prio | Élément | Où |
 |---|---|---|---|
@@ -113,3 +120,4 @@ Chemins relatifs à `godot/` sauf mention. « Partagé » = un seul propriétair
 - (29/10) Recette lot 01 : vérifier un CA contre le code **avant** de l'écrire (CA-L9 visait `e.banque` dans `hud.gd`, qui ne le lit pas). Tout `.bat` modifié doit être vérifié « à sec » dans les deux cas (variable définie / absente) : `%VAR:a=b%` est développé avant le `if defined`. Un libellé de test faux = à corriger dans le lot. Les accès d'un test à des membres privés de l'UI sont tolérés s'ils échouent proprement et sont tracés au backlog.
 - (29/10) Validation du lot 01 : le testeur a simulé la fusion des deux branches (copie isolée, `user://` à part) ; c'est à exiger dès qu'un lot a deux branches qui se touchent à l'exécution (ici `test_interface` × scène découpée). Les tests de recette du testeur vont dans `tests/recette/` de `main` s'ils couvrent un chemin que rien d'autre ne couvre ; ils ne tournent qu'avec `-Recette`. Vérifier un nombre (« 1 464 lignes ») avant de l'écrire dans un plan.
 - Branche empilée (base = tag d'un commit d'une autre branche du lot) : acceptable quand l'API est petite et figée ; le testeur fait le `diff` depuis le tag.
+- (30/10) Pixel dans le monde : aucune rotation ni mise à l'échelle de sprite (une animation = des images), pas de zoom de caméra (`viser` ignore `zoom_en_plus`) ; texte dans la rue = lettres pixel 3 × 5 seulement, les bulles et textes lisibles sont dans l'interface (placés par `point_tete`). Trois branches parallèles qui se touchent à l'exécution : appels nouveaux par `has_method`, fusion simulée des trois à la dernière recette. Décisions prises sans le joueur (PX0 validé tel quel) : Atkinson pour date et patrimoine, panneaux sombres, sortie 0.3 « tout en pixel » envoyée dès F1.
