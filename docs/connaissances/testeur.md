@@ -1,7 +1,7 @@
 # Base de connaissances du testeur
 
 > À lire au début de chaque mission (après `CLAUDE.md` et le socle `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-30 (PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
+> Dernière mise à jour : 2026-10-30 (02-L : `lot/02-logique` 252f8b0 OK ; PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
 
 ## 1. Règles de travail
 - Je ne modifie jamais un fichier suivi par Git dans le worktree d'un développeur ; pour les mutations, worktree jetable :
@@ -49,6 +49,17 @@
 - Branche sur l'ancien `tests.ps1` (avant lot 01) : il ne trouve pas Godot depuis un worktree → lancer les tests à la main (`--script res://tests/test_*.gd`, `res://tests/test_partie.tscn`).
 - `.ttf.import` non suivis dans le dépôt principal : ils bloqueront la fusion de `lot/px0-interface` dans `main` (à retirer juste avant).
 - Pas d'étape « orage » dans px0 : l'orage n'est contrôlé que par test_pixel.
+
+## 4 ter. Lot 02-L (recette 2026-10-30, `lot/02-logique` 252f8b0 : OK, 4 mineures)
+- Références : branche 258 vérifications (avec recette `-Joueur`), fusion avec `main` 972358a : 335. `test_cadence` imprime la liste des interruptions par graine (80 parties, 11-13, moy. 11,41) ; `test_demo` 40 graines passif : `main` {11:29, 12:11} → V3 {11:31, 12:9}.
+- **Nouvelle référence `integrale` après 02-L : 160 749 F, frais 805,93 F, 11 interruptions** (graine 11 ; la cadence V3 décale D05/D06, le scénario « une présentation sur deux » achète la SICAV au lieu de l'assurance-vie). L'ancienne (156 645 F) ne vaut plus que pour `main` avant F1.
+- Expliquer un écart de chiffres : instrumenter `scenarios/outils.gd` **dans la copie isolée** (print de `banque.interruptions_liste`, `joueur.lignes`) et comparer `main` / fusion.
+- Vraie sauvegarde d'un ancien format : script jetable dans la copie de `main` (`Sauvegarde.ecrire(e, {}, <chemin absolu scratchpad>)`), lu par un script dans la copie de la branche. `Partie.sauvegarder()` ne fait rien sans `sauvegarde_auto = true`.
+- Scènes de test de l'autoload `Partie` : `.tscn` minimal + `Partie._process(1.4)` en boucle (synchrone, headless).
+- Exe exporté : passer `--capture=` avec des `/` (avec des `\` via Start-Process : « Can't save PNG at path '' »). Présence d'un fichier dans le paquet : chercher le chemin `data/...` dans les octets de l'exe.
+- Copies isolées : `custom_user_dir_name` crée `%APPDATA%\<nom>` (pas sous `Godot\app_userdata`) : y supprimer à la fin.
+- Zone fragile : les interruptions datées ne contournent plus l'écart de 2 mois (seul marché → panne) ; à surveiller quand cartes et projets (03-04) rempliront le calendrier. Saut + modale de marché → pause (question ouverte au CDP). Aucun dividende dans le moteur (genre `dividende` jamais émis).
+- Vu le 30/10 : `godot/export_presets.cfg` modifié non commité **dans le dépôt principal** (pas par moi) : toujours faire `git status` du dépôt principal en début et fin de recette.
 
 ## 5. Anomalies récurrentes / à surveiller
 - Fichiers « recopiés de main » dans une branche (tests.ps1, trouver_godot.ps1 sur px0-ville) : vérifier `git diff main <branche> -- <fichier>` vide → sans conflit, mineur.
