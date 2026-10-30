@@ -114,6 +114,11 @@ func fermer(id := "") -> void:
 	courant = null
 	genre_courant = ""
 	_assombrir(0.0)
+	# Enveloppe encore en vol (courrier fermé avant d'être posé, T16) : elle disparaît avec lui.
+	if p.has_meta("enveloppe"):
+		var env: Node = (p.get_meta("enveloppe") as WeakRef).get_ref()
+		if env != null:
+			env.queue_free()
 	var t := p.create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	t.tween_property(p, "position:y", p.position.y + 120.0, 0.3)
 	t.tween_property(p, "rotation", p.rotation + deg_to_rad(8.0), 0.3)
@@ -586,7 +591,14 @@ func courrier(c: Dictionary, depart: Vector2, e: EtatPartie, lecture_choix := ""
 	tw.tween_property(enveloppe, "scale", Vector2(1.6, 1.6), 0.5)
 	tw.tween_property(enveloppe, "rotation", deg_to_rad(-6.0), 0.5)
 	tw.chain().tween_callback(enveloppe.queue_free)
-	tw.chain().tween_callback(func() -> void: p.visible = true)
+	# T16 : la lettre peut être fermée (et libérée) pendant le vol de l'enveloppe : pas de capture directe de p.
+	var ref_p: WeakRef = weakref(p)
+	var montrer := func() -> void:
+		var q: Control = ref_p.get_ref()
+		if q != null:
+			q.visible = true
+	tw.chain().tween_callback(montrer)
+	p.set_meta("enveloppe", weakref(enveloppe))
 	p.position = cible + Vector2(0, 160)
 	p.modulate.a = 0.0
 	var tl := p.create_tween().set_parallel(true)

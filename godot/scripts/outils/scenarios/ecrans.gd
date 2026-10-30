@@ -3,7 +3,7 @@ extends RefCounted
 ## historique, comparaison au Livret A, journal du krach, courrier, fin, fermeture par un clic à côté).
 
 const ETAPES := ["foyer", "marche_banque", "pause", "panneau", "historique", "historique_filtre", "historique_entree", "historique_journal",
-	"historique_courrier", "comparaison", "comparaison_info", "krach", "courrier", "fin", "clic_dehors"]
+	"historique_courrier", "comparaison", "comparaison_info", "krach", "courrier", "fin", "clic_dehors", "courrier_relu_echap"]
 
 var sc: ScenariosCapture
 
@@ -60,6 +60,45 @@ func jouer(etape: String) -> void:
 			await sc.delai(3.4)
 		"clic_dehors":
 			await _clic_dehors(jeu, modales)
+		"courrier_relu_echap":
+			await _courrier_relu_echap(e, jeu, modales)
+
+
+## T16 : Échap sur un courrier relu dès son ouverture, puis fermeture d'un vrai courrier pendant le vol de
+## l'enveloppe (0,5 s ; avant correction : SCRIPT ERROR, lambda dont la capture « p » était libérée).
+func _courrier_relu_echap(e: EtatPartie, jeu: Node, modales: Modales) -> void:
+	# 1) Un vrai courrier (après le krach) : Échap ne le ferme pas (décision explicite), une fermeture pendant le vol, si.
+	sc.aller_a_modale("p1e6", true)
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "journal", 15.0)
+	await sc.delai(1.6)
+	modales.call("_on_choix_journal", "rien")
+	Partie.changer_vitesse(3)
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "courrier", 15.0)
+	await sc.delai(0.1)
+	await sc.touche(KEY_ESCAPE)
+	var garde := modales.genre_courant == "courrier"
+	modales.fermer(str(e.contenu_modale()["choix"][0]["id"]) if not e.modale.is_empty() else "fermer")
+	await sc.delai(1.2)
+	print("UI vol_enveloppe echap_ignore=%s fermee=%s" % ["oui" if garde else "non", "oui" if modales.genre_courant != "courrier" else "non"])
+	Partie.changer_vitesse(0)
+	# 2) Le même genre de courrier relu depuis l'historique : Échap le ferme aussitôt.
+	sc.aller_a(Dates.lire("1988-06"), true)
+	jeu.ouvrir_historique("")
+	await sc.delai(1.0)
+	var cible := -1
+	for h: Dictionary in e.historique_recent(""):
+		if h["genre"] == "courrier":
+			cible = int(h["i"])
+			break
+	modales.fermer("ouvrir:%d" % cible)
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "info", 3.0)
+	await sc.delai(0.1)
+	await sc.touche(KEY_ESCAPE)
+	print("UI echap_courrier relu=%s fermee=%s" % [cible >= 0, "oui" if modales.genre_courant != "info" else "non"])
+	await sc.delai(0.5)
+	if modales.ouverte():
+		await sc.touche(KEY_ESCAPE)   # l'historique revenu
+	await sc.delai(0.6)
 
 
 ## Une partie jouée jusqu'en juin 1988, avec un versement automatique sur la SICAV depuis avril 1986.
