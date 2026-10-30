@@ -1,30 +1,37 @@
 extends Node2D
-## « Ma rue » (09 §2) : diorama en aplats, 4 plans de parallaxe, 3 bâtiments jouables, trafic, ciel,
-## cycle jour et nuit (60 s, figé en pause), saisons, particules (neige, feuilles, pluie, fumée).
-## Monde : x de −2 600 à 2 600, y négatif vers le haut, sol des bâtiments à y = −160.
-## Zone utile (toujours visible) : 1 400 × 700 centrée, alignée sur le bas (y = 0).
+## « Ma rue » en pixel art (lot PX1, docs/16 §9) : la rue de briques de PX0 quater, plus large que l'écran.
+## La rue (scripts/ville/rue.gd) est rendue dans le SubViewport d'une VuePixel plein écran, dans un CanvasLayer
+## sous le HUD : 540 px d'art de haut sur tous les écrans, rendue à N entier ≥ 2 puis réduite (§2.3).
+## La caméra glisse vers le bâtiment qui parle (viser, aller_vers) puis revient ; le joueur fait défiler la rue
+## (glisser, molette, flèches ← →, inertie courte). La ville ne calcule rien : elle lit Partie et montre.
+## API conservée : lot_px1 §2.1 ; ajouts : §2.2.
 
 signal batiment_touche(id: String)
+signal camera_bougee
 
-const ZONE := Rect2(-700, -790, 1400, 780)
-const ZONE_TITRE := Rect2(-800, -980, 1600, 1000)
+const RUE := preload("res://scripts/ville/rue.gd")
+const PERSONNAGES := ["gerard", "tata", "matelas", "jeanmi", "lopez", "lefranc", "passant_1", "passant_2", "passant_3"]
 const CYCLE := 60.0
-const NUIT_TEINTE := Color("5a5f8c")
-const COUCHANT_TEINTE := Color("ffd9c2")
+const SEUIL_TOUCHER := 14.0
+const HAUT_MAISON := 140.0               # haut de la cheminée (144) moins une marge
+const INERTIE_MAX_S := 0.35
+const BAS_MAX := 504.0                   # bas du rectangle libre au plus (haut de la frise à 1080p)
 
-var anime := true                 # trafic et ciel animés (faux en pause)
+var anime := true
 var facteur_trafic := 1.0
 var interactif := false
 var mode_titre := false
-var phase := 0.12                 # 0 → 1 : position dans le cycle jour/nuit
+var phase := 0.12
 var nuit := 0.0
-var krach := 0.0                  # ciel d'orage (0 → 1)
-var gel := 0.0                    # pause
-var signal_t := -1.0              # signal banque → maison (0 → 1 ; < 0 : inactif)
+var krach := 0.0
+var gel := 0.0
+var signal_t := -1.0                     # compatibilité (le signal est un accessoire des séquences)
 var pluie: bool = false:
-	set = _set_pluie
-
-var ciel_mat: ShaderMaterial
+	set(v):
+		pluie = v
+		if rue != null:
+			rue.call("regler_pluie", v)
+var ciel_mat: ShaderMaterial             # accepté, ignoré (le ciel est dans la rue)
 var camera: Camera2D
 var maison: Batiment
 var media: Batiment
@@ -32,271 +39,64 @@ var banque: Batiment
 var voiture_maison: Node2D
 var potelet: Node2D
 var passants: Array = []
-
-var _fond: Node2D
-var _trafic: Node2D
-var _lum_bat: Node2D
-var _dessus: Node2D
-var _lum_avant: Node2D
-var _avant: Node2D                 # au-dessus de tout (cigogne, étoile « BONK »), teinté comme la rue
-var _plans: Array = []
-var _rue: Node2D
 var _voitures: Array = []
-var _reverberes: Array = []
-var _survol: Batiment = null
-var _neige: CPUParticles2D
-var _pluie: CPUParticles2D
-var _feuilles: Array = []
-var _cadre_pos := Vector2.ZERO
-var _cadre_zoom := 1.0
-var _cam_tween: Tween
-var _t_titre := 0.0
+var vue: VuePixel
+var rue: Node2D
+
+var _calque: CanvasLayer
+var _libre := Rect2(0, 0, 1920, 1080)
+var _cx := 114.0
+var _cy := 0.0
+var _haut := HAUT_MAISON
+var _repos_cx := 114.0
+var _repos_auto := true
+var _avant := NAN
 var _vise := false
+var _cam_tween: Tween
+var _appui := false
+var _appui_pos := Vector2.ZERO
+var _glisse := false
+var _vitesse_glisse := 0.0
+var _inertie := 0.0
+var _frein := 0.0
+var _survol: Batiment = null
+var _humeur := 1
 
 
 func _ready() -> void:
-	_fond = Node2D.new()
-	_fond.name = "Fond"
-	add_child(_fond)
-	for g in ["nuages", "horizon", "lointain"]:
-		var p := Node2D.new()
-		p.set_script(load("res://scripts/ville/plan_fond.gd"))
-		p.set("genre", g)
-		_fond.add_child(p)
-		_plans.append(p)
-	_rue = Node2D.new()
-	_rue.set_script(load("res://scripts/ville/rue.gd"))
-	_fond.add_child(_rue)
-	maison = _batiment("res://scripts/ville/maison.gd", Vector2(-480, -160))
-	media = _batiment("res://scripts/ville/media.gd", Vector2(0, -160))
-	banque = _batiment("res://scripts/ville/banque.gd", Vector2(470, -160))
-	# Lumières des bâtiments (mélange additif, non assombries la nuit)
-	_lum_bat = _calque_lumiere(_dessiner_lumieres_bat)
-	_dessus = Node2D.new()
-	_dessus.draw.connect(_dessiner_dessus)
-	add_child(_dessus)
-	# Trafic, passants, réverbères (triés par profondeur)
-	_trafic = Node2D.new()
-	_trafic.y_sort_enabled = true
-	add_child(_trafic)
-	_avant = Node2D.new()
-	_creer_trafic()
-	_lum_avant = _calque_lumiere(_dessiner_lumieres_avant)
-	add_child(_avant)
-	# Particules
-	_feuilles = [_creer_feuilles(Vector2(-720, -330)), _creer_feuilles(Vector2(730, -330))]
-	camera = Camera2D.new()
-	camera.anchor_mode = Camera2D.ANCHOR_MODE_DRAG_CENTER
-	add_child(camera)
-	camera.make_current()
-	_neige = _creer_neige()
-	_pluie = _creer_pluie()
-	camera.add_child(_neige)
-	camera.add_child(_pluie)
-
-
-func _batiment(chemin: String, pos: Vector2) -> Batiment:
-	var b := Node2D.new()
-	b.set_script(load(chemin))
-	b.position = pos
-	_fond.add_child(b)
-	return b as Batiment
-
-
-func _calque_lumiere(dessin: Callable) -> Node2D:
-	var n := Node2D.new()
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	n.material = mat
-	n.draw.connect(dessin)
-	add_child(n)
-	return n
-
-
-func _creer_trafic() -> void:
-	voiture_maison = _voiture(Vector2(-470, -122), Color("ece8df"), 0.0, 1.0)
-	potelet = ajouter_accessoire("potelet", Vector2(-352, -118))
-	_voitures.append(_voiture(Vector2(-900, -84), Color("c8382e"), 170.0, 1.0))
-	_voitures.append(_voiture(Vector2(500, -84), Color("23366b"), 140.0, 1.0))
-	_voitures.append(_voiture(Vector2(200, -40), Color("e0b23a"), 160.0, -1.0))
-	_voitures.append(_voiture(Vector2(-1300, -40), Color("ece8df"), 190.0, -1.0))
-	var tenues := [[Color("3f6fb5"), Color("2d3446"), Color("f1c9a5"), Color("4a3426")],
-		[Color("d9486a"), Color("343a4f"), Color("e0b48e"), Color("1f1a17")],
-		[Color("6a9f58"), Color("3b3f4a"), Color("c99a72"), Color("6b4a32")],
-		[Color("e8a33d"), Color("2a3142"), Color("f3d2b4"), Color("b88a3a")],
-		[Color("7d5ba6"), Color("2d3446"), Color("8d5f3e"), Color("1f1a17")],
-		[Color("d0d4da"), Color("41495c"), Color("f1c9a5"), Color("6b4a32")]]
-	var places := [[-1100.0, -126.0, 46.0, 1.0], [-250.0, -126.0, 38.0, -1.0], [620.0, -126.0, 52.0, 1.0],
-		[-600.0, -4.0, 55.0, -1.0], [300.0, -4.0, 44.0, 1.0], [1100.0, -4.0, 50.0, -1.0]]
-	for i in places.size():
-		var p := Node2D.new()
-		p.set_script(load("res://scripts/ville/passant.gd"))
-		var t: Array = tenues[i]
-		p.set("corps", t[0])
-		p.set("bas", t[1])
-		p.set("peau", t[2])
-		p.set("cheveux", t[3])
-		p.set("vitesse", places[i][2])
-		p.set("walkman", i % 2 == 0)
-		p.set("ville", self)
-		p.position = Vector2(places[i][0], places[i][1])
-		p.scale = Vector2(places[i][3], 1.0)
-		_trafic.add_child(p)
-		passants.append(p)
-	for x in [-1150.0, -560.0, 20.0, 560.0, 1150.0]:
-		var r := Node2D.new()
-		r.set_script(load("res://scripts/ville/reverbere.gd"))
-		r.position = Vector2(x, -20)
-		_trafic.add_child(r)
-		_reverberes.append(r)
-
-
-func _voiture(pos: Vector2, c: Color, v: float, sens: float) -> Node2D:
-	var n := Node2D.new()
-	n.set_script(load("res://scripts/ville/voiture.gd"))
-	n.set("couleur", c)
-	n.set("vitesse", v)
-	n.set("ville", self)
-	n.position = pos
-	n.scale = Vector2(sens, 1.0)
-	_trafic.add_child(n)
-	return n
-
-
-## Accessoire animé (scripts/ville/accessoire.gd) : dans la rue (trié en profondeur avec le trafic)
-## ou au premier plan (dans_la_rue = false : cigogne, étoile « BONK »).
-func ajouter_accessoire(genre: String, pos: Vector2, dans_la_rue := true) -> Node2D:
-	var n := Node2D.new()
-	n.set_script(load("res://scripts/ville/accessoire.gd"))
-	n.set("genre", genre)
-	n.position = pos
-	(_trafic if dans_la_rue else _avant).add_child(n)
-	return n
-
-
-static func _texture_rond(d: int) -> ImageTexture:
-	var img := Image.create(d, d, false, Image.FORMAT_RGBA8)
-	var r := d / 2.0
-	for y in d:
-		for x in d:
-			img.set_pixel(x, y, Color(1, 1, 1, clampf(r - Vector2(x + 0.5 - r, y + 0.5 - r).length(), 0.0, 1.0)))
-	return ImageTexture.create_from_image(img)
-
-
-func _creer_neige() -> CPUParticles2D:
-	var p := CPUParticles2D.new()
-	p.texture = _texture_rond(8)
-	p.amount = 60
-	p.lifetime = 9.0
-	p.preprocess = 9.0
-	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	p.direction = Vector2(0.2, 1)
-	p.spread = 20.0
-	p.gravity = Vector2(8, 30)
-	p.initial_velocity_min = 30.0
-	p.initial_velocity_max = 60.0
-	p.scale_amount_min = 0.5
-	p.scale_amount_max = 1.1
-	p.color = Color(1, 1, 1, 0.9)
-	p.local_coords = false
-	p.emitting = false
-	return p
-
-
-func _creer_pluie() -> CPUParticles2D:
-	var img := Image.create(3, 22, false, Image.FORMAT_RGBA8)
-	img.fill(Color(1, 1, 1, 1))
-	var p := CPUParticles2D.new()
-	p.texture = ImageTexture.create_from_image(img)
-	p.amount = 120
-	p.lifetime = 1.0
-	p.preprocess = 1.0
-	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	p.direction = Vector2(-0.18, 1)
-	p.spread = 2.0
-	p.gravity = Vector2.ZERO
-	p.initial_velocity_min = 1100.0
-	p.initial_velocity_max = 1300.0
-	p.particle_flag_align_y = true
-	p.color = Color(0.75, 0.82, 0.95, 0.45)
-	p.local_coords = false
-	p.emitting = false
-	return p
-
-
-func _creer_feuilles(pos: Vector2) -> CPUParticles2D:
-	var img := Image.create(10, 6, false, Image.FORMAT_RGBA8)
-	img.fill(Color(1, 1, 1, 1))
-	var p := CPUParticles2D.new()
-	p.texture = ImageTexture.create_from_image(img)
-	p.position = pos
-	p.amount = 6
-	p.lifetime = 5.0
-	p.preprocess = 5.0
-	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
-	p.emission_sphere_radius = 60.0
-	p.gravity = Vector2(12, 40)
-	p.initial_velocity_min = 5.0
-	p.initial_velocity_max = 20.0
-	p.angular_velocity_min = -180.0
-	p.angular_velocity_max = 180.0
-	p.color = Color("e39b4b")
-	p.emitting = false
-	_fond.add_child(p)
-	return p
-
-
-func _set_pluie(v: bool) -> void:
-	pluie = v
-	if _pluie != null:
-		_pluie.emitting = v
-
-
-## Saison et époque selon le mois du jeu.
-func regler_mois(mois: int, annee: int) -> void:
-	var hiver := mois == 12 or mois <= 2
-	_rue.call("regler_saison", mois, annee)
-	maison.call("regler_hiver", hiver)
-	for b in [media, banque]:
-		b.hiver = hiver
-		b.annee = annee
-		b.queue_redraw()
-	maison.annee = annee
-	_neige.emitting = hiver
-	for f in _feuilles:
-		f.emitting = mois >= 9 and mois <= 11
+	_calque = CanvasLayer.new()
+	_calque.name = "CalqueRue"
+	_calque.layer = -5
+	add_child(_calque)
+	vue = VuePixel.new()
+	vue.mode_reduction = true
+	_calque.add_child(vue)
+	rue = Node2D.new()
+	rue.set_script(RUE)
+	vue.monde.add_child(rue)
+	camera = vue.camera
+	maison = rue.get("maison")
+	banque = rue.get("banque")
+	media = rue.get("media")
+	voiture_maison = rue.get("voiture_maison")
+	potelet = rue.get("potelet")
+	passants = rue.get("passants")
+	_voitures = rue.get("voitures")
+	vue.vue_change.connect(_recalculer)
+	_recalculer()
 
 
 # =====================================================================
-# Temps qui passe : ciel, teinte, parallaxe
+# Temps : jour / nuit, orage, gel, trafic
 # =====================================================================
 
 func _process(delta: float) -> void:
-	if mode_titre:
-		_t_titre += delta
-		camera.position.x = _cadre_pos.x + sin(_t_titre * TAU / 20.0) * 380.0
-	elif anime:
+	if anime and not mode_titre:
 		phase = fmod(phase + delta / CYCLE, 1.0)
 	var jc := _jour_couchant(phase)
-	var jour := jc.x
-	nuit = 1.0 - jour
-	var teinte := Color.WHITE.lerp(NUIT_TEINTE, nuit).lerp(COUCHANT_TEINTE, jc.y * 0.45)
-	teinte = teinte.lerp(Color(0.72, 0.64, 0.7), krach * 0.45)
-	teinte = teinte.lerp(Color(0.86, 0.92, 1.05), gel * 0.35)
-	_fond.modulate = teinte
-	_trafic.modulate = teinte
-	_avant.modulate = teinte
-	if ciel_mat != null:
-		ciel_mat.set_shader_parameter("jour", jour)
-		ciel_mat.set_shader_parameter("couchant", jc.y)
-		ciel_mat.set_shader_parameter("krach", krach)
-		ciel_mat.set_shader_parameter("gel", gel)
-	for b in [maison, media, banque]:
-		b.nuit = nuit
-	for p in _plans:
-		p.position.x = camera.position.x * (1.0 - float(p.get("parallaxe")))
-	# Trafic : suit la vitesse du jeu (data/rythme.json), freine jusqu'à l'arrêt en pause.
-	# Pendant une séquence de bâtiment (anime mais temps en pause), la rue garde l'allure ×1.
+	nuit = 1.0 - jc.x
+	rue.call("regler_ciel", nuit, krach)
+	vue.teinter(Color.WHITE.lerp(PalettePixel.couleur("gel"), clampf(gel, 0.0, 1.0) * 0.35))
 	var cible := 0.0
 	if mode_titre:
 		cible = 1.0
@@ -306,9 +106,16 @@ func _process(delta: float) -> void:
 	var transition := maxf(0.05, float(rythme.get("transition_trafic_s", 0.6)))
 	var plus_rapide: float = float(rythme["trafic"].max())
 	facteur_trafic = move_toward(facteur_trafic, cible, delta * plus_rapide / transition)
-	_lum_bat.queue_redraw()
-	_dessus.queue_redraw()
-	_lum_avant.queue_redraw()
+	rue.set("facteur", facteur_trafic)
+	rue.set("anime", anime)
+	maison.set("anime", anime)
+	media.set("anime", anime)
+	if _inertie != 0.0:
+		_cx += _inertie * delta
+		_inertie = move_toward(_inertie, 0.0, _frein * delta)
+		_repos_cx = _cx
+		_appliquer()
+		_repos_cx = _cx
 
 
 ## (jour, couchant) selon la phase du cycle.
@@ -326,106 +133,220 @@ static func _jour_couchant(p: float) -> Vector2:
 	return Vector2(1, 0)
 
 
-func _dessiner_lumieres_bat() -> void:
-	for b in [maison, media, banque]:
-		_lum_bat.draw_set_transform(b.position)
-		b.dessiner_lumieres(_lum_bat)
-	_lum_bat.draw_set_transform(Vector2.ZERO)
-
-
-func _dessiner_dessus() -> void:
-	_dessus.draw_set_transform(banque.position)
-	banque.call("dessiner_silhouette", _dessus)
-	_dessus.draw_set_transform(Vector2.ZERO)
-
-
-func _dessiner_lumieres_avant() -> void:
-	for r in _reverberes:
-		_lum_avant.draw_set_transform(r.position)
-		r.call("dessiner_lumieres", _lum_avant, nuit)
-	for v in _voitures:
-		_lum_avant.draw_set_transform(v.position)
-		v.call("dessiner_lumieres", _lum_avant, nuit)
-	_lum_avant.draw_set_transform(Vector2.ZERO)
-	# Signal lumineux banque → maison (appel du banquier)
-	if signal_t >= 0.0:
-		var a := banque.position + Vector2(0, -420)
-		var b := maison.position + Vector2(60, -240)
-		var c := (a + b) / 2.0 + Vector2(0, -260)
-		for i in 5:
-			var u := clampf(signal_t - i * 0.07, 0.0, 1.0)
-			if u <= 0.0 or u >= 1.0:
-				continue
-			var p := a.lerp(c, u).lerp(c.lerp(b, u), u)
-			Dessin.halo(_lum_avant, p, 22, Color(Style.OR, 0.7))
-			_lum_avant.draw_circle(p, 6, Color(1, 0.95, 0.8))
+## Saison et époque selon le mois du jeu.
+func regler_mois(mois: int, annee: int) -> void:
+	rue.call("regler_saison", mois, annee)
 
 
 # =====================================================================
-# Caméra : cadrage de la zone utile dans le rectangle libre de l'écran
+# Caméra
 # =====================================================================
 
-## libre : rectangle de l'écran (coordonnées logiques) non couvert par le HUD.
-func cadrer(libre: Rect2, duree := 0.0) -> void:
-	var zone := ZONE_TITRE if mode_titre else ZONE
-	var z := minf(libre.size.x / zone.size.x, libre.size.y / zone.size.y)
-	var ecran := get_viewport_rect().size
-	var ancre_monde := Vector2(zone.get_center().x, zone.end.y)
-	var ancre_ecran := Vector2(libre.get_center().x, libre.end.y)
-	_cadre_zoom = z
-	_cadre_pos = ancre_monde - (ancre_ecran - ecran / 2.0) / z
-	if _vise:
-		return
-	_aller(_cadre_pos, z, duree)
-	var visible := ecran / z
-	for p in [_neige, _pluie]:
-		p.emission_rect_extents = Vector2(visible.x * 0.7, 20)
-		p.position = Vector2(0, -visible.y / 2.0 - 40)
+## Rectangle libre (laissé par le HUD) en px d'art, dans la vue.
+func _libre_art() -> Rect2:
+	var a := vue.art_par_virtuel()
+	return Rect2(_libre.position * a, _libre.size * a)
 
 
-func _aller(pos: Vector2, z: float, duree: float, trans := Tween.TRANS_CUBIC) -> Tween:
+## y de la caméra pour que « haut » (px d'art du monde) soit sous le haut du rectangle libre, le sol
+## restant au-dessus de son bas.
+func _cy_pour(haut: float) -> float:
+	var la := _libre_art()
+	var y_bas := clampf(haut - 4.0 + la.size.y, RUE.SOL + 4.0, BAS_MAX)
+	return y_bas - la.end.y
+
+
+## x du centre de la vue qui met x_monde au milieu du rectangle libre.
+func _cx_pour(x_monde: float) -> float:
+	var la := _libre_art()
+	return x_monde - la.get_center().x + vue.taille_vue().x / 2.0
+
+
+## x mini et maxi du centre de la vue (px d'art).
+func bornes_rue() -> Vector2:
+	var demi := vue.taille_vue().x / 2.0
+	var a := RUE.GAUCHE + 200.0 + demi
+	var b := RUE.DROITE - 200.0 - demi
+	if a > b:
+		a = (a + b) / 2.0
+		b = a
+	return Vector2(a, b)
+
+
+func position_camera() -> float:
+	return _cx
+
+
+func _recalculer() -> void:
+	if _repos_auto:
+		_repos_cx = _cx_pour(maison.position.x)
+	if not _vise and (_cam_tween == null or not _cam_tween.is_valid()):
+		_cy = _cy_pour(_haut)
+	_appliquer()
+
+
+func _appliquer() -> void:
+	var b := bornes_rue()
+	_cx = clampf(_cx, b.x, b.y)
+	var tv := vue.taille_vue()
+	var p := Vector2(roundf(_cx - tv.x / 2.0), roundf(_cy))
+	rue.set("vue", Rect2(p, Vector2(tv)))
+	if camera.position != p:
+		camera.position = p
+		camera_bougee.emit()
+
+
+func _aller(cx: float, haut: float, duree: float, trans := Tween.TRANS_CUBIC) -> Tween:
 	if _cam_tween != null and _cam_tween.is_valid():
 		_cam_tween.kill()
+	_inertie = 0.0
+	_haut = haut
+	var b := bornes_rue()
+	var cible := Vector2(clampf(cx, b.x, b.y), _cy_pour(haut))
 	if duree <= 0.0 or Juice.animations_reduites:
-		camera.position = pos
-		camera.zoom = Vector2.ONE * z
-		return null
-	_cam_tween = create_tween().set_parallel(true).set_trans(trans).set_ease(Tween.EASE_IN_OUT)
-	_cam_tween.tween_property(camera, "position", pos, duree)
-	_cam_tween.tween_property(camera, "zoom", Vector2.ONE * z, duree)
+		_cx = cible.x
+		_cy = cible.y
+		_appliquer()
+		_cam_tween = create_tween()
+		_cam_tween.tween_interval(0.0)
+		return _cam_tween
+	_cam_tween = create_tween().set_trans(trans).set_ease(Tween.EASE_IN_OUT)
+	_cam_tween.tween_method(_poser_camera, Vector2(_cx, _cy), cible, duree)
 	return _cam_tween
 
 
-## La caméra désigne la source : glisse et zoome de 6 % vers le bâtiment.
-func viser(b: Batiment, duree := 0.35, zoom_en_plus := 1.06) -> void:
+func _poser_camera(p: Vector2) -> void:
+	_cx = p.x
+	_cy = p.y
+	_appliquer()
+
+
+## libre : rectangle de l'écran (px virtuels) non couvert par le HUD. Le sol au-dessus de son bas, la
+## cheminée de la maison sous son haut ; la position horizontale est gardée (la maison reste centrée tant que
+## le joueur n'a pas fait défiler la rue).
+func cadrer(libre: Rect2, duree := 0.0) -> void:
+	_libre = libre
+	if mode_titre:
+		_aller(media.position.x, media.position.y - media.taille().y - 40.0, 0.0)
+		return
+	if _repos_auto:
+		_repos_cx = _cx_pour(maison.position.x)
+	if _vise:
+		return
+	_aller(_repos_cx, HAUT_MAISON, duree)
+
+
+## Glisse horizontalement pour centrer b dans le rectangle libre (pas de zoom : zoom_en_plus ignoré).
+func viser(b: Batiment, duree := 0.35, _zoom_en_plus := 1.06) -> void:
+	if b == null:
+		return
+	if not _vise:
+		_avant = _cx
 	_vise = true
-	var centre := b.position + Vector2(0, b.zone.get_center().y)
-	var cible := _cadre_pos.lerp(centre, 0.35)
-	_aller(cible, _cadre_zoom * zoom_en_plus, duree)
+	_aller(_cx_pour(b.position.x), minf(HAUT_MAISON, b.position.y - b.taille().y), duree)
 
 
+## Glisse vers un bâtiment sans changer la position de repos.
+func aller_vers(id: String, duree := 0.5) -> Tween:
+	var b := batiment(id)
+	if b == null:
+		return _aller(_cx, _haut, 0.0)
+	if not _vise:
+		_avant = _cx
+	_vise = true
+	return _aller(_cx_pour(b.position.x), minf(HAUT_MAISON, b.position.y - b.taille().y), duree)
+
+
+## Revient à la position d'avant le dernier viser / aller_vers (ou à la maison).
 func revenir(duree := 0.35) -> void:
 	_vise = false
-	_aller(_cadre_pos, _cadre_zoom, duree)
+	if _repos_auto:
+		_repos_cx = _cx_pour(maison.position.x)
+	var x := _repos_cx if is_nan(_avant) else _avant
+	_avant = NAN
+	_aller(x, HAUT_MAISON, duree)
 
 
-## Plongée vers la maison (bouton Jouer).
+## Écran titre → jeu : la caméra glisse de la Gazette vers la maison.
 func plonger_vers_maison(duree := 0.8) -> Tween:
-	_vise = true
-	var cible := maison.position + Vector2(40, -150)
-	return _aller(cible, _cadre_zoom * 1.6, duree, Tween.TRANS_QUART)
+	_vise = false
+	_avant = NAN
+	_repos_auto = true
+	_repos_cx = _cx_pour(maison.position.x)
+	return _aller(_repos_cx, HAUT_MAISON, duree, Tween.TRANS_QUART)
 
 
 func position_ecran(monde: Vector2) -> Vector2:
-	return get_canvas_transform() * monde
+	return vue.monde_vers_ecran(monde)
 
 
 func ecran_batiment(b: Batiment, decalage := Vector2.ZERO) -> Vector2:
 	return position_ecran(b.position + decalage)
 
 
+func batiment(id: String) -> Batiment:
+	return {"maison": maison, "media": media, "banque": banque}.get(id, null)
+
+
+## Point de l'étiquette d'un bâtiment (px virtuels) : sur la chaussée, sous son milieu.
+func point_etiquette(id: String) -> Vector2:
+	var b := batiment(id)
+	if b == null:
+		return Vector2(-1, -1)
+	return position_ecran(Vector2(b.position.x, RUE.SOL + 56))
+
+
+## Vrai si le bâtiment est entièrement dans le rectangle libre.
+func est_visible(id: String) -> bool:
+	var b := batiment(id)
+	if b == null:
+		return false
+	var t := b.taille()
+	var r := Rect2(b.position.x - t.x / 2.0, b.position.y - t.y, t.x, t.y)
+	var la := _libre_art()
+	var libre_monde := Rect2(camera.position + la.position, la.size).grow(1.0)
+	return libre_monde.encloses(r)
+
+
+## Rectangle libre en px d'art du monde (contrôles des captures).
+func libre_monde() -> Rect2:
+	var la := _libre_art()
+	return Rect2(camera.position + la.position, la.size)
+
+
 # =====================================================================
-# Toucher et survol des bâtiments
+# Sylvie, voisins
+# =====================================================================
+
+func regler_humeur_sylvie(h: int) -> void:
+	_humeur = clampi(h, 0, 2)
+	maison.set("humeur", _humeur)
+	maison.call("cligner")
+
+
+func humeur_sylvie() -> int:
+	return _humeur
+
+
+## Un personnage traverse la rue sur le trottoir, d'un bord de la vue à l'autre (sens 1 : de gauche à droite),
+## puis il est libéré. Aucune règle de jeu : le moment du passage est décidé ailleurs (lot 05).
+func faire_passer(qui: String, sens := 1, vitesse := 1.0) -> Node2D:
+	var v: Rect2 = rue.get("vue")
+	var x := v.position.x - 40.0 if sens > 0 else v.end.x + 40.0
+	var p: Node2D = rue.call("ajouter_passant", qui, x, signi(sens) if sens != 0 else 1, 30.0 * maxf(0.05, vitesse), RUE.PIEDS + 4)
+	p.set("sortie", true)
+	return p
+
+
+## Au-dessus de la tête d'un personnage (px virtuels).
+func point_tete(n: Node2D) -> Vector2:
+	if n == null or not is_instance_valid(n):
+		return Vector2(-1, -1)
+	return position_ecran(n.position + Vector2(0, -70))
+
+
+# =====================================================================
+# Toucher, survol, défilement
 # =====================================================================
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -433,22 +354,81 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _survol != null:
 			_survol.survoler(false)
 			_survol = null
+		_appui = false
 		return
-	if event is InputEventMouseMotion:
-		var b := _batiment_sous(get_global_mouse_position())
-		if b != _survol:
+	var mb := event as InputEventMouseButton
+	if mb != null:
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed:
+				_appui = true
+				_glisse = false
+				_appui_pos = mb.position
+				_vitesse_glisse = 0.0
+				_inertie = 0.0
+			elif _appui:
+				_appui = false
+				if not _glisse:
+					var b := _batiment_sous(vue.ecran_vers_monde(mb.position))
+					if b != null:
+						b.enfoncer()
+						batiment_touche.emit(b.id)
+						get_viewport().set_input_as_handled()
+				else:
+					_lancer(_vitesse_glisse)
+					get_viewport().set_input_as_handled()
+		elif mb.pressed and mb.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_LEFT]:
+			_lancer(-600.0)
+			get_viewport().set_input_as_handled()
+		elif mb.pressed and mb.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_RIGHT]:
+			_lancer(600.0)
+			get_viewport().set_input_as_handled()
+		return
+	var mm := event as InputEventMouseMotion
+	if mm != null:
+		if _appui and (mm.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+			if not _glisse and (mm.position - _appui_pos).length() >= SEUIL_TOUCHER:
+				_glisse = true
+				_manuel()
+				_cx -= (mm.position.x - _appui_pos.x) * vue.art_par_virtuel().x
+			elif _glisse:
+				var dx := -mm.relative.x * vue.art_par_virtuel().x
+				_cx += dx
+				var dt := maxf(1.0 / 120.0, get_process_delta_time())
+				_vitesse_glisse = lerpf(_vitesse_glisse, dx / dt, 0.5)
+			if _glisse:
+				_repos_cx = _cx
+				_appliquer()
+				_repos_cx = _cx
+				get_viewport().set_input_as_handled()
+			return
+		var b2 := _batiment_sous(vue.ecran_vers_monde(mm.position))
+		if b2 != _survol:
 			if _survol != null:
 				_survol.survoler(false)
-			_survol = b
-			if b != null:
-				b.survoler(true)
-	elif (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT) or (event is InputEventScreenTouch and event.pressed):
-		var pos: Vector2 = get_canvas_transform().affine_inverse() * event.position
-		var b2 := _batiment_sous(pos)
-		if b2 != null:
-			b2.enfoncer()
-			batiment_touche.emit(b2.id)
-			get_viewport().set_input_as_handled()
+			_survol = b2
+			if b2 != null:
+				b2.survoler(true)
+		return
+	var k := event as InputEventKey
+	if k != null and k.pressed and k.keycode in [KEY_LEFT, KEY_RIGHT]:
+		_lancer(-700.0 if k.keycode == KEY_LEFT else 700.0)
+		get_viewport().set_input_as_handled()
+
+
+## Défilement manuel : la position choisie devient la position de repos.
+func _manuel() -> void:
+	if _cam_tween != null and _cam_tween.is_valid():
+		_cam_tween.kill()
+	_vise = false
+	_avant = NAN
+	_repos_auto = false
+
+
+## Inertie courte (≤ 0,35 s) à partir d'une vitesse en px d'art par seconde.
+func _lancer(v: float) -> void:
+	_manuel()
+	_inertie = clampf(v, -1600.0, 1600.0)
+	_frein = absf(_inertie) / INERTIE_MAX_S
 
 
 func _batiment_sous(monde: Vector2) -> Batiment:
@@ -456,7 +436,3 @@ func _batiment_sous(monde: Vector2) -> Batiment:
 		if b.contient(monde - b.position):
 			return b
 	return null
-
-
-func batiment(id: String) -> Batiment:
-	return {"maison": maison, "media": media, "banque": banque}.get(id, null)

@@ -39,7 +39,10 @@ func _process(delta: float) -> void:
 	trauma = maxf(0.0, trauma - 1.6 * delta)
 	var d := Vector2(_bruit.get_noise_2d(_t, 0.0), _bruit.get_noise_2d(0.0, _t)) * 20.0 * trauma * trauma
 	if camera != null:
-		camera.offset = d
+		# Caméra de la rue pixel (PX1) : décalage en px d'art entiers, 4 px au plus
+		var o := (d * 0.4).round().clamp(Vector2(-4, -4), Vector2(4, 4))
+		if camera.offset != o:
+			camera.offset = o
 	if hud != null:
 		hud.offset = d * 0.3
 
