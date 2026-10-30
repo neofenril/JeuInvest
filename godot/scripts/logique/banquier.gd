@@ -15,7 +15,8 @@ static func donnees() -> Dictionary:
 static func etat_initial() -> Dictionary:
 	return {"actif": true, "presentes": {}, "en_file": {}, "nouveaux": [], "messages": [], "interruptions": 0,
 		"derniere_interruption": -99, "f01_vu": false, "naissance_m": -1, "frais_annee": 0.0, "interets_annee": 0.0,
-		"interruptions_liste": [], "versements_annee": {}, "vpa_vu": false, "premier_eligible_m": -1}
+		"interruptions_liste": [], "versements_annee": {}, "vpa_vu": false, "premier_eligible_m": -1,
+		"derniere_kind": "", "compteurs": Cadence.compteurs_vides()}
 
 
 static func info_produit(pid: String) -> Dictionary:
@@ -177,6 +178,35 @@ static func verifier(e: EtatPartie) -> void:
 		var h: String = donnees()["presentations"][id].get("historique", "")
 		if h != "" and Dates.lire(h) == e.ab_courant():
 			_proposer(e, id, e.m, true)
+
+
+## Mois (index m) des interruptions de la banque datées et déjà connues, pour l'anticipation de la cadence
+## (docs/15 §0.1) : date limite de chaque présentation non faite dont les conditions de verifier() sont
+## réunies (mêmes règles), dates historiques (Saint-Gobain) et héritage. { id -> m }.
+static func dates_connues(e: EtatPartie) -> Dictionary:
+	var out := {}
+	var dd: Dictionary = donnees()["declencheurs"]
+	var b := e.banque
+	if not _vu(e, "D01"):
+		out["D01"] = e.m_depart
+	if _vu(e, "D01") and not _vu(e, "D02"):
+		out["D02"] = e.m_depart + int(dd["D02"]["echeance"])
+	if _vu(e, "D02") and not _vu(e, "D03"):
+		out["D03"] = e.m_depart + int(dd["D03"]["echeance"])
+	var mn := int(b.get("naissance_m", -1))
+	if mn >= 0 and not _vu(e, "D04"):
+		out["D04"] = mn + int(dd["D04"]["echeance_apres_naissance"])
+	if _vu(e, "D03") and not _vu(e, "D05"):
+		out["D05"] = e.m_depart + int(dd["D05"]["echeance"])
+	if _vu(e, "D05") and (_vu(e, "D04") or not naissance_prevue(e)) and not _vu(e, "D06"):
+		out["D06"] = e.m_depart + int(dd["D06"]["echeance"])
+	for id in donnees()["presentations"]:
+		var h: String = donnees()["presentations"][id].get("historique", "")
+		if h != "" and not _vu(e, id):
+			out[id] = Dates.lire(h) - e.mk.ab_debut
+	if not _vu(e, "D08"):
+		out["D08"] = Dates.lire(str(donnees()["heritage"]["av"]["d"])) - e.mk.ab_debut
+	return out
 
 
 # =====================================================================

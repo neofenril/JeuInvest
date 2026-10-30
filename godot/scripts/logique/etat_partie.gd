@@ -820,10 +820,10 @@ func _entrer_mois(initial: bool) -> Dictionary:
 	_stats_mois()
 	_enregistrer_hist()
 
-	# Au plus une modale par mois : priorité marché > date historique > vie > présentation
+	# Au plus une modale par mois (démo : Cadence, R-CADENCE de docs/15 §0.1)
 	if modale.is_empty() and not file.is_empty():
 		if banquier_actif():
-			modale = _choisir_cadence(notifs)
+			modale = Cadence.choisir(self, notifs)
 		else:
 			file.sort_custom(_avant_dans_file)
 			modale = file.pop_front()
@@ -835,75 +835,6 @@ static func _avant_dans_file(x: Dictionary, z: Dictionary) -> bool:
 	if x["prio"] != z["prio"]:
 		return x["prio"] < z["prio"]
 	return x["m"] < z["m"]
-
-
-## Rang d'une modale en attente (13 §5.3, règle 1) : marché, date historique, événement scripté,
-## présentation à sa date limite, événement de vie, présentation.
-func _rang(it: Dictionary) -> float:
-	match it["kind"]:
-		"marche":
-			return 0.0
-		"banquier":
-			if it.get("historique", false):
-				return 1.0
-			return 2.5 if m >= int(it.get("echeance", 1 << 30)) else 4.0
-		"vie":
-			return 2.0 if it.get("force", false) else 3.0
-	return 5.0
-
-
-## Cadence des interruptions (13 §5.3) : une par mois au plus ; au moins « ecart_min » mois entre deux,
-## sauf marché, dates historiques, événements scriptés et présentations à leur date limite ; les
-## événements de vie aléatoires sans décision qui ne peuvent pas passer deviennent des notifications
-## (et toujours au-delà du plafond d'interruptions). Les présentations attendent le mois suivant.
-func _choisir_cadence(notifs: Array) -> Dictionary:
-	var cad: Dictionary = Banquier.donnees()["cadence"]
-	var tri := file.duplicate()
-	tri.sort_custom(_avant_cadence)
-	var ecart_ok := m - int(banque["derniere_interruption"]) >= int(cad["ecart_min"])
-	var plafond_atteint := int(banque["interruptions"]) >= int(cad["plafond_interruptions"])
-	var choisi := {}
-	for it in tri:
-		var mineur: bool = it["kind"] == "vie" and not it.get("force", false) and not it.get("decision", false)
-		if mineur and plafond_atteint:
-			continue
-		var libre: bool = it["kind"] == "marche" or it.get("historique", false) or it.get("force", false) or ecart_ok \
-			or m >= int(it.get("echeance", 1 << 30))
-		if libre:
-			choisi = it
-			break
-	if not choisi.is_empty():
-		file.erase(choisi)
-	for it in file.duplicate():
-		if it["kind"] == "vie" and not it.get("force", false) and not it.get("decision", false):
-			file.erase(it)
-			_vie_en_notification(int(it["idx"]), notifs)
-	if not choisi.is_empty():
-		banque["interruptions"] = int(banque["interruptions"]) + 1
-		banque["derniere_interruption"] = m
-		var quoi := str(choisi.get("id", ""))
-		if choisi.has("idx"):
-			quoi = str(calendrier[int(choisi["idx"])]["type"])
-		var motif := "ecart"
-		if not ecart_ok:
-			if choisi["kind"] == "marche":
-				motif = "marche"
-			elif choisi.get("historique", false):
-				motif = "historique"
-			elif choisi.get("force", false):
-				motif = "scripte"
-			else:
-				motif = "echeance"
-		banque["interruptions_liste"].append({"m": m, "kind": choisi["kind"], "id": quoi, "motif": motif})
-	return choisi
-
-
-func _avant_cadence(x: Dictionary, z: Dictionary) -> bool:
-	var rx := _rang(x)
-	var rz := _rang(z)
-	if rx != rz:
-		return rx < rz
-	return int(x["m"]) < int(z["m"])
 
 
 # =====================================================================
@@ -1088,8 +1019,7 @@ func forcer_naissance(jumeaux: bool) -> Dictionary:
 		file.sort_custom(_avant_dans_file)
 		modale = file.pop_front()
 		if banquier_actif():
-			banque["interruptions"] = int(banque["interruptions"]) + 1
-			banque["derniere_interruption"] = m
+			Cadence.noter(self, modale)
 		return modale
 	return {}
 

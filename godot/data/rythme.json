@@ -7,5 +7,11 @@
   "_transition_trafic_s": "Temps pour passer d'un facteur de trafic à l'autre (freinage à la pause, accélération).",
   "transition_trafic_s": 0.6,
   "_saut": "Bouton « Jusqu'au prochain courrier » (docs/15 §1.2) : pendant le saut, un mois dure duree_mois_s secondes (×6) et le trafic va à ce facteur, quelle que soit la vitesse d'avant l'appui. Le saut s'arrête au mois d'une interruption avec pause (jamais avant).",
-  "saut": { "duree_mois_s": 1.33, "trafic": 7.0 }
+  "saut": { "duree_mois_s": 1.33, "trafic": 7.0 },
+  "_cadence": "Interruptions avec pause (R-CADENCE, docs/15 §0.1 ; lu par scripts/logique/cadence.gd). ecart_min : écart minimal en mois entre deux interruptions (2 = jamais deux mois de suite), sauf un événement de marché suivi de la panne forcée. plafond_interruptions : nombre d'interruptions « classiques » au-delà duquel un événement de vie aléatoire sans décision devient une simple notification (13 §5.3, règle 3). budgets : plafond par catégorie (classiques = présentations, vie, marché, héritage ; cartes de dilemme ; projets ; Gazette « un an après »), vérifiés par les tests.",
+  "cadence": {
+    "ecart_min": 2,
+    "plafond_interruptions": 13,
+    "budgets": { "classiques": 15, "cartes": 10, "projets": 4, "gazette": 1 }
+  }
 }
