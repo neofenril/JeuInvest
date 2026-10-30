@@ -6,7 +6,7 @@ extends Node
 ## Ajouter une étape : son nom dans ETAPES de la famille, son cas dans jouer(), et la liste de capture.ps1.
 ## Créé à la demande par principal.preparer_capture (enfant de la scène principale).
 
-const FAMILLES := ["titre", "banque", "ville", "ecrans", "outils"]
+const FAMILLES := ["titre", "banque", "ville", "ecrans", "outils", "interface"]
 const DOSSIER := "res://scripts/outils/scenarios/"
 
 var jeu: Node   # scène principale (principal.gd)

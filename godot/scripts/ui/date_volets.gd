@@ -1,12 +1,13 @@
 class_name DateVolets
 extends Control
-## Date à volets (09 §3, effet 8) : deux cases sombres (mois, année) avec une ligne médiane.
-## Au changement de mois, le volet se plie (0,09 s) puis se rouvre (0,14 s, rebond) ; l'année suit en janvier.
+## Date à volets (09 §3, effet 8 ; habillage pixel PX0 / PX2) : deux plaquettes « calendrier » pixel
+## (mois, année) avec charnière, chiffres en Atkinson grasse. Au changement de mois, le volet se plie
+## (0,09 s) puis se rouvre (0,14 s, rebond) ; l'année suit en janvier.
 
 signal triple_touche
 
 const MOIS := ["JANV", "FÉVR", "MARS", "AVR", "MAI", "JUIN", "JUIL", "AOÛT", "SEPT", "OCT", "NOV", "DÉC"]
-const TAILLE := 48
+const TAILLE := 44
 
 var mois_txt := "SEPT"
 var annee_txt := "1986"
@@ -16,8 +17,9 @@ var _touches: Array = []
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(262, 80)
+	custom_minimum_size = Vector2(270, 72)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
 func regler(a: int, anime := true) -> void:
@@ -46,13 +48,12 @@ func _plier(prop: String, changer: Callable, delai: float) -> void:
 
 
 func _draw() -> void:
-	_case(Rect2(0, 0, 134, 80), mois_txt, _pli_mois)
-	_case(Rect2(142, 0, 120, 80), annee_txt, _pli_annee)
+	_case(Rect2(0, 0, 138, 72), mois_txt, _pli_mois)
+	_case(Rect2(144, 0, 126, 72), annee_txt, _pli_annee)
 
 
 func _case(r: Rect2, txt: String, pli: float) -> void:
-	Dessin.arrondi(self, r, Color("0d1320"), 10)
-	Dessin.arrondi(self, Rect2(r.position, Vector2(r.size.x, r.size.y / 2.0)), Color("172033"), 10)
+	draw_style_box(CadresPixel.style("plaquette"), r)
 	var police := Style.chiffres()
 	var w := police.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, TAILLE).x
 	var centre := r.get_center()
@@ -60,11 +61,11 @@ func _case(r: Rect2, txt: String, pli: float) -> void:
 	draw_string(police, Vector2(-w / 2.0, TAILLE * 0.36), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, TAILLE, Style.TEXTE)
 	draw_set_transform(Vector2.ZERO)
 	if pli < 0.99:
-		draw_rect(Rect2(r.position.x, centre.y, r.size.x, r.size.y / 2.0), Color(0, 0, 0, 0.3))
-	draw_rect(Rect2(r.position.x + 4, centre.y - 1, r.size.x - 8, 2), Color(0, 0, 0, 0.6))
-	# Charnières
-	draw_rect(Rect2(r.position.x - 2, centre.y - 6, 5, 12), Color("2e3b55"))
-	draw_rect(Rect2(r.end.x - 3, centre.y - 6, 5, 12), Color("2e3b55"))
+		draw_rect(Rect2(r.position.x + 3, centre.y, r.size.x - 6, r.size.y / 2.0 - 3), Color(Style.ENCRE, 0.35))
+	# Charnière : filet sombre au milieu, attaches ardoise sur les bords
+	draw_rect(Rect2(r.position.x + 6, roundf(centre.y / 3.0) * 3.0 - 1.5, r.size.x - 12, 3), PalettePixel.couleur("nuit"))
+	draw_rect(Rect2(r.position.x - 3, roundf(centre.y / 3.0) * 3.0 - 6, 6, 12), Style.PANNEAU_SURVOL)
+	draw_rect(Rect2(r.end.x - 3, roundf(centre.y / 3.0) * 3.0 - 6, 6, 12), Style.PANNEAU_SURVOL)
 
 
 ## Triple toucher sur la date : raccourci de démonstration (09 §5.1, n° 14).

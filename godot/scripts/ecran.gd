@@ -3,7 +3,8 @@ extends Node
 ## - Base virtuelle 1920 × 1080 (étirement canvas_items / expand). L'interface est dessinée en texels de
 ##   3 px virtuels (grille 640 × 360 de docs/16 §3.3) ; content_scale_factor est réglé pour qu'un texel
 ##   fasse un nombre ENTIER T de pixels physiques (échelle = T / 3 px physiques par px virtuel) :
-##   PC : T = max(1, floor(hauteur physique / 360)) → 720p et 1366 × 768 : 2 ; 1080p : 3 ; 1440p : 4.
+##   PC : T = max(1, floor(hauteur physique / 324)) (360 à 10 % près, pour les fenêtres agrandies)
+##   → 720p et 1366 × 768 : 2 ; 1080p (et 1920 × 1061) : 3 ; 1440p : 4.
 ##   Mobile : T = le plus petit entier tel qu'une cible de REF_CIBLE px virtuels fasse au moins 48 dp.
 ## - dp : 1 dp = dpi / 160 px physiques (DisplayServer.screen_get_dpi() sur mobile, 1 sur PC).
 ## - F10 (PC) : téléphone simulé, fenêtre 1600 × 720 à 267 dpi (20:9, 6,5 pouces ; 1 dp = 1,67 px),
@@ -48,7 +49,8 @@ static func facteur_texel_pour(taille_physique: Vector2i, dpi: float, mobile: bo
 		# REF_CIBLE × T / TEXEL ≥ 48 dp
 		var t_min := DP_CIBLE * dp_pour(dpi, true) * TEXEL / REF_CIBLE
 		return maxi(1, ceili(t_min - 0.0001))
-	return maxi(1, floori(float(mini(taille_physique.x, taille_physique.y)) / HAUTEUR_GRILLE))
+	# Tolérance de 10 % : une fenêtre agrandie sur un écran 1080p (1920 × 1061, barre des tâches) garde T = 3.
+	return maxi(1, floori(float(mini(taille_physique.x, taille_physique.y)) / (HAUTEUR_GRILLE * 0.9)))
 
 
 ## Pixels physiques par pixel virtuel.
@@ -58,8 +60,9 @@ static func echelle_pour(taille_physique: Vector2i, dpi: float, mobile: bool) ->
 
 ## content_scale_factor à appliquer à la fenêtre (étirement « expand » de la base 1920 × 1080).
 static func facteur_contenu_pour(taille_physique: Vector2i, dpi: float, mobile: bool) -> float:
-	var s0 := minf(taille_physique.x / BASE.x, taille_physique.y / BASE.y)
-	return echelle_pour(taille_physique, dpi, mobile) / maxf(0.0001, s0)
+	# Étirement « disabled » (réglé par _appliquer) : le facteur est appliqué tel quel, l'échelle finale vaut
+	# exactement T / 3 et la zone logique taille_physique × 3 / T (1366 × 768 → 2049 × 1152).
+	return echelle_pour(taille_physique, dpi, mobile)
 
 
 ## Côté minimal d'une cible tactile, en px virtuels, pour une échelle et un dp donnés.
@@ -123,6 +126,10 @@ func _appliquer() -> void:
 	_t = facteur_texel_pour(taille_phys, _dpi(), _mobile())
 	_echelle = _t / TEXEL
 	var f := facteur_contenu_pour(taille_phys, _dpi(), _mobile())
+	# Étirement désactivé pour la scène du jeu (project.godot garde canvas_items pour la vitrine PX0) :
+	# le facteur s'applique tel quel, sans arrondi de la zone logique.
+	if fen.content_scale_mode != Window.CONTENT_SCALE_MODE_DISABLED:
+		fen.content_scale_mode = Window.CONTENT_SCALE_MODE_DISABLED
 	if absf(fen.content_scale_factor - f) > 0.0001:
 		fen.content_scale_factor = f
 

@@ -225,7 +225,7 @@ func _ticket(c: Dictionary, a: int, largeur: float) -> Control:
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 14)
 	hb.add_child(Style.label(str(tk[0]) if tk.size() > 0 else "", taille, Style.chiffres(), Style.TEXTE))
-	var fl := Style.label("→", taille, Style.ui(), Style.OR)
+	var fl := Style.label("›", taille, Style.ui_gras(), Style.OR)
 	hb.add_child(fl)
 	var suite := Style.label(str(tk[1]) if tk.size() > 1 else "", 20 if compact else 24, Style.ui_gras(), Style.TEXTE)
 	suite.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

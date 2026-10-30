@@ -315,13 +315,18 @@ static func _carre(d: int, c: Color) -> ImageTexture:
 ## Libellé. Pixelify sous 28 px est remplacée par des petites capitales Atkinson (lisibilité, docs/16 §3.1).
 static func label(texte: String, taille := 24, police: Font = null, couleur := TEXTE) -> Label:
 	var l := Label.new()
-	l.text = texte
+	l.text = sans_fleche(texte)
 	l.add_theme_font_size_override("font_size", taille)
 	var p := police_pour(police, taille)
 	if p != null:
 		l.add_theme_font_override("font", p)
 	l.add_theme_color_override("font_color", couleur)
 	return l
+
+
+## « → » n'existe dans aucune police embarquée (vérifié) : remplacé par « › » à l'affichage.
+static func sans_fleche(texte: String) -> String:
+	return texte.replace("→", "›")
 
 
 ## Côté minimal d'une cible tactile en px virtuels (Ecran.cible_min, 48 dp sur mobile).

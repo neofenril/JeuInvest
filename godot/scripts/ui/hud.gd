@@ -16,8 +16,8 @@ signal frais_demandes
 signal notif_touchee(n: Dictionary)
 signal historique_demande
 
-const HAUT := 96.0
-const BAS := 72.0
+const HAUT := 102.0             # 34 texels : boutons de 84 px (28 texels) et marges du cadre
+const BAS := 114.0              # 38 texels : bouton HISTORIQUE de 96 px (≥ 90 à 1080p, ≥ 96 px physiques au téléphone)
 const LARGEUR_PANNEAU := 500.0
 const LARGEUR_PANNEAU_COMPACT := 900.0
 const LARGEUR_LANGUETTE := 104.0
@@ -96,6 +96,8 @@ func _ready() -> void:
 	notifs.position = Vector2(16, HAUT + 16)
 	add_child(notifs)
 	Ecran.format_change.connect(_disposer)
+	if ville != null and ville.has_signal("camera_bougee"):
+		ville.connect("camera_bougee", placer_etiquettes)
 	_disposer()
 
 
@@ -105,15 +107,15 @@ func _ready() -> void:
 
 func _creer_barre() -> void:
 	barre = PanelContainer.new()
-	var s := Style.boite(Style.PANNEAU, 0, 20, 8)
-	Style.bordure(s, Color(1, 1, 1, 0.08), 0, 0, 0, 1)
-	Style.ombre(s, Color(0, 0, 0, 0.45), 14, Vector2(0, 4))
-	barre.add_theme_stylebox_override("panel", s)
+	barre.name = "BarreHaute"
+	barre.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	barre.add_theme_stylebox_override("panel", CadresPixel.style_marges("panneau", 15, 6, 15, 12))
+	barre.self_modulate = Color(1, 1, 1, 0.97)
 	barre.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	barre.offset_bottom = HAUT
 	add_child(barre)
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 16)
+	h.add_theme_constant_override("separation", 15)
 	barre.add_child(h)
 	date = DateVolets.new()
 	date.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -140,7 +142,7 @@ func _creer_barre() -> void:
 	b_cycle.pressed.connect(func() -> void: vitesse_demandee.emit(-2))
 	temps.add_child(b_cycle)
 	h.add_child(temps)
-	badge_pause = Style.label("EN PAUSE", 24, Style.neon(), Style.GEL)
+	badge_pause = Style.label("EN PAUSE", 28, Style.neon(), Style.GEL)
 	badge_pause.add_theme_color_override("font_shadow_color", Color(Style.GEL, 0.6))
 	badge_pause.add_theme_constant_override("shadow_outline_size", 12)
 	badge_pause.add_theme_constant_override("shadow_offset_x", 0)
@@ -156,9 +158,8 @@ func _creer_barre() -> void:
 	argent.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(argent)
 	carte_cc = PanelContainer.new()
-	var scc := Style.boite(Color(1, 1, 1, 0.05), 12, 16, 4)
-	Style.bordure(scc, Color(1, 1, 1, 0.12), 1, 1, 1, 1)
-	carte_cc.add_theme_stylebox_override("panel", scc)
+	carte_cc.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	carte_cc.add_theme_stylebox_override("panel", CadresPixel.style_marges("plaquette", 15, 3, 15, 3))
 	carte_cc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	carte_cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boite_cc = _bloc("COMPTE COURANT", 18)
@@ -192,10 +193,12 @@ func _creer_barre() -> void:
 	_creer_pastille_livret()
 	argent.add_child(pastille_livret)
 	var menu := Button.new()
-	menu.custom_minimum_size = Vector2(80, 80)
+	menu.name = "Menu"
+	menu.custom_minimum_size = Vector2(84, 84)
 	menu.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	menu.focus_mode = Control.FOCUS_NONE
-	menu.draw.connect(_dessiner_menu.bind(menu))
+	CadresPixel.habiller_bouton(menu, "secondaire", "menu")
+	menu.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	menu.pressed.connect(func() -> void: menu_demande.emit())
 	h.add_child(menu)
 
@@ -207,7 +210,8 @@ func _creer_pastille_livret() -> void:
 	pastille_livret.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	pastille_livret.mouse_filter = Control.MOUSE_FILTER_STOP
 	pastille_livret.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	pastille_livret.custom_minimum_size = Vector2(0, 72)
+	pastille_livret.custom_minimum_size = Vector2(0, 78)
+	pastille_livret.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	pastille_livret.gui_input.connect(_on_pastille_livret)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", -4)
@@ -231,9 +235,7 @@ func _creer_pastille_livret() -> void:
 
 func _styler_pastille(sens: int) -> void:
 	var c := _couleur_sens(sens)
-	var s := Style.boite(Color(c, 0.14), 14, 14, 2)
-	Style.bordure(s, Color(c, 0.85), 2, 2, 2, 2)
-	pastille_livret.add_theme_stylebox_override("panel", s)
+	pastille_livret.add_theme_stylebox_override("panel", Style.pastille(c if sens != 0 else Style.PANNEAU_SURVOL, 0, 3))
 	l_ecart.add_theme_color_override("font_color", c if sens != 0 else Style.TEXTE)
 	fleche_ecart.queue_redraw()
 
@@ -242,16 +244,16 @@ static func _couleur_sens(sens: int) -> Color:
 	return Style.GAIN if sens > 0 else (Style.PERTE if sens < 0 else Style.TEXTE_2)
 
 
+## Flèche pixel 8 × 8 (▲ gain, ▼ perte) ou signe « = » en blocs de 3 px.
 func _dessiner_fleche_ecart() -> void:
-	var m := fleche_ecart.size / 2.0
+	var m := (fleche_ecart.size / 2.0 / 3.0).floor() * 3.0
 	var c := _couleur_sens(_sens_ecart)
-	if _sens_ecart > 0:
-		fleche_ecart.draw_colored_polygon(PackedVector2Array([m + Vector2(-10, 7), m + Vector2(10, 7), m + Vector2(0, -10)]), c)
-	elif _sens_ecart < 0:
-		fleche_ecart.draw_colored_polygon(PackedVector2Array([m + Vector2(-10, -7), m + Vector2(10, -7), m + Vector2(0, 10)]), c)
+	if _sens_ecart != 0:
+		var tex := CadresPixel.texture("fleche_haut" if _sens_ecart > 0 else "fleche_bas")
+		fleche_ecart.draw_texture(tex, m - tex.get_size() / 2.0)
 	else:
-		fleche_ecart.draw_rect(Rect2(m + Vector2(-9, -6), Vector2(18, 4)), c)
-		fleche_ecart.draw_rect(Rect2(m + Vector2(-9, 3), Vector2(18, 4)), c)
+		fleche_ecart.draw_rect(Rect2(m + Vector2(-9, -6), Vector2(18, 3)), c)
+		fleche_ecart.draw_rect(Rect2(m + Vector2(-9, 3), Vector2(18, 3)), c)
 
 
 func _on_pastille_livret(event: InputEvent) -> void:
@@ -261,8 +263,8 @@ func _on_pastille_livret(event: InputEvent) -> void:
 
 
 func _dessiner_separateur() -> void:
-	var x := separateur.size.x / 2.0
-	separateur.draw_line(Vector2(x, 4), Vector2(x, separateur.size.y - 4), Color(1, 1, 1, 0.22), 2.0)
+	var x := floorf(separateur.size.x / 6.0) * 3.0
+	separateur.draw_rect(Rect2(x, 6, 3, separateur.size.y - 12), Style.PANNEAU_SURVOL)
 
 
 func _bloc(titre: String, taille: int) -> VBoxContainer:
@@ -282,59 +284,41 @@ func _ressort() -> Control:
 	return c
 
 
-## Icône de l'historique (36 px) : une feuille avec trois lignes et des puces aux couleurs des 3 sources.
-static func _icone_historique() -> ImageTexture:
-	var img := Image.create(36, 36, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var c := Style.TEXTE
-	img.fill_rect(Rect2i(4, 2, 28, 3), c)
-	img.fill_rect(Rect2i(4, 31, 28, 3), c)
-	img.fill_rect(Rect2i(4, 2, 3, 32), c)
-	img.fill_rect(Rect2i(29, 2, 3, 32), c)
-	var sources := ["maison", "banque", "media"]
-	for k in 3:
-		img.fill_rect(Rect2i(10, 9 + k * 8, 4, 4), Style.SOURCES[sources[k]])
-		img.fill_rect(Rect2i(16, 10 + k * 8, 10, 2), c)
-	return ImageTexture.create_from_image(img)
-
-
-func _dessiner_menu(b: Button) -> void:
-	var m := b.size / 2.0
-	for k in 3:
-		Dessin.arrondi(b, Rect2(m.x - 16, m.y - 12 + k * 10, 32, 4), Style.TEXTE, 2)
-
-
 func _creer_bas() -> void:
 	bas = PanelContainer.new()
-	var s := Style.boite(Style.PANNEAU, 0, 12, 4)
-	Style.bordure(s, Color(1, 1, 1, 0.1), 0, 1, 0, 0)
-	bas.add_theme_stylebox_override("panel", s)
+	bas.name = "Frise"
+	bas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bas.add_theme_stylebox_override("panel", CadresPixel.style_marges("panneau", 12, 6, 24, 12))
+	bas.self_modulate = Color(1, 1, 1, 0.97)
 	bas.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	bas.offset_top = -BAS
 	bas.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(bas)
 	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 12)
+	hb.add_theme_constant_override("separation", 24)
 	bas.add_child(hb)
 	frise = Frise.new()
 	frise.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frise.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hb.add_child(frise)
-	# Historique des pop-ups : accès global, au bout de la frise du temps (la barre haute est pleine)
+	# Historique des pop-ups : accès global, au début de la frise du temps (la barre haute est pleine) ;
+	# bouton agrandi (PX2 §2.3) : icône de classeur + libellé, 96 px de haut, au moins 222 de large.
 	b_historique = Button.new()
+	b_historique.name = "Historique"
 	b_historique.text = "HISTORIQUE"
-	b_historique.custom_minimum_size = Vector2(0, 60)
+	b_historique.custom_minimum_size = Vector2(222, BAS - 18.0)
 	b_historique.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b_historique.focus_mode = Control.FOCUS_NONE
-	b_historique.icon = _icone_historique()
-	b_historique.add_theme_font_size_override("font_size", 18)
-	b_historique.add_theme_font_override("font", Style.capitales())
-	b_historique.add_theme_constant_override("h_separation", 10)
-	var sb := Style.bouton_secondaire()
-	sb.content_margin_top = 4
-	sb.content_margin_bottom = 4
-	sb.content_margin_left = 14
-	sb.content_margin_right = 16
-	b_historique.add_theme_stylebox_override("normal", sb)
+	CadresPixel.habiller_bouton(b_historique, "secondaire", "historique")
+	b_historique.add_theme_constant_override("h_separation", 12)
+	for etat: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		var sbh: StyleBoxTexture = b_historique.get_theme_stylebox(etat).duplicate()
+		var enfonce := etat.contains("pressed")
+		sbh.content_margin_left = 18
+		sbh.content_margin_right = 24
+		sbh.content_margin_top = 12 if enfonce else 9
+		sbh.content_margin_bottom = 18 if enfonce else 21
+		b_historique.add_theme_stylebox_override(etat, sbh)
 	b_historique.tooltip_text = "Tout ce qui vous est arrivé : appels, nouvelles, courriers (touche H)"
 	b_historique.pressed.connect(func() -> void: historique_demande.emit())
 	hb.add_child(b_historique)
@@ -359,12 +343,11 @@ func _creer_panneau() -> void:
 	conteneur.add_child(col_a)
 	conteneur.add_child(col_b)
 	var tete := HBoxContainer.new()
-	tete.add_child(Style.label("MON ARGENT", 20, Style.capitales(), Style.TEXTE_2))
+	var titre := Style.label("MON ARGENT", 28, Style.capitales(), Style.TEXTE)
+	titre.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tete.add_child(titre)
 	tete.add_child(_ressort())
-	var fermer := Button.new()
-	fermer.text = "Replier"
-	fermer.custom_minimum_size = Vector2(120, 56)
-	fermer.add_theme_font_size_override("font_size", 20)
+	var fermer := Style.bouton("REPLIER")
 	fermer.focus_mode = Control.FOCUS_NONE
 	fermer.pressed.connect(func() -> void: basculer_panneau(false))
 	fermer.name = "Replier"
@@ -404,7 +387,7 @@ func _creer_panneau() -> void:
 	lc.add_theme_constant_override("separation", 12)
 	lc.add_child(Style.label("COUSSIN", 20, Style.capitales(), Style.TEXTE_2))
 	jauge = Control.new()
-	jauge.custom_minimum_size = Vector2(0, 18)
+	jauge.custom_minimum_size = Vector2(0, 21)
 	jauge.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	jauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	jauge.draw.connect(_dessiner_jauge)
@@ -431,17 +414,14 @@ func _creer_panneau() -> void:
 	col_b.add_child(b_marche)
 	languette = Button.new()
 	languette.focus_mode = Control.FOCUS_NONE
+	languette.name = "Languette"
+	languette.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	languette.add_theme_font_size_override("font_size", 20)
-	languette.add_theme_font_override("font", Style.capitales())
-	var sl := Style.panneau(16)
-	sl.content_margin_left = 6
-	sl.content_margin_right = 6
+	languette.add_theme_font_override("font", Style.petites_capitales())
+	var sl := CadresPixel.style_marges("panneau", 6, 12, 6, 18)
 	languette.add_theme_stylebox_override("normal", sl)
-	var slh := Style.panneau(16)
-	slh.content_margin_left = 6
-	slh.content_margin_right = 6
-	languette.add_theme_stylebox_override("hover", slh)
-	languette.add_theme_stylebox_override("pressed", slh)
+	languette.add_theme_stylebox_override("hover", sl)
+	languette.add_theme_stylebox_override("pressed", CadresPixel.style_marges("panneau", 6, 15, 6, 15))
 	languette.pressed.connect(func() -> void: basculer_panneau(true))
 	add_child(languette)
 
@@ -455,11 +435,12 @@ func _trait_legende(c: Color, pointille: bool) -> Control:
 
 
 func _dessiner_trait(t: Control, c: Color, pointille: bool) -> void:
-	var y := t.size.y / 2.0
+	var y := floorf(t.size.y / 6.0) * 3.0
 	if pointille:
-		t.draw_dashed_line(Vector2(0, y), Vector2(t.size.x, y), c, 2.0, 6.0)
+		for k in int(t.size.x / 9.0):
+			t.draw_rect(Rect2(k * 9.0, y, 6, 3), c)
 	else:
-		t.draw_line(Vector2(0, y), Vector2(t.size.x, y), c, 3.0, true)
+		t.draw_rect(Rect2(0, y, t.size.x, 3), c)
 
 
 func _ligne_budget(grille: GridContainer, titre: String) -> Label:
@@ -472,13 +453,21 @@ func _ligne_budget(grille: GridContainer, titre: String) -> Label:
 	return v
 
 
+## Étiquettes des bâtiments, posées sur la chaussée (PX0) ; cible tactile d'au moins Style.cible_min().
+## Bâtiment hors de l'écran (rue large de PX1, si la ville sait le dire) : flèche de bord « ‹ LA GAZETTE »
+## ou « MA BANQUE › » qui, touchée, fait glisser la caméra vers lui (ville.aller_vers).
 func _creer_etiquettes() -> void:
 	for id in ["maison", "media", "banque"]:
 		var p := PanelContainer.new()
+		p.name = "Etiquette_" + id
+		p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		p.add_theme_stylebox_override("panel", Style.etiquette_batiment())
+		p.self_modulate = Color(1, 1, 1, 0.94)
 		p.mouse_filter = Control.MOUSE_FILTER_STOP
 		p.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		var l := Style.label(NOMS_SOURCES[id], 20, Style.capitales(), Style.TEXTE)
+		p.custom_minimum_size = Vector2(0, Style.cible_min())
+		var l := Style.label(NOMS_SOURCES[id], 28, Style.capitales(), Style.TEXTE)
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		p.add_child(l)
 		p.gui_input.connect(_on_etiquette.bind(id))
 		if id == "banque":
@@ -490,14 +479,48 @@ func _creer_etiquettes() -> void:
 func _dessiner_point_banque(p: PanelContainer) -> void:
 	if not _point_banque:
 		return
-	var c := Vector2(p.size.x - 4, 4)
-	p.draw_circle(c, 11, Color(0, 0, 0, 0.5))
-	p.draw_circle(c, 9, Style.ALERTE)
+	var c := Vector2(p.size.x - 6, 6)
+	p.draw_rect(Rect2(c - Vector2(12, 12), Vector2(24, 24)), Style.ENCRE)
+	p.draw_rect(Rect2(c - Vector2(9, 9), Vector2(18, 18)), Style.ALERTE)
 
 
 func _on_etiquette(event: InputEvent, id: String) -> void:
 	if (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT) or (event is InputEventScreenTouch and event.pressed):
-		batiment_touche.emit(id)
+		var p: Control = etiquettes[id]
+		if p.get_meta("fleche", "") != "" and ville != null and ville.has_method("aller_vers"):
+			ville.call("aller_vers", id)
+		else:
+			batiment_touche.emit(id)
+
+
+## Place les étiquettes (PX2 §2.4) : point de la ville si elle le fournit, sinon sous le bâtiment ;
+## flèche de bord si le bâtiment n'est pas visible.
+func placer_etiquettes() -> void:
+	if ville == null:
+		return
+	var largeur := get_viewport_rect().size.x
+	for id in etiquettes:
+		var p: PanelContainer = etiquettes[id]
+		var l := p.get_child(0) as Label
+		var point: Vector2
+		if ville.has_method("point_etiquette"):
+			point = ville.call("point_etiquette", id)
+		else:
+			var b: Node2D = ville.call("batiment", id)
+			point = ville.call("position_ecran", b.position + Vector2(0, 56))
+		var cote := ""
+		if ville.has_method("est_visible") and not bool(ville.call("est_visible", id)):
+			cote = "gauche" if point.x < largeur / 2.0 else "droite"
+		if cote != str(p.get_meta("fleche", "")):
+			p.set_meta("fleche", cote)
+			l.text = ("‹  " if cote == "gauche" else "") + NOMS_SOURCES[id] + ("  ›" if cote == "droite" else "")
+			p.reset_size()
+		var x := point.x - p.size.x / 2.0
+		if cote == "gauche":
+			x = 12.0
+		elif cote == "droite":
+			x = largeur - p.size.x - 12.0
+		p.position = Vector2(roundf(x / 3.0) * 3.0, roundf(point.y / 3.0) * 3.0)
 
 
 # =====================================================================
@@ -522,10 +545,12 @@ func _disposer() -> void:
 	b_cycle.visible = compact
 	conteneur.vertical = not compact
 	courbe.compacte = compact
-	courbe.custom_minimum_size = Vector2(0, 110 if compact else 190)
+	courbe.custom_minimum_size = Vector2(0, 96 if compact else 190)
+	l_bag.visible = not compact   # téléphone : le panneau tient entre la barre et la frise
 	_trouver_replier().visible = compact
 	panneau_ouvert = not compact
 	_placer_panneau()
+	placer_etiquettes.call_deferred()
 
 
 func _trouver_replier() -> Button:
@@ -693,12 +718,8 @@ func maj_vitesse(v: int) -> void:
 
 func _process(_delta: float) -> void:
 	frise.position_mois = (Partie.etat.m + Partie.progression_mois()) if Partie.etat != null else 0.0
-	if ville != null:
-		for id in etiquettes:
-			var p: PanelContainer = etiquettes[id]
-			var b: Batiment = ville.call("batiment", id)
-			var ecran: Vector2 = ville.call("position_ecran", b.position + Vector2(0, 56))
-			p.position = ecran - Vector2(p.size.x / 2.0, 0)
+	if ville != null and not ville.has_signal("camera_bougee"):
+		placer_etiquettes()
 	badge_pause.modulate.a = 0.75 + 0.25 * sin(Time.get_ticks_msec() / 300.0)
 
 
@@ -711,14 +732,16 @@ func _dessiner_gel() -> void:
 
 
 func _dessiner_jauge() -> void:
-	var r := Rect2(Vector2.ZERO, jauge.size)
-	Dessin.arrondi(jauge, r, Style.FILET, 9)
+	# Jauge pixel : contour encre, fond ardoise sombre, remplissage au texel, repère des 3 mois
+	var r := Rect2(Vector2.ZERO, (jauge.size / 3.0).floor() * 3.0)
+	jauge.draw_rect(r, Style.ENCRE)
+	jauge.draw_rect(r.grow(-3), Style.PANNEAU_ELEVE)
 	var k := clampf(_coussin / 6.0, 0.0, 1.0)
 	var c := Style.GAIN if _coussin >= 3.0 else Style.ALERTE
 	if k > 0.0:
-		Dessin.arrondi(jauge, Rect2(r.position, Vector2(maxf(18.0, r.size.x * k), r.size.y)), c, 9)
-	var x3 := r.size.x * 0.5
-	jauge.draw_rect(Rect2(x3 - 1, -4, 2, r.size.y + 8), Style.TEXTE)
+		jauge.draw_rect(Rect2(3, 3, maxf(6.0, roundf((r.size.x - 6.0) * k / 3.0) * 3.0), r.size.y - 6.0), c)
+	var x3 := roundf(r.size.x * 0.5 / 3.0) * 3.0
+	jauge.draw_rect(Rect2(x3 - 1.5, -3, 3, r.size.y + 6), Style.TEXTE)
 
 
 # =====================================================================

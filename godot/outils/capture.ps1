@@ -14,7 +14,9 @@
 #   jumeaux_anim / jumeaux_pose / jumeaux (touche F7), f10, fps,
 #   historique, historique_filtre, historique_entree (carte D08 relue), historique_journal, historique_courrier,
 #   carnet_pel (fiche du PEL), automatique (versement automatique sur la SICAV), automatique_pel,
-#   courrier_relu_echap (T16 : fermeture d'un courrier pendant le vol de l'enveloppe, Échap sur un courrier relu).
+#   courrier_relu_echap (T16 : fermeture d'un courrier pendant le vol de l'enveloppe, Échap sur un courrier relu),
+#   PX2 (lignes « UI ») : planche_cadres (texels nets), cibles (cibles tactiles, débordements, Pixelify),
+#   hud (bouton HISTORIQUE), polices_jeu (accents). Série complète : capture_interface.ps1 -Serie.
 # Godot : voir trouver_godot.ps1 (variable JEUCLAUDE_GODOT, dépôt, ou dépôt principal depuis un worktree Git).
 # Si l'exécution de scripts est bloquée, lancer Godot directement :
 #   & $godot --path godot --resolution 1280x720 -- --capture=captures/x.png --frames=10 --etape=crash_anim

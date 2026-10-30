@@ -102,7 +102,7 @@ func _situation(c: Dictionary, e: EtatPartie, a: int, lecture: bool, lecture_cho
 		return Style.label(t_lec, 24, Style.ui_gras(), Color("4a463e"))
 	if naissance:
 		var reste := float(c.get("reste_apres", 0.0))
-		var t_info := "Dépenses du mois : %s → %s.  Il vous restera %s par mois." % [
+		var t_info := "Dépenses du mois : de %s à %s.  Il vous restera %s par mois." % [
 			Format.montant(float(c.get("depenses_avant", 0.0)), a), Format.montant(float(c.get("depenses_apres", 0.0)), a), Format.montant(reste, a)]
 		if reste < 0.0:
 			t_info += " Le budget du mois devient négatif : il faudra puiser dans l'épargne."

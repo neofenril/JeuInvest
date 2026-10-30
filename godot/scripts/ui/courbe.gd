@@ -6,7 +6,7 @@ extends Control
 ## les deux courbes est teinté (vert devant, rouge derrière) et chiffré à côté de la tête.
 ## Le dernier segment se trace progressivement ; l'axe se recadre en douceur.
 
-const COULEUR_REF := Color("4ea8de")
+static var COULEUR_REF := PalettePixel.couleur("ciel")
 
 var valeurs: Array = []        # patrimoine, un point par mois
 var mis: Array = []            # argent mis de côté (gardé pour mémoire, plus tracé)
@@ -77,15 +77,17 @@ func _draw() -> void:
 	var police := Style.chiffres()
 	# Graduations (téléphone : la zone est basse, 2 intervalles et seule la valeur du haut est écrite,
 	# au-dessus de la ligne, là où la courbe ne passe pas)
-	var n_grad := 2 if compacte else 4
+	var n_grad := 2 if compacte or zone.size.y < 200.0 else 4
+	var etiquettes: Array = []     # [position, texte] : écrites en dernier, jamais recouvertes (B1)
 	for i in n_grad + 1:
 		var v := _max_affiche * i / float(n_grad)
 		var y := zone.end.y - zone.size.y * i / float(n_grad)
-		draw_line(Vector2(zone.position.x, y), Vector2(zone.end.x, y), Color(1, 1, 1, 0.06 if i > 0 else 0.15), 1.0)
+		draw_line(Vector2(zone.position.x, y), Vector2(zone.end.x, y), Color(Style.TEXTE, 0.06 if i > 0 else 0.15), 1.0)
 		if i > 0 and (not compacte or i == n_grad):
-			draw_string(police, Vector2(zone.position.x + 4, y - 6), Format.montant(v, ab_premier), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(Style.TEXTE_2, 0.8))
+			etiquettes.append([Vector2(zone.position.x + 4, y - 6), Format.montant(v, ab_premier)])
 	var n := valeurs.size()
 	if n < 2:
+		_graduations(etiquettes, police)
 		return
 	var total := maxi(n - 1, total_mois)
 	var pts := PackedVector2Array()
@@ -120,20 +122,28 @@ func _draw() -> void:
 	draw_polyline(pts, Color(couleur, 0.25), 7.0, true)
 	draw_polyline(pts, couleur, 3.0, true)
 	if avec_ref:
-		_ecart_tete(pts[n - 1], pts_ref[n - 1], zone, police)
+		_ecart_tete(pts[n - 1], pts_ref[n - 1], zone, police, etiquettes)
 	# Tête qui pulse
 	var tete := pts[n - 1]
 	var c_tete := Style.GAIN if tete_gain else Style.PERTE
 	var pulse := 0.5 + 0.5 * sin(_t * TAU / 1.2)
 	draw_circle(tete, 14.0 + 4.0 * pulse, Color(c_tete, 0.18))
 	draw_circle(tete, 9.0, Color(c_tete, 0.45))
-	draw_circle(tete, 5.0, Color.WHITE)
+	draw_circle(tete, 5.0, PalettePixel.couleur("blanc_chaud"))
 	# Années sous l'axe
 	for i in n:
 		var a := ab_premier + i
 		if Dates.mois(a) == 1:
 			var x := zone.position.x + zone.size.x * i / float(total)
 			draw_string(police, Vector2(x - 20, size.y - 2), str(Dates.annee(a)), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(Style.TEXTE_2, 0.8))
+	_graduations(etiquettes, police)
+
+
+## Valeurs des graduations, par-dessus la courbe, détourées de la couleur du panneau (B1).
+func _graduations(etiquettes: Array, police: Font) -> void:
+	for e: Array in etiquettes:
+		draw_string_outline(police, e[0], e[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 20, 6, Style.PANNEAU_OPAQUE)
+		draw_string(police, e[0], e[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Style.TEXTE_2)
 
 
 ## Bande entre la courbe du joueur (a0 → a1) et la référence (r0 → r1) sur un mois ; coupée en deux
@@ -167,7 +177,7 @@ func _poly_ecart(poly: PackedVector2Array, signe: float) -> void:
 
 
 ## Écart chiffré à côté de la tête : petit trait vertical entre les deux courbes et montant signé.
-func _ecart_tete(tete: Vector2, tete_ref: Vector2, zone: Rect2, police: Font) -> void:
+func _ecart_tete(tete: Vector2, tete_ref: Vector2, zone: Rect2, police: Font, etiquettes: Array = []) -> void:
 	if valeurs.size() != ref.size():
 		return
 	var ecart := float(valeurs[valeurs.size() - 1]) - float(ref[ref.size() - 1]) if is_nan(ecart_impose) else ecart_impose
@@ -180,5 +190,11 @@ func _ecart_tete(tete: Vector2, tete_ref: Vector2, zone: Rect2, police: Font) ->
 	var x := tete.x + 16.0
 	if x + largeur > zone.end.x + 12.0:
 		x = tete.x - 16.0 - largeur
+	# Jamais sur une valeur de graduation (B1 : « = 0 F » en début de partie) : on passe sous elle
+	for e: Array in etiquettes:
+		var p: Vector2 = e[0]
+		var r := Rect2(p.x, p.y - 20.0, police.get_string_size(str(e[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x, 26.0)
+		if r.intersects(Rect2(x, y - taille, largeur, taille + 6.0)):
+			y = minf(zone.end.y - 4.0, r.end.y + taille)
 	draw_string_outline(police, Vector2(x, y), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, taille, 6, Color(Style.PANNEAU_OPAQUE, 0.9))
 	draw_string(police, Vector2(x, y), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, taille, c)

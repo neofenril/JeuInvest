@@ -11,7 +11,7 @@ func _initialize() -> void:
 	var t0 := Time.get_ticks_msec()
 	var E: GDScript = load("res://scripts/ecran.gd")
 	# PC : T = floor(hauteur / 360), texel = T px physiques, cible ≥ 40 px physiques
-	for cas: Array in [[Vector2i(1280, 720), 2], [Vector2i(1366, 768), 2], [Vector2i(1920, 1080), 3], [Vector2i(2560, 1440), 4], [Vector2i(3840, 2160), 6], [Vector2i(1600, 900), 2]]:
+	for cas: Array in [[Vector2i(1280, 720), 2], [Vector2i(1366, 768), 2], [Vector2i(1920, 1080), 3], [Vector2i(2560, 1440), 4], [Vector2i(3840, 2160), 6], [Vector2i(1600, 900), 2], [Vector2i(1920, 1061), 3], [Vector2i(1920, 1000), 3], [Vector2i(1280, 648), 2]]:
 		var taille: Vector2i = cas[0]
 		var t: int = E.facteur_texel_pour(taille, 96.0, false)
 		var ech: float = E.echelle_pour(taille, 96.0, false)
@@ -20,8 +20,7 @@ func _initialize() -> void:
 		var cible: float = E.cible_min_pour(ech, E.dp_pour(96.0, false), false)
 		verifier("PC %s : cible minimale ≥ 40 px physiques" % taille, cible * ech >= 40.0 - 0.001, "%.1f px virtuels" % cible)
 		var f: float = E.facteur_contenu_pour(taille, 96.0, false)
-		var s0 := minf(taille.x / 1920.0, taille.y / 1080.0)
-		verifier("PC %s : facteur de contenu cohérent (étirement × facteur = échelle)" % taille, is_equal_approx(s0 * f, ech), "f = %.4f" % f)
+		verifier("PC %s : facteur de contenu = échelle exacte (étirement « disabled »)" % taille, f == ech, "f = %.6f" % f)
 	# Mobile : T entier, cible_min × échelle ≥ 48 dp, et les boutons dessinés (80 px virtuels) ≥ 48 dp
 	for cas: Array in [[Vector2i(1600, 720), 267.0], [Vector2i(2400, 1080), 400.0], [Vector2i(2340, 1080), 395.0], [Vector2i(1280, 720), 320.0]]:
 		var taille: Vector2i = cas[0]
