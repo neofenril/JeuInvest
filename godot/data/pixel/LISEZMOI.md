@@ -45,14 +45,15 @@ image gerard_repos_2 16x28
 
 ## Palette « Rue 84 » (docs/16 §2.3 et §8.2)
 
-59 identifiants, dans cet ordre : `encre, nuit, ardoise_sombre, ardoise, gris_pierre, zinc_clair, creme,
+67 identifiants, dans cet ordre : `encre, nuit, ardoise_sombre, ardoise, gris_pierre, zinc_clair, creme,
 blanc_chaud, pierre_ombre, pierre, pierre_claire, brique_sombre, brique, tuile, terre_cuite_claire,
 bois_sombre, bois, bleu_nuit, bleu_ardoise, ciel, ciel_clair, vert_sombre, vert, vert_clair, orange,
 rouge_auvent, bleu_vif, peau_claire, peau_ombre, caramel, lumiere, neon_rose, ambre, or, gain, perte, gel,
 cuivre, gain_papier, perte_papier` (n° 1 à 40, inchangés), puis, pour le monde seulement (§8.2, révision du
 2026-10-29) : `ciel_haut, ciel_vif, nuage, nuage_ombre, nuage_creux, lointain_clair, lointain,
 lointain_sombre, brique_vive, brique_claire, feuille_sombre, feuille, feuille_vive, feuille_eclat, goudron,
-goudron_clair, sarcelle, dalle, dalle_ombre` (n° 41 à 59, non émissives).
+goudron_clair, sarcelle, dalle, dalle_ombre` (n° 41 à 59, non émissives), puis PX0 ter (n° 60 à 67, non émissives) :
+`brique_brune, ombre_froide, goudron_sombre, feuille_profonde, mousse, nuage_soleil, bleu_gris, vitre_reflet`.
 
 Rampes de la rue de briques (§8.2) : ciel `ciel_haut → ciel_vif → ciel → ciel_clair` ; nuages `nuage /
 nuage_ombre / nuage_creux` ; lointain `lointain_clair / lointain / lointain_sombre` ; brique `brique_claire /

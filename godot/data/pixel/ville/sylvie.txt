@@ -64,9 +64,9 @@ image sylvie_contrariee 18x21 origine 9,20
 ..ebbcccbbbbbbbe..
 .ebbccbbbbbbbbbbe.
 .ebbbbbbbbbbbbbbe.
-.ebbbkkppppkkbbbe.
+.ebbbkkpoopkkbbbe.
 .ebbbppkkkkppbbbe.
-.ebbbpweppewpbbbe.
+.ebbbpkkppkkpbbbe.
 .ebbbpweppewpbbbe.
 .ebbbppppopppbbbe.
 .ebbbppRRRRppbbbe.

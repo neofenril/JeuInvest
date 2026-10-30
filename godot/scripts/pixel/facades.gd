@@ -43,6 +43,7 @@ static func maison_gerard(graine := 7) -> Dictionary:
 	M.rect(img, 147, Y_MURS, 1, 108, "brique_sombre")        # contour sombre à droite
 	_chaine_angle(img, 4, Y_MURS, 108, true)
 	_chaine_angle(img, 142, Y_MURS, 108, false)
+	usure(img, 4, 146, 144, 18, "brique", graine)
 	M.rect(img, 2, 164, 148, 8, "pierre")
 	M.rect(img, 2, 164, 148, 1, "pierre_claire")
 	M.rect(img, 2, 171, 148, 1, "pierre_ombre")
@@ -90,8 +91,6 @@ static func maison_gerard(graine := 7) -> Dictionary:
 	M.rect(img, 94, 116, 9, 7, "blanc_chaud")
 	M.rect(img, 95, 117, 7, 5, "bleu_vif")
 	M.texte(img, 97, 117, "7", "blanc_chaud")
-	M.rect(img, 97, 117, 3, 1, "blanc_chaud")
-	M.rect(img, 99, 118, 1, 4, "blanc_chaud")
 	# Applique murale au-dessus de la boîte (allumée la nuit : op de RuePx0)
 	return {"image": img, "fenetres": fen}
 
@@ -169,17 +168,7 @@ static func fenetre(img: Image, x: int, y: int, l: int, h: int, fen: Array, sur 
 	]
 	for k in carreaux.size():
 		var c: Rect2i = carreaux[k]
-		M.rect(img, c.position.x, c.position.y, c.size.x, c.size.y, "bleu_ardoise")
-		M.rect(img, c.position.x, c.position.y, c.size.x, 1, "bleu_nuit")
-		M.rect(img, c.position.x, c.position.y, 1, c.size.y, "bleu_nuit")
-		# Reflet du ciel en diagonale (2 traits), en haut à droite
-		for i in mini(c.size.x, c.size.y) - 2:
-			var rx := c.end.x - 2 - i
-			var ry := c.position.y + 1 + i
-			if i < c.size.x - 3 and (i + k) % 7 < 4:
-				M.px(img, rx, ry, "ciel")
-				M.px(img, rx - 1, ry, "ciel")
-		M.px(img, c.end.x - 2, c.position.y + 1, "ciel_clair")
+		_vitre(img, c, k)
 		fen.append(c)
 	if style == "rideaux":
 		for k in [0, 2]:
@@ -200,10 +189,60 @@ static func fenetre(img: Image, x: int, y: int, l: int, h: int, fen: Array, sur 
 	M.rect(img, mx, y + 1, 2, h - 2, "blanc_chaud")
 	M.rect(img, x + 1, ty, l - 2, 1, "blanc_chaud")
 	M.px(img, mx + 1, ty + 4, "or")                                  # espagnolette
-	# Appui de pierre et ombre portée en aplat
+	# Appui de pierre et ombre portée en aplat, coulures sous l'appui
 	M.rect(img, x - 3, y + h, l + 6, 2, "pierre_claire")
 	M.rect(img, x - 3, y + h + 1, l + 6, 1, "pierre")
 	M.rect(img, x - 2, y + h + 2, l + 4, 1, ombre)
+	for i in 3:
+		var cx := x + 2 + ((x * 7 + y * 3 + i * 11) % maxi(1, l - 4))
+		var lg := 3 + (x + y + i * 5) % 7
+		for j in lg:
+			if j < 3 or M.trame(cx, y + h + 3 + j, 1.0 - float(j) / lg):
+				M.px(img, cx, y + h + 3 + j, ombre)
+
+
+## Vitre (carreau) : fond bleu ardoise assombri en haut (ombre du linteau), reflet du ciel en bandes
+## diagonales (vitre_reflet, ciel), éclat dans le coin ; k varie le reflet d'un carreau à l'autre.
+static func _vitre(img: Image, c: Rect2i, k: int) -> void:
+	for y in c.size.y:
+		for x in c.size.x:
+			var nom := "bleu_ardoise"
+			var d := x + y + k * 3
+			if y == 0 or x == 0:
+				nom = "bleu_nuit"
+			elif y < 3 and M.trame(c.position.x + x, c.position.y + y, 0.5):
+				nom = "bleu_nuit"
+			elif (d % 14) < 3 and y > 1:
+				nom = "vitre_reflet"
+			elif (d % 14) == 3 and y > 1:
+				nom = "ciel"
+			elif y > c.size.y * 0.6 and M.trame(c.position.x + x, c.position.y + y, 0.25):
+				nom = "ciel"
+			M.px(img, c.position.x + x, c.position.y + y, nom)
+	M.px(img, c.end.x - 2, c.position.y + 1, "blanc_chaud")
+	M.px(img, c.end.x - 3, c.position.y + 1, "vitre_reflet")
+
+
+## Usure du pied d'un mur (l × h à partir de (x, y), bas = y + h - 1) : salissures tramées qui montent
+## depuis le sol, plaques de mousse, fissures en zigzag.
+static func usure(img: Image, x: int, y: int, l: int, h: int, ombre: String, graine: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = graine + 501
+	for j in h:
+		var dens := 0.55 * (float(j) / h)
+		for i in l:
+			if img.get_pixel(x + i, y + j).a > 0.0 and M.trame(x + i, y + j, dens * (0.6 + 0.4 * sin((x + i) * 0.21 + graine))):
+				M.px(img, x + i, y + j, ombre)
+	for k in maxi(1, l / 30):
+		var mx := x + rng.randi_range(0, l - 6)
+		for i in rng.randi_range(3, 7):
+			var hh := rng.randi_range(1, 3)
+			M.rect(img, mx + i, y + h - hh, 1, hh, "mousse" if (i + k) % 3 != 0 else "feuille_profonde")
+	for k in maxi(1, l / 60):
+		var fx := x + rng.randi_range(4, l - 4)
+		var fy := y - rng.randi_range(4, 30)
+		for j in rng.randi_range(6, 14):
+			M.px(img, fx + int(sin(j * 1.3) * 1.2), fy + j, ombre)
 
 
 ## Fenêtre ouverte de Sylvie (26 × 32) : pièce sombre, rideaux, battants ouverts vers l'intérieur.
@@ -326,6 +365,7 @@ static func batiment(cfg: Dictionary) -> Dictionary:
 	var t: Array = M.BRIQUES[var_brique]
 	M.rect(img, 0, y_murs, 1, h - y_murs, t[1])
 	M.rect(img, l - 1, y_murs, 1, h - y_murs, t[3] if var_brique != "claire" else "pierre_ombre")
+	usure(img, 0, h - 22, l, 16, ombre, graine)
 	# Toit
 	match toit:
 		"tuiles", "ardoise":
@@ -573,22 +613,62 @@ static func _pub_peinte(img: Image, x: int, y: int, l: int, h: int, texte: Strin
 
 # --- Muret, végétation ---------------------------------------------------------------------------------
 
-## Muret de briques à chaperon (l × h), deux piliers à chapeau de pierre aux extrémités (8 px).
+## Muret de briques à chaperon crénelé (l × h + 6) : chaperon de pierre, créneaux de brique (6 px tous
+## les 10 px) coiffés de pierre claire, piliers de 8 px aux extrémités ; pied usé.
 static func muret(l: int, h: int, graine := 9) -> Image:
 	var img := M.vide(l, h + 6)
 	M.coller(img, M.brique(l, h, graine, "classique"), 0, 6)
-	# Chaperon : dessus éclairé, face, ombre portée sur la brique
 	M.rect(img, 0, 6, l, 2, "pierre_claire")
 	M.rect(img, 0, 8, l, 1, "pierre")
 	M.rect(img, 0, 9, l, 1, "brique_sombre")
+	for x in range(3, l - 6, 10):
+		M.rect(img, x, 2, 6, 4, "brique")
+		M.rect(img, x, 2, 6, 1, "pierre_claire")
+		M.rect(img, x + 5, 3, 1, 3, "brique_sombre")
+		M.px(img, x, 3, "brique_vive")
 	for p in [0, l - 8]:
 		M.coller(img, M.brique(8, h + 2, graine + p, "vive"), p, 4)
-		M.rect(img, p - 1 if p > 0 else 0, 1, 9, 3, "pierre_claire")
-		M.rect(img, p, 0, 8, 1, "pierre_claire")
-		M.rect(img, p, 3, 8, 1, "pierre")
-		M.rect(img, p, 4, 8, 1, "brique_sombre")
+		M.rect(img, p, 0, 8, 3, "pierre_claire")
+		M.rect(img, p, 2, 8, 1, "pierre")
+		M.rect(img, p, 3, 8, 1, "brique_sombre")
 		M.rect(img, p + 7, 4, 1, h + 2, "brique_sombre")
 		M.rect(img, p, 4, 1, h + 2, "brique_claire")
+	usure(img, 0, h - 2, l, 8, "brique_sombre", graine)
+	return img
+
+
+## Portail métallique gris-vert (l × h) : cadre, barreaux, traverses, serrure ; contour encre.
+static func portail(l: int, h: int) -> Image:
+	var img := M.vide(l, h)
+	M.cadre(img, 0, 0, l, h, "ombre_froide")
+	M.rect(img, 1, 1, l - 2, 1, "bleu_gris")
+	for x in range(2, l - 1, 3):
+		M.rect(img, x, 1, 1, h - 2, "bleu_gris")
+		M.px(img, x, 1, "zinc_clair")
+	for y in [h / 3, h * 2 / 3]:
+		M.rect(img, 1, y, l - 2, 2, "ombre_froide")
+		M.rect(img, 1, y, l - 2, 1, "bleu_gris")
+	M.rect(img, 1, h - 4, l - 2, 3, "bleu_gris")
+	M.rect(img, 1, h - 2, l - 2, 1, "ombre_froide")
+	M.rect(img, l / 2 - 1, h / 2 - 2, 3, 4, "nuit")
+	M.px(img, l / 2, h / 2 - 1, "or")
+	return img
+
+
+## Armoire technique de rue (l × h) gris-vert : portes à panneaux, ouïes d'aération, étiquette jaune.
+static func armoire(l: int, h: int) -> Image:
+	var img := M.vide(l, h)
+	M.rect(img, 0, 0, l, h, "bleu_gris")
+	M.rect(img, 0, 0, l, 2, "zinc_clair")
+	M.rect(img, l - 2, 0, 2, h, "ombre_froide")
+	M.rect(img, l / 2, 3, 1, h - 5, "ombre_froide")
+	for y in range(5, 12, 2):
+		M.rect(img, 3, y, l / 2 - 5, 1, "ombre_froide")
+	M.rect(img, l / 2 + 3, 6, 5, 4, "or")
+	M.px(img, l / 2 + 5, 7, "encre")
+	M.rect(img, l / 2 - 3, h / 2, 1, 3, "nuit")
+	M.rect(img, 0, h - 2, l, 2, "ombre_froide")
+	M.contour(img, "encre")
 	return img
 
 
@@ -629,7 +709,7 @@ static func arbre_ete(l: int, h: int, graine := 3, image := 0, avec_tronc := tru
 	if avec_tronc:
 		M.rect(img, cx0 - tl / 2 - 2, h - 3, tl + 4, 3, "bois")
 		M.rect(img, cx0 - tl / 2 - 2, h - 1, tl + 4, 1, "bois_sombre")
-	for b in ([[-1, 0.3], [1, 0.38], [-1, 0.6]] if avec_tronc else []):
+	for b in ([[-1, 0.22], [1, 0.26], [-1, 0.3]] if avec_tronc else []):
 		var bx: int = cx0
 		var by := ty + int((h - ty) * 0.15)
 		for j in int(h * b[1]):
@@ -686,21 +766,57 @@ static func arbre_ete(l: int, h: int, graine := 3, image := 0, avec_tronc := tru
 	M.coller(img, feuillage, 0, 0)
 	return img
 
-## Arbre de premier plan (plan 1,15) : tronc haut (l_tronc × h_tronc) et houppier (houppier_l × houppier_h)
-## qui déborde à gauche du tronc. Renvoie {"tronc": Image, "houppier": Image}.
+## Arbre de premier plan (plan 1,15, PX0 ter) : grand tronc à droite et branche arquée qui passe
+## au-dessus de la scène vers la gauche, chargée de masses de feuillage (plus sombres : à contre-jour).
+## Image PP_L × PP_H ; le tronc occupe x PP_TRONC..PP_TRONC + 24 ; renvoie {"image0", "image1"} (2 images
+## de balancement du feuillage).
+const PP_L := 360
+const PP_H := 430
+const PP_TRONC := 316
+
+
 static func arbre_premier_plan(graine := 61) -> Dictionary:
-	var tronc := M.vide(22, 360)
-	M.rect(tronc, 2, 0, 18, 360, "bois")
-	M.rect(tronc, 2, 0, 4, 360, "caramel")
-	M.rect(tronc, 14, 0, 6, 360, "bois_sombre")
-	var rng := RandomNumberGenerator.new()
-	rng.seed = graine
-	for k in 26:
-		var y := rng.randi_range(4, 356)
-		M.rect(tronc, rng.randi_range(6, 12), y, rng.randi_range(2, 5), 1, "bois_sombre")
-	# Évasement du pied et branche maîtresse vers la gauche
-	M.rect(tronc, 0, 340, 22, 20, "bois")
-	M.rect(tronc, 0, 340, 3, 20, "caramel")
-	M.rect(tronc, 18, 340, 4, 20, "bois_sombre")
-	M.contour(tronc, "bois_sombre")
-	return {"tronc": tronc, "houppier": arbre_ete(220, 140, graine, 0, false, -0.3), "houppier_2": arbre_ete(220, 140, graine, 1, false, -0.3)}
+	var r := {}
+	for im in 2:
+		var img := M.vide(PP_L, PP_H)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = graine
+		# Tronc (évasé au pied), écorce
+		var bois := M.vide(PP_L, PP_H)
+		for y in range(110, PP_H):
+			var ev := maxi(0, (y - (PP_H - 24)) / 3)
+			var x0 := PP_TRONC - ev
+			var lw := 24 + 2 * ev
+			M.rect(bois, x0, y, lw, 1, "bois")
+			M.rect(bois, x0, y, 5, 1, "caramel")
+			M.rect(bois, x0 + lw - 7, y, 7, 1, "bois_sombre")
+		for k in 40:
+			var y := rng.randi_range(112, PP_H - 4)
+			M.rect(bois, PP_TRONC + rng.randi_range(6, 14), y, rng.randi_range(2, 5), 1, "bois_sombre")
+		# Branche arquée (courbe de Bézier), épaisseur 11 → 3, dessus éclairé
+		var p0 := Vector2(PP_TRONC + 8, 160)
+		var p1 := Vector2(PP_TRONC - 120, 20)
+		var p2 := Vector2(30, 100)
+		for s in 600:
+			var tt := s / 600.0
+			var p := p0.lerp(p1, tt).lerp(p1.lerp(p2, tt), tt)
+			var ep := int(lerpf(12.0, 3.0, tt))
+			var x := int(p.x)
+			var y := int(p.y) - ep / 2
+			M.rect(bois, x, y, 1, ep, "bois")
+			M.px(bois, x, y, "caramel")
+			M.rect(bois, x, y + ep - 2, 1, 2, "bois_sombre")
+		# Rameau secondaire vers le haut
+		for s in 200:
+			var tt := s / 200.0
+			var p := Vector2(PP_TRONC - 40, 70).lerp(Vector2(PP_TRONC - 10, 0), tt)
+			M.rect(bois, int(p.x), int(p.y), int(lerpf(6, 2, tt)), 1, "bois")
+		M.contour(bois, "bois_sombre")
+		M.coller(img, bois, 0, 0)
+		# Masses de feuillage le long de la branche et en haut du tronc
+		var masses := [[110, -10, 260, 180], [20, 20, 190, 130], [0, 60, 130, 100], [220, 30, 140, 170], [150, 80, 140, 90]]
+		for m in masses:
+			var f := arbre_ete(m[2], m[3], graine + m[0], im, false, -0.25)
+			M.coller(img, f, m[0], m[1])
+		r["image%d" % im] = img
+	return r

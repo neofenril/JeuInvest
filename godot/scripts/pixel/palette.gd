@@ -1,6 +1,6 @@
 class_name PalettePixel
 extends RefCounted
-## Palette « Rue 84 » (docs/16 §2.3 et §8.2) : 59 couleurs, en 3 variantes (jour, nuit, orage).
+## Palette « Rue 84 » (docs/16 §2.3 et §8.2, + 8 couleurs PX0 ter) : 67 couleurs, en 3 variantes (jour, nuit, orage).
 ## Les 40 premières (§2.3) ne changent jamais (l'interface s'en sert) ; les 19 suivantes (§8.2, révision
 ## du 2026-10-29 : ciel d'été, nuages, lointain, briques vives, feuillage d'été, goudron, sarcelle, dalles)
 ## sont ajoutées à la suite, pour le monde seulement, et ne sont pas émissives.
@@ -23,6 +23,9 @@ const _NOMS := [
 	"ciel_haut", "ciel_vif", "nuage", "nuage_ombre", "nuage_creux", "lointain_clair", "lointain",
 	"lointain_sombre", "brique_vive", "brique_claire", "feuille_sombre", "feuille", "feuille_vive",
 	"feuille_eclat", "goudron", "goudron_clair", "sarcelle", "dalle", "dalle_ombre",
+	# PX0 ter (n° 60 à 67, retour du joueur du 2026-10-29 : « approche-toi encore plus » de rue_pixel_v2)
+	"brique_brune", "ombre_froide", "goudron_sombre", "feuille_profonde", "mousse", "nuage_soleil",
+	"bleu_gris", "vitre_reflet",
 ]
 
 # Valeurs exactes de docs/16 §2.3 puis §8.2, dans l'ordre de _NOMS.
@@ -35,6 +38,7 @@ const _HEX_JOUR := [
 	"3C8AD6", "5DAAE8", "F7FBFF", "CFE2F2", "A3C3E0", "B4CCE0", "8DA9C8",
 	"6A86A8", "C4573A", "DE7A4E", "23542A", "3E8C34", "6DBB3C",
 	"A9DC54", "5E626C", "7C808A", "2F7C80", "BDB7AD", "9E978C",
+	"8E4A32", "4F5B78", "4A4E5A", "1A3F2A", "6E8A3A", "FFF3D2", "7A90AC", "9CCBF0",
 ]
 const _HEX_NUIT := [
 	"120F1E", "1B1A30", "262842", "363A5C", "4A4E72", "5F6488", "6E7092", "7A7EA0",
@@ -45,6 +49,7 @@ const _HEX_NUIT := [
 	"1A2C58", "203A66", "7C80A2", "5A6488", "44507A", "3E4870", "323C64",
 	"283258", "563048", "66424C", "142236", "1E3444", "2C4450",
 	"3C5258", "2A2C46", "383C5A", "18344A", "50547A", "44466A",
+	"40283A", "22264A", "202238", "0F1A2C", "263A3A", "8A8AA6", "2E3A5E", "3A4C78",
 ]
 const _HEX_ORAGE := [
 	"1A1418", "2A2230", "3A3440", "565060", "7A7280", "9A929C", "B8AA9E", "C8BCB0",
@@ -55,6 +60,7 @@ const _HEX_ORAGE := [
 	"4A5266", "565C70", "B4B0B8", "9894A0", "7E7C8C", "8A8696", "706E80",
 	"5E5C6E", "8E4636", "A6644A", "22342A", "3A5634", "5A7A40",
 	"7A9450", "4C4A54", "64626C", "36545A", "8C8482", "76706E",
+	"6E4234", "4A4A5A", "3E3C46", "1C2A24", "5E6E44", "C4BEB8", "6C7080", "8C94A4",
 ]
 const _EMISSIVES := ["lumiere", "neon_rose", "ambre", "gain", "perte", "gel", "cuivre", "gain_papier", "perte_papier"]
 
@@ -87,7 +93,7 @@ static func cle(c: Color) -> int:
 	return c.to_rgba32() >> 8
 
 
-## Les 59 identifiants, dans l'ordre de docs/16 §2.3 puis §8.2.
+## Les 67 identifiants, dans l'ordre de docs/16 §2.3, §8.2, puis PX0 ter (n° 60 à 67).
 static func noms() -> PackedStringArray:
 	return PackedStringArray(_NOMS)
 

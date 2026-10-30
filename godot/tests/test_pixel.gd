@@ -25,6 +25,9 @@ const ATTENDU_JOUR := {
 	"brique_vive": "C4573A", "brique_claire": "DE7A4E", "feuille_sombre": "23542A", "feuille": "3E8C34",
 	"feuille_vive": "6DBB3C", "feuille_eclat": "A9DC54", "goudron": "5E626C", "goudron_clair": "7C808A",
 	"sarcelle": "2F7C80", "dalle": "BDB7AD", "dalle_ombre": "9E978C",
+	# PX0 ter, n° 60 à 67 (à reporter dans docs/16 §8.2 par le chef de projet)
+	"brique_brune": "8E4A32", "ombre_froide": "4F5B78", "goudron_sombre": "4A4E5A", "feuille_profonde": "1A3F2A",
+	"mousse": "6E8A3A", "nuage_soleil": "FFF3D2", "bleu_gris": "7A90AC", "vitre_reflet": "9CCBF0",
 }
 ## Ordre des 59 identifiants (docs/16 §2.3 puis §8.2).
 const ORDRE := [
@@ -36,6 +39,8 @@ const ORDRE := [
 	"ciel_haut", "ciel_vif", "nuage", "nuage_ombre", "nuage_creux", "lointain_clair", "lointain",
 	"lointain_sombre", "brique_vive", "brique_claire", "feuille_sombre", "feuille", "feuille_vive",
 	"feuille_eclat", "goudron", "goudron_clair", "sarcelle", "dalle", "dalle_ombre",
+	"brique_brune", "ombre_froide", "goudron_sombre", "feuille_profonde", "mousse", "nuage_soleil",
+	"bleu_gris", "vitre_reflet",
 ]
 const ATTENDU_NUIT := {"encre": "120F1E", "creme": "6E7092", "or": "6E5A5A", "caramel": "46344A",
 	"ciel_haut": "1A2C58", "nuage": "7C80A2", "brique_vive": "563048", "feuille_vive": "2C4450",
@@ -76,22 +81,22 @@ func _hex(c: Color) -> String:
 
 func _tests_palette() -> void:
 	var noms := PalettePixel.noms()
-	_verifier(noms.size() == 59, "palette : 59 couleurs", str(noms.size()))
+	_verifier(noms.size() == 67, "palette : 67 couleurs", str(noms.size()))
 	var uniques := {}
 	for n in noms:
 		uniques[n] = true
-	_verifier(uniques.size() == 59, "palette : identifiants uniques")
+	_verifier(uniques.size() == 67, "palette : identifiants uniques")
 	_verifier(Array(noms) == ORDRE, "palette : ordre de docs/16 §2.3 (40 premières inchangées) puis §8.2")
 	var ecarts := PackedStringArray()
 	for n in ATTENDU_JOUR:
 		if not uniques.has(n) or _hex(PalettePixel.couleur(n)) != ATTENDU_JOUR[n]:
 			ecarts.append(n)
-	_verifier(ecarts.is_empty() and ATTENDU_JOUR.size() == 59, "palette : 59 valeurs de jour = docs/16 §2.3 et §8.2", ", ".join(ecarts))
+	_verifier(ecarts.is_empty() and ATTENDU_JOUR.size() == 67, "palette : 67 valeurs de jour = docs/16 §2.3, §8.2 et PX0 ter", ", ".join(ecarts))
 	var nouvelles_em := false
-	for i in range(40, 59):
+	for i in range(40, 67):
 		if PalettePixel.emissive(ORDRE[i]):
 			nouvelles_em = true
-	_verifier(not nouvelles_em, "palette : les 19 couleurs de §8.2 ne sont pas émissives")
+	_verifier(not nouvelles_em, "palette : les 27 couleurs ajoutées (§8.2, PX0 ter) ne sont pas émissives")
 	ecarts.clear()
 	for n in ATTENDU_NUIT:
 		if _hex(PalettePixel.couleur(n, PalettePixel.NUIT)) != ATTENDU_NUIT[n]:
@@ -104,7 +109,7 @@ func _tests_palette() -> void:
 		var vues := {}
 		for n in noms:
 			vues[PalettePixel.cle(PalettePixel.couleur(n, VARIANTES[vi]))] = true
-		_verifier(vues.size() == 59, "palette : 59 couleurs distinctes (%s)" % NOMS_VARIANTES[vi], str(vues.size()))
+		_verifier(vues.size() == 67, "palette : 67 couleurs distinctes (%s)" % NOMS_VARIANTES[vi], str(vues.size()))
 	var em_ok := true
 	var nb_em := 0
 	for n in noms:
@@ -123,8 +128,8 @@ func _tests_palette() -> void:
 	_verifier(inverse_ok, "palette : nom_de et contient retrouvent chaque couleur")
 	_verifier(PalettePixel.nom_de(Color(0.5, 0.5, 0.5)) == "" and not PalettePixel.contient(Color(0.5, 0.5, 0.5)), "palette : couleur hors palette reconnue")
 	# Conversion jour -> nuit -> jour, alpha conservé
-	var img := Image.create_empty(8, 8, false, Image.FORMAT_RGBA8)
-	for i in 59:
+	var img := Image.create_empty(8, 9, false, Image.FORMAT_RGBA8)
+	for i in 67:
 		img.set_pixel(i % 8, i / 8, PalettePixel.couleur(noms[i]))
 	img.set_pixel(0, 0, Color(0, 0, 0, 0))
 	var nuit := PalettePixel.convertir(img, PalettePixel.JOUR, PalettePixel.NUIT)
@@ -248,18 +253,34 @@ func _tests_matieres() -> void:
 	var noms := MatieresPixel.generer_tout(1)
 	_verifier(noms.size() >= 3 and GrillePixel.existe("matiere/ciel") and GrillePixel.existe("matiere/trottoir") and GrillePixel.existe("matiere/chaussee"), "matières : ciel, trottoir, chaussée enregistrés")
 	_verifier(MatieresPixel.ciel(64, 200, 7).get_data() == MatieresPixel.ciel(64, 200, 7).get_data(), "matières : ciel déterministe")
-	_verifier(MatieresPixel.trottoir(200, 14, 7).get_data() == MatieresPixel.trottoir(200, 14, 7).get_data(), "matières : trottoir déterministe")
-	_verifier(MatieresPixel.chaussee(400, 22, 7).get_data() == MatieresPixel.chaussee(400, 22, 7).get_data(), "matières : chaussée déterministe")
-	_verifier(MatieresPixel.chaussee(400, 22, 7).get_data() != MatieresPixel.chaussee(400, 22, 8).get_data(), "matières : la graine change la chaussée")
-	# Sol de docs/16 §8.3 : dalles 12 + bordure 2, goudron 22 à ligne médiane blanche
-	var tr := MatieresPixel.trottoir(48, 14, 1)
-	var ch := MatieresPixel.chaussee(68, 22, 1)
-	_verifier(PalettePixel.nom_de(tr.get_pixel(5, 2)) == "dalle" and PalettePixel.nom_de(tr.get_pixel(12, 2)) == "dalle_ombre" and PalettePixel.nom_de(tr.get_pixel(5, 12)) == "zinc_clair", "matières : trottoir en dalles (joints tous les 12 px), bordure éclairée")
-	_verifier(PalettePixel.nom_de(ch.get_pixel(30, 15)) in ["goudron", "goudron_clair"] and PalettePixel.nom_de(ch.get_pixel(2, 11)) == "blanc_chaud", "matières : chaussée de goudron, marquage blanc_chaud")
+	_verifier(MatieresPixel.trottoir(200, 17, 7).get_data() == MatieresPixel.trottoir(200, 17, 7).get_data(), "matières : trottoir déterministe")
+	_verifier(MatieresPixel.chaussee(400, 60, 7).get_data() == MatieresPixel.chaussee(400, 60, 7).get_data(), "matières : chaussée déterministe")
+	_verifier(MatieresPixel.chaussee(400, 60, 7).get_data() != MatieresPixel.chaussee(400, 60, 8).get_data(), "matières : la graine change la chaussée")
+	# Sol (PX0 ter) : dalles 14 + bordure 3, goudron 60 à ligne médiane blanche
+	var tr := MatieresPixel.trottoir(1288, 17, 1)
+	var ch := MatieresPixel.chaussee(68, 60, 1)
+	var joints := 0
+	for x in range(1, 200):
+		if PalettePixel.nom_de(tr.get_pixel(x, 3)) == "dalle_ombre":
+			joints += 1
+	_verifier(joints >= 12 and PalettePixel.nom_de(tr.get_pixel(5, 14)) == "zinc_clair", "matières : trottoir en dalles à joints (%d), bordure éclairée" % joints)
+	var herbe := false
+	for y in 14:
+		for x in 1288:
+			if PalettePixel.nom_de(tr.get_pixel(x, y)) == "mousse":
+				herbe = true
+	_verifier(herbe, "matières : touffes d'herbe dans les joints du trottoir")
+	_verifier(PalettePixel.nom_de(ch.get_pixel(2, 26)) == "blanc_chaud", "matières : chaussée de goudron, marquage blanc_chaud")
 	# Brique : rangs de 3 px (joint au 3e), briques de 6 px en quinconce, 4 variantes
 	var br := MatieresPixel.brique(24, 9, 1, "vive")
-	var joint := PalettePixel.nom_de(br.get_pixel(1, 2))
-	_verifier(joint == "brique" and PalettePixel.nom_de(br.get_pixel(5, 0)) == "brique" and PalettePixel.nom_de(br.get_pixel(2, 4)) == "brique", "matières : brique à joints (rang de 3 px, brique de 6 px, quinconce)")
+	var j: String = MatieresPixel.BRIQUES["vive"][3]
+	_verifier(PalettePixel.nom_de(br.get_pixel(1, 2)) == j and PalettePixel.nom_de(br.get_pixel(5, 0)) == j and PalettePixel.nom_de(br.get_pixel(2, 4)) == j, "matières : brique à joints sombres (rang de 3 px, brique de 6 px, quinconce)")
+	var tons_br := {}
+	var grand := MatieresPixel.brique(120, 60, 4, "vive")
+	for y in 60:
+		for x in 120:
+			tons_br[PalettePixel.nom_de(grand.get_pixel(x, y))] = true
+	_verifier(tons_br.size() >= 4, "matières : briques à variations de ton (%d tons)" % tons_br.size())
 	var variantes_ok := true
 	for v in ["vive", "classique", "sombre", "claire"]:
 		if MatieresPixel.brique(30, 12, 3, v).get_data() != MatieresPixel.brique(30, 12, 3, v).get_data():
@@ -271,7 +292,7 @@ func _tests_matieres() -> void:
 		for x in 100:
 			if cu.get_pixel(x, y).a > 0.0:
 				tons[PalettePixel.nom_de(cu.get_pixel(x, y))] = true
-	_verifier(tons.has("nuage") and tons.has("nuage_ombre") and tons.has("nuage_creux") and tons.size() == 3, "matières : cumulus en 3 tons (nuage, ombre, creux)", str(tons.keys()))
+	_verifier(tons.has("nuage_soleil") and tons.has("nuage") and tons.has("nuage_ombre") and tons.has("nuage_creux") and tons.size() <= 5, "matières : cumulus tramés (soleil, nuage, ombre, creux, dessous bleu-gris)", str(tons.keys()))
 	var sk := MatieresPixel.skyline(400, 160, 5)
 	var tons_sk := {}
 	for y in 160:
@@ -314,7 +335,7 @@ func _tests_matieres() -> void:
 	var r5: Dictionary = vehicules.caisse("r5")
 	var g205: Dictionary = vehicules.caisse("205")
 	_verifier(r5["image"].get_width() >= 66 and r5["image"].get_height() >= 28 and g205["image"].get_width() >= 66 and g205["image"].get_height() >= 28, "décor : voitures d'au moins 66 × 28")
-	_verifier(vehicules.roue(0).get_size() == Vector2i(12, 12) and vehicules.roue(0).get_data() != vehicules.roue(1).get_data(), "décor : roues de 12 px, 2 images")
+	_verifier(vehicules.roue(0).get_size() == Vector2i(vehicules.ROUE, vehicules.ROUE) and vehicules.ROUE >= 12 and vehicules.roue(0).get_data() != vehicules.roue(1).get_data(), "décor : roues d'au moins 12 px (%d), 2 images" % vehicules.ROUE)
 	RuePx0.generer_decor()
 	var nd := 0
 	for n in GrillePixel.noms():

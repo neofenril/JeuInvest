@@ -3,8 +3,8 @@
 #   powershell -File godot\outils\capture_px0.ps1 -Etape jour -Nom px0_a -Taille 1920x1080 -Controle -SansInterface
 #   ... -Telephone (facteur 1,7 ; fenêtre 1600 x 720 sans -Taille)  -Facteur 4  -Libre  -Fps  -Attente 1.5
 #   ... -Montage <png de référence>  -Godot <chemin de Godot console>
-#   ... -Serie : toute la série PX0 bis (docs/lots/lot_px0_bis.md §7, préfixe px0_bis_), ses montages et le
-#       journal godot\captures\px0_bis_serie.log
+#   ... -Serie : toute la série PX0 ter (docs/lots/lot_px0_bis.md §7, préfixe px0_ter_ depuis PX0 ter), ses montages et le
+#       journal godot\captures\px0_ter_serie.log
 #   ... -Reference <image> : montage côté à côte (référence à gauche, à la hauteur de la capture) ; par défaut,
 #       avec -Serie : docs\sources\graphisme\references\rue_pixel_v2.jpg du dépôt principal
 # Étapes : jour, nuit, sylvie_0, sylvie_1, sylvie_2, planche (ville) ; carte, carte_fermee, jersey, polices
@@ -35,11 +35,16 @@ $racine = Split-Path -Parent $projet
 $captures = Join-Path $projet "captures"
 New-Item -ItemType Directory -Force $captures | Out-Null
 
-# --- Godot : -Godot, sinon JEUCLAUDE_GODOT, sinon outils\ du dépôt -----------------------------------
-$candidats = @($Godot, $env:JEUCLAUDE_GODOT, (Join-Path $racine "outils\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64_console.exe"))
+# --- Godot : -Godot, sinon trouver_godot.ps1 (JEUCLAUDE_GODOT, dépôt, dépôt principal d'un worktree) -----------------------------------
 $exe = $null
-foreach ($c in $candidats) {
-    if ($c -and (Test-Path -LiteralPath $c -PathType Leaf)) { $exe = (Resolve-Path -LiteralPath $c).Path; break }
+if ($Godot -and (Test-Path -LiteralPath $Godot -PathType Leaf)) {
+    $exe = (Resolve-Path -LiteralPath $Godot).Path
+} else {
+    # Même recherche que tests.ps1 : JEUCLAUDE_GODOT, dépôt, dépôt principal d'un worktree
+    # ($Godot, paramètre typé [string], masquerait la variable $godot de trouver_godot.ps1 : on le retire)
+    Remove-Variable -Name Godot -Scope Script -ErrorAction SilentlyContinue
+    # (bloc à part : le paramètre $Godot, typé [string], masquerait la variable $godot du script inclus)
+    $exe = & { . (Join-Path $PSScriptRoot "trouver_godot.ps1"); $godot }
 }
 if (-not $exe) {
     Write-Host "Godot introuvable. Donner -Godot <chemin de Godot_v4.7.2-stable_win64_console.exe> ou définir JEUCLAUDE_GODOT."
@@ -132,10 +137,10 @@ function Monter([string]$gauche, [string]$droite, [string]$sortie) {
 }
 
 if ($Serie) {
-    $journal = Join-Path $captures "px0_bis_serie.log"
-    Set-Content -LiteralPath $journal -Value ("Série PX0 bis du {0:yyyy-MM-dd HH:mm:ss}, Godot : {1}" -f $debut, $exe) -Encoding UTF8
+    $journal = Join-Path $captures "px0_ter_serie.log"
+    Set-Content -LiteralPath $journal -Value ("Série PX0 ter du {0:yyyy-MM-dd HH:mm:ss}, Godot : {1}" -f $debut, $exe) -Encoding UTF8
     Ecrire ("import : code {0}{1}" -f $imp.code, $(if ($errImp.Count) { " ; " + ($errImp -join " / ") } else { "" }))
-    $p = "px0_bis_"
+    $p = "px0_ter_"
     $liste = @(
         @{ Nom = "${p}jour_1080"; Etape = "jour"; Taille = "1920x1080"; Controle = $true; Fps = $true },
         @{ Nom = "${p}nuit_1080"; Etape = "nuit"; Taille = "1920x1080"; Controle = $true },
@@ -163,8 +168,8 @@ if ($Serie) {
     # Montages (référence ou capture de PX0 à gauche, capture PX0 bis à droite)
     if (-not $Reference) { $Reference = Join-Path $depot "docs\sources\graphisme\references\rue_pixel_v2.jpg" }
     $jour = Join-Path $captures "${p}jour_1080.png"
-    $px0 = Join-Path $captures "px0_jour_1080.png"
-    if (-not (Test-Path -LiteralPath $px0)) { $px0 = Join-Path $refs "px0_jour_1080.png" }
+    $px0 = Join-Path $captures "px0_bis_jour_1080.png"
+    if (-not (Test-Path -LiteralPath $px0)) { $px0 = Join-Path $captures "px0_jour_1080.png" }
     [void](Monter $Reference $jour (Join-Path $captures "${p}montage_ref.png"))
     [void](Monter $px0 $jour (Join-Path $captures "${p}montage_px0.png"))
     [void](Monter (Join-Path $refs "v3_rue.png") $jour (Join-Path $captures "${p}montage_pc.png"))

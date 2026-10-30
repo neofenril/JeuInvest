@@ -1,7 +1,7 @@
 # Base de connaissances de dev-ville
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-29 (lot PX0 bis : rue de briques, personnages 24 × 42).
+> Dernière mise à jour : 2026-10-30 (PX0 ter : plus près de rue_pixel_v2, cadrage serré).
 
 ## 1. Atelier pixel (`godot/scripts/pixel/`, conservé après PX0)
 
@@ -47,6 +47,15 @@
 - Grilles 24 × 42 / 18 × 21 / objets : générateurs PowerShell en suites dans le bloc-notes (non versionnés) ; le `.txt` fait foi. Scripts `.ps1` à écrire en UTF-8 **avec BOM** (sinon accents cassés en PS 5.1) ; tableau de lignes : `New-Object 'char[][]'` (sinon aplati).
 - Pièges : `var cx := tableau[i] * f` → type non inférable (typer `: float`) ; `Set-Content -Encoding UTF8` met un BOM dans les `.gd` (écrire via .NET sans BOM) ; `JEUCLAUDE_GODOT` ne persiste pas entre deux commandes ; `tests.ps1` de cette branche cherche Godot dans le worktree : lancer les 3 tests à la main.
 - Mesures : 2 467 im/s à 1080 ; figurine 72 × 126 à 1080, 96 × 168 à ×4.
+
+## 2 quater. PX0 ter (cadrage serré, « approche-toi encore plus » de rue_pixel_v2)
+
+- Palette 67 : +8 en fin (brique_brune, ombre_froide, goudron_sombre, feuille_profonde, mousse, nuage_soleil, bleu_gris, vitre_reflet) ; à reporter dans docs/16 par le chef de projet.
+- Repères : SOL 268, trottoir 14 + bordure 3, chaussée 60 (visible jusqu'à 336), maison 0-152 (haut 96), ZONE (-130,96,494,240), pieds 276. Voitures ×1,3 (≈ 94 × 39, roues 16), face avant de trois-quarts.
+- Nuages : 5 tons tramés (`_ton_trame`). Briques : ton tiré par brique (5 tons), joints sombres ; `usure()` (salissures tramées, mousse, fissures) ; coulures sous les appuis ; vitres `_vitre()` à reflets.
+- Arbre de premier plan = une seule image (tronc + branche de Bézier + masses `arbre_ete`), origine au tronc. Arbres `devant` posés entre la couche Batiments et la Maison. Feuilles qui volettent : 3 mobiles, placés aussi par `preparer_capture`.
+- Pièges : `R` est un alias PowerShell (Invoke-History) : ne pas nommer une fonction ainsi ; `WriteAllLines` écrit en CRLF (les remplacements en LF échouent ensuite) ; un paramètre `[string]$Godot` masque le `$godot` de trouver_godot.ps1 (l'inclure dans un bloc `& { . … ; $godot }`) ; une boucle `for k` dans une fonction qui a déjà `var k` = erreur de parse.
+- tests.ps1 + trouver_godot.ps1 recopiés à l'identique de main (fusion sans conflit) ; capture_px0.ps1 les utilise.
 
 ## 3. Décisions (étape A)
 
