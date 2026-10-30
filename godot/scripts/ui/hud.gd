@@ -438,7 +438,8 @@ func _creer_panneau() -> void:
 	sl.content_margin_right = 6
 	languette.add_theme_stylebox_override("normal", sl)
 	var slh := Style.panneau(16)
-	slh.bg_color = Style.PANNEAU_ELEVE
+	slh.content_margin_left = 6
+	slh.content_margin_right = 6
 	languette.add_theme_stylebox_override("hover", slh)
 	languette.add_theme_stylebox_override("pressed", slh)
 	languette.pressed.connect(func() -> void: basculer_panneau(true))
@@ -609,7 +610,7 @@ func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 	var ref: float = e.hist["j"][m0]
 	if e.m > e.m_depart and ref > 0.0:
 		var v := patr / ref - 1.0
-		l_var.text = ("▲ " if v >= 0.0 else "▼ ") + Format.pct(v, 0)
+		l_var.text = ("+" if v >= 0.0 else "") + Format.pct(v, 0).trim_prefix("+")
 		l_var.add_theme_color_override("font_color", Style.GAIN if v >= 0.0 else Style.PERTE)
 	else:
 		l_var.text = ""

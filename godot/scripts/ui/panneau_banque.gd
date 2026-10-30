@@ -195,7 +195,7 @@ func _sous_titre(pid: String) -> String:
 		"av":
 			return Banquier.taux_txt(Produits.taux_av(Dates.annee(a))) + " % cette année"
 	var pv := e.plus_value_latente(e.joueur, pid)
-	return ("▲ " if pv >= 0.0 else "▼ ") + Format.montant(pv, a, false, true)
+	return Format.montant(pv, a, false, true)   # signe + / − (pas de ▲ ▼ : absents des polices embarquées)
 
 
 func _on_carte(pid: String) -> void:

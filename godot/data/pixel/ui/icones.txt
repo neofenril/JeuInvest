@@ -175,3 +175,91 @@ eee....eee
 .eee..eee.
 eee....eee
 ee......ee
+
+# --- PX2 : pictogrammes des sources 16 × 16 (crème ; couleur de la source par substitution) ---
+: i creme
+image source_maison 16x16
+................
+.......ii.......
+......iiii......
+.....iiiiii.....
+....iiiiiiii....
+...iiiiiiiiii...
+..iiiiiiiiiiii..
+....iiiiiiii....
+....iiiiiiii....
+....iii..iii....
+....iii..iii....
+....iii..iii....
+....iii..iii....
+....iii..iii....
+................
+................
+image source_banque 16x16
+................
+.......ii.......
+.....iiiiii.....
+...iiiiiiiiii...
+.iiiiiiiiiiiiii.
+................
+..ii.ii..ii.ii..
+..ii.ii..ii.ii..
+..ii.ii..ii.ii..
+..ii.ii..ii.ii..
+..ii.ii..ii.ii..
+..ii.ii..ii.ii..
+................
+.iiiiiiiiiiiiii.
+iiiiiiiiiiiiiiii
+................
+image source_media 16x16
+................
+.iiiiiiiiiiiiii.
+.i............i.
+.i.iiiiiiiiii.i.
+.i.iiiiiiiiii.i.
+.i............i.
+.i.iiiii.iiii.i.
+.i............i.
+.i.iiiii.iiii.i.
+.i............i.
+.i.iiiii.iiii.i.
+.i............i.
+.i.iiiii.iiii.i.
+.i............i.
+.iiiiiiiiiiiiii.
+................
+
+# --- PX2 : pièce 8 × 8 (or ; cuivre par substitution or -> cuivre, lumiere -> terre_cuite_claire, caramel -> bois) ---
+: e encre
+: o or
+: l lumiere
+: c caramel
+image piece 8x8
+..eeee..
+.eloooe.
+eloooooe
+eoooooce
+eoooooce
+eoooocce
+.eoccce.
+..eeee..
+
+# --- PX2 : calendrier 12 × 12 (versement automatique) ---
+: e encre
+: r rouge_auvent
+: w blanc_chaud
+: k encre
+image calendrier 12x12
+.e.e....e.e.
+eeeeeeeeeeee
+errrrrrrrrre
+errrrrrrrrre
+eeeeeeeeeeee
+ewwwwwwwwwwe
+ewkwkwkwkwwe
+ewwwwwwwwwwe
+ewkwkwkwkwwe
+ewwwwwwwwwwe
+ewkwkwwwwwwe
+eeeeeeeeeeee
