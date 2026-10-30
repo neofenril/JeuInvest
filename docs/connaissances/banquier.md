@@ -270,7 +270,16 @@ Priorité si le client demande une fiabilisation : d'abord les données **utilis
 
 | 2026-10-27 | Versements programmés (11 §8) ; héritage d'Odette en un seul pot, abattement neveu de 10 000 F vérifié (11 §1.7.3-1.7.4) ; sources renumérotées en 11 §9 | `docs/11_catalogue_banque.md` |
 
+| 2026-10-30 | Contenu V3 : prix d'époque des 16 cartes et 6 projets, vente automatique, Jean-Mi crédit provisoire | `docs/18_contenu_banquier_v3.md` |
+
+### Prix d'époque 1984-1988 (V3, détail dans docs/18)
+- Canal+ : lancé le 04/11/1984 (A) ; abonnement 120 F/mois (B, Larousse 1985 ; une source en dit 140) ; caution décodeur ≈ 420 F (B).
+- Tous les autres prix de détail (magnétoscope, Club Med, Super 5, caméscope, T3...) : C, introuvables en ligne ; recoupement par ordres de grandeur. À corriger si le joueur ou une archive (L'Argus 1986, catalogues) les contredit.
+- Recommandations : magnétoscope 5 500, poussette 2 200/3 800, cours du soir 2 500 (CNAM modique), location caméscope 600, Grèce 16 000. Projets exprimés en « apport comptant » (pas de crédit simulé). Crédit auto 1987 ≈ 12-14 % (C).
+- Vente automatique : ordre SICAV, actions, emprunt, AV, PEL accepté, avec réserve (emprunt d'État vendu sans frais dans le jeu serait moins coûteux que les actions).
+
 ### Erreurs à ne pas refaire
+- La recherche web ne donne pas de prix de détail français des années 1980 : ne pas prétendre à A pour ces prix.
 - Ne pas affirmer qu'un texte du banquier est « sous 60 mots » sans compter ; vérifier chaque calcul (une première version de 11 §5.3 mélangeait deux définitions de « part des gains mangée » : toujours préciser la référence, « par rapport à 0,5 % » ou « par rapport à sans frais »).
 - Avant 1986, un PEL « prime incluse » ne peut pas rapporter moins que le Livret A : une source qui donne 6,3 % en 1984 parle du taux **hors prime**.
 - Droits d'un neveu : ne pas oublier l'abattement minimum de 10 000 F (depuis 1974 ; abattement propre aux neveux depuis la loi TEPA de 2007, aujourd'hui 7 967 €, B) ; ne pas confondre la part nette (45 %) et les droits (55 %).

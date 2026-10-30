@@ -68,6 +68,8 @@ func cible_min() -> float                 # côté minimal d'une cible tactile, 
 ### 2.4 Étiquettes des bâtiments et rue large (contact avec PX1, sans dépendance)
 - Si `ville.has_method("point_etiquette")` : étiquette en `ville.point_etiquette(id)` ; sinon, comme aujourd'hui (`position_ecran(b.position + Vector2(0, 56))`).
 - Si `ville.has_method("est_visible")` et que le bâtiment n'est pas visible : l'étiquette devient une **flèche de bord** (« ‹ LA GAZETTE », « MA BANQUE › ») qui, touchée, appelle `ville.aller_vers(id)` ; mise à jour sur `camera_bougee` si le signal existe, sinon à chaque image.
+- La rue de PX1 garde les proportions de 1080p sur tous les écrans (rendu à N entier ≥ 2 puis réduit, `lot_px1.md` §2.3, arbitrage D4 de la recette PX0) ; ses points (`point_etiquette`, `position_ecran`) sont déjà en px virtuels : rien à compenser côté interface. Les texels des cadres restent entiers (§2.3 ci-dessus), la rue et l'interface n'ont pas la même taille de pixel : voulu.
+- Recette PX0 D6 : les étapes `polices` et `carte_fermee` de la vitrine ne sont pas reprises ; leur rôle est tenu par `polices_jeu` (CA-I8) et `clic_dehors` (CA-I11).
 - Aucune autre lecture de la ville. Les flèches ← → et le glisser horizontal sur la rue appartiennent à la ville (défilement, PX1) : l'interface ne les intercepte pas hors de ses fenêtres. La branche se vérifie seule avec l'ancienne ville (chemin « sinon ») ; le chemin PX1 est vérifié à la fusion (§7).
 
 ### 2.5 Inchangé
