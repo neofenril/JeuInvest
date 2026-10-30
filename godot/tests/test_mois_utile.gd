@@ -13,6 +13,9 @@ var _ko := 0
 func _ready() -> void:
 	var t0 := Time.get_ticks_msec()
 	_tests_flux()
+	_brancher()
+	_tests_saut()
+	_tests_saut_details()
 	print("")
 	print("=== test_mois_utile : %d OK, %d KO (%d ms) ===" % [_ok, _ko, Time.get_ticks_msec() - t0])
 	get_tree().quit(1 if _ko > 0 else 0)
@@ -145,6 +148,224 @@ func _tests_flux() -> void:
 	var r0 := e2.demarrer(Donnees.config_demo(7))
 	verifier("Flux : premier mois et mois bloqué par une modale sans mouvement (aucune ligne)",
 		r0["flux"]["lignes"].is_empty() and e2.avancer()["flux"]["lignes"].is_empty() and not e2.modale.is_empty())
+
+
+# ---------------------------------------------------------------------
+# CA-L3 : saut « jusqu'au prochain courrier » (docs/15 CA-4.1, 4.2, 4.4)
+# ---------------------------------------------------------------------
+
+var _evts: Array = []   # signaux de Partie, dans l'ordre
+
+
+func _brancher() -> void:
+	Partie.saut_change.connect(func(a: bool) -> void: _evts.append({"s": "saut", "actif": a, "m": Partie.etat.m}))
+	Partie.modale_ouverte.connect(func(_c: Dictionary) -> void: _evts.append({"s": "modale", "m": Partie.etat.m, "saut": Partie.saut_actif}))
+	Partie.mois_passe.connect(func(r: Dictionary) -> void: _evts.append({"s": "mois", "m": int(r.get("m", -1)), "pendant": bool(r.get("pendant_saut", false))}))
+	Partie.notif_recue.connect(func(n: Dictionary) -> void: _evts.append({"s": "notif", "m": Partie.etat.m, "pendant": bool(n.get("pendant_saut", false)), "titre": str(n.get("titre", ""))}))
+	Partie.partie_finie.connect(func(_b: Dictionary) -> void: _evts.append({"s": "fin", "m": Partie.etat.m}))
+
+
+## État comparable d'une partie, sans les marques « lu » de l'historique (seule différence voulue du saut).
+func _empreinte(e: EtatPartie) -> String:
+	var d := e.vers_dict()
+	for h: Dictionary in d["historique"]:
+		h.erase("lu")
+	return var_to_str(d)
+
+
+## La même partie jouée sans saut, mois par mois, avec les mêmes choix (joueur passif).
+func _reference(g: int) -> EtatPartie:
+	var e := EtatPartie.new()
+	e.demarrer(Donnees.config_demo(g))
+	var garde := 0
+	while e.fin == "" and garde < 200:
+		garde += 1
+		while not e.modale.is_empty():
+			e.resolution_auto()
+		e.avancer()
+	return e
+
+
+func _tests_saut() -> void:
+	var ok_arret := true        # chaque arrêt au mois exact d'une modale (ou à la fin), jamais sans
+	var ok_modale := true       # chaque modale rencontrée pendant un saut l'arrête, saut_actif faux à l'émission
+	var ok_mois := true         # mois consécutifs, tous « pendant_saut »
+	var ok_vitesse := true      # pendant le saut : vitesse d'avant ; après la modale : vitesse d'avant (marché : pause)
+	var ok_rythme := true       # durée 1,33 s et trafic 7 pendant le saut
+	var ok_notifs := true       # notifications franchies : dans l'historique, dans l'ordre, non lues
+	var ok_lues := true         # non_lues() exact, marquer_lues() → 0
+	var ok_identique := true    # même partie qu'en avançant mois par mois
+	var ok_dec := true          # saut impossible en décembre 1988 et après la fin
+	var nb_sauts := 0
+	var nb_arrets_modale := 0
+	var nb_franchies := 0
+	var par_vitesse := {0: 0, 1: 0, 3: 0}
+	var detail_ko := ""
+	var r := Donnees.charger("rythme")
+	for g in range(1, 41):
+		var v_depart: int = [0, 1, 3][g % 3]
+		Partie.nouvelle_partie(Donnees.config_demo(g))
+		var e := Partie.etat
+		var franchies: Array = []     # titres des notifications franchies depuis le dernier marquer_lues
+		var garde := 0
+		var arret_par_modale := false
+		var v_avant := -1
+		while e.fin == "" and garde < 200:
+			garde += 1
+			if not e.modale.is_empty():
+				var kind: String = e.modale["kind"]
+				Partie.resoudre_modale(StrategieTest.choix_modale(e, false))
+				if arret_par_modale:
+					var v_att := 0 if kind == "marche" else v_avant
+					if Partie.vitesse != v_att:
+						ok_vitesse = false
+						detail_ko += "g%d %s : vitesse %d après la modale %s au lieu de %d ; " % [g, Dates.texte_court(e.ab_courant()), Partie.vitesse, kind, v_att]
+					par_vitesse[v_avant] = int(par_vitesse[v_avant]) + 1
+				arret_par_modale = false
+				continue
+			Partie.changer_vitesse(v_depart)
+			v_avant = Partie.vitesse
+			if e.m >= e.m_fin:
+				if Partie.saut_possible() or Partie.sauter_jusqu_au_prochain_arret():
+					ok_dec = false
+				Partie.avancer_un_mois()
+				continue
+			var m0 := e.m
+			var n0 := _evts.size()
+			if not Partie.sauter_jusqu_au_prochain_arret():
+				ok_arret = false
+				detail_ko += "g%d %s : saut refusé ; " % [g, Dates.texte_court(e.ab_courant())]
+				break
+			nb_sauts += 1
+			if Partie.saut_possible():
+				ok_dec = false   # pas de second saut pendant un saut
+			if not is_equal_approx(Partie.duree_mois_s(), float(r["saut"]["duree_mois_s"])) or not is_equal_approx(Partie.facteur_trafic(v_avant), float(r["saut"]["trafic"])) \
+					or not is_equal_approx(Partie.duree_mois_s(1), float(r["saut"]["duree_mois_s"])):
+				ok_rythme = false
+			var pas := 0
+			while Partie.saut_actif and pas < 100:
+				Partie._process(1.4)
+				pas += 1
+				if Partie.saut_actif and Partie.vitesse != v_avant:
+					ok_vitesse = false
+			# Analyse des signaux du saut
+			var tranche: Array = _evts.slice(n0)
+			var mois_vus: Array = []
+			var arrets: Array = []
+			var modales: Array = []
+			var fin_vue := false
+			for x: Dictionary in tranche:
+				match x["s"]:
+					"mois":
+						mois_vus.append(int(x["m"]))
+						if not x["pendant"]:
+							ok_mois = false
+					"notif":
+						if not x["pendant"]:
+							ok_notifs = false
+						franchies.append(x["titre"])
+						nb_franchies += 1
+					"saut":
+						if not x["actif"]:
+							arrets.append(int(x["m"]))
+					"modale":
+						modales.append(int(x["m"]))
+						if x["saut"]:
+							ok_modale = false
+					"fin":
+						fin_vue = true
+			# Fin de partie : le dernier changement de mois (décembre 1988 → fin) garde m = m_fin
+			var consecutifs := mois_vus.duplicate()
+			if fin_vue and consecutifs.size() >= 2 and consecutifs[-1] == e.m_fin and consecutifs[-2] == e.m_fin:
+				consecutifs.pop_back()
+			for i in consecutifs.size():
+				if consecutifs[i] != m0 + 1 + i:
+					ok_mois = false
+					detail_ko += "g%d : mois %s depuis %d ; " % [g, str(mois_vus), m0]
+					break
+			var m_arret: int = arrets[0] if arrets.size() == 1 else -1
+			if arrets.size() != 1 or mois_vus.is_empty() or m_arret != mois_vus[mois_vus.size() - 1]:
+				ok_arret = false
+				detail_ko += "g%d : arrêts %s, mois %s ; " % [g, str(arrets), str(mois_vus)]
+			elif modales.size() == 1 and modales[0] == m_arret and not e.modale.is_empty():
+				arret_par_modale = true
+				nb_arrets_modale += 1
+			elif not (fin_vue and modales.is_empty() and e.fin != ""):
+				ok_arret = false
+				detail_ko += "g%d %s : arrêt sans modale ; " % [g, Dates.texte_court(e.ab_de(m_arret))]
+			# Historique : les notifications franchies, dans l'ordre, non lues
+			var non_lus: Array = []
+			for h: Dictionary in e.historique:
+				if not bool(h.get("lu", true)):
+					non_lus.append(str(h["titre"]))
+			if non_lus != franchies:
+				ok_notifs = false
+				detail_ko += "g%d : %d non lues dans l'historique, %d franchies ; " % [g, non_lus.size(), franchies.size()]
+			if e.non_lues() != franchies.size():
+				ok_lues = false
+			var par_source := 0
+			for s in EtatPartie.SOURCES_HISTORIQUE:
+				par_source += e.non_lues(s)
+			if par_source != e.non_lues():
+				ok_lues = false
+			if nb_sauts % 3 == 0:
+				e.marquer_lues()
+				if e.non_lues() != 0:
+					ok_lues = false
+				franchies.clear()
+		if Partie.saut_possible() or Partie.sauter_jusqu_au_prochain_arret():
+			ok_dec = false
+		if _empreinte(e) != _empreinte(_reference(g)):
+			ok_identique = false
+			detail_ko += "g%d : partie différente de la référence ; " % g
+	var resume := "%d sauts, %d arrêts sur une modale, %d notifications franchies ; retours vérifiés : pause %d, ×1 %d, ×3 %d" % [nb_sauts, nb_arrets_modale, nb_franchies, par_vitesse[0], par_vitesse[1], par_vitesse[3]]
+	print("    Saut : ", resume)
+	if detail_ko != "":
+		print("    ", detail_ko.left(1500))
+	verifier("Saut (40 graines, appui après chaque interruption) : chaque arrêt au mois exact d'une modale (ou à la fin), aucun arrêt sans modale", ok_arret and nb_arrets_modale > 300, resume)
+	verifier("Saut : saut_actif est faux quand modale_ouverte est émis", ok_modale)
+	verifier("Saut : chaque mois traversé est diffusé (mois consécutifs, res[\"pendant_saut\"])", ok_mois)
+	verifier("Saut : aucun mois sauté sans son traitement (salaire, versements, historique) : partie identique à la partie jouée mois par mois", ok_identique)
+	verifier("Saut : vitesse d'avant gardée pendant le saut et rétablie après la modale (×1 → ×1, pause → pause, ×3 → ×3 ; marché : pause)", ok_vitesse and int(par_vitesse[0]) > 0 and int(par_vitesse[1]) > 0)
+	verifier("Saut : un mois dure saut.duree_mois_s et le trafic vaut saut.trafic, quelle que soit la vitesse", ok_rythme)
+	verifier("Saut : notifications franchies toutes dans l'historique, dans l'ordre, lu = false, n[\"pendant_saut\"] vrai", ok_notifs and nb_franchies > 0)
+	verifier("Saut : non_lues() exact (au total et par source), marquer_lues() → 0", ok_lues)
+	verifier("Saut : impossible en décembre 1988, pendant un saut et après la fin", ok_dec)
+
+
+func _tests_saut_details() -> void:
+	# Arrêt par un nouvel appui ; un 2e arrêt est sans effet
+	Partie.nouvelle_partie(Donnees.config_demo(7))
+	var e := Partie.etat
+	Partie.resoudre_modale("plus_tard")
+	Partie.changer_vitesse(2)
+	var n0 := _evts.size()
+	var parti := Partie.sauter_jusqu_au_prochain_arret()
+	Partie.arreter_saut()
+	Partie.arreter_saut()
+	var emissions := _evts.slice(n0).filter(func(x: Dictionary) -> bool: return x["s"] == "saut")
+	verifier("Saut : arreter_saut() rend la vitesse d'avant (×2) ; un 2e appel est sans effet",
+		parti and not Partie.saut_actif and Partie.vitesse == 2 and emissions.size() == 2 and not e.saut_en_cours, str(emissions))
+	# Un choix de vitesse pendant le saut l'arrête ; la pause aussi
+	Partie.sauter_jusqu_au_prochain_arret()
+	Partie.changer_vitesse(3)
+	var ok1 := not Partie.saut_actif and Partie.vitesse == 3
+	Partie.sauter_jusqu_au_prochain_arret()
+	Partie.basculer_pause()
+	verifier("Saut : changer de vitesse ou mettre en pause pendant le saut l'arrête", ok1 and not Partie.saut_actif and Partie.vitesse == 0)
+	# Temps bloqué par l'interface : pas de saut ; modale en attente : pas de saut
+	Partie.bloquee = true
+	var bloque := Partie.saut_possible()
+	Partie.bloquee = false
+	Partie.forcer_naissance(false)
+	verifier("Saut : impossible quand le temps est bloqué (fenêtre ouverte) ou qu'une modale attend",
+		not bloque and not e.modale.is_empty() and not Partie.saut_possible() and not Partie.sauter_jusqu_au_prochain_arret())
+	Partie.resoudre_modale(StrategieTest.choix_modale(e, false))
+	# Décembre 1988 atteint sans saut : le bouton est inactif
+	StrategieTest.aller_a(e, Dates.lire("1988-12"), false)
+	while not e.modale.is_empty():
+		e.resolution_auto()
+	verifier("Saut : impossible en décembre 1988 (dernier mois)", e.ab_courant() == Dates.lire("1988-12") and e.fin == "" and not Partie.saut_possible() and not Partie.sauter_jusqu_au_prochain_arret())
 
 
 func _somme_genre(fl: Dictionary, genre: String) -> float:

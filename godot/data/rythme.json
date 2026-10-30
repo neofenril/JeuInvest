@@ -5,5 +5,7 @@
   "_trafic": "Facteur de vitesse des voitures dans la rue (0 = arrêtées en pause ; elles freinent et repartent en douceur). Les passants suivent à moitié (ils marchent, ils ne courent pas). Retour du joueur (27/10/2026) : « encore augmenter la vitesse des véhicules » → 1 / 2,5 / 4,5 (avant : 1 / 1,8 / 2,8).",
   "trafic": [0, 1.0, 2.5, 4.5],
   "_transition_trafic_s": "Temps pour passer d'un facteur de trafic à l'autre (freinage à la pause, accélération).",
-  "transition_trafic_s": 0.6
+  "transition_trafic_s": 0.6,
+  "_saut": "Bouton « Jusqu'au prochain courrier » (docs/15 §1.2) : pendant le saut, un mois dure duree_mois_s secondes (×6) et le trafic va à ce facteur, quelle que soit la vitesse d'avant l'appui. Le saut s'arrête au mois d'une interruption avec pause (jamais avant).",
+  "saut": { "duree_mois_s": 1.33, "trafic": 7.0 }
 }

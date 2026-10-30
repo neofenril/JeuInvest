@@ -15,6 +15,7 @@ signal modale_fermee(resultat: Dictionary)
 signal vitesse_changee(vitesse: int)
 signal partie_finie(bilan: Dictionary)
 signal argent_change                        # après un ordre du joueur (achat, vente, livret)
+signal saut_change(actif: bool)             # début et fin du saut « jusqu'au prochain courrier »
 
 var etat: EtatPartie = null
 var vitesse := 0            # 0 = pause, 1 à 3 = ×1 à ×3
@@ -22,7 +23,12 @@ var bloquee := false        # l'interface peut figer le temps (formulaire d'acha
 var sauvegarde_auto := false
 var chemin_sauvegarde := Sauvegarde.CHEMIN
 var _progression := 0.0     # avancement du mois en cours (0 → 1)
-var _vitesse_avant_modale := 1
+var _vitesse_avant_modale := 1   # 0 possible : pause → saut → modale → pause
+## Saut « jusqu'au prochain courrier » (P4, docs/15 §1.2) : le temps passe à rythme.json > saut jusqu'au mois
+## d'une interruption avec pause. Pendant le saut, vitesse garde la vitesse d'avant l'appui (0 à 3), rétablie
+## après la modale (sauf modale de marché : pause, règle existante). Jamais sauvegardé : une reprise repart sans saut.
+var saut_actif := false
+var _vitesse_avant_saut := 0
 
 
 ## config : voir EtatPartie.demarrer (periode, profil, graine_vie, sans_vie, debut, fin, banquier…).
@@ -30,6 +36,7 @@ func nouvelle_partie(config: Dictionary = {}) -> void:
 	config = config.duplicate()
 	if not config.has("graine_vie"):
 		config["graine_vie"] = randi_range(1, 2147483646)  # seul tirage non déterministe
+	_finir_saut()
 	etat = EtatPartie.new()
 	var res := etat.demarrer(config)
 	_progression = 0.0
@@ -45,10 +52,11 @@ func reprendre(d: Dictionary) -> bool:
 	var e := Sauvegarde.charger(d)
 	if e == null:
 		return false
+	_finir_saut()
 	etat = e
 	var p: Dictionary = d.get("partie", {})
 	_progression = clampf(float(p.get("progression", 0.0)), 0.0, 0.999)
-	_vitesse_avant_modale = clampi(int(p.get("vitesse_avant_modale", 1)), 1, 3)
+	_vitesse_avant_modale = clampi(int(p.get("vitesse_avant_modale", 1)), 0, 3)
 	vitesse = 0
 	partie_commencee.emit()
 	mois_passe.emit({"notifs": [], "modale": {}, "fin": etat.fin, "m": etat.m, "saut": true})
@@ -58,7 +66,8 @@ func reprendre(d: Dictionary) -> bool:
 ## Après une reprise : la modale qui attendait un choix est présentée de nouveau.
 func rouvrir_modale() -> void:
 	if etat != null and not etat.modale.is_empty() and etat.fin == "":
-		changer_vitesse(0)
+		_finir_saut()
+		_regler_vitesse(0)
 		modale_ouverte.emit(etat.contenu_modale())
 
 
@@ -75,17 +84,66 @@ func en_cours() -> bool:
 	return etat != null and etat.fin == ""
 
 
+## Choix de vitesse du joueur. Pendant un saut, il l'arrête d'abord (le joueur reprend la main).
 func changer_vitesse(v: int) -> void:
+	arreter_saut()
+	_regler_vitesse(v)
+
+
+func _regler_vitesse(v: int) -> void:
 	vitesse = clampi(v, 0, 3)
 	vitesse_changee.emit(vitesse)
 
 
+## Pause / lecture. Pendant un saut : arrête le saut et met en pause.
 func basculer_pause() -> void:
+	if saut_actif:
+		arreter_saut()
+		if vitesse > 0:
+			_vitesse_avant_modale = vitesse
+		_regler_vitesse(0)
+		return
 	if vitesse == 0:
-		changer_vitesse(_vitesse_avant_modale if _vitesse_avant_modale > 0 else 1)
+		_regler_vitesse(_vitesse_avant_modale if _vitesse_avant_modale > 0 else 1)
 	else:
 		_vitesse_avant_modale = vitesse
-		changer_vitesse(0)
+		_regler_vitesse(0)
+
+
+# ---------- Saut « jusqu'au prochain courrier » (P4, docs/15 §1.2) ----------
+
+## Possible si une partie est en cours, sans modale en attente, temps non bloqué par l'interface, avant le
+## dernier mois (décembre 1988), et si aucun saut n'est déjà en cours.
+func saut_possible() -> bool:
+	return en_cours() and etat.modale.is_empty() and not bloquee and not saut_actif and etat.m < etat.m_fin
+
+
+## Lance le saut : on avance mois par mois (chaque mois traité normalement : salaire, versements, notifications)
+## jusqu'au mois d'une modale, qui l'arrête. Aucun calcul à l'avance. Faux si impossible (voir saut_possible).
+func sauter_jusqu_au_prochain_arret() -> bool:
+	if not saut_possible():
+		return false
+	_vitesse_avant_saut = vitesse
+	saut_actif = true
+	etat.saut_en_cours = true
+	saut_change.emit(true)
+	return true
+
+
+## Arrête le saut (nouvel appui) : retour à la vitesse d'avant l'appui, qui n'a pas changé. Sans effet hors saut.
+func arreter_saut() -> void:
+	if not saut_actif:
+		return
+	_finir_saut()
+
+
+func _finir_saut() -> void:
+	if etat != null:
+		etat.saut_en_cours = false
+	if not saut_actif:
+		return
+	saut_actif = false
+	saut_change.emit(false)
 
 
 ## Avancement du mois en cours, de 0 à 1 (pour animer la frise entre deux mois).
@@ -95,21 +153,29 @@ func progression_mois() -> float:
 
 
 ## Durée d'un mois en secondes à la vitesse v (1 à 3 ; la pause compte comme ×1). Réglage : data/rythme.json.
+## Pendant un saut : rythme.json > saut.duree_mois_s, quelle que soit v.
 func duree_mois_s(v: int = -1) -> float:
+	var r: Dictionary = Donnees.charger("rythme")
+	if saut_actif:
+		return float(r["saut"]["duree_mois_s"])
 	if v < 0:
 		v = vitesse
-	return float(Donnees.charger("rythme")["duree_mois_s"][clampi(v, 1, 3)])
+	return float(r["duree_mois_s"][clampi(v, 1, 3)])
 
 
 ## Facteur de vitesse du trafic de la rue à la vitesse v (0 en pause). Réglage : data/rythme.json.
+## Pendant un saut : rythme.json > saut.trafic, quelle que soit v.
 func facteur_trafic(v: int = -1) -> float:
+	var r: Dictionary = Donnees.charger("rythme")
+	if saut_actif:
+		return float(r["saut"]["trafic"])
 	if v < 0:
 		v = vitesse
-	return float(Donnees.charger("rythme")["trafic"][clampi(v, 0, 3)])
+	return float(r["trafic"][clampi(v, 0, 3)])
 
 
 func _process(delta: float) -> void:
-	if not en_cours() or vitesse == 0 or bloquee or not etat.modale.is_empty():
+	if not en_cours() or (vitesse == 0 and not saut_actif) or bloquee or not etat.modale.is_empty():
 		return
 	_progression += delta / duree_mois_s(vitesse)
 	if _progression >= 1.0:
@@ -123,6 +189,7 @@ func _process(delta: float) -> void:
 func sauter_jusqu_a(m_cible: int, resoudre_auto := false) -> void:
 	if not en_cours():
 		return
+	arreter_saut()
 	var res := {}
 	while etat.m < m_cible and etat.fin == "":
 		if not etat.modale.is_empty():
@@ -145,18 +212,29 @@ func avancer_un_mois() -> void:
 	_diffuser(etat.avancer())
 
 
+## Pendant un saut : n["pendant_saut"] et res["pendant_saut"] sont vrais ; le saut s'arrête AU mois d'une
+## modale (saut_actif faux quand modale_ouverte est émis) ou à la fin de la partie.
 func _diffuser(res: Dictionary) -> void:
+	var pendant := saut_actif
+	res["pendant_saut"] = pendant
 	for n in res.get("notifs", []):
+		n["pendant_saut"] = pendant
 		notif_recue.emit(n)
 	mois_passe.emit(res)
-	if not res.get("modale", {}).is_empty():
-		_vitesse_avant_modale = vitesse if vitesse > 0 else _vitesse_avant_modale
+	var avec_modale: bool = not res.get("modale", {}).is_empty()
+	if avec_modale:
+		if saut_actif:
+			_vitesse_avant_modale = _vitesse_avant_saut   # 0 si le saut est parti de la pause
+		else:
+			_vitesse_avant_modale = vitesse if vitesse > 0 else _vitesse_avant_modale
+	if avec_modale or res.get("fin", "") != "":
+		_finir_saut()
 	sauvegarder()
-	if not res.get("modale", {}).is_empty():
-		changer_vitesse(0)
+	if avec_modale:
+		_regler_vitesse(0)
 		modale_ouverte.emit(etat.contenu_modale())
 	if res.get("fin", "") != "":
-		changer_vitesse(0)
+		_regler_vitesse(0)
 		partie_finie.emit(Bilan.calculer(etat))
 
 
@@ -169,7 +247,7 @@ func resoudre_modale(choix_id: String) -> Dictionary:
 	argent_change.emit()
 	sauvegarder()
 	if kind != "marche":
-		changer_vitesse(_vitesse_avant_modale)
+		_regler_vitesse(_vitesse_avant_modale)
 	return r
 
 
@@ -250,15 +328,17 @@ func _reglage(r: Dictionary) -> Dictionary:
 func forcer_naissance(jumeaux: bool) -> void:
 	if not en_cours():
 		return
+	arreter_saut()
 	var md := etat.forcer_naissance(jumeaux)
 	if not md.is_empty():
 		_vitesse_avant_modale = vitesse if vitesse > 0 else _vitesse_avant_modale
-		changer_vitesse(0)
+		_regler_vitesse(0)
 		modale_ouverte.emit(etat.contenu_modale())
 
 
 func abandonner() -> void:
 	if en_cours():
+		arreter_saut()
 		etat.abandonner()
-		changer_vitesse(0)
+		_regler_vitesse(0)
 		partie_finie.emit(Bilan.calculer(etat))

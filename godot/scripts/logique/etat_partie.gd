@@ -1456,9 +1456,15 @@ func _journaliser(texte: String) -> void:
 # contenu (de quoi rouvrir la pop-up en lecture seule : contenu de modale ou notification) }.
 
 const GENRES_MODALE := {"banquier": "appel", "marche": "journal", "vie": "courrier"}
+## Genres et sources possibles d'une entrée (V3, docs/15 §8) : « carte », « projet », « voisin », « gazette » et la
+## source « rue » n'ont encore aucune entrée (lots 03 à 05).
+const GENRES_HISTORIQUE := ["appel", "journal", "courrier", "notif", "carte", "projet", "voisin", "gazette"]
+const SOURCES_HISTORIQUE := ["maison", "banque", "media", "rue"]
 
 
+## Chaque entrée porte « lu » : faux si elle a été créée pendant un saut (notification franchie sans être vue).
 func _ajouter_historique(entree: Dictionary) -> void:
+	entree["lu"] = not saut_en_cours
 	historique.append(entree)
 	while historique.size() > HISTORIQUE_MAX:
 		historique.pop_front()
@@ -1552,6 +1558,23 @@ func historique_recent(source := "") -> Array:
 			copie["i"] = i
 			out.append(copie)
 	return out
+
+
+## Nombre d'entrées d'historique créées pendant un saut et pas encore vues (badge du bouton HISTORIQUE),
+## filtrées par source ("" = toutes).
+func non_lues(source := "") -> int:
+	var n := 0
+	for h: Dictionary in historique:
+		if not bool(h.get("lu", true)) and (source == "" or h.get("source", "") == source):
+			n += 1
+	return n
+
+
+## Marque comme vues les entrées non lues de la source ("" = toutes).
+func marquer_lues(source := "") -> void:
+	for h: Dictionary in historique:
+		if source == "" or h.get("source", "") == source:
+			h["lu"] = true
 
 
 # =====================================================================
