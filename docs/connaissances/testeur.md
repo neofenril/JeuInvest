@@ -1,7 +1,7 @@
 # Base de connaissances du testeur
 
 > À lire au début de chaque mission (après `CLAUDE.md` et le socle `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-29 (lot 01, `lot/01-logique` : passage 1 KO sur 6751074, passage 2 OK sur 00c4821 ; `lot/01-interface` : passage 1 OK sur 261d373).
+> Dernière mise à jour : 2026-10-30 (PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
 
 ## 1. Règles de travail
 - Je ne modifie jamais un fichier suivi par Git dans le worktree d'un développeur ; pour les mutations, worktree jetable :
@@ -42,6 +42,15 @@
 - HUD « Mon argent » : en début de partie (historique de quelques mois), la courbe et l'étiquette d'écart recouvrent les graduations (préexistant, `main` compris) ; à surveiller au lot 02.
 - `capture.ps1` ne connaît ni l'étape `raccourcis` ni `--joueur` (lot 01) : commande Godot directe.
 
+## 4 bis. PX0 (recette 2026-10-30, ville 45f5120 + interface 0ad6db7 : OK / OK, fusion sans conflit)
+- Fusion simulée = worktree jetable détaché sur `main` + `merge --no-ff` des deux branches (identité `-c user.name=testeur`), puis `worktree remove --force` + `prune`. Copier les captures utiles avant (ex. `godot/captures/recette_px0_fusion/`, ignoré par Git).
+- `capture_px0.ps1 -Serie` (≈ 190 s) ; lignes à relire : `palette … hors_palette`, `grille … irreguliers`, `figurine`, `echelle`, `cadrage`, `etiquette … sur_chaussee`, `hud …`, `carte …`, `images_par_seconde`. Étapes hors série à lancer à la main : `carte_fermee`, `polices`, `carte -Telephone`.
+- Grille de la rue 540 : N = 1 à 720p / 1366 / téléphone → contrôle `irreguliers` trivial et rue plus petite qu'en 1080p (zone fragile, à suivre en PX1).
+- Branche sur l'ancien `tests.ps1` (avant lot 01) : il ne trouve pas Godot depuis un worktree → lancer les tests à la main (`--script res://tests/test_*.gd`, `res://tests/test_partie.tscn`).
+- `.ttf.import` non suivis dans le dépôt principal : ils bloqueront la fusion de `lot/px0-interface` dans `main` (à retirer juste avant).
+- Pas d'étape « orage » dans px0 : l'orage n'est contrôlé que par test_pixel.
+
 ## 5. Anomalies récurrentes / à surveiller
+- Fichiers « recopiés de main » dans une branche (tests.ps1, trouver_godot.ps1 sur px0-ville) : vérifier `git diff main <branche> -- <fichier>` vide → sans conflit, mineur.
 - Ce que le développeur marque « non vérifié » : le vérifier en priorité (lot 01 : `Jouer_Godot.bat` cassé sans variable).
 - Polices `*.ttf.import` non suivies dans les worktrees : seul dev-interface PX0 les commite (CA-C1 de `lot_px0.md`) ; ailleurs, les signaler s'ils apparaissent dans un diff.
