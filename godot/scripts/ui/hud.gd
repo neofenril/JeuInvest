@@ -103,6 +103,8 @@ func _ready() -> void:
 	# à la souris et par ses raccourcis (Espace, P, 1-3, M/B, H).
 	for n in find_children("*", "BaseButton", true, false):
 		(n as BaseButton).focus_mode = Control.FOCUS_NONE
+		if n is Button:
+			Style.garder_police(n as Button)
 	_disposer()
 
 

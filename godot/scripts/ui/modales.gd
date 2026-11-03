@@ -65,8 +65,7 @@ func _garde_cible(n: Node) -> void:
 		return
 	var c := Style.cible_min()
 	b.custom_minimum_size = Vector2(maxf(b.custom_minimum_size.x, c), maxf(b.custom_minimum_size.y, c))
-	if b.text != "" and b.get_theme_font_size("font_size") < PolicesPixel.TAILLE_MIN_PIXELIFY and PolicesPixel.est_pixelify(b.get_theme_font("font")):
-		b.add_theme_font_override("font", Style.petites_capitales())
+	Style.garder_police(b)   # chiffres en Atkinson, Pixelify jamais sous 28 px
 
 
 # =====================================================================

@@ -104,11 +104,40 @@ static func neon() -> Font:
 	return PolicesPixel.pixelify(700)
 
 
-## Police sûre pour une taille : Pixelify sous 28 px devient des petites capitales Atkinson.
-static func police_pour(police: Font, taille: int) -> Font:
-	if police != null and taille < PolicesPixel.TAILLE_MIN_PIXELIFY and PolicesPixel.est_pixelify(police):
-		return petites_capitales()
+## Police sûre (lot_px2 §9.1 point 6) : tout texte qui contient un chiffre est en Atkinson (grasse si la
+## police demandée était Pixelify) ; Pixelify sous 28 px devient des petites capitales Atkinson.
+static func police_pour(police: Font, taille: int, texte := "") -> Font:
+	if police != null and PolicesPixel.est_pixelify(police):
+		if a_chiffre(texte):
+			return PolicesPixel.atkinson(700)
+		if taille < PolicesPixel.TAILLE_MIN_PIXELIFY:
+			return petites_capitales()
 	return police
+
+
+static func a_chiffre(texte: String) -> bool:
+	for ch in texte:
+		if ch >= "0" and ch <= "9":
+			return true
+	return false
+
+
+## Garde d'un bouton dont le texte change après coup (montants, nombres) : la police suit la règle des
+## chiffres à chaque dessin. Appelé par les garde-fous de Modales et de Hud.
+static func garder_police(b: Button) -> void:
+	if b.has_meta("police_gardee"):
+		return
+	b.set_meta("police_gardee", true)
+	b.set_meta("police_demandee", b.get_theme_font("font"))
+	b.draw.connect(_ajuster_police.bind(b))
+	_ajuster_police(b)
+
+
+static func _ajuster_police(b: Button) -> void:
+	var demandee: Font = b.get_meta("police_demandee")
+	var voulue := police_pour(demandee, b.get_theme_font_size("font_size"), b.text)
+	if voulue != b.get_theme_font("font"):
+		b.add_theme_font_override.call_deferred("font", voulue)
 
 
 # =====================================================================
@@ -316,8 +345,10 @@ static func _carre(d: int, c: Color) -> ImageTexture:
 static func label(texte: String, taille := 24, police: Font = null, couleur := TEXTE) -> Label:
 	var l := Label.new()
 	l.text = sans_fleche(texte)
+	var p := police_pour(police, taille, texte)
+	if p == null or PolicesPixel.est_atkinson(p):
+		taille = maxi(taille, 20)   # Atkinson jamais sous 20 px virtuels (docs/16 §3.1)
 	l.add_theme_font_size_override("font_size", taille)
-	var p := police_pour(police, taille)
 	if p != null:
 		l.add_theme_font_override("font", p)
 	l.add_theme_color_override("font_color", couleur)
