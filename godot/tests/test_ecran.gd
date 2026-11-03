@@ -1,6 +1,6 @@
 extends SceneTree
-## Tests headless de l'échelle d'interface (lot PX2 §2.3, CA-I4) : facteur texel T entier, échelle,
-## cibles tactiles de 48 dp sur mobile et téléphone simulé, 40 px physiques au moins sur PC à 1280 × 720.
+## Tests headless de l'échelle d'interface (lot PX2 §2.3 et §9.1, CA-I4 puis CA-C1) : facteur texel T entier,
+## T ≥ 2 sur PC, plafond mobile (zone virtuelle ≥ 1280 × 648), cible_min = min(48 dp, 84) sur mobile.
 ## Lancer : Godot_console --headless --path godot --script res://tests/test_ecran.gd
 
 var _ok := 0
@@ -10,8 +10,9 @@ var _ko := 0
 func _initialize() -> void:
 	var t0 := Time.get_ticks_msec()
 	var E: GDScript = load("res://scripts/ecran.gd")
-	# PC : T = floor(hauteur / 360), texel = T px physiques, cible ≥ 40 px physiques
-	for cas: Array in [[Vector2i(1280, 720), 2], [Vector2i(1366, 768), 2], [Vector2i(1920, 1080), 3], [Vector2i(2560, 1440), 4], [Vector2i(3840, 2160), 6], [Vector2i(1600, 900), 2], [Vector2i(1920, 1061), 3], [Vector2i(1920, 1000), 3], [Vector2i(1280, 648), 2]]:
+	# PC : T = max(2, floor(côté court / 324)), texel = T px physiques, cible ≥ 40 px physiques
+	for cas: Array in [[Vector2i(1280, 720), 2], [Vector2i(1366, 768), 2], [Vector2i(1920, 1080), 3], [Vector2i(2560, 1440), 4], [Vector2i(3840, 2160), 6],
+			[Vector2i(1600, 900), 2], [Vector2i(1920, 1061), 3], [Vector2i(1920, 1009), 3], [Vector2i(1280, 640), 2], [Vector2i(1152, 648), 2]]:
 		var taille: Vector2i = cas[0]
 		var t: int = E.facteur_texel_pour(taille, 96.0, false)
 		var ech: float = E.echelle_pour(taille, 96.0, false)
@@ -21,21 +22,32 @@ func _initialize() -> void:
 		verifier("PC %s : cible minimale ≥ 40 px physiques" % taille, cible * ech >= 40.0 - 0.001, "%.1f px virtuels" % cible)
 		var f: float = E.facteur_contenu_pour(taille, 96.0, false)
 		verifier("PC %s : facteur de contenu = échelle exacte (étirement « disabled »)" % taille, f == ech, "f = %.6f" % f)
-	# Mobile : T entier, cible_min × échelle ≥ 48 dp, et les boutons dessinés (80 px virtuels) ≥ 48 dp
-	for cas: Array in [[Vector2i(1600, 720), 267.0], [Vector2i(2400, 1080), 400.0], [Vector2i(2340, 1080), 395.0], [Vector2i(1280, 720), 320.0]]:
+		var zone := Vector2(taille) / ech
+		if taille.x >= 1152 and taille.y >= 648:
+			verifier("PC %s : zone virtuelle ≥ 1728 × 972 (fenêtre ≥ 1152 × 648)" % taille, zone.x >= 1727.9 and zone.y >= 971.9, str(zone))
+	verifier("PC : T ≥ 2 même pour une fenêtre minuscule", E.facteur_texel_pour(Vector2i(800, 450), 96.0, false) == 2)
+	verifier("PC : taille minimale de fenêtre 1152 × 648", E.FENETRE_MIN_PC == Vector2i(1152, 648))
+	# Mobile (§9.1) : [taille, dpi, T attendu, zone attendue]
+	for cas: Array in [[Vector2i(2400, 1080), 400.0, 5, Vector2(1440, 648)], [Vector2i(2340, 1080), 395.0, 5, Vector2(1404, 648)],
+			[Vector2i(2400, 1080), 480.0, 5, Vector2(1440, 648)], [Vector2i(1600, 720), 267.0, 3, Vector2(1600, 720)],
+			[Vector2i(1280, 720), 320.0, 3, Vector2(1280, 720)], [Vector2i(3200, 1440), 560.0, 6, Vector2(1600, 720)],
+			[Vector2i(1440, 648), 240.0, 3, Vector2(1440, 648)]]:
 		var taille: Vector2i = cas[0]
 		var dpi: float = cas[1]
 		var t: int = E.facteur_texel_pour(taille, dpi, true)
 		var ech: float = E.echelle_pour(taille, dpi, true)
 		var dp: float = E.dp_pour(dpi, true)
 		var cible: float = E.cible_min_pour(ech, dp, true)
-		verifier("mobile %s à %d dpi : T entier ≥ 1 (T = %d)" % [taille, dpi, t], t >= 1 and is_equal_approx(ech * 3.0, float(t)))
-		verifier("mobile %s à %d dpi : cible_min × échelle ≥ 48 dp" % [taille, dpi], cible * ech >= 48.0 * dp - 0.001, "%.1f px virtuels, %.1f px physiques, 48 dp = %.1f" % [cible, cible * ech, 48.0 * dp])
-		verifier("mobile %s à %d dpi : un bouton dessiné (84 px virtuels, 28 texels) fait au moins 48 dp" % [taille, dpi], 84.0 * ech >= 48.0 * dp - 0.001, "%.1f px physiques" % (84.0 * ech))
-		verifier("mobile %s à %d dpi : T est le plus petit qui convient" % [taille, dpi], t == 1 or 84.0 * (t - 1) / 3.0 < 48.0 * dp, "T = %d" % t)
-	# Téléphone simulé (F10) : 1600 × 720 à 267 dpi → T = 3, 1 dp = 1,67 px, zone logique 1600 × 720
-	verifier("téléphone simulé : T = 3", E.facteur_texel_pour(Vector2i(1600, 720), 267.0, true) == 3)
-	verifier("téléphone simulé : 1 dp = 1,67 px", absf(E.dp_pour(267.0, true) - 1.66875) < 0.001)
+		var zone := Vector2(taille) / ech
+		verifier("mobile %s à %d dpi : T = %d" % [taille, dpi, cas[2]], t == cas[2], "T = %d" % t)
+		verifier("mobile %s à %d dpi : zone %s" % [taille, dpi, cas[3]], zone.distance_to(cas[3]) < 0.5, str(zone))
+		verifier("mobile %s à %d dpi : zone ≥ 1280 × 648" % [taille, dpi], zone.x >= 1279.9 and zone.y >= 647.9, str(zone))
+		verifier("mobile %s à %d dpi : cible_min = min(48 dp, 84)" % [taille, dpi], is_equal_approx(cible, minf(ceilf(48.0 * dp / ech), 84.0)), "%.1f" % cible)
+		verifier("mobile %s à %d dpi : un bouton de 84 px virtuels fait au moins 42 dp" % [taille, dpi], 84.0 * ech >= 42.0 * dp - 0.01, "%.1f px physiques, 42 dp = %.1f" % [84.0 * ech, 42.0 * dp])
+	# Téléphones simulés
+	verifier("téléphone simulé principal : 1440 × 648 à 240 dpi", E.FENETRE_TELEPHONE == Vector2i(1440, 648) and E.DPI_TELEPHONE == 240.0)
+	verifier("téléphone simulé 169 : 1280 × 720 à 320 dpi", E.FENETRE_TELEPHONE_169 == Vector2i(1280, 720) and E.DPI_TELEPHONE_169 == 320.0)
+	verifier("téléphone simulé principal : échelle 1 (T = 3)", E.facteur_texel_pour(E.FENETRE_TELEPHONE, E.DPI_TELEPHONE, true) == 3)
 	verifier("PC : 1 dp = 1 px", E.dp_pour(96.0, false) == 1.0)
 	print("")
 	print("=== test_ecran : %d OK, %d KO (%d ms) ===" % [_ok, _ko, Time.get_ticks_msec() - t0])

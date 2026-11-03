@@ -6,7 +6,8 @@ extends Node
 ## Options : --capture=captures/x.png  --frames=30 (images à attendre)  --attente=0 (secondes en plus)
 ##           --etape=krach : appelle preparer_capture("krach") de la scène courante (qui met le jeu
 ##                           dans l'état voulu) avant la capture
-##           --telephone   : bascule en téléphone simulé (comme F10) avant la capture
+##           --telephone   : bascule en téléphone simulé (comme F10, 1440 × 648 à 240 dpi) avant la capture ;
+##           --telephone=169 : second format, 1280 × 720 à 320 dpi
 ## Exemple : Godot_console.exe --path godot --resolution 1280x720 -- --capture=captures/titre.png --etape=titre
 
 var _options := {}
@@ -35,7 +36,7 @@ func _capturer() -> void:
 	for i in 3:
 		await get_tree().process_frame
 	if _options.has("telephone"):
-		Ecran.basculer_telephone()
+		Ecran.basculer_telephone("169" if _options["telephone"] == "169" else "")
 		for i in 5:
 			await get_tree().process_frame
 	var scene := get_tree().current_scene

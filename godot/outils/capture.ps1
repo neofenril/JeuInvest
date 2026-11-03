@@ -1,7 +1,7 @@
 ﻿# Capture d'écran du jeu Godot, enregistrée en PNG dans godot\captures\.
 # Usage (depuis n'importe quel dossier) :
 #   powershell -ExecutionPolicy Bypass -File godot\outils\capture.ps1 -Etape krach -Nom krach_pc
-#   ... -Telephone (format téléphone simulé, comme F10)  -Taille 1280x720  -Frames 10  -Attente 0.5
+#   ... -Telephone (téléphone simulé 1440 × 648 à 240 dpi, comme F10)  -Telephone169 (1280 × 720 à 320 dpi)  -Taille 1280x720  -Frames 10  -Attente 0.5
 #   ... -Scene res://scenes/vide.tscn (une autre scène que la scène principale)
 # Étapes de la scène principale (démo V2) : titre, titre_continuer, titre_confirmer, jouer,
 #   sauver_fermer puis reprise (deux lancements : fermeture pendant une carte du banquier, puis « Continuer »),
@@ -27,7 +27,8 @@ param(
     [string]$Taille = "1280x720",
     [int]$Frames = 10,
     [double]$Attente = 0,
-    [switch]$Telephone
+    [switch]$Telephone,
+    [switch]$Telephone169
 )
 . (Join-Path $PSScriptRoot "trouver_godot.ps1")   # $godot, $projet (variable JEUCLAUDE_GODOT, dépôt ou worktree)
 if (-not $godot) { exit 3 }
@@ -37,5 +38,6 @@ if ($Scene -ne "") { $argsGodot += $Scene }
 $argsGodot += @("--", "--capture=captures/$Nom.png", "--frames=$Frames", "--attente=$Attente")
 if ($Etape -ne "") { $argsGodot += "--etape=$Etape" }
 if ($Telephone) { $argsGodot += "--telephone" }
+if ($Telephone169) { $argsGodot += "--telephone=169" }
 & $godot @argsGodot
 exit $LASTEXITCODE
