@@ -208,9 +208,11 @@ func _aller(cx: float, haut: float, duree: float, trans := Tween.TRANS_CUBIC) ->
 		_cx = cible.x
 		_cy = cible.y
 		_appliquer()
-		_cam_tween = create_tween()
-		_cam_tween.tween_interval(0.0)
-		return _cam_tween
+		# Tween vide renvoyé à l'appelant ; pas gardé comme glissement en cours (sinon _recalculer ne recadre plus)
+		_cam_tween = null
+		var vide := create_tween()
+		vide.tween_interval(0.0)
+		return vide
 	_cam_tween = create_tween().set_trans(trans).set_ease(Tween.EASE_IN_OUT)
 	_cam_tween.tween_method(_poser_camera, Vector2(_cx, _cy), cible, duree)
 	return _cam_tween
