@@ -474,9 +474,24 @@ func _creer_etiquettes() -> void:
 		p.mouse_filter = Control.MOUSE_FILTER_STOP
 		p.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		p.custom_minimum_size = Vector2(0, Style.cible_min())
+		# Flèche de bord : chevrons en sprite 8 × 8 texels (C6), masqués quand le bâtiment est visible
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 12)
+		hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var cg := CadresPixel.icone("chevron_gauche")
+		cg.name = "ChevronGauche"
+		cg.visible = false
+		hb.add_child(cg)
 		var l := Style.label(NOMS_SOURCES[id], 28, Style.capitales(), Style.TEXTE)
+		l.name = "Nom"
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		p.add_child(l)
+		l.size_flags_vertical = Control.SIZE_FILL
+		hb.add_child(l)
+		var cd := CadresPixel.icone("chevron_droite")
+		cd.name = "ChevronDroite"
+		cd.visible = false
+		hb.add_child(cd)
+		p.add_child(hb)
 		p.gui_input.connect(_on_etiquette.bind(id))
 		if id == "banque":
 			p.draw.connect(_dessiner_point_banque.bind(p))
@@ -509,7 +524,6 @@ func placer_etiquettes() -> void:
 	var largeur := get_viewport_rect().size.x
 	for id in etiquettes:
 		var p: PanelContainer = etiquettes[id]
-		var l := p.get_child(0) as Label
 		var point: Vector2
 		if ville.has_method("point_etiquette"):
 			point = ville.call("point_etiquette", id)
@@ -521,7 +535,8 @@ func placer_etiquettes() -> void:
 			cote = "gauche" if point.x < largeur / 2.0 else "droite"
 		if cote != str(p.get_meta("fleche", "")):
 			p.set_meta("fleche", cote)
-			l.text = ("‹  " if cote == "gauche" else "") + NOMS_SOURCES[id] + ("  ›" if cote == "droite" else "")
+			p.find_child("ChevronGauche", true, false).visible = cote == "gauche"
+			p.find_child("ChevronDroite", true, false).visible = cote == "droite"
 			p.reset_size()
 		var x := point.x - p.size.x / 2.0
 		if cote == "gauche":

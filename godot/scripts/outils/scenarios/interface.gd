@@ -62,7 +62,7 @@ func _planche_cadres() -> void:
 	y += 135.0
 	x = 30.0
 	for nom: String in ["pause", "lecture", "x2", "x3", "menu", "historique", "fleche_haut", "fleche_bas", "curseur", "drapeau", "croix",
-			"source_maison", "source_banque", "source_media", "piece", "calendrier"]:
+			"source_maison", "source_banque", "source_media", "piece", "calendrier", "chevron_gauche", "chevron_droite"]:
 		var t := CadresPixel.texture(nom)
 		var r := TextureRect.new()
 		r.texture = t
