@@ -56,7 +56,7 @@ func _integrale(jeu: Node) -> void:
 					modales.fermer("ouvrir" if n_appels % 2 == 1 else "plus_tard")
 			"banque":
 				var pb: PanneauBanque = modales.banque
-				if pb.get("_b_ok") != null and is_instance_valid(pb.get("_b_ok")) and pb.get("_droite").is_ancestor_of(pb.get("_b_ok")):
+				if pb.bouton_valider() != null and pb.zone_droite().is_ancestor_of(pb.bouton_valider()):
 					pb.call("_part", 0.25)
 					pb.call("_confirmer")
 					await sc.delai(2.6)

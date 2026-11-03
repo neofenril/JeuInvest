@@ -54,6 +54,19 @@ func _ready() -> void:
 	fond.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fond.gui_input.connect(_on_fond)
 	add_child(fond)
+	get_tree().node_added.connect(_garde_cible)
+
+
+## Garde-fou des fenêtres (PX2 §2.3) : tout bouton posé sous les modales (fenêtre Banque comprise) a
+## un côté d'au moins Style.cible_min() ; Pixelify sous 28 px devient des petites capitales Atkinson.
+func _garde_cible(n: Node) -> void:
+	var b := n as Button
+	if b == null or not is_ancestor_of(b):
+		return
+	var c := Style.cible_min()
+	b.custom_minimum_size = Vector2(maxf(b.custom_minimum_size.x, c), maxf(b.custom_minimum_size.y, c))
+	if b.text != "" and b.get_theme_font_size("font_size") < PolicesPixel.TAILLE_MIN_PIXELIFY and PolicesPixel.est_pixelify(b.get_theme_font("font")):
+		b.add_theme_font_override("font", Style.petites_capitales())
 
 
 # =====================================================================
