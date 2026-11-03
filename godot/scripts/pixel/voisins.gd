@@ -378,13 +378,13 @@ static func velo(image := 0) -> Image:
 
 ## Panneau « À VENDRE » (posé dans la vitre de la Porsche) : carton blanc, lettres rouges.
 static func panneau_vendre() -> Image:
-	var img := M.vide(29, 15)
-	M.rect(img, 0, 0, 29, 15, "blanc_chaud")
-	M.cadre(img, 0, 0, 29, 15, "pierre_ombre")
-	M.texte(img, 3, 1, "A", "rouge_auvent")
-	M.texte(img, 9, 1, "VEN", "rouge_auvent")
-	M.texte(img, 9, 8, "DRE", "rouge_auvent")
-	M.px(img, 4, 0, "rouge_auvent")
+	# Une seule ligne, mot entier
+	var img := M.vide(37, 11)
+	M.rect(img, 0, 0, 37, 11, "blanc_chaud")
+	M.cadre(img, 0, 0, 37, 11, "pierre_ombre")
+	M.texte(img, 3, 4, "A", "rouge_auvent")
+	M.px(img, 4, 2, "rouge_auvent")
+	M.texte(img, 9, 4, "VENDRE", "rouge_auvent")
 	return img
 
 
@@ -436,4 +436,4 @@ static func enregistrer_objets() -> void:
 		GrillePixel.enregistrer("miroir/velo_%d" % (i + 1), mv)
 	GrillePixel.enregistrer("objet/poussette", poussette(false))
 	GrillePixel.enregistrer("objet/poussette_double", poussette(true))
-	GrillePixel.enregistrer("objet/a_vendre", panneau_vendre(), Vector2i(14, 14))
+	GrillePixel.enregistrer("objet/a_vendre", panneau_vendre(), Vector2i(18, 10))

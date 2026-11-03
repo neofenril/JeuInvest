@@ -249,19 +249,18 @@ static func cadre_titre() -> Image:
 # --- Petits objets des séquences ----------------------------------------------------------------------------
 
 static func _bonk() -> Image:
-	var img := M.vide(64, 34)
-	var c := Vector2(32, 17)
-	for y in 34:
-		for x in 64:
+	var img := M.vide(84, 44)
+	var c := Vector2(42, 22)
+	for y in 44:
+		for x in 84:
 			var v := Vector2(x + 0.5, y + 0.5) - c
 			var a := atan2(v.y * 1.8, v.x)
-			var r := 15.0 + 6.0 * (1.0 if int(round(a / (TAU / 14.0))) % 2 == 0 else 0.0)
+			var r := 21.0 + 7.0 * (1.0 if int(round(a / (TAU / 14.0))) % 2 == 0 else 0.0)
 			var d := Vector2(v.x, v.y * 1.8).length()
 			if d <= r:
 				M.px(img, x, y, "or" if d > r - 3.0 else "blanc_chaud")
-	M.texte(img, 15, 11, "BONK", "rouge_auvent", 2)
-	M.texte(img, 16, 12, "BONK", "brique_sombre", 2)
-	M.texte(img, 15, 11, "BONK", "rouge_auvent", 2)
+	M.texte(img, 19, 15, "BONK", "brique_sombre", 3)
+	M.texte(img, 18, 14, "BONK", "rouge_auvent", 3)
 	M.contour(img, "brique_sombre")
 	return img
 
@@ -327,7 +326,7 @@ static func _anneau(r: int, nom: String) -> Image:
 static func enregistrer_objets() -> void:
 	if GrillePixel.existe("objet/bonk"):
 		return
-	GrillePixel.enregistrer("objet/bonk", _bonk(), Vector2i(32, 17))
+	GrillePixel.enregistrer("objet/bonk", _bonk(), Vector2i(42, 22))
 	for i in 2:
 		GrillePixel.enregistrer("objet/cigogne_%d" % (i + 1), _cigogne(i), Vector2i(22, 13))
 	GrillePixel.enregistrer("objet/paquet_rose", _paquet("neon_rose"), Vector2i(7, 0))

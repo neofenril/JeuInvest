@@ -405,7 +405,7 @@ func _crash_voiture(voiture: Node2D) -> Dictionary:
 	voiture.set("sans_enjoliveur", true)
 	create_tween().tween_property(voiture, "capot", 1.0, 0.18)
 	_fumee(voiture.position + Vector2(56, -50), 3)
-	var boum: Node2D = rue.call("ajouter", ["objet/bonk"], Vector2(potelet.position.x + 20, potelet.position.y - 44))
+	var boum: Node2D = rue.call("ajouter", ["objet/bonk"], Vector2(potelet.position.x + 6, potelet.position.y - 58))
 	var tb := create_tween()
 	tb.tween_interval(0.75)
 	tb.tween_property(boum, "alpha", 0.0, 0.2)
@@ -417,7 +417,7 @@ func _crash_voiture(voiture: Node2D) -> Dictionary:
 	tj.chain().tween_callback(enj.call.bind("liberer"))
 	await _attendre(0.5)
 	# 4. Le triangle se pose derrière la voiture
-	var tri: Node2D = rue.call("ajouter", ["objet/triangle"], Vector2(x0 - 120.0, RUE.Y_GAREE - 2), 0.0, true)
+	var tri: Node2D = rue.call("ajouter", ["objet/triangle"], Vector2(contact - 100.0, RUE.Y_GAREE - 2), 0.0, true)
 	etat["accessoires"] = [tri]
 	await _attendre(0.4)
 	return etat
