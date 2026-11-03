@@ -135,3 +135,73 @@ Toutes les captures de CA-I10 en PC 1920 × 1080 et téléphone simulé, plus `h
 ## 8. Validation (chef de projet)
 - [ ] CA-I1 à CA-I15 (rapport du testeur OK) · [ ] série relue · [ ] fusion `--no-ff`, tests et séries relancés sur `main` · [ ] bases à jour
 - Décision :
+
+## 9. Corrections passage 2 (arbitrage du chef de projet, 2026-11-03, après la recette KO de c890d61)
+
+Source : `lot_px2_recette.md` passage 1 (M1-M4, m1-m9, 5 questions) et `lot_px1_recette.md` (A2, A6, A8). Ce qui est bon reste acquis (T16, T9, habillage, 334 vérifications) : on ne refait rien d'autre.
+
+### 9.1 Arbitrages
+
+1. **Téléphone représentatif (M4, question 1).** Le téléphone simulé 1600 × 720 à 267 dpi n'est pas représentatif. Le joueur veut un APK 0.3 utilisable sur un Android courant (20:9, 2400 × 1080, 400 dpi). Nouvelle règle, sur mobile :
+   - T = clamp(T_dp, 2, T_max), avec T_dp = plus petit entier tel que `REF_CIBLE` (84 px virtuels) × T / 3 ≥ 48 dp (règle actuelle), et **T_max = floor(3 × min(h / 648, l / 1280))**. La zone virtuelle ne descend donc jamais sous **648 de haut** ni **1280 de large** : c'est la **zone minimale de conception** ;
+   - `cible_min()` sur mobile = **min(48 dp en px virtuels, 84)** : un bouton dessiné à 84 px virtuels passe partout. Quand T est plafonné, la cible physique descend à 84 × T / 3 px : ≥ 44 dp sur les téléphones 20:9 courants, 42 dp sur un 1280 × 720 à 320 dpi. Accepté (44 pt = minimum d'Apple) ;
+   - valeurs attendues : 2400 × 1080 à 400 dpi → T = 5, zone 1440 × 648 ; 2340 × 1080 à 395 → T = 5, 1404 × 648 ; 2400 × 1080 à 480 → T = 5 (plafonné), 1440 × 648 ; 1600 × 720 à 267 → T = 3, 1600 × 720 ; 1280 × 720 à 320 → T = 3 (plafonné), 1280 × 720 ; 3200 × 1440 à 560 → T = 6, 1600 × 720 ;
+   - **téléphone simulé principal (F10, `--telephone`, `-Telephone`) : fenêtre 1440 × 648 à 240 dpi** (T = 3, échelle 1 : la capture montre exactement la zone du vrai téléphone). **Second format `--telephone=169` (`-Telephone169`) : 1280 × 720 à 320 dpi** (T = 3, zone 1280 × 720). L'ancien 1600 × 720 ne reste que dans `test_ecran`.
+2. **Panneau « Mon argent » (M1, question 2) : les deux.** La frise passe de 114 à **96 px virtuels** (32 texels, HISTORIQUE de 90 px à l'intérieur, toujours ≥ 90 à 1080p). Le panneau est **borné** par la frise et s'allège : sa hauteur maximale est celle du rectangle libre moins les marges ; la **courbe absorbe la place restante** (hauteur variable, minimum 110 px sur PC, 64 au téléphone) ; si cela ne suffit pas, les blocs de moindre priorité se replient (ordre de repli : ligne baguette, puis « coussin », puis légende de la répartition). Le bouton « BANQUE · carnet et guichet » et les frais restent toujours visibles. Pas de défilement dans le panneau. Au téléphone : panneau fermé par défaut (déjà le cas), ouvert il tient dans la même hauteur, colonnes côte à côte.
+3. **Étiquettes, flèches et bulles (M3, A2, A8, question 3) : l'interface borne, la ville renseigne.** La ville donne des points du monde (`point_etiquette`, `point_tete`, `est_visible`), l'interface a le dernier mot sur le placement à l'écran : PX2 (`hud.gd`) garde **toute** étiquette et **toute** flèche entièrement dans `rect_libre()` (docs/17 §3.2 : flèche à 16 px du bord du rectangle libre). Les futures bulles (lot 05) suivront la même règle, côté interface. Pas de PX1-bis : A2 (point de la Gazette au téléphone) est déjà compensé côté ville en PX1 passage 2 (`point_etiquette` borné au bas du rectangle libre) et PX2 borne en plus. **A8 est clos côté PX1** : Jean-Mi qui passe derrière le panneau ouvert est normal (le panneau est opaque sur la rue) ; seule sa future bulle devra rester dans le rectangle libre. A6 : réglé par PX2 (`hud_focalisables=0`).
+4. **Flèches (m3, question 4).** Flèches de bord : **chevron en sprite** 8 × 8 texels (grille dans `data/pixel/ui/`, docs/17 §3.2), plus aucun caractère. Flèches dans les textes : **réécrites à la source par dev-logique** (« janvier 1984 – décembre 1988 », « pendant 4 ans : 19 400 F », etc.) dans un mini-lot F1-L (§9.5). En attendant, la substitution « → » → « › » de `Style.label` reste (écart toléré, disparaît avec F1-L) et un contrôle signale tout « → » ou « › » encore affiché.
+5. **T minimal sur PC (m4, question 5) : oui, T ≥ 2 sur PC**, et une taille minimale de fenêtre de **1152 × 648** physiques (`get_window().min_size`, posée par `Ecran` sur PC seulement). La zone virtuelle sur PC ne descend donc jamais sous 1728 × 972.
+6. **Chiffres (M2, question 6) : Atkinson partout pour les chiffres.** Règle : **tout texte qui contient un chiffre est en Atkinson Hyperlegible Next** (boutons, onglets, compteurs, montants, pourcentages, dates en chiffres) ; Pixelify seulement pour des titres et libellés sans chiffre. La règle est appliquée dans `Style` (`label`, `bouton` et ce qui fixe une police) et pas écran par écran.
+
+### 9.2 Ordre de fusion (recommandé)
+
+1. **PX1 d'abord** : dès l'OK de son passage 2 (sa seule majeure, A1, est sur l'écran titre), fusion `--no-ff` dans `main`, tests relancés, push.
+2. **Le coordinateur fusionne `main` dans `lot/px2-interface`** (`git -C …\px2-interface merge --no-ff main`, sans réécriture d'historique ; aucun conflit attendu, aucun fichier commun). dev-interface corrige alors sur la vraie rue pixel ; le passage 2 du testeur porte directement sur PX1 + 02-L + PX2 (plus de fusion simulée à part).
+3. **PX2 ensuite**, après l'OK du passage 2 et ma validation.
+4. **F1-L** (§9.5, dev-logique, fichiers disjoints, peut tourner en parallèle de C1-C9) : fusion après PX2, puis export 0.3 (exe + APK) et liste de contrôle du téléphone (T2).
+- Si le passage 2 de PX1 traîne : dev-interface commence C1 à C7 (sans la rue) ; la fusion de `main` dans sa branche se fait avant C8.
+
+### 9.3 Fichiers (passage 2)
+
+Le §1 s'applique sans changement, avec **une exception**, valable seulement après l'étape 2 du §9.2 (PX1 fusionné ; dev-ville ne travaille pas sur ces fichiers pendant ce passage) : `scripts/outils/scenarios/ville.gd` (seulement `_regler_fenetre` : la fenêtre du téléphone simulé vient d'`Ecran`, plus de `Vector2i(1600, 720)` en dur) et le commentaire de la ligne 4 d'`outils/capture_ville.ps1`. Rien d'autre dans les fichiers de la ville ; un besoin de plus va dans le compte rendu.
+
+### 9.4 Tâches pour dev-interface (dans cet ordre ; un commit par tâche)
+
+- **C1. Échelle et téléphones (M4, m4)** — `scripts/ecran.gd`, `tests/test_ecran.gd`, `outils/capture_interface.ps1`, `outils/capture.ps1` (option `-Telephone169` → `--telephone=169`), `scripts/outils/capture.gd` si l'option y est lue.
+  - Règles du §9.1 points 1 et 5 ; `FENETRE_TELEPHONE = 1440 × 648`, `DPI_TELEPHONE = 240`, second format 1280 × 720 à 320 dpi ; `min_size` 1152 × 648 sur PC.
+  - **CA-C1** : `test_ecran` vérifie les 6 téléphones du §9.1 (T, zone, `cible_min`) et, sur PC, (1280 × 640) T = 2, (1920 × 1009) T = 3, (1152 × 648) T = 2 ; ≥ 20 vérifications nouvelles ; `tests.ps1` vert.
+- **C2. Frise et panneau « Mon argent » (M1, B1)** — `scripts/ui/hud.gd`, `frise.gd`, et les éléments du panneau dans `scripts/ui/`.
+  - Règles du §9.1 point 2.
+  - **CA-C2** : nouvelle ligne `UI panneau ouvert=<oui|non> bas=<y> frise=<y> recouvre=non contenu_coupe=non` (bas du panneau ≤ haut de la frise − 6 ; aucun enfant visible hors du cadre du panneau), imprimée **après** la fin de l'animation de bascule (corrige aussi m6 : plus de `rect=replié` à 1080p panneau ouvert), à 1920 × 1080, **1920 × 1009**, 1366 × 768, 1280 × 720, 1152 × 648, `-Telephone` et `-Telephone169` (panneau ouvert). Captures `hud_1080`, `hud_1009`, `hud_720`, `panneau_tel`, `panneau_tel169`, `releve_tel` : année, curseur et drapeau de la frise visibles ; bouton BANQUE entier ; « Actions 5 % » dans le cadre.
+- **C3. Chiffres en Atkinson, tailles minimales (M2, m7)** — `scripts/ui/style.gd`, `polices_pixel.gd`, écrans concernés.
+  - Règle du §9.1 point 6 ; aucun texte Atkinson sous 20 px virtuels (docs/16 §3.1).
+  - **CA-C3** : contrôle étendu `UI polices pixelify_min=<n> atkinson_min=<n> chiffres_pixelify=0` qui parcourt **tous les `Label` et `Button` visibles** de chaque écran de CA-I6 (pas seulement le HUD) ; `atkinson_min` ≥ 20. Captures `automatique_1080` / `_tel` (« 300 F / 500 F / 1 000 F »), `banque_ordre_tel` (« 25 % », « 50 % », « ACHETER POUR 953,68 F »), `courrier` (« PAYER 8 139 F ») : le 5 ne se lit plus S.
+- **C4. Tout tient à l'écran au téléphone (M4)** — modales, fenêtre Banque, carnet, historique, écran titre (`scripts/ui/`).
+  - Toute fenêtre tient dans la zone minimale (1440 × 648 et 1280 × 720) ; **les boutons d'action sont toujours visibles** ; seul le corps de texte d'une carte ou d'une fiche peut défiler (défilement tactile, boutons hors de la zone qui défile).
+  - **CA-C4** : `UI fenetre <nom> dans_ecran=oui boutons_visibles=oui` pour : carte du banquier (dont `heritage`, la plus haute), carnet, fiche, ordre, CHAQUE MOIS, historique, journal du krach, courrier, relevé, fin, info, confirmation, menu, écran titre, à `-Telephone`, `-Telephone169`, 1280 × 720 et 1920 × 1009 ; plus aucune ligne « fenêtre hors écran » dans la sortie ; `cibles` aux deux téléphones : `sous_seuil=0` (seuil = `cible_min()`).
+- **C5. Petites corrections (m1, m2)** — `scripts/ui/`.
+  - m1 : la notification persistante « Un mot après le krach » tient dans son cadre ; m2 : le cadenas et le calendrier du carnet ne recouvrent aucun chiffre (PC et téléphones).
+  - **CA-C5** : captures `courrier_1080`, `carnet_tel`, `carnet_tel169`, `f01_tel` relues sans texte coupé ni recouvert.
+- **C6. Chevron en sprite (m3)** — `data/pixel/ui/` (nouvelle grille), `scripts/ui/cadres_pixel.gd` ou `hud.gd`.
+  - Chevrons ‹ › des flèches de bord dessinés (8 × 8 texels), plus en texte ; `Style.label` garde la substitution « → » → « › » jusqu'à F1-L.
+  - **CA-C6** : `planche_cadres` montre le chevron, `irreguliers=0` ; contrôle `UI fleches_texte=<n>` (nombre de « → » ou « › » affichés sur les écrans de CA-I6), imprimé pour information (attendu 0 après F1-L).
+- **C7. Outillage de la série (m8)** — `outils/capture_interface.ps1`, `scripts/outils/scenarios/interface.gd`.
+  - La série recopie dans `px2_serie.log` les lignes `Images par seconde` (CA-I13) et `UI clic_dehors` ; le contrôle `debordements` compte aussi les **conteneurs** plus hauts ou plus larges que leur place et les éléments hors écran (`UI debordements=0 hors_cadre=0 hors_ecran=0`) ; la série passe à `-Telephone` **et** `-Telephone169`, et ajoute `hud_1009`.
+  - **CA-C7** : sur c890d61, ce contrôle aurait trouvé M1 (le développeur le montre une fois dans son compte rendu, sur l'état d'avant C2) ; la série rend 0 seulement si tous les contrôles sont à zéro.
+- **C8. Étiquettes et flèches bornées au rectangle libre (M3, A2)** — **après** la fusion de `main` (avec PX1) dans la branche. `scripts/ui/hud.gd`, `scripts/outils/scenarios/interface.gd`, exception du §9.3.
+  - Bâtiment visible : étiquette au point de la ville, ramenée entièrement dans `rect_libre()` (x et y, 8 px de marge). Bâtiment caché : flèche à 16 px du bord **du rectangle libre** (donc à gauche du panneau ouvert sur PC, à gauche de la languette au téléphone), à la hauteur de l'étiquette, bornée elle aussi ; deux flèches du même côté : empilées. Toucher la flèche = `ville.aller_vers(id)`. Le point d'alerte de la banque (`point_banque`) se reporte sur la flèche.
+  - Étapes **`etiquettes_bord`** (repos sur la maison : flèches « ‹ LA GAZETTE » et « MA BANQUE › ») et **`etiquettes_aller`** (toucher simulé au centre de la flèche de la banque par `Input.parse_input_event`, puis attente de la fin du glissement).
+  - **CA-C8** : `UI etiquette <id> mode=<sous|fleche> dans_libre=oui` pour les trois bâtiments, dans `etiquettes_bord`, `rue_banque` et `rue_gazette`, à 1920 × 1080, 1920 × 1009, 1280 × 720, `-Telephone`, `-Telephone169` ; `etiquettes_aller` : `UI aller banque visible=oui` ; captures `etiquettes_bord_1080`, `etiquettes_bord_tel`, `etiquettes_aller_1080`, `rue_gazette_tel` : « MA BANQUE › » lisible entièrement, « LA GAZETTE » au-dessus de la frise.
+- **C9. Fin** : série complète (§6 complétée par C7), base `dev-interface.md`, compte rendu (écarts, ce qui n'est pas vérifié, preuve de CA-C7).
+
+### 9.5 Hors dev-interface
+
+- **dev-ville** : rien dans ce passage (pas de PX1-bis). Après la fusion de PX2, au téléphone simulé, la rue donne `facteur=2 reduction=0.600 vue=1200x540 gerard_ecran=76` (± 1) au lieu de 0,667 / 84 : c'est la conséquence attendue de la zone 1440 × 648 ; dev-ville mettra à jour sa base et `test_rue` (cas 1440 × 648) en 02-V.
+- **F1-L (dev-logique, mini-lot, branche `lot/f1-logique`)** : (a) flèches « → » réécrites à la source (`data/demo.json` sous-titre, `data/banque.json` tickets, jointure de `Banquier` l. 609, et toute ligne d'historique construite côté logique) : « – » pour un intervalle, « : » ou « soit » pour un résultat ; (b) m5 : espace insécable entre nombre et « % » ou « F » dans les textes du banquier (test : aucun « chiffre + espace normale + % » dans `banque.json`) ; (c) version 0.3 / code 3 dans `export_presets.cfg`, puis export après la fusion de PX2. m9 (« 417 F + 42 F = 458 F », arrondis du relevé) : **03-L**.
+
+### 9.6 Vérifications du passage 2 (testeur)
+
+- Les CA-I1 à CA-I15 rejoués sur la branche **qui contient PX1** (après §9.2 étape 2), avec les nouveaux seuils : CA-I4 remplacé par CA-C1, CA-I6 aux deux téléphones, CA-I8 complété par CA-C3, CA-I9 par CA-C7, CA-I12 par CA-C8 ; plus CA-C1 à CA-C8.
+- Sur la même branche : `capture_ville.ps1 -Serie` (CA-V de PX1 toujours verts, sauf les valeurs du téléphone attendues au §9.5) ; `RUE cadrage` des trois bâtiments dans le rectangle libre à `-Telephone`, `-Telephone169` et 1920 × 1009 avec la frise de 96 px ; `integrale` = 160 749 F, frais 805,93 F, 11 interruptions ; `user://` du joueur intact.
+- Montage `px2_montage_telephones` : `hud_tel` | `hud_tel169` | `heritage_tel` | `banque_ordre_tel`, relu (rien de coupé).
+- Non vérifiable ici : vrai téléphone (T2, après l'export 0.3).
