@@ -590,6 +590,56 @@ func _tests_sauvegarde() -> void:
 # Historique des pop-ups (retour du joueur du 27/10/2026)
 # ---------------------------------------------------------------------
 
+## F1-L : plus de flèche « → » dans les textes construits côté logique ; espaces insécables du banquier (m5).
+func _tests_fleches(e: EtatPartie, chemin: String) -> void:
+	var avec_fleche := []
+	for x in e.historique:
+		if str(x["resume"]).contains("→") or str(x["titre"]).contains("→") or str(x["contenu"].get("ticket", [])).contains("→") \
+				or str(x["contenu"].get("texte", "")).contains("→"):
+			avec_fleche.append(str(x["resume"]))
+	verifier("F1-L : aucune flèche « → » dans l'historique (titres, résumés, tickets, textes)", avec_fleche.is_empty(), str(avec_fleche))
+	var fichiers_ok := true
+	var detail := ""
+	for f in ["res://data/banque.json", "res://data/demo.json"]:
+		var t := FileAccess.get_file_as_string(f)
+		if t == "" or t.contains("→") or t.contains("›"):
+			fichiers_ok = false
+			detail += f + " ; "
+	verifier("F1-L : aucune flèche « → » ni « › » dans banque.json et demo.json", fichiers_ok, detail)
+	var pel := ""
+	for x in e.historique:
+		if x["genre"] == "appel" and "pel" in x["contenu"].get("produits", []):
+			pel = str(x["resume"])
+	verifier("F1-L : résumé du PEL « … par mois pendant 4 ans : … F » (un seul « : »)",
+		pel.contains(" par mois pendant 4 ans : ") and pel.count(":") == 1, pel)
+	verifier("F1-L : jointure des tickets « a : b », sans « : » doublé",
+		Banquier.joindre_ticket(["12 600 F", "+ 945 F par an"]) == "12 600 F : + 945 F par an"
+		and Banquier.joindre_ticket(["300 F par mois", "pendant 4 ans : 19 400 F"]) == "300 F par mois pendant 4 ans : 19 400 F")
+	var b := FileAccess.get_file_as_string("res://data/banque.json")
+	var rx_unite := RegEx.create_from_string("[0-9}] (%|F\\b)")
+	var rx_mille := RegEx.create_from_string("[0-9] [0-9]{3}(?![0-9])")
+	var n_unite := rx_unite.search_all(b).size()
+	var n_mille := rx_mille.search_all(b).size()
+	verifier("m5 : banque.json sans « chiffre + espace normale + % / F » ni séparateur de milliers sécable",
+		b != "" and n_unite == 0 and n_mille == 0, "unité %d, milliers %d" % [n_unite, n_mille])
+	# Ancienne sauvegarde (avant F1-L) : les flèches de l'historique sont réécrites au chargement
+	var q := EtatPartie.new()
+	var res := q.demarrer(Donnees.config_demo(7))
+	var e1: EtatPartie = continuer(q, res, actif, actif_mois, q.m_depart + 12)["etat"]
+	var trouve := false
+	for x in e1.historique:
+		if x["contenu"].has("ticket") and (x["contenu"]["ticket"] as Array).size() >= 2:
+			x["resume"] = "A → B"
+			x["contenu"]["ticket"][1] = "pendant 4 ans → 19 400 F"
+			trouve = true
+			break
+	Sauvegarde.ecrire(e1, {}, chemin)
+	var e2 := Sauvegarde.charger(Sauvegarde.lire(chemin))
+	Sauvegarde.effacer(chemin)
+	var reste := e2 == null or var_to_str(e2.historique).contains("→")
+	verifier("F1-L : ancienne sauvegarde, flèches de l'historique réécrites au chargement (« A : B »)", trouve and not reste, "")
+
+
 func _tests_historique() -> void:
 	var p := jouer(7, actif, actif_mois)
 	var e: EtatPartie = p["etat"]
@@ -669,6 +719,7 @@ func _tests_historique() -> void:
 	verifier("Après rechargement, la partie continue : même historique final que la partie d'une traite",
 		var_to_str(e2.historique) == var_to_str(e.historique), "%d / %d entrées" % [e2.historique.size(), e.historique.size()])
 	Sauvegarde.effacer(chemin)
+	_tests_fleches(e, chemin)
 	print("    Historique (graine 7, joueur actif) : %d entrées ; 4 plus récentes : %s" % [h.size(), str(recent.slice(0, 4).map(func(x: Dictionary) -> String: return "%s · %s · %s" % [Dates.texte_court(e.ab_de(int(x["m"]))), x["titre"], x["resume"]]))])
 
 
@@ -693,10 +744,10 @@ func _tests_taux_pel() -> void:
 	var ab_d02 := e.ab_courant()
 	e.ouvrir_pel(fr(2000.0), fr(500.0))
 	var tp := Produits.taux_pel(ab_d02)
-	var attendu := "%s %% + prime d'État ≈ %s %%" % [Format.nombre(float(tp[1]), 2), Banquier.taux_txt(float(tp[0]))]
+	var attendu := "%s %% + prime d'État ≈ %s %%" % [Format.nombre(float(tp[1]), 2), Banquier.taux_txt(float(tp[0]))]
 	var mot_d02: String = c2["comparatif"]["lignes"][0]["mot"]
 	verifier("Présentation du PEL (%s) : « %s » dans le comparatif, le même taux dans le texte" % [Dates.texte(ab_d02), attendu],
-		mot_d02 == attendu and str(c2["texte"]).contains(Banquier.taux_txt(float(tp[0])) + " %"), "%s | %s" % [mot_d02, c2["texte"]])
+		mot_d02 == attendu and str(c2["texte"]).contains(Banquier.taux_txt(float(tp[0])) + Format.ESPACE + "%"), "%s | %s" % [mot_d02, c2["texte"]])
 	# Deux ans plus tard (l'offre du jour est tombée à 6 %) : le PEL détenu garde partout son taux d'ouverture
 	while e.ab_courant() < Dates.lire("1986-12"):
 		e.avancer()
@@ -707,7 +758,7 @@ func _tests_taux_pel() -> void:
 	var mot_fiche := Format.gabarit(str(Banquier.info_produit("pel")["mots"]["rendement"]), v)
 	var t := Banquier.taux_txt(float(e.joueur.pel["taux"]))
 	verifier("PEL détenu : fiche, ordre, carte et comparatif disent tous « %s » (carte : « %s »), jamais le taux du jour" % [long, court],
-		long == attendu and mot_fiche == attendu and court == "≈ %s %% fixe" % t and not long.contains(Banquier.taux_txt(float(Produits.taux_pel(e.ab_courant())[0])) + " %"))
+		long == attendu and mot_fiche == attendu and court == "≈ %s %% fixe" % t and not long.contains(Banquier.taux_txt(float(Produits.taux_pel(e.ab_courant())[0])) + Format.ESPACE + "%"))
 	verifier("Le calcul utilise le même taux : intérêts du PEL au taux prime comprise affiché (%s %%)" % t,
 		proche(float(e.joueur.pel["taux"]), float(tp[0])) and proche(float(e.joueur.pel["taux_hp"]), float(tp[1])))
 	var sans := EtatPartie.new()
@@ -715,7 +766,7 @@ func _tests_taux_pel() -> void:
 	while sans.ab_courant() < Dates.lire("1986-12"):
 		sans.avancer()
 		_resoudre(sans)
-	verifier("Sans PEL : l'offre du jour, écrite de la même façon (déc. 1986 : « 4,62 % + prime d'État ≈ 6 % »)", Banquier.texte_taux_pel(sans) == "4,62 % + prime d'État ≈ 6 %", Banquier.texte_taux_pel(sans))
+	verifier("Sans PEL : l'offre du jour, écrite de la même façon (déc. 1986 : « 4,62 % + prime d'État ≈ 6 % »)", Banquier.texte_taux_pel(sans) == "4,62 % + prime d'État ≈ 6 %", Banquier.texte_taux_pel(sans))
 
 
 # ---------------------------------------------------------------------
@@ -745,7 +796,7 @@ func _tests_versements() -> void:
 	var e := _partie_au(Dates.lire("1985-01"), ["D01", "D02", "D03", "D05", "D06"])
 	verifier("Éligibilité (11 §8.1) : emprunt d'État et actions refusés, avec l'explication",
 		not e.programmer_versement("emprunt", fr(500.0))["ok"] and not e.programmer_versement("elf", fr(500.0))["ok"]
-		and str(e.programmer_versement("elf", fr(500.0))["msg"]).contains("50 F"))
+		and str(e.programmer_versement("elf", fr(500.0))["msg"]).contains("50" + Format.ESPACE + "F"))
 	verifier("Minimum par produit : SICAV 300 F (200 F refusés), Livret A 100 F",
 		not e.programmer_versement("sicav", fr(200.0))["ok"] and e.programmer_versement("livret", fr(100.0))["ok"])
 	var e0 := _partie_au(Dates.lire("1984-03"), [])

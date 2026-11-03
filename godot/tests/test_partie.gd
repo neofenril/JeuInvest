@@ -66,10 +66,10 @@ func _test_fenetre_banque_pel() -> void:
 	await get_tree().process_frame
 	textes.append_array(_textes(pb))
 	var avec_taux := textes.filter(func(t: String) -> bool: return t.contains("prime d'État ≈") or t.begins_with("≈ "))
-	var faux := textes.filter(func(t: String) -> bool: return t.contains("6 %") or t.contains("4,62") or (t.contains("% fixe") and not t.begins_with("≈ ")))
+	var faux := textes.filter(func(t: String) -> bool: return t.contains("6 %") or t.contains("6" + Format.ESPACE + "%") or t.contains("4,62") or (t.contains("% fixe") and not t.begins_with("≈ ")))
 	var ok := avec_taux.size() >= 3
 	for t: String in avec_taux:
-		if not t.contains("8,25 %"):
+		if not t.contains("8,25" + Format.ESPACE + "%"):
 			ok = false
 	_verifier("fenêtre Banque : le PEL affiche 8,25 % partout (carte, fiche, ordre), jamais l'offre du jour", ok and faux.is_empty(), str(avec_taux) + (" FAUX : " + str(faux) if not faux.is_empty() else ""))
 	pb.queue_free()
