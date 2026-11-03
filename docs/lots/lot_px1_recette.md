@@ -50,3 +50,41 @@ Ressenti du glissement et de l'inertie ; « grouillement » des pixels en mouvem
 - A6 : faut-il ouvrir une demande à PX2 (`focus_mode = FOCUS_NONE` sur les boutons du HUD) ou laisser la ville lire les flèches dans `_input` ?
 - A3 : arbres d'hiver nus, ou givrés (choix du joueur) ? Faut-il attendre la fin des tâches de fond avant d'afficher la saison ?
 - A2 / A8 : à traiter à la fusion avec PX2 (étiquettes et bulles hors du rectangle libre) ?
+
+## Passage 2 : 2026-11-03, branche `lot/px1-ville`, commit testé 7733938 (c03d10a, ab50fda, cf8b53b, 7733938)
+
+**Verdict : OK** (A1 corrigée ; restent des mineures, dont une nouvelle, A11, à corriger de préférence avant la fusion avec PX2).
+
+### Ce qui a été lancé
+- Périmètre : les 4 commits touchent 10 fichiers, tous déjà dans le diff du passage 1 et dans le §1 du plan (`scripts/ville/*`, `scripts/pixel/*`, scénario `ville.gd`, `capture_ville.ps1`, `test_rue.gd`, `dev-ville.md`). Diff total `main...lot/px1-ville` : mêmes 29 fichiers. Worktree propre.
+- `tests.ps1` (worktree) : 7 étapes, **350 OK, 0 KO, 0 erreur de script, 44,5 s** ; import propre ; `test_rue` 71 OK (+3 : enseigne du titre dans la vue, arbre retiré au titre, puis de retour en jeu) ; génération **1 161 ms** (1 717 ms au passage 1).
+- `capture_ville.ps1 -Serie` en entier : tous les lancements à code 0, aucune erreur de script, `hors_palette=0` et `irreguliers=0` partout, « PX1 : tout est vert ». Images par seconde 426 (1080p) / 694 (téléphone). Un autre agent avait 2 Godot ouverts pendant la série (aucun effet visible sur les chiffres).
+- Fusion simulée : worktree jetable `recette-px1-p2-fusion` détaché sur a74a202 + `merge --no-ff lot/px1-ville` → **aucun conflit**. Copie isolée : `tests.ps1` **9 étapes, 395 OK, 0 KO, 44,6 s** (génération 1 087 ms) ; **partie complète : 160 749 F, frais 805,93 F, 11 interruptions, fin déc. 1988, modales appel 8 / banque 4 / courrier 2 / journal 1 / fin 1** (= référence). Worktree jetable supprimé, `user://` isolés effacés. (`main` est passé entre-temps à 3abcc48, commit de documents seulement.)
+- `partie_en_cours.sav` du joueur : SHA-256 E2B314A8… inchangé.
+
+### Reprise des anomalies du passage 1
+- **A1 corrigée.** `px1_titre` (1080p), `px1_titre_720`, `px1_titre_tel` : « JEUCLAUDE » entier et lisible sur les trois formats, plus d'arbre de premier plan au titre (`RUE titre premier_plan=masque`). L'arbre revient en jeu (`test_rue`, `px1_jouer`). Remarque hors lot : au téléphone, le sous-titre « MA RUE, DE 1978 À AUJOURD'HUI » passe sur la façade de la Gazette (texte de l'écran titre, interface).
+- **A2 non corrigée (mineure).** `px1_rue_gazette_tel` : l'étiquette « LA GAZETTE » (y = 516 dans la vue 540) est toujours à moitié sous la frise. Le bas de `libre_monde()` ne semble pas tenir compte de la frise au téléphone. À revoir à la fusion avec PX2.
+- **A3 en partie corrigée (mineure).** `px1_saison_hiver` (01/1985) et `px1_jouer` (01/1984) montrent maintenant le même feuillage givré. Mais `px1_pause` (01/1988, étape de `capture.ps1` qui n'attend pas les tâches de fond) montre toujours un arbre vert sous des toits enneigés : au chargement d'une partie en hiver, l'arbre est vert puis se givre quelques instants plus tard.
+- **A4 corrigée** : nouvelle étape `jouer_repos` → `camera=245 repos_maison=oui`, capture `px1_jouer` sur la maison au repos.
+- **A5 corrigée** : durées imprimées, naissance 1,84 s (≤ 2,6), courrier simple 0,97 s (≤ 1,5). Le toucher du krach : voir A11.
+- **A7 corrigée** : « À VENDRE » sur une ligne, sur le panneau et sur la vitre de la 944 (`px1_planche_personnages`).
+- **A9 corrigée** : la 205 et le potelet sont à gauche de la maison, le capot ne passe plus sur Gérard, le « BONK » est plus grand et lisible, le triangle est derrière la voiture (`px1_crash_anim`). Glyphe N : il se distingue maintenant du M (« BANQUE » sur la façade, « TONTON », « JEAN-MI »). À 3 × 5 pixels, il ressemble un peu à un Π, mais se lit.
+- **A10 corrigée** : génération 1,09 à 1,16 s (marge ≈ 42 %).
+- A6 et A8 : pas touchées dans ce passage (questions au CDP toujours ouvertes).
+
+### Nouvelle anomalie
+11. **A11 (mineure) : la rue se fige ≈ 0,3 à 0,6 s au début du krach** (c'est la cause du toucher qui part à 0,9 s au lieu de 0,3 s). Mesure faite dans une copie isolée instrumentée (rien n'a été modifié dans la branche) : `krach_anim -Passer 0.3`, 3 fois → une seule image de **604 à 664 ms** juste après le début de la séquence. Le minuteur de 0,3 s expire pendant cette image, et le toucher arrive à 0,63-0,69 s (0,73 s dans la série, 0,90 s au passage 1). Pour le crash, l'image la plus longue dure 46 ms et le toucher arrive à 0,3 s. Cause : à la première image d'orage, `GrillePixel.texture(nom, ORAGE)` crée en direct les textures d'orage qui ne sont pas encore prêtes : `matiere/skyline` 90-99 ms, `matiere/chaussee` 43 ms, `rue/fond_*`, `rue/batiment_*`, `banque`, `gazette` 15-19 ms chacune, `premier_plan_*_automne` 32 ms. **En conditions de jeu**, après 10 s d'attente (`_prechauffe` vide, plus aucune tâche de fond), il reste **une image de 306 ms** : skyline, `fond_1`, `fond_7` et premier plan de saison ne sont jamais préchauffés. La liste `_prechauffe` est construite dans `_construire()`, avant que ces images existent ; depuis c03d10a (A10), la skyline, les cumulus et les façades de fond sont générés en tâche de fond, donc absents de la liste. Même chose pour la nuit (variante 1 : ≈ 0,3 s de textures créées en direct). Effet pour le joueur : un à-coup visible au moment le plus dramatique (et à la première nuit), et un toucher pris en retard. Le « passer » reste correct (`delai=0.00`). Piste pour le développeur : ajouter à `_prechauffe` les images récoltées par `_recolter()` (variantes NUIT et ORAGE, et variantes de saison).
+
+### Critères d'acceptation (changements par rapport au passage 1)
+- [x] **CA-V1** : 350 vérifications, 44,5 s, import propre.
+- [x] **CA-V2** : génération 1 161 ms.
+- [x] **CA-V7** : sur la fusion, aucune erreur ; étiquettes au PC OK ; au téléphone, voir A2.
+- [x] **CA-V8** : banquier 2,20 s, journal 0,98 s, krach 1,59 s, crash 1,78 / 1,75 s, courrier 0,97 s, naissance 1,84 s ; passer : banquier 0,31 s, crash 0,29 s, naissance 0,30 s, krach 0,73 s (A11), toujours `delai=0.00`.
+- [x] **CA-V10** : titre lisible sur les 3 formats ; maison au repos après « Jouer ». Saisons : A3 en partie.
+- [x] **CA-V12** : 426 / 694 images/s en moyenne (l'à-coup d'A11 est ponctuel et ne compte pas dans cette moyenne).
+- [x] **CA-V13** : périmètre respecté (10 fichiers, tous dans le §1).
+- Les autres critères sont inchangés depuis le passage 1 (vérifiés par la série et les tests).
+
+### Non vérifié
+Le même qu'au passage 1 ; en plus, l'à-coup d'A11 dans une vraie partie lancée de janvier 1984 jusqu'au krach (mesuré seulement après 10 s de préchauffage, ce qui reproduit le cas d'une longue partie) et la durée de l'à-coup de la première nuit (textures mesurées, image non chronométrée).

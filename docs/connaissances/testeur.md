@@ -1,7 +1,7 @@
 # Base de connaissances du testeur
 
 > À lire au début de chaque mission (après `CLAUDE.md` et le socle `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-11-03 (PX2 : `lot/px2-interface` c890d61 KO ; PX1 : `lot/px1-ville` 48ecd10 KO, A1 titre). Avant : 2026-10-30 (02-L : `lot/02-logique` 252f8b0 OK ; PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
+> Dernière mise à jour : 2026-11-03 (PX2 : `lot/px2-interface` c890d61 KO ; PX1 : `lot/px1-ville` 48ecd10 KO, A1 titre, puis 7733938 OK). Avant : 2026-10-30 (02-L : `lot/02-logique` 252f8b0 OK ; PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
 
 ## 1. Règles de travail
 - Je ne modifie jamais un fichier suivi par Git dans le worktree d'un développeur ; pour les mutations, worktree jetable :
@@ -67,6 +67,8 @@
 - Copie de fusion = worktree jetable + merge, puis `git archive HEAD godot` depuis ce worktree avant de le supprimer. `capture.ps1` et `tests.ps1` d'une copie hors dépôt : `$env:JEUCLAUDE_GODOT` dans la même commande.
 - Zones fragiles : arbre de premier plan (bord droit de la vue) qui masque l'enseigne du titre ; hiver (recoloration en tâche de fond, arbres verts ou givrés selon le moment) ; étiquettes et `point_tete` qui ne tiennent pas compte du rectangle libre (frise au tél., panneau Mon argent) ; flèches ← → mangées par le focus des boutons ; `test_rue` génération 1,7 s / 2 s.
 - Relire en priorité : `titre`, `rue_gazette_tel`, `pause` (hiver), `crash_anim`, `voisins`.
+- Passage 2 (7733938 : OK) : 350 vérifications sur la branche, 395 sur la fusion ; génération 1,1 s ; `integrale` inchangée. A2 (étiquette sous la frise au tél.) et A3 (`pause` : arbre vert en hiver) toujours là ; A11 = à-coup au 1er orage.
+- **Mesurer un à-coup** : copie isolée (`Expand-Archive` du zip), y ajouter des `print("RUE …")` (seules les lignes `RUE *` passent le filtre de `capture_ville.ps1`) : horodatage + durée max d'image dans `_passer_apres`, et chrono de `GrillePixel.texture` (≥ 15 ms). Krach : image de 600 ms (300 ms après préchauffage) = textures ORAGE créées en direct (images faites en tâche de fond, absentes de `_prechauffe`). Supprimer les copies avec `cmd /c "rmdir /s /q \\?\<chemin littéral>"` (chemins trop longs de `.godot\editor` ; pas de variable dans la commande).
 
 ## 4 quinquies. PX2 (recette 2026-11-03, `lot/px2-interface` c890d61 : KO, 4 majeures)
 - Références : branche 334 (base 243bb82) ; fusion a74a202 + PX2 + PX1 48ecd10 : 447 ; `integrale` branche seule 156 645 F / 273,60 F (pré-02-L), fusion 160 749 F / 805,93 F / 11. `capture_interface.ps1 -Serie` 61 lancements ≈ 8-20 min (cibles lent) ; fps et `clic_dehors` non journalisés : relancer à la main.
