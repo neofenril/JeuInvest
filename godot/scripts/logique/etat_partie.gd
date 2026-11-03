@@ -11,7 +11,7 @@ extends RefCounted
 ## M. Lefranc (Banquier), la cadence des interruptions suit 13 §5.3, la naissance et l'héritage sont scriptés.
 
 const EPS := 0.005
-const VERSION_ETAT := 2          # 2 : historique des pop-ups, versements automatiques (préparés)
+const VERSION_ETAT := 3          # 2 : historique, versements automatiques ; 3 (lot 02) : flux du mois, cadence V3, migration douce
 const HISTORIQUE_MAX := 600
 
 # --- Configuration ---
@@ -54,6 +54,12 @@ var banque: Dictionary = {"actif": false}   # état du banquier (Banquier.etat_i
 ## Historique des pop-ups (retour du joueur du 27/10/2026), du plus ancien au plus récent : chaque
 ## notification et chaque modale résolue, avec le contenu complet pour la relecture (voir _historiser).
 var historique: Array = []
+## Flux du dernier changement de mois (P4, docs/15 §1.1) : revenus (intérêts acquis, coupons, dividendes) et
+## frais (gestion, versements automatiques) du joueur. Voir flux_du_mois().
+var flux_mois: Dictionary = {}
+## Vrai pendant le saut « jusqu'au prochain courrier » (réglé par l'autoload Partie, jamais sauvegardé) :
+## les entrées d'historique créées pendant ce temps sont « non lues ».
+var saut_en_cours := false
 
 
 # =====================================================================
@@ -87,8 +93,10 @@ func demarrer(config: Dictionary = {}) -> Dictionary:
 		for k in temoins:
 			temoins[k].cc += cc0 + livret0
 		_compter_epargne(cc0 + livret0, ab_courant())
+	flux_mois = _flux_vide()
 	var res := _entrer_mois(true)
 	_historiser_notifs(res["notifs"], m)
+	res["flux"] = flux_du_mois()
 	return res
 
 
@@ -611,9 +619,11 @@ func _apres_ordre(r: Dictionary, utilise: String) -> Dictionary:
 # =====================================================================
 
 ## Passe au mois suivant. Renvoie { notifs, modale, fin, m }. Ne fait rien si une modale est ouverte.
+## res["flux"] : flux du changement de mois (voir flux_du_mois).
 func avancer() -> Dictionary:
 	if fin != "" or not modale.is_empty():
-		return {"notifs": [], "modale": modale, "fin": fin, "m": m}
+		return {"notifs": [], "modale": modale, "fin": fin, "m": m, "flux": _flux_vide()}
+	flux_mois = _flux_vide()
 	var notifs := []
 	_fin_de_mois(notifs)
 	_historiser_notifs(notifs, m)
@@ -621,12 +631,62 @@ func avancer() -> Dictionary:
 		_allouer_temoins()
 		_enregistrer_hist()
 		fin = "fin"
-		return {"notifs": notifs, "modale": {}, "fin": fin, "m": m}
+		return {"notifs": notifs, "modale": {}, "fin": fin, "m": m, "flux": flux_du_mois()}
 	m += 1
 	var res := _entrer_mois(false)
 	_historiser_notifs(res["notifs"], m)
 	res["notifs"] = notifs + res["notifs"]
+	res["flux"] = flux_du_mois()
 	return res
+
+
+# =====================================================================
+# Flux du mois (P4 « Le mois utile », docs/15 §1.1)
+# =====================================================================
+# Un changement de mois = la fin du mois écoulé (intérêts acquis, frais de gestion) puis l'entrée dans le
+# nouveau (coupons, versements automatiques). Les variations de cours n'en font pas partie. Joueur seulement.
+# { revenus, frais (euros, ≥ 0), lignes: [{ id, nom, genre (interets | coupon | dividende | frais |
+#   frais_versement), montant (≥ 0), verse_en_decembre }] }. verse_en_decembre : intérêts acquis ce mois-ci
+# mais crédités au 31/12 (Livret A, PEL, assurance-vie, hors décembre). Le moteur ne verse pas de dividende
+# (les cours des actions sont des cours de bourse) : aucune ligne « dividende » pour l'instant.
+
+const GENRES_REVENUS := ["interets", "coupon", "dividende"]
+
+
+static func _flux_vide() -> Dictionary:
+	return {"revenus": 0.0, "frais": 0.0, "lignes": []}
+
+
+## Même contenu que res["flux"] du dernier changement de mois (copie).
+func flux_du_mois() -> Dictionary:
+	if flux_mois.is_empty():
+		return _flux_vide()
+	return flux_mois.duplicate(true)
+
+
+## Compte un mouvement du mois du joueur (appelé par le moteur, Produits et Versements).
+func noter_flux(genre: String, id: String, montant: float, verse_en_decembre := false) -> void:
+	if montant <= 0.0:
+		return
+	if flux_mois.is_empty():
+		flux_mois = _flux_vide()
+	var revenu := GENRES_REVENUS.has(genre)
+	flux_mois["revenus" if revenu else "frais"] = float(flux_mois["revenus" if revenu else "frais"]) + montant
+	for l: Dictionary in flux_mois["lignes"]:
+		if l["id"] == id and l["genre"] == genre:
+			l["montant"] = float(l["montant"]) + montant
+			return
+	flux_mois["lignes"].append({"id": id, "nom": nom_ligne(id), "genre": genre, "montant": montant,
+		"verse_en_decembre": verse_en_decembre})
+
+
+## Nom court d'une ligne (« Livret A », « SICAV », « Elf »).
+func nom_ligne(id: String) -> String:
+	var court := str(Banquier.info_produit(id).get("court", ""))
+	if court != "":
+		return court
+	var p := produit(id)
+	return str(p.get("court", p.get("nom", id)))
 
 
 func abandonner() -> void:
@@ -641,6 +701,7 @@ func _fin_de_mois(notifs: Array) -> void:
 	var decembre := Dates.mois(a) == 12
 	var t := Marche.taux_livret(a) / 100.0 / 12.0
 	var interets_joueur := 0.0
+	noter_flux("interets", "livret", joueur.livret * t, not decembre)
 	for w in tous():
 		w.livret_int += w.livret * t
 		if decembre:
@@ -653,7 +714,9 @@ func _fin_de_mois(notifs: Array) -> void:
 	var g := float(regles["sicav"]["gestion"]) / 100.0 / 12.0
 	for id in joueur.lignes:
 		if produit(id).get("type", "") == "sicav":
-			_noter_frais(joueur, valeur_ligne(joueur, id) * g / (1.0 - g))
+			var gestion := valeur_ligne(joueur, id) * g / (1.0 - g)
+			_noter_frais(joueur, gestion)
+			noter_flux("frais", id, gestion)
 	var credite := Produits.fin_de_mois(self, joueur)
 	if banquier_actif():
 		banque["interets_annee"] = float(banque.get("interets_annee", 0.0)) + interets_joueur + credite
@@ -757,10 +820,10 @@ func _entrer_mois(initial: bool) -> Dictionary:
 	_stats_mois()
 	_enregistrer_hist()
 
-	# Au plus une modale par mois : priorité marché > date historique > vie > présentation
+	# Au plus une modale par mois (démo : Cadence, R-CADENCE de docs/15 §0.1)
 	if modale.is_empty() and not file.is_empty():
 		if banquier_actif():
-			modale = _choisir_cadence(notifs)
+			modale = Cadence.choisir(self, notifs)
 		else:
 			file.sort_custom(_avant_dans_file)
 			modale = file.pop_front()
@@ -772,75 +835,6 @@ static func _avant_dans_file(x: Dictionary, z: Dictionary) -> bool:
 	if x["prio"] != z["prio"]:
 		return x["prio"] < z["prio"]
 	return x["m"] < z["m"]
-
-
-## Rang d'une modale en attente (13 §5.3, règle 1) : marché, date historique, événement scripté,
-## présentation à sa date limite, événement de vie, présentation.
-func _rang(it: Dictionary) -> float:
-	match it["kind"]:
-		"marche":
-			return 0.0
-		"banquier":
-			if it.get("historique", false):
-				return 1.0
-			return 2.5 if m >= int(it.get("echeance", 1 << 30)) else 4.0
-		"vie":
-			return 2.0 if it.get("force", false) else 3.0
-	return 5.0
-
-
-## Cadence des interruptions (13 §5.3) : une par mois au plus ; au moins « ecart_min » mois entre deux,
-## sauf marché, dates historiques, événements scriptés et présentations à leur date limite ; les
-## événements de vie aléatoires sans décision qui ne peuvent pas passer deviennent des notifications
-## (et toujours au-delà du plafond d'interruptions). Les présentations attendent le mois suivant.
-func _choisir_cadence(notifs: Array) -> Dictionary:
-	var cad: Dictionary = Banquier.donnees()["cadence"]
-	var tri := file.duplicate()
-	tri.sort_custom(_avant_cadence)
-	var ecart_ok := m - int(banque["derniere_interruption"]) >= int(cad["ecart_min"])
-	var plafond_atteint := int(banque["interruptions"]) >= int(cad["plafond_interruptions"])
-	var choisi := {}
-	for it in tri:
-		var mineur: bool = it["kind"] == "vie" and not it.get("force", false) and not it.get("decision", false)
-		if mineur and plafond_atteint:
-			continue
-		var libre: bool = it["kind"] == "marche" or it.get("historique", false) or it.get("force", false) or ecart_ok \
-			or m >= int(it.get("echeance", 1 << 30))
-		if libre:
-			choisi = it
-			break
-	if not choisi.is_empty():
-		file.erase(choisi)
-	for it in file.duplicate():
-		if it["kind"] == "vie" and not it.get("force", false) and not it.get("decision", false):
-			file.erase(it)
-			_vie_en_notification(int(it["idx"]), notifs)
-	if not choisi.is_empty():
-		banque["interruptions"] = int(banque["interruptions"]) + 1
-		banque["derniere_interruption"] = m
-		var quoi := str(choisi.get("id", ""))
-		if choisi.has("idx"):
-			quoi = str(calendrier[int(choisi["idx"])]["type"])
-		var motif := "ecart"
-		if not ecart_ok:
-			if choisi["kind"] == "marche":
-				motif = "marche"
-			elif choisi.get("historique", false):
-				motif = "historique"
-			elif choisi.get("force", false):
-				motif = "scripte"
-			else:
-				motif = "echeance"
-		banque["interruptions_liste"].append({"m": m, "kind": choisi["kind"], "id": quoi, "motif": motif})
-	return choisi
-
-
-func _avant_cadence(x: Dictionary, z: Dictionary) -> bool:
-	var rx := _rang(x)
-	var rz := _rang(z)
-	if rx != rz:
-		return rx < rz
-	return int(x["m"]) < int(z["m"])
 
 
 # =====================================================================
@@ -1025,8 +1019,7 @@ func forcer_naissance(jumeaux: bool) -> Dictionary:
 		file.sort_custom(_avant_dans_file)
 		modale = file.pop_front()
 		if banquier_actif():
-			banque["interruptions"] = int(banque["interruptions"]) + 1
-			banque["derniere_interruption"] = m
+			Cadence.noter(self, modale)
 		return modale
 	return {}
 
@@ -1393,9 +1386,15 @@ func _journaliser(texte: String) -> void:
 # contenu (de quoi rouvrir la pop-up en lecture seule : contenu de modale ou notification) }.
 
 const GENRES_MODALE := {"banquier": "appel", "marche": "journal", "vie": "courrier"}
+## Genres et sources possibles d'une entrée (V3, docs/15 §8) : « carte », « projet », « voisin », « gazette » et la
+## source « rue » n'ont encore aucune entrée (lots 03 à 05).
+const GENRES_HISTORIQUE := ["appel", "journal", "courrier", "notif", "carte", "projet", "voisin", "gazette"]
+const SOURCES_HISTORIQUE := ["maison", "banque", "media", "rue"]
 
 
+## Chaque entrée porte « lu » : faux si elle a été créée pendant un saut (notification franchie sans être vue).
 func _ajouter_historique(entree: Dictionary) -> void:
+	entree["lu"] = not saut_en_cours
 	historique.append(entree)
 	while historique.size() > HISTORIQUE_MAX:
 		historique.pop_front()
@@ -1491,6 +1490,23 @@ func historique_recent(source := "") -> Array:
 	return out
 
 
+## Nombre d'entrées d'historique créées pendant un saut et pas encore vues (badge du bouton HISTORIQUE),
+## filtrées par source ("" = toutes).
+func non_lues(source := "") -> int:
+	var n := 0
+	for h: Dictionary in historique:
+		if not bool(h.get("lu", true)) and (source == "" or h.get("source", "") == source):
+			n += 1
+	return n
+
+
+## Marque comme vues les entrées non lues de la source ("" = toutes).
+func marquer_lues(source := "") -> void:
+	for h: Dictionary in historique:
+		if source == "" or h.get("source", "") == source:
+			h["lu"] = true
+
+
 # =====================================================================
 # Versements automatiques mensuels (11 §8) : réglés depuis la fiche du produit, exécutés au début du mois
 # =====================================================================
@@ -1518,7 +1534,8 @@ func historiser_evenement(n: Dictionary) -> void:
 # =====================================================================
 
 const CHAMPS_ETAT := ["m", "m_depart", "m_fin", "salaire_base", "calendrier", "file", "modale", "choix", "panique",
-	"epargne_nette", "bag_mis", "decouvert_mois", "enfants", "fin", "hist", "stats", "journal", "banque", "historique"]
+	"epargne_nette", "bag_mis", "decouvert_mois", "enfants", "fin", "hist", "stats", "journal", "banque", "historique",
+	"flux_mois"]
 
 
 func vers_dict() -> Dictionary:
@@ -1531,23 +1548,76 @@ func vers_dict() -> Dictionary:
 	return d
 
 
-## Recrée une partie à partir d'une sauvegarde. Renvoie null si le contenu est inutilisable.
+## Valeurs par défaut de l'état sauvegardé (migration douce, T14) : TABLE UNIQUE = l'état d'une partie neuve de
+## même configuration (premier mois joué). Tout champ absent d'une sauvegarde de format 3 (ou d'un type
+## inattendu) prend la valeur d'ici ; un dictionnaire présent mais incomplet est complété clé par clé.
+## Un champ ajouté par un lot suivant n'a donc qu'à être déclaré dans CHAMPS_ETAT et initialisé par demarrer().
+## Exceptions : aucune modale ni file d'attente par défaut (la présentation du Livret A du premier mois ne doit
+## pas resurgir au milieu d'une partie).
+static func defauts_etat(config: Dictionary) -> Dictionary:
+	var neuf := EtatPartie.new()
+	neuf.demarrer(config)
+	var d := neuf.vers_dict()
+	d["modale"] = {}
+	d["file"] = []
+	return d
+
+
+## Dictionnaires d'état complétés clé par clé lors d'une migration (les autres sont pris tels quels).
+const CHAMPS_COMPLETES := ["banque", "stats", "hist"]
+
+
+## Recrée une partie à partir d'une sauvegarde. Renvoie null si le contenu est inutilisable (autre version
+## de l'état). Champs absents : valeurs par défaut (defauts_etat), puis réparation des références (_reparer).
 static func depuis_dict(d: Dictionary) -> EtatPartie:
-	if int(d.get("version_etat", -1)) != VERSION_ETAT or not d.get("config", null) is Dictionary:
+	if int(d.get("version_etat", VERSION_ETAT)) != VERSION_ETAT:
 		return null
-	for k in CHAMPS_ETAT + ["joueur", "temoins"]:
-		if not d.has(k):
-			return null
+	var config: Dictionary = d["config"] if d.get("config", null) is Dictionary else Donnees.config_demo()
+	var defaut := defauts_etat(config)
 	var e := EtatPartie.new()
-	e._configurer(d["config"])
-	e.joueur.depuis_dict(d["joueur"])
+	e._configurer(config)
+	e.joueur.depuis_dict(defaut["joueur"])
+	if d.get("joueur", null) is Dictionary:
+		e.joueur.depuis_dict(d["joueur"])
+	var tem: Dictionary = d["temoins"] if d.get("temoins", null) is Dictionary else {}
 	e.temoins = {}
 	for k in ["matelas", "livret", "indice"]:
 		var w := Portefeuille.new()
-		if d["temoins"].has(k):
-			w.depuis_dict(d["temoins"][k])
+		w.depuis_dict(defaut["temoins"][k])
+		if tem.get(k, null) is Dictionary:
+			w.depuis_dict(tem[k])
 		e.temoins[k] = w
 	for k in CHAMPS_ETAT:
-		var v: Variant = d[k]
+		var v: Variant = defaut[k]
+		if d.has(k) and typeof(d[k]) == typeof(defaut[k]):
+			v = d[k]
+			if v is Dictionary and CHAMPS_COMPLETES.has(k):
+				var complet: Dictionary = (v as Dictionary).duplicate(true)
+				complet.merge(defaut[k], false)
+				v = complet
 		e.set(k, v.duplicate(true) if (v is Dictionary or v is Array) else v)
+	e._reparer()
 	return e
+
+
+## Après une migration : écarte les références devenues incohérentes (événement de vie absent ou pas encore
+## déclenché, présentation « en file » qui n'y est plus), pour que la partie aille jusqu'au bout.
+func _reparer() -> void:
+	var valide := func(it: Dictionary) -> bool:
+		if it.get("kind", "") != "vie":
+			return it.has("kind")
+		var i := int(it.get("idx", -1))
+		return i >= 0 and i < calendrier.size() and calendrier[i].get("declenche", false) and calendrier[i].has("montant")
+	if not modale.is_empty() and not valide.call(modale):
+		modale = {}
+	file = file.filter(func(it: Variant) -> bool: return it is Dictionary and valide.call(it))
+	if banquier_actif():
+		var en_file: Dictionary = banque.get("en_file", {})
+		for id in en_file.keys():
+			var present := str(modale.get("id", "")) == str(id)
+			for it: Dictionary in file:
+				if str(it.get("id", "")) == str(id):
+					present = true
+			if not present:
+				en_file.erase(id)
+	m = clampi(m, m_depart, m_fin)

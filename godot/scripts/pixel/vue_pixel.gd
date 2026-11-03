@@ -33,6 +33,18 @@ var _marge_bas := 72.0
 var _zone := Rect2()
 var _a_zone := false
 var _signature := ""
+## PX1 (arbitrage D4, lot_px1 §2.3) : la vue montre toujours HAUTEUR_ART px d'art de haut ; le monde est
+## rendu à N = max(2, ceil(h / 540)) dans le SubViewport (caméra zoomée ×N : blocs N × N nets), puis
+## l'image est réduite (filtre linéaire) d'un rapport R = h / (540 × N) ≤ 1, jamais agrandie. Faux : règle
+## de PX0 (vitrine), N = floor(h / 540), sans réduction.
+var mode_reduction := false
+var _reduction := 1.0
+
+
+## (N, R) de la règle PX1 pour une taille physique : N entier ≥ 2, R = h / (540 × N) ≤ 1. Fonction pure.
+static func facteur_et_reduction(physique: Vector2i) -> Vector2:
+	var n := maxi(2, ceili(physique.y / float(HAUTEUR_ART)))
+	return Vector2(n, physique.y / (float(HAUTEUR_ART) * n))
 
 
 func _init() -> void:
@@ -96,6 +108,9 @@ func recalculer() -> void:
 	if _echelle_xy.x <= 0.0 or _echelle_xy.y <= 0.0:
 		_echelle_xy = Vector2.ONE * (physique.y / get_viewport_rect().size.y)
 	_echelle = _echelle_xy.y
+	if mode_reduction:
+		_recalculer_reduction(physique)
+		return
 	var n := _force if _force > 0 else maxi(1, floori(physique.y / float(HAUTEUR_ART)))
 	_taille_vue = Vector2i(ceili(physique.x / n), ceili(physique.y / n))
 	_sv.size = _taille_vue
@@ -107,6 +122,38 @@ func recalculer() -> void:
 	if change:
 		facteur_change.emit(n)
 	vue_change.emit()
+
+
+func _recalculer_reduction(physique: Vector2) -> void:
+	var fr := facteur_et_reduction(Vector2i(physique))
+	var n := _force if _force > 0 else int(fr.x)
+	_reduction = physique.y / (float(HAUTEUR_ART) * n)
+	_taille_vue = Vector2i(ceili(HAUTEUR_ART * physique.x / physique.y), HAUTEUR_ART)
+	_sv.size = _taille_vue * n
+	camera.zoom = Vector2(n, n)
+	_rect.position = Vector2.ZERO
+	_rect.size = Vector2(_taille_vue * n) * _reduction / _echelle_xy
+	_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if _reduction > 0.999 else CanvasItem.TEXTURE_FILTER_LINEAR
+	var change := n != _facteur
+	_facteur = n
+	if change:
+		facteur_change.emit(n)
+	vue_change.emit()
+
+
+## Rapport de réduction R (1 hors mode_reduction).
+func reduction() -> float:
+	return _reduction if mode_reduction else 1.0
+
+
+## Pixels physiques par pixel d'art (N × R).
+func px_physiques_par_art() -> float:
+	return float(_facteur) * reduction()
+
+
+## Teinte d'affichage (gel de la pause) : modulate de l'image affichée, jamais dans le SubViewport.
+func teinter(c: Color) -> void:
+	_rect.modulate = c
 
 
 func facteur() -> int:
@@ -139,7 +186,7 @@ func regler_marges(haut_virtuel: float, bas_virtuel: float) -> void:
 
 ## Hauteur des bandes du HUD en px d'art (haut, bas).
 func marges_art() -> Vector2:
-	return Vector2(_marge_haut, _marge_bas) * _echelle_xy.y / float(_facteur)
+	return Vector2(_marge_haut, _marge_bas) * _echelle_xy.y / px_physiques_par_art()
 
 
 ## Cadre la zone : son bas posé sur le haut de la frise, centrée en largeur, arrondi au pixel d'art.
@@ -164,12 +211,17 @@ func origine_vue() -> Vector2:
 
 ## px d'art du monde → px virtuels de l'interface.
 func monde_vers_ecran(p: Vector2) -> Vector2:
-	return (p - camera.position) * float(_facteur) / _echelle_xy
+	return (p - camera.position) * px_physiques_par_art() / _echelle_xy
 
 
 ## px virtuels de l'interface → px d'art du monde.
 func ecran_vers_monde(p: Vector2) -> Vector2:
-	return p * _echelle_xy / float(_facteur) + camera.position
+	return p * _echelle_xy / px_physiques_par_art() + camera.position
+
+
+## px d'art par px virtuel, axe par axe.
+func art_par_virtuel() -> Vector2:
+	return _echelle_xy / px_physiques_par_art()
 
 
 ## Image du SubViewport, avant agrandissement (taille_vue).

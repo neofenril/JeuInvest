@@ -142,7 +142,7 @@ class Couche extends Node2D:
 				_op(op, PalettePixel.NUIT, m)
 
 	func _op(op: Dictionary, variante: int, alpha: float) -> void:
-		var teinte := Color(1, 1, 1, alpha)
+		var teinte := Color(Color.WHITE, alpha)
 		if op.has("rect"):
 			draw_rect(Rect2(op["rect"]), PalettePixel.couleur_alpha(op["couleur"], alpha, variante))
 			return
@@ -193,7 +193,7 @@ class Mobile extends Node2D:
 	func _img(p: Array, variante: int, alpha: float) -> void:
 		var tex := GrillePixel.texture(p[0], variante)
 		if tex != null:
-			draw_texture(tex, Vector2(p[1] - GrillePixel.origine(p[0])), Color(1, 1, 1, alpha))
+			draw_texture(tex, Vector2(p[1] - GrillePixel.origine(p[0])), Color(Color.WHITE, alpha))
 
 
 ## Halos de lumière (calque additif) : disques pixellisés couleur lumiere.
@@ -205,7 +205,7 @@ class Halos extends Node2D:
 		for c in centres:
 			for h in rayons:
 				var nom := "decor/halo_%d" % h[0]
-				draw_texture(GrillePixel.texture(nom), Vector2(c - GrillePixel.origine(nom)), Color(1, 1, 1, h[1]))
+				draw_texture(GrillePixel.texture(nom), Vector2(c - GrillePixel.origine(nom)), Color(Color.WHITE, h[1]))
 
 
 func _init() -> void:
@@ -512,7 +512,7 @@ func _set_melange(v: float) -> void:
 func _maj_lumieres() -> void:
 	if _lumieres != null:
 		_lumieres.visible = _lumieres_visibles and _melange > 0.0
-		_lumieres.modulate = Color(1, 1, 1, _melange)
+		_lumieres.modulate = Color(Color.WHITE, _melange)
 
 
 # --- Animation -------------------------------------------------------------------------------------

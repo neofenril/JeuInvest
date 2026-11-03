@@ -6,14 +6,17 @@
 #   -SansImport      ne pas relancer l'import du projet (--headless --import, fait par défaut à chaque fois)
 #   -Recette         ajoute les tests du testeur : godot\tests\recette\test_*
 #   -Filtre <motif>  ne lance que les tests dont le nom contient le motif (jokers * acceptés), ex. -Filtre demo
-#   -Autocontrole    lance seulement tests\autocontrole\erreur_volontaire.gd (erreur de script volontaire,
-#                    code 0) : renvoie 0 seulement si l'erreur est détectée et signalée
+#   -Joueur          passe « -- --joueur » aux tests de recette (avec -Recette) : version du joueur simulée
+#                    (raccourcis de test retirés), ex. tests.ps1 -Recette -Joueur
+#   -Autocontrole    lance seulement tests\autocontrole\erreur_volontaire.gd (erreur de script volontaire)
+#                    et erreur_moteur.gd (ligne « ERROR: » du moteur), tous deux de code 0 : renvoie 0
+#                    seulement si les deux erreurs sont détectées et signalées
 #   -Delai <s>       durée maximale d'un test (120 s par défaut) ; au-delà il est arrêté et compté en échec
 # Découverte : tests\test_*.tscn lancés comme scènes ; tests\test_*.gd lancés en --script, sauf s'ils ont
 # un .tscn du même nom (script de la scène).
 # Un test (ou l'import) échoue si son code de sortie n'est pas 0 OU si sa sortie (stdout + stderr) contient
-# une erreur de script : SCRIPT ERROR, Parse Error, Failed to load script, Invalid call, Invalid access,
-# Cannot call method. Les lignes fautives sont réaffichées.
+# une erreur : SCRIPT ERROR, Parse Error, Failed to load script, Invalid call, Invalid access,
+# Cannot call method, ou une ligne « ERROR: » du moteur (T17). Les lignes fautives sont réaffichées.
 # Fichiers user:// : aucun test_*_<pid>.sav des tests lancés ne doit rester ; la sauvegarde du joueur
 # (partie_en_cours.sav) doit être identique avant et après (empreinte SHA-256).
 # Godot : voir trouver_godot.ps1 (variable JEUCLAUDE_GODOT, dépôt, dépôt principal d'un worktree).
@@ -22,13 +25,14 @@ param(
     [switch]$Recette,
     [string]$Filtre = "",
     [switch]$Autocontrole,
+    [switch]$Joueur,
     [int]$Delai = 120
 )
 
 . (Join-Path $PSScriptRoot "trouver_godot.ps1")
 if (-not $godot) { exit 3 }   # message déjà affiché par trouver_godot.ps1
 
-$motifErreur = 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access|Cannot call method'
+$motifErreur = 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access|Cannot call method|^\s*ERROR:'
 $dossierUser = Join-Path $env:APPDATA "Godot\app_userdata\JeuClaude"
 $sauvegardeJoueur = Join-Path $dossierUser "partie_en_cours.sav"
 $temp = Join-Path ([System.IO.Path]::GetTempPath()) ("jeuclaude_tests_" + $PID)
@@ -107,24 +111,36 @@ function Show-Resultat($r, [bool]$sortieComplete) {
 # Liste des tests
 # ---------------------------------------------------------------------
 $tests = @()
-function Add-Tests([string]$dossier, [string]$prefixeRes) {
+function Add-Tests([string]$dossier, [string]$prefixeRes, [string[]]$argsUtilisateur = @()) {
     if (-not (Test-Path -LiteralPath $dossier)) { return }
     $liste = @()
+    $suffixe = @()
+    if ($argsUtilisateur.Count -gt 0) { $suffixe = @("--") + $argsUtilisateur }
     $scenes = @(Get-ChildItem -LiteralPath $dossier -Filter "test_*.tscn" -File)
-    foreach ($s in $scenes) { $liste += [pscustomobject]@{ Nom = $s.BaseName; Args = @("$prefixeRes/$($s.Name)") } }
+    foreach ($s in $scenes) { $liste += [pscustomobject]@{ Nom = $s.BaseName; Args = @("$prefixeRes/$($s.Name)") + $suffixe } }
     foreach ($g in @(Get-ChildItem -LiteralPath $dossier -Filter "test_*.gd" -File)) {
         if (Test-Path -LiteralPath (Join-Path $dossier ($g.BaseName + ".tscn"))) { continue }
-        $liste += [pscustomobject]@{ Nom = $g.BaseName; Args = @("--script", "$prefixeRes/$($g.Name)") }
+        $liste += [pscustomobject]@{ Nom = $g.BaseName; Args = @("--script", "$prefixeRes/$($g.Name)") + $suffixe }
     }
     return $liste
 }
 
+$autocontroles = @("autocontrole_erreur_volontaire", "autocontrole_erreur_moteur")
 if ($Autocontrole) {
-    $tests = @([pscustomobject]@{ Nom = "autocontrole_erreur_volontaire"; Args = @("--script", "res://tests/autocontrole/erreur_volontaire.gd") })
+    $tests = @([pscustomobject]@{ Nom = "autocontrole_erreur_volontaire"; Args = @("--script", "res://tests/autocontrole/erreur_volontaire.gd") },
+        [pscustomobject]@{ Nom = "autocontrole_erreur_moteur"; Args = @("--script", "res://tests/autocontrole/erreur_moteur.gd") })
 } else {
+    if ($Joueur -and -not $Recette) { Write-Host "Remarque : -Joueur ne concerne que les tests de recette (ajouter -Recette)." }
     foreach ($x in @(Add-Tests (Join-Path $projet "tests") "res://tests")) { if ($null -ne $x) { $tests += $x } }
     if ($Recette) {
-        foreach ($x in @(Add-Tests (Join-Path $projet "tests\recette") "res://tests/recette")) { if ($null -ne $x) { $tests += $x } }
+        $argsRecette = @()
+        if ($Joueur) { $argsRecette = @("--joueur") }
+        foreach ($x in @(Add-Tests (Join-Path $projet "tests\recette") "res://tests/recette" $argsRecette)) {
+            if ($null -ne $x) {
+                if ($Joueur) { $x.Nom = $x.Nom + "_joueur" }
+                $tests += $x
+            }
+        }
     }
     if ($Filtre -ne "") {
         $motif = if ($Filtre.Contains("*")) { $Filtre } else { "*$Filtre*" }
@@ -156,6 +172,7 @@ if (-not $SansImport) {
 
 foreach ($t in $tests) {
     $r = Invoke-Godot $t.Nom (@("--headless", "--path", $projet) + $t.Args)
+    if ($t.Args -contains "--joueur") { Write-Host ""; Write-Host "(lancé avec : -- --joueur)" }
     Show-Resultat $r $true
     $resultats += $r
 }
@@ -193,13 +210,18 @@ Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
 
 $proprete = ($nbEchecs -eq 0 -and $restes.Count -eq 0 -and $sauvegardeIntacte)
 if ($Autocontrole) {
-    $auto = $resultats | Where-Object { $_.Nom -eq "autocontrole_erreur_volontaire" }
     $importPropre = (@($resultats | Where-Object { $_.Nom -eq "import" -and -not $_.Propre }).Count -eq 0)
-    if ($auto.NbErreurs -gt 0 -and $auto.Code -eq 0 -and $importPropre -and $restes.Count -eq 0) {
-        Write-Host "AUTOCONTRÔLE RÉUSSI : l'erreur de script volontaire (code de sortie 0) a été détectée et signalée."
+    $detectees = 0
+    foreach ($nomAuto in $autocontroles) {
+        $auto = $resultats | Where-Object { $_.Nom -eq $nomAuto }
+        if ($null -ne $auto -and $auto.NbErreurs -gt 0 -and $auto.Code -eq 0) { $detectees++ }
+        else { Write-Host "Non détectée : $nomAuto" }
+    }
+    if ($detectees -eq $autocontroles.Count -and $importPropre -and $restes.Count -eq 0) {
+        Write-Host "AUTOCONTRÔLE RÉUSSI : l'erreur de script volontaire et la ligne « ERROR: » du moteur (codes de sortie 0) ont été détectées et signalées."
         exit 0
     }
-    Write-Host "AUTOCONTRÔLE ÉCHOUÉ : l'erreur volontaire n'a pas été détectée (ou l'import n'est pas propre)."
+    Write-Host "AUTOCONTRÔLE ÉCHOUÉ : une erreur volontaire n'a pas été détectée (ou l'import n'est pas propre)."
     exit 1
 }
 if ($proprete) {

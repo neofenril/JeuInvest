@@ -1,7 +1,7 @@
 # Base de connaissances du testeur
 
 > À lire au début de chaque mission (après `CLAUDE.md` et le socle `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-30 (PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
+> Dernière mise à jour : 2026-11-03 (PX2 : `lot/px2-interface` c890d61 KO ; PX1 : `lot/px1-ville` 48ecd10 KO, A1 titre, puis 7733938 OK). Avant : 2026-10-30 (02-L : `lot/02-logique` 252f8b0 OK ; PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
 
 ## 1. Règles de travail
 - Je ne modifie jamais un fichier suivi par Git dans le worktree d'un développeur ; pour les mutations, worktree jetable :
@@ -50,7 +50,37 @@
 - `.ttf.import` non suivis dans le dépôt principal : ils bloqueront la fusion de `lot/px0-interface` dans `main` (à retirer juste avant).
 - Pas d'étape « orage » dans px0 : l'orage n'est contrôlé que par test_pixel.
 
+## 4 ter. Lot 02-L (recette 2026-10-30, `lot/02-logique` 252f8b0 : OK, 4 mineures)
+- Références : branche 258 vérifications (avec recette `-Joueur`), fusion avec `main` 972358a : 335. `test_cadence` imprime la liste des interruptions par graine (80 parties, 11-13, moy. 11,41) ; `test_demo` 40 graines passif : `main` {11:29, 12:11} → V3 {11:31, 12:9}.
+- **Nouvelle référence `integrale` après 02-L : 160 749 F, frais 805,93 F, 11 interruptions** (graine 11 ; la cadence V3 décale D05/D06, le scénario « une présentation sur deux » achète la SICAV au lieu de l'assurance-vie). L'ancienne (156 645 F) ne vaut plus que pour `main` avant F1.
+- Expliquer un écart de chiffres : instrumenter `scenarios/outils.gd` **dans la copie isolée** (print de `banque.interruptions_liste`, `joueur.lignes`) et comparer `main` / fusion.
+- Vraie sauvegarde d'un ancien format : script jetable dans la copie de `main` (`Sauvegarde.ecrire(e, {}, <chemin absolu scratchpad>)`), lu par un script dans la copie de la branche. `Partie.sauvegarder()` ne fait rien sans `sauvegarde_auto = true`.
+- Scènes de test de l'autoload `Partie` : `.tscn` minimal + `Partie._process(1.4)` en boucle (synchrone, headless).
+- Exe exporté : passer `--capture=` avec des `/` (avec des `\` via Start-Process : « Can't save PNG at path '' »). Présence d'un fichier dans le paquet : chercher le chemin `data/...` dans les octets de l'exe.
+- Copies isolées : `custom_user_dir_name` crée `%APPDATA%\<nom>` (pas sous `Godot\app_userdata`) : y supprimer à la fin.
+- Zone fragile : les interruptions datées ne contournent plus l'écart de 2 mois (seul marché → panne) ; à surveiller quand cartes et projets (03-04) rempliront le calendrier. Saut + modale de marché → pause (question ouverte au CDP). Aucun dividende dans le moteur (genre `dividende` jamais émis).
+- Vu le 30/10 : `godot/export_presets.cfg` modifié non commité **dans le dépôt principal** (pas par moi) : toujours faire `git status` du dépôt principal en début et fin de recette.
+
+## 4 quater. PX1 (recette 2026-11-03, `lot/px1-ville` 48ecd10 : KO, 1 majeure A1 titre)
+- Série `capture_ville.ps1 -Serie` ≈ 500 s, fenêtrée (plein écran à 1080p) : la lancer en arrière-plan et attendre la ligne « PX1 : » dans `godot/captures/px1_serie.log`. Ne pas lancer de tests en parallèle (fps, génération ≤ 2 s).
+- Références PX1 : branche 347 vérifications ; fusion avec a74a202 : 392 ; `integrale` inchangée (160 749 F / 805,93 F / 11) ; trafic ×1 / 2,5 / 4,5 exact ; fps 421 (1080) / 687 (tél.).
+- Copie de fusion = worktree jetable + merge, puis `git archive HEAD godot` depuis ce worktree avant de le supprimer. `capture.ps1` et `tests.ps1` d'une copie hors dépôt : `$env:JEUCLAUDE_GODOT` dans la même commande.
+- Zones fragiles : arbre de premier plan (bord droit de la vue) qui masque l'enseigne du titre ; hiver (recoloration en tâche de fond, arbres verts ou givrés selon le moment) ; étiquettes et `point_tete` qui ne tiennent pas compte du rectangle libre (frise au tél., panneau Mon argent) ; flèches ← → mangées par le focus des boutons ; `test_rue` génération 1,7 s / 2 s.
+- Relire en priorité : `titre`, `rue_gazette_tel`, `pause` (hiver), `crash_anim`, `voisins`.
+- Passage 2 (7733938 : OK) : 350 vérifications sur la branche, 395 sur la fusion ; génération 1,1 s ; `integrale` inchangée. A2 (étiquette sous la frise au tél.) et A3 (`pause` : arbre vert en hiver) toujours là ; A11 = à-coup au 1er orage.
+- **Mesurer un à-coup** : copie isolée (`Expand-Archive` du zip), y ajouter des `print("RUE …")` (seules les lignes `RUE *` passent le filtre de `capture_ville.ps1`) : horodatage + durée max d'image dans `_passer_apres`, et chrono de `GrillePixel.texture` (≥ 15 ms). Krach : image de 600 ms (300 ms après préchauffage) = textures ORAGE créées en direct (images faites en tâche de fond, absentes de `_prechauffe`). Supprimer les copies avec `cmd /c "rmdir /s /q \\?\<chemin littéral>"` (chemins trop longs de `.godot\editor` ; pas de variable dans la commande).
+
+## 4 quinquies. PX2 (recette 2026-11-03, `lot/px2-interface` c890d61 : KO, 4 majeures)
+- Références : branche 334 (base 243bb82) ; fusion a74a202 + PX2 + PX1 48ecd10 : 447 ; `integrale` branche seule 156 645 F / 273,60 F (pré-02-L), fusion 160 749 F / 805,93 F / 11. `capture_interface.ps1 -Serie` 61 lancements ≈ 8-20 min (cibles lent) ; fps et `clic_dehors` non journalisés : relancer à la main.
+- Échelle PX2 : `content_scale_mode = DISABLED`, facteur T/3 ; PC T = floor(h/324) ; mobile T selon le dpi seul → **zone logique d'un vrai téléphone (2400×1080 à 400 dpi) = 1440×648**, plus petite que le téléphone simulé 1600×720. Simuler : copie isolée avec `FENETRE_TELEPHONE` modifié dans `scripts/ecran.gd` (1440×648, 1200×540) + `--telephone`.
+- Cas PC à tester : fenêtre 1920×1009 (1080p fenêtré, T=3) et < 648 px de haut (T=1).
+- Prouver une correction : rejouer l'étape sur une copie avec l'ancien fichier (`cmd /c git show <base>:<f> > copie` pour garder les octets ; pas `Out-String`).
+- Glyphes : script `--script` dans une copie avec `PolicesPixel.manquants(chemin, texte)` sur tous les caractères non ASCII des données et scripts. Manquent : → ← ▲ ▼ ○ ●.
+- Zones fragiles : panneau « Mon argent » plus haut que sa place (recouvre la frise) ; montants en Pixelify dans les boutons (5 → S) ; flèches de bord et étiquettes hors `rect_libre()` à la fusion PX1 ; `debordements` ne voit pas les conteneurs.
+- `Copy-Item -Recurse` d'une copie importée : erreurs de chemin trop long sur `.godot\editor\*.cfg` sans conséquence.
+
 ## 5. Anomalies récurrentes / à surveiller
 - Fichiers « recopiés de main » dans une branche (tests.ps1, trouver_godot.ps1 sur px0-ville) : vérifier `git diff main <branche> -- <fichier>` vide → sans conflit, mineur.
 - Ce que le développeur marque « non vérifié » : le vérifier en priorité (lot 01 : `Jouer_Godot.bat` cassé sans variable).
+- Contrôles automatiques au vert ≠ écran correct : à PX2, 61 lancements verts mais 3 défauts visibles à l'image (débordement de conteneur, police des chiffres, élément sous un panneau). Toujours relire chaque image et comparer à `main`.
 - Polices `*.ttf.import` non suivies dans les worktrees : seul dev-interface PX0 les commite (CA-C1 de `lot_px0.md`) ; ailleurs, les signaler s'ils apparaissent dans un diff.

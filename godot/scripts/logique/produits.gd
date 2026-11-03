@@ -235,8 +235,12 @@ static func fin_de_mois(e: EtatPartie, w: Portefeuille) -> float:
 	var a := e.ab_courant()
 	var decembre := Dates.mois(a) == 12
 	var credite := 0.0
+	var du_joueur := w == e.joueur
 	if not w.pel.is_empty():
-		w.pel["courus"] = float(w.pel["courus"]) + float(w.pel["solde"]) * float(w.pel["taux"]) / 100.0 / 12.0
+		var acquis := float(w.pel["solde"]) * float(w.pel["taux"]) / 100.0 / 12.0
+		w.pel["courus"] = float(w.pel["courus"]) + acquis
+		if du_joueur:
+			e.noter_flux("interets", "pel", acquis, not decembre)
 		if decembre:
 			var i := float(w.pel["courus"])
 			w.pel["solde"] = float(w.pel["solde"]) + i
@@ -246,6 +250,8 @@ static func fin_de_mois(e: EtatPartie, w: Portefeuille) -> float:
 	if not w.av.is_empty():
 		var t := taux_av(Dates.annee(a)) / 100.0 / 12.0
 		w.av["courus"] = float(w.av["courus"]) + float(w.av["valeur"]) * t
+		if du_joueur:
+			e.noter_flux("interets", "av", float(w.av["valeur"]) * t, not decembre)
 		w.av["ombre_courus"] = float(w.av["ombre_courus"]) + float(w.av["ombre"]) * t
 		if decembre:
 			var i2 := float(w.av["courus"])
@@ -283,6 +289,8 @@ static func entree_mois(e: EtatPartie, w: Portefeuille, notifs: Array, avec_noti
 			w.cc += coupon - impot
 			w.impots += impot
 			net_total += coupon - impot
+			if w == e.joueur:
+				e.noter_flux("coupon", "emprunt", coupon - impot)
 	if net_total > EPS and avec_notifs:
 		notifs.append({"type": "coupon", "source": "banque", "cls": "gain", "montant": net_total, "titre": "Coupon de l'emprunt d'État",
 			"texte": "L'État vous verse les intérêts de l'année, après 16 %% d'impôt : %s sur votre compte courant." % Format.montant(net_total, a, false, true)})
