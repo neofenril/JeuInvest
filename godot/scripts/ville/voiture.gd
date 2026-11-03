@@ -92,7 +92,7 @@ func _draw() -> void:
 			x = -x
 		rue.image(self, roue, Vector2i(x, 0))
 	if capot > 0.0:
-		rue.image(self, "objet/capot", Vector2i(t.x / 2 - 34 if sens > 0 else -t.x / 2, -t.y + 14 + bas - int(capot * 4.0)))
+		rue.image(self, "objet/capot", Vector2i(t.x / 2 - 44 if sens > 0 else -t.x / 2 + 10, -t.y + 34 + bas - int(capot * 3.0)))
 	if panneau:
 		rue.image(self, "objet/a_vendre", Vector2i(-10 * sens, -t.y + 26))
 	if rue.get("melange") > 0.0:

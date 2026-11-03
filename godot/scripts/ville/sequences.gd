@@ -405,7 +405,7 @@ func _crash_voiture(voiture: Node2D) -> Dictionary:
 	voiture.set("sans_enjoliveur", true)
 	create_tween().tween_property(voiture, "capot", 1.0, 0.18)
 	_fumee(voiture.position + Vector2(56, -50), 3)
-	var boum: Node2D = rue.call("ajouter", ["objet/bonk"], Vector2(potelet.position.x + 24, potelet.position.y - 64))
+	var boum: Node2D = rue.call("ajouter", ["objet/bonk"], Vector2(potelet.position.x + 20, potelet.position.y - 44))
 	var tb := create_tween()
 	tb.tween_interval(0.75)
 	tb.tween_property(boum, "alpha", 0.0, 0.2)

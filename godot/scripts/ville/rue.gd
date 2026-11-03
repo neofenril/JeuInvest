@@ -292,7 +292,7 @@ static func generer() -> int:
 	PalettePixel.couleur("encre")
 	for k in ARBRE_MODELES.size():
 		for im in 2:
-			_tache(_tache_arbre.bind(k, im))
+			_tache(_tache_arbre, [k, im])
 	_tache(_tache_premier_plan)
 	GrillePixel.enregistrer("rue/muret", Facades.muret(MURET.size.x, MURET.size.y - 6, 9), Vector2i(0, MURET.size.y - 1))
 	GrillePixel.enregistrer("rue/haie", Facades.haie(120, 27, 5), Vector2i(0, 26))
@@ -323,9 +323,10 @@ static func generer() -> int:
 	return Time.get_ticks_msec() - t0
 
 
-static func _tache(f: Callable) -> void:
+## Lance f(args…, res) en tâche de fond (un seul bind : l'ordre des arguments de binds successifs est inversé).
+static func _tache(f: Callable, args := []) -> void:
 	var res := {}
-	_taches.append([WorkerThreadPool.add_task(f.bind(res)), res])
+	_taches.append([WorkerThreadPool.add_task(f.bindv(args + [res])), res])
 
 
 static func _tache_arbre(k: int, im: int, res: Dictionary) -> void:
@@ -411,18 +412,54 @@ static func recolorer(img: Image, table: Dictionary, trames := {}) -> Image:
 
 
 ## Neige sur une image : le dessus de chaque colonne (toits, cheminées, corniches) reçoit 2 à 3 px de neige.
+## Neige sur une image : pans de toit (tuiles, ardoises) poudrés de blanc, dessus de chaque colonne (faîtages,
+## cheminées, corniches) couvert de 2 à 3 px.
 static func neige_sur(img: Image) -> Image:
-	var l := img.get_width()
-	var h := img.get_height()
-	var n := MatieresPixel.vide(l, h)
+	var src := Image.new()
+	src.copy_from(img)
+	src.convert(Image.FORMAT_RGBA8)
+	var l := src.get_width()
+	var h := src.get_height()
+	var d := src.get_data()
+	var sortie := PackedByteArray()
+	sortie.resize(d.size())
+	var blanc := PalettePixel.couleur("blanc_chaud")
+	var zinc := PalettePixel.couleur("zinc_clair")
+	var levres := {}
+	var corps := {}
+	for nom in ["terre_cuite_claire", "ardoise"]:
+		levres[PalettePixel.cle(PalettePixel.couleur(nom))] = true
+	for nom in ["tuile", "ardoise_sombre"]:
+		corps[PalettePixel.cle(PalettePixel.couleur(nom))] = true
+	for i in range(0, d.size(), 4):
+		if d[i + 3] == 0:
+			continue
+		var k := (d[i] << 16) | (d[i + 1] << 8) | d[i + 2]
+		var px := (i / 4) % l
+		var py := (i / 4) / l
+		var c := Color.TRANSPARENT
+		if levres.has(k):
+			c = blanc
+		elif corps.has(k) and MatieresPixel.trame(px, py, 0.55):
+			c = blanc if MatieresPixel.trame(px + 1, py, 0.5) else zinc
+		if c.a > 0.0:
+			sortie[i] = c.r8
+			sortie[i + 1] = c.g8
+			sortie[i + 2] = c.b8
+			sortie[i + 3] = 255
+	var n := Image.create_from_data(l, h, false, Image.FORMAT_RGBA8, sortie)
 	for x in l:
 		for y in h:
-			if img.get_pixel(x, y).a > 0.0:
+			if d[(y * l + x) * 4 + 3] != 0:
 				var e := 2 + int((x * 7) % 5 == 0)
 				MatieresPixel.rect(n, x, maxi(0, y - 1), 1, e, "blanc_chaud")
 				MatieresPixel.px(n, x, y - 1 + e, "zinc_clair" if (x % 3) != 0 else "blanc_chaud")
 				break
 	return n
+
+
+static func _tache_neige(nom: String, img: Image, origine: Vector2i, res: Dictionary) -> void:
+	res["neige/" + nom] = [neige_sur(img), origine]
 
 
 # --- Construction de la scène ------------------------------------------------------------------------------
@@ -800,23 +837,29 @@ func regler_saison(mois: int, p_annee: int) -> void:
 
 
 func _preparer_saison(s: String) -> void:
-	if s == "hiver" and not GrillePixel.existe("neige/rue/maison"):
+	if s == "hiver" and not _saison_demandee.has("neige"):
+		_saison_demandee["neige"] = true
 		for n in GrillePixel.noms():
 			if n.begins_with("rue/batiment_") or n.begins_with("rue/fond_") or n in ["rue/maison", "rue/banque", "rue/gazette"]:
-				GrillePixel.enregistrer("neige/" + n, neige_sur(GrillePixel.image(n)), GrillePixel.origine(n))
-	if s == "ete" or _saison_demandee.has(s) or not _taches.is_empty():
+				_tache(_tache_neige, [n, GrillePixel.image(n), GrillePixel.origine(n)])
+	if s == "ete" or _saison_demandee.has(s) or not _arbres_ete_prets():
 		return
 	_saison_demandee[s] = true
 	var table: Dictionary = SAISONS_FEUILLES.get(s, {})
 	var trames := {}
 	if s == "hiver":
-		table = {"feuille_eclat": "blanc_chaud", "feuille_vive": "bois", "feuille": "bois", "feuille_sombre": "bois_sombre", "feuille_profonde": "bois_sombre"}
-		trames = {"feuille_eclat": 0.35, "feuille_vive": 0.08, "feuille": 0.16, "feuille_sombre": 0.3, "feuille_profonde": 0.3}
-	var noms: Array = []
+		# Feuillage givré et enneigé (des branches nues tramées donnaient un nuage de points illisible)
+		table = {"feuille_eclat": "blanc_chaud", "feuille_vive": "zinc_clair", "feuille": "vert_sombre", "feuille_sombre": "feuille_profonde", "feuille_profonde": "feuille_profonde"}
 	for n in GrillePixel.noms():
 		if (n.begins_with("rue/arbre_") or n.begins_with("rue/premier_plan_")) and n.ends_with("_ete"):
-			noms.append([n, GrillePixel.image(n), GrillePixel.origine(n)])
-	_tache(_tache_saison.bind(noms, table, trames, s))
+			_tache(_tache_saison, [[[n, GrillePixel.image(n), GrillePixel.origine(n)]], table, trames, s])
+
+
+func _arbres_ete_prets() -> bool:
+	for k in ARBRE_MODELES.size():
+		if not GrillePixel.existe("rue/arbre_m%d_1_ete" % k) or not GrillePixel.existe("rue/arbre_m%d_0_ete" % k):
+			return false
+	return GrillePixel.existe("rue/premier_plan_0_ete") and GrillePixel.existe("rue/premier_plan_1_ete")
 
 
 func regler_pluie(v: bool) -> void:
@@ -836,12 +879,10 @@ func _maj_arbres() -> void:
 func _process(delta: float) -> void:
 	_placer_plans()
 	if not _taches.is_empty() and _recolter():
-		if _taches.is_empty() and saison != "ete":
+		if saison != "ete":
 			_preparer_saison(saison)
 		_maj_arbres()
-		for a in _arbres:
-			(a[0] as Mobile).queue_redraw()
-		_premier_plan.queue_redraw()
+		redessiner_tout()
 	if _taches.is_empty() and not _prechauffe.is_empty():
 		var p: Array = _prechauffe.pop_front()
 		if GrillePixel.existe(p[0]):
