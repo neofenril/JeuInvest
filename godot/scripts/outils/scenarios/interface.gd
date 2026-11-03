@@ -192,32 +192,57 @@ func _cibles(jeu: Node) -> void:
 	await sc.attendre_que(func() -> bool: return modales.genre_courant == "fin", 20.0)
 	await sc.delai(2.0)
 	_mesurer("fin", modales.courant)
-	print("UI polices pixelify_min=%d atkinson=%s" % [_pix_min, "oui" if PolicesPixel.est_atkinson(hud.l_patr.get_theme_font("font")) and PolicesPixel.est_atkinson(hud.l_cc.get_theme_font("font")) else "non"])
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d atkinson=%s" % [_pix_min, _atk_min, _chiffres_pixelify, "oui" if PolicesPixel.est_atkinson(hud.l_patr.get_theme_font("font")) and PolicesPixel.est_atkinson(hud.l_cc.get_theme_font("font")) else "non"])
+	print("UI fleches_texte=%d (« → » ou « › » affichés en texte ; attendu 0 après F1-L)" % _fleches)
 
 
-## Cibles tactiles visibles sous « racine » (boutons et contrôles marqués « cible »), en px physiques.
+## Contrôles d'un écran (racine : fenêtre, HUD ou titre) : cibles tactiles (px physiques ; seuil :
+## Style.cible_min() au téléphone, 40 px sur PC), textes qui débordent, conteneurs plus grands que leur
+## place (hors_cadre), éléments hors de l'écran (hors_ecran), fenêtre et boutons visibles, polices.
 func _mesurer(nom: String, racine: Node) -> void:
 	if racine == null:
 		print("UI cibles ecran=%s n=0 min=0 sous_seuil=1 (écran absent)" % nom)
 		return
 	var echelle := sc.get_viewport().get_final_transform().get_scale().x
-	var seuil := 80.0 if (Ecran.telephone_simule or OS.has_feature("mobile")) else 40.0
+	var mobile := Ecran.telephone_simule or OS.has_feature("mobile")
+	var seuil := (Style.cible_min() * echelle - 0.5) if mobile else 40.0
 	var vue := sc.get_viewport().get_visible_rect()
+	var fenetre: bool = racine is Control and racine != sc.jeu.hud and racine != sc.jeu.titre
 	var n := 0
 	var mini := 99999.0
 	var sous := []
 	var debord := []
+	var hors_cadre := []
+	var hors_ecran := []
+	var boutons_caches := []
 	for c in racine.find_children("*", "Control", true, false) + [racine]:
 		var ctl := c as Control
 		if ctl == null or not ctl.is_visible_in_tree():
 			continue
 		var r := ctl.get_global_rect()
+		var defile := _defilement_parent(ctl)
+		var anime := _anime(ctl, racine)
+		# Hors écran (hors défilement et animations) ; contrôles vides ou plein écran ignorés
+		if defile == null and not anime and ctl.size.x > 1.0 and ctl.size.y > 1.0 and not vue.grow(1.0).encloses(r):
+			hors_ecran.append("%s %s %s" % [ctl.get_class(), _nom(ctl), str(r)])
+		# Conteneur plus grand que sa place : contenu coupé ou débordant (M1)
+		if defile == null and ctl is Container and not (ctl is ScrollContainer):
+			var besoin := ctl.get_combined_minimum_size()
+			if besoin.y > ctl.size.y + 1.0 or besoin.x > ctl.size.x + 1.0:
+				hors_cadre.append("%s %s besoin %dx%d place %dx%d" % [ctl.get_class(), _nom(ctl), roundi(besoin.x), roundi(besoin.y), roundi(ctl.size.x), roundi(ctl.size.y)])
+		if defile == null and not anime and ctl.get_parent() is PanelContainer and ctl.get_parent() != racine.get_parent():
+			var pr := (ctl.get_parent() as Control).get_global_rect()
+			if not pr.grow(1.0).encloses(r):
+				hors_cadre.append("%s dépasse de son cadre %s" % [_nom(ctl), _nom(ctl.get_parent())])
 		if not vue.intersects(r):
+			if fenetre and ctl is BaseButton and not (ctl as BaseButton).disabled:
+				boutons_caches.append(_nom(ctl))
 			continue
 		# Défilement : seules les lignes visibles comptent
-		var defile := _defilement_parent(ctl)
 		if defile != null and not defile.get_global_rect().intersects(r.grow(-minf(2.0, minf(r.size.x, r.size.y) / 2.0 - 0.01)).abs()):
 			continue
+		if fenetre and ctl is BaseButton and not (ctl as BaseButton).disabled and defile == null and not vue.grow(1.0).encloses(r):
+			boutons_caches.append(_nom(ctl))
 		var cible := (ctl is BaseButton and ctl.mouse_filter != Control.MOUSE_FILTER_IGNORE and not (ctl as BaseButton).disabled) or ctl.has_meta("cible")
 		if cible:
 			n += 1
@@ -232,27 +257,58 @@ func _mesurer(nom: String, racine: Node) -> void:
 			if l.text != "" and l.autowrap_mode == TextServer.AUTOWRAP_OFF and not l.clip_text and l.text_overrun_behavior == TextServer.OVERRUN_NO_TRIMMING \
 					and l.get_minimum_size().x > l.size.x + 1.0:
 				debord.append("Label « %s »" % l.text.left(24))
-			_police(l)
+			_police(l, l.text)
 		elif ctl is Button and (ctl as Button).text != "":
 			var b := ctl as Button
 			if not b.clip_text and b.get_minimum_size().x > b.size.x + 1.0:
 				debord.append("Button « %s »" % b.text.left(24))
-			_police(b)
-	# Fenêtre hors de l'écran
-	if racine is Control and racine != sc.jeu.hud and racine != sc.jeu.titre and not vue.grow(1.0).encloses((racine as Control).get_global_rect()):
-		debord.append("fenêtre hors écran %s" % str((racine as Control).get_global_rect()))
+			_police(b, b.text)
+	# HUD : le panneau « Mon argent » ne descend jamais sur la frise (M1 de la recette PX2)
+	var hud: Hud = sc.jeu.hud
+	if racine == hud and hud.panneau.is_visible_in_tree() and hud.panneau.get_global_rect().end.y > hud.bas.get_global_rect().position.y - 6.0 + 0.5:
+		hors_cadre.append("panneau « Mon argent » sur la frise (bas %d, frise %d)" % [roundi(hud.panneau.get_global_rect().end.y), roundi(hud.bas.get_global_rect().position.y)])
+	if fenetre and not vue.grow(1.0).encloses((racine as Control).get_global_rect()):
+		hors_ecran.append("fenêtre %s" % str((racine as Control).get_global_rect()))
+	if fenetre or racine == sc.jeu.titre:
+		print("UI fenetre %s dans_ecran=%s boutons_visibles=%s%s" % [nom, "oui" if not fenetre or vue.grow(1.0).encloses((racine as Control).get_global_rect()) else "non",
+			"oui" if boutons_caches.is_empty() else "non", "" if boutons_caches.is_empty() else " (" + ", ".join(boutons_caches) + ")"])
 	print("UI cibles ecran=%s n=%d min=%d sous_seuil=%d%s" % [nom, n, roundi(mini if n > 0 else 0.0), sous.size(), "" if sous.is_empty() else " (" + ", ".join(sous) + ")"])
-	print("UI debordements=%d ecran=%s%s" % [debord.size(), nom, "" if debord.is_empty() else " (" + ", ".join(debord) + ")"])
+	print("UI debordements=%d hors_cadre=%d hors_ecran=%d ecran=%s%s" % [debord.size(), hors_cadre.size(), hors_ecran.size(), nom,
+		"" if (debord + hors_cadre + hors_ecran).is_empty() else " (" + ", ".join((debord + hors_cadre + hors_ecran).slice(0, 6)) + ")"])
 
 
-func _police(c: Control) -> void:
+## Vrai si le contrôle ou un parent jusqu'à la racine est en cours d'animation (échelle ≠ 1 ou rotation).
+func _anime(c: Node, racine: Node) -> bool:
+	var p := c
+	while p != null and p != racine.get_parent():
+		if p is Control and ((p as Control).scale != Vector2.ONE or absf((p as Control).rotation) > 0.0001):
+			return true
+		p = p.get_parent()
+	return false
+
+
+var _atk_min := 999
+var _chiffres_pixelify := 0
+var _fleches := 0
+
+
+func _police(c: Control, texte: String) -> void:
 	var f: Font = c.get_theme_font("font")
+	var t := c.get_theme_font_size("font_size")
+	if texte.contains("→") or texte.contains("›") or texte.contains("‹"):
+		_fleches += 1
 	if PolicesPixel.est_pixelify(f):
-		var t := c.get_theme_font_size("font_size")
 		if t < PolicesPixel.TAILLE_MIN_PIXELIFY:
-			print("UI pixelify_petit taille=%d %s %s" % [t, c.get_class(), _nom(c) if c is Button else "« %s »" % (c as Label).text.left(20)])
+			print("UI pixelify_petit taille=%d %s %s" % [t, c.get_class(), texte.left(20)])
 		_pix_min = mini(_pix_min, t)
-
+		var re := RegEx.create_from_string("[0-9]")
+		if re.search(texte) != null:
+			_chiffres_pixelify += 1
+			print("UI chiffres_en_pixelify « %s »" % texte.left(30).replace("\n", " "))
+	elif PolicesPixel.est_atkinson(f):
+		if t < 20:
+			print("UI atkinson_petit taille=%d « %s »" % [t, texte.left(30).replace("\n", " ")])
+		_atk_min = mini(_atk_min, t)
 
 func _defilement_parent(c: Node) -> ScrollContainer:
 	var p := c.get_parent()
@@ -300,15 +356,31 @@ func _hud(jeu: Node) -> void:
 			focalisables += 1
 	var proprio := sc.get_viewport().gui_get_focus_owner()
 	print("UI focus hud_focalisables=%d focus=%s" % [focalisables, "aucun" if proprio == null else String(proprio.name)])
-	# A8 (recette PX1) : zone de la rue recouverte par le panneau « Mon argent » (px virtuels)
-	print("UI panneau rect=%s rect_libre=%s" % [str(hud.panneau.get_global_rect()) if hud.panneau.visible else "replié", str(hud.rect_libre())])
+	# C2 : panneau « Mon argent » ouvert, après la fin de l'animation de bascule : borné par la frise, rien de coupé
+	hud.basculer_panneau(true)
+	await sc.delai(0.8)
+	_panneau(hud)
 	hud.basculer_panneau(not Ecran.compact())
+	await sc.delai(0.6)
 	# On retire les notifications de contrôle avant la capture
 	for c in hud.notifs.get_children():
 		c.queue_free()
 	hud.point_banque(false)
 	await sc.delai(0.6)
 	_mesurer("hud", hud)
+
+
+## « UI panneau … » : bas du panneau ≤ haut de la frise − 6, aucun enfant visible hors du cadre (CA-C2).
+func _panneau(hud: Hud) -> void:
+	var rp := hud.panneau.get_global_rect()
+	var frise_y := hud.bas.get_global_rect().position.y
+	var coupe := hud.panneau_coupe()
+	for n in hud.panneau.find_children("*", "Control", true, false):
+		var c := n as Control
+		if c.is_visible_in_tree() and c.size.x > 0.0 and not rp.grow(1.0).encloses(c.get_global_rect()):
+			coupe = true
+	print("UI panneau ouvert=%s bas=%d frise=%d recouvre=%s contenu_coupe=%s rect=%s rect_libre=%s" % ["oui" if hud.panneau.is_visible_in_tree() else "non",
+		roundi(rp.end.y), roundi(frise_y), "oui" if rp.end.y > frise_y - 6.0 + 0.5 else "non", "oui" if coupe else "non", str(rp), str(hud.rect_libre())])
 
 
 # =====================================================================

@@ -17,7 +17,7 @@ signal notif_touchee(n: Dictionary)
 signal historique_demande
 
 const HAUT := 102.0             # 34 texels : boutons de 84 px (28 texels) et marges du cadre
-const BAS := 114.0              # 38 texels : bouton HISTORIQUE de 96 px (≥ 90 à 1080p, ≥ 96 px physiques au téléphone)
+const BAS := 96.0               # 32 texels (lot_px2 §9.1) : bouton HISTORIQUE de 90 px à l'intérieur
 const LARGEUR_PANNEAU := 500.0
 const LARGEUR_PANNEAU_COMPACT := 900.0
 const LARGEUR_LANGUETTE := 104.0
@@ -293,7 +293,7 @@ func _creer_bas() -> void:
 	bas = PanelContainer.new()
 	bas.name = "Frise"
 	bas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	bas.add_theme_stylebox_override("panel", CadresPixel.style_marges("panneau", 12, 6, 24, 12))
+	bas.add_theme_stylebox_override("panel", CadresPixel.style_marges("panneau", 12, 3, 24, 3))
 	bas.self_modulate = Color(1, 1, 1, 0.97)
 	bas.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	bas.offset_top = -BAS
@@ -311,7 +311,7 @@ func _creer_bas() -> void:
 	b_historique = Button.new()
 	b_historique.name = "Historique"
 	b_historique.text = "HISTORIQUE"
-	b_historique.custom_minimum_size = Vector2(222, BAS - 18.0)
+	b_historique.custom_minimum_size = Vector2(222, 90.0)
 	b_historique.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b_historique.focus_mode = Control.FOCUS_NONE
 	CadresPixel.habiller_bouton(b_historique, "secondaire", "historique")
@@ -389,6 +389,7 @@ func _creer_panneau() -> void:
 	l_auto = _ligne_budget(grille, "Dont versements auto")
 	col_b.add_child(grille)
 	var lc := HBoxContainer.new()
+	lc.name = "LigneCoussin"
 	lc.add_theme_constant_override("separation", 12)
 	lc.add_child(Style.label("COUSSIN", 20, Style.capitales(), Style.TEXTE_2))
 	jauge = Control.new()
@@ -534,14 +535,18 @@ func placer_etiquettes() -> void:
 
 func _disposer() -> void:
 	compact = Ecran.compact()
-	boite_baguette.visible = not compact
+	# Barre haute : elle tient dans la largeur (1728 px virtuels pour une fenêtre PC de 1152 × 648,
+	# 1280 au téléphone 16:9) : baguette puis badge « EN PAUSE » repliés quand la place manque.
+	var largeur := Ecran.taille().x
+	boite_baguette.visible = not compact and largeur >= 1900.0
+	badge_pause.set_meta("replie", compact and largeur < 1400.0)
 	# Téléphone : mêmes blocs, libellés courts et chiffres un peu plus petits
-	l_titre_cc.text = "COMPTE" if compact else "COMPTE COURANT"
+	l_titre_cc.text = "COMPTE" if compact or largeur < 1900.0 else "COMPTE COURANT"
 	l_cc.add_theme_font_size_override("font_size", 28 if compact else 32)
 	l_patr.add_theme_font_size_override("font_size", 38 if compact else 44)
 	l_var.visible = not compact
 	separateur.custom_minimum_size = Vector2(40 if compact else 56, 60)
-	l_titre_livret.text = "VS LIVRET A" if compact else "VS TOUT AU LIVRET A"
+	l_titre_livret.text = "VS LIVRET A" if compact or largeur < 1900.0 else "VS TOUT AU LIVRET A"
 	l_ecart.add_theme_font_size_override("font_size", 26 if compact else 30)
 	l_ecart_note.visible = not compact
 	for g in ["pause", "x1", "x2", "x3"]:
@@ -550,8 +555,7 @@ func _disposer() -> void:
 	b_cycle.visible = compact
 	conteneur.vertical = not compact
 	courbe.compacte = compact
-	courbe.custom_minimum_size = Vector2(0, 96 if compact else 190)
-	l_bag.visible = not compact   # téléphone : le panneau tient entre la barre et la frise
+	courbe.custom_minimum_size = Vector2(0, 64 if compact else 110)
 	_trouver_replier().visible = compact
 	panneau_ouvert = not compact
 	_placer_panneau()
@@ -574,6 +578,36 @@ func basculer_panneau(ouvrir: bool) -> void:
 		t.tween_property(panneau, "modulate:a", 1.0, 0.3)
 
 
+## Le panneau « Mon argent » tient entre la barre haute et la frise (lot_px2 §9.1) : la courbe absorbe la
+## place restante ; si cela ne suffit pas, on replie dans l'ordre la ligne baguette, le coussin, puis la
+## légende de la répartition. Le bouton BANQUE et les frais restent toujours visibles. Pas de défilement.
+func _alleger_panneau() -> void:
+	if panneau == null:
+		return
+	var coussin := panneau.find_child("LigneCoussin", true, false) as Control
+	l_bag.visible = true
+	coussin.visible = true
+	repart.legende = true
+	var sb := panneau.get_theme_stylebox("panel")
+	var dispo := get_viewport_rect().size.y - HAUT - BAS - 24.0 - sb.content_margin_top - sb.content_margin_bottom
+	for etape in 3:
+		if conteneur.get_combined_minimum_size().y <= dispo + 0.5:
+			break
+		match etape:
+			0:
+				l_bag.visible = false
+			1:
+				coussin.visible = false
+			2:
+				repart.legende = false
+
+
+## Vrai si le contenu du panneau dépasse sa place (contrôle « UI panneau … contenu_coupe »).
+func panneau_coupe() -> bool:
+	var sb := panneau.get_theme_stylebox("panel")
+	return conteneur.get_combined_minimum_size().y > panneau.size.y - sb.content_margin_top - sb.content_margin_bottom + 0.5
+
+
 func _placer_panneau() -> void:
 	var largeur := LARGEUR_PANNEAU_COMPACT if compact else LARGEUR_PANNEAU
 	panneau.anchor_left = 1.0
@@ -584,6 +618,7 @@ func _placer_panneau() -> void:
 	panneau.offset_right = -12.0
 	panneau.offset_top = HAUT + 12.0
 	panneau.offset_bottom = -BAS - 12.0
+	_alleger_panneau.call_deferred()
 	panneau.visible = panneau_ouvert
 	languette.visible = compact and not panneau_ouvert
 	languette.anchor_left = 1.0
@@ -700,6 +735,7 @@ func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 			if mp >= e.m_depart and mp <= e.m_fin:
 				mq.append({"m": mp, "type": "nouveau", "passe": mp <= e.m})
 	frise.marqueurs = mq
+	_alleger_panneau.call_deferred()
 
 
 func _duree_mois() -> float:
@@ -715,7 +751,7 @@ func maj_vitesse(v: int) -> void:
 		b_cycle.vitesse_cycle = v
 	b_lecture.queue_redraw()
 	b_cycle.queue_redraw()
-	badge_pause.visible = v == 0
+	badge_pause.visible = v == 0 and not badge_pause.get_meta("replie", false)
 	var t := create_tween()
 	t.tween_property(self, "_gel", 1.0 if v == 0 else 0.0, 0.3)
 	t.parallel().tween_method(func(_x: float) -> void: cadre_gel.queue_redraw(), 0.0, 1.0, 0.3)
@@ -825,6 +861,17 @@ func point_banque(oui: bool) -> void:
 
 
 func _empiler(nouvelle: Control, depart: Vector2) -> void:
+	# Les notifications restent dans le rectangle libre, au-dessus de la frise : les plus anciennes partent
+	var place := rect_libre().size.y - 32.0
+	var total := 0.0
+	for c: Control in _liste_notifs:
+		if is_instance_valid(c):
+			total += c.size.y + 10.0
+	while total > place and _liste_notifs.size() > 1:
+		var vieille: Control = _liste_notifs.pop_back()
+		if is_instance_valid(vieille):
+			total -= vieille.size.y + 10.0
+			vieille.queue_free()
 	var y := 0.0
 	for c: Control in _liste_notifs:
 		if not is_instance_valid(c):
