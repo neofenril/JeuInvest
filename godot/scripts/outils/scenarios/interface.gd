@@ -221,10 +221,11 @@ func _mesurer(nom: String, racine: Node) -> void:
 		var cible := (ctl is BaseButton and ctl.mouse_filter != Control.MOUSE_FILTER_IGNORE and not (ctl as BaseButton).disabled) or ctl.has_meta("cible")
 		if cible:
 			n += 1
-			var cote := minf(r.size.x, r.size.y) * echelle
+			# Taille au repos (sans l'échelle d'une animation en cours, ex. carte du carnet qui se retourne)
+			var cote := minf(ctl.size.x, ctl.size.y) * echelle
 			mini = minf(mini, cote)
 			if cote < seuil - 0.01:
-				sous.append("%s %s %dx%d" % [ctl.get_class(), _nom(ctl), roundi(r.size.x * echelle), roundi(r.size.y * echelle)])
+				sous.append("%s %s %dx%d" % [ctl.get_class(), _nom(ctl), roundi(ctl.size.x * echelle), roundi(ctl.size.y * echelle)])
 		# Débordements : texte plus large que sa boîte sans retour à la ligne ni ellipse
 		if ctl is Label:
 			var l := ctl as Label

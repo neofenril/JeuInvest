@@ -80,13 +80,13 @@ foreach ($e in $ecrans) {
     $plan.Add(@($e, "px2_${e}_tel", "1600x720", $true))
 }
 foreach ($t in @(@("hud_720", "1280x720", $false), @("hud_1366", "1366x768", $false), @("hud_1080", "1920x1080", $false), @("hud_tel", "1600x720", $true))) {
-    $plan.Add(@("hud", "px2_" + $t[0], $t[1], $t[2]))
+    $plan.Add(@("hud", ("px2_" + $t[0]), $t[1], $t[2]))
 }
 foreach ($t in @(@("720", "1280x720", $false), @("1366", "1366x768", $false), @("1080", "1920x1080", $false), @("tel", "1600x720", $true))) {
-    $plan.Add(@("planche_cadres", "px2_planche_cadres_" + $t[0], $t[1], $t[2]))
+    $plan.Add(@("planche_cadres", ("px2_planche_cadres_" + $t[0]), $t[1], $t[2]))
 }
 foreach ($t in @(@("720", "1280x720", $false), @("1366", "1366x768", $false), @("tel", "1600x720", $true))) {
-    $plan.Add(@("cibles", "px2_cibles_" + $t[0], $t[1], $t[2]))
+    $plan.Add(@("cibles", ("px2_cibles_" + $t[0]), $t[1], $t[2]))
 }
 $plan.Add(@("polices_jeu", "px2_polices_jeu", "1920x1080", $false))
 $plan.Add(@("courrier_relu_echap", "px2_courrier_relu_echap", "1280x720", $false))
@@ -111,7 +111,7 @@ $v3 = Join-Path $captures "v3_rue.png"
 $px0 = Join-Path $captures "px0_carte_1080.png"
 foreach ($m in @(@($v3, (Join-Path $captures "px2_hud_1080.png"), "px2_montage_pc.png"), @($px0, (Join-Path $captures "px2_heritage_1080.png"), "px2_montage_carte.png"))) {
     $ok = Monter $m[0] $m[1] (Join-Path $captures $m[2])
-    $t = if ($ok) { "montage $($m[2]) : écrit" } else { "montage $($m[2]) : source absente ($($m[0])), copier la capture de référence dans godot\captures\" }
+    $t = if ($ok) { "montage $($m[2]) : écrit" } else { "montage $($m[2]) : source absente ($($m[0]) ou $($m[1])) ; copier la capture de référence dans godot\captures\" }
     Write-Host $t; $t | Out-File $journal -Append -Encoding utf8
 }
 $apres = Empreinte
