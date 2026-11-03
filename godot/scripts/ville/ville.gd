@@ -108,6 +108,7 @@ func _process(delta: float) -> void:
 	facteur_trafic = move_toward(facteur_trafic, cible, delta * plus_rapide / transition)
 	rue.set("facteur", facteur_trafic)
 	rue.set("anime", anime)
+	rue.set("mode_titre", mode_titre)
 	maison.set("anime", anime)
 	media.set("anime", anime)
 	if _inertie != 0.0:
@@ -293,7 +294,8 @@ func point_etiquette(id: String) -> Vector2:
 	var b := batiment(id)
 	if b == null:
 		return Vector2(-1, -1)
-	return position_ecran(Vector2(b.position.x, RUE.SOL + 56))
+	# Sur la chaussée, et l'étiquette (≈ 40 px d'art sous ce point) toujours au-dessus du bas du rectangle libre (la caméra descend vers la Gazette au téléphone)
+	return position_ecran(Vector2(b.position.x, minf(RUE.SOL + 56.0, libre_monde().end.y - 40.0)))
 
 
 ## Vrai si le bâtiment est entièrement dans le rectangle libre.

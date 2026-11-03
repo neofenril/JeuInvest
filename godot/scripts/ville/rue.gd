@@ -114,6 +114,9 @@ static var _auvents := {}
 static var _voitures := {}
 static var _taches: Array = []      # [identifiant WorkerThreadPool, résultats {nom: [Image, origine]}]
 var _saison_demandee := {}
+var _fond: Couche
+var _fond_pret := false
+var mode_titre := false            # écran titre : l'arbre de premier plan est retiré (il cachait l'enseigne)
 
 
 ## Élément fixe : liste d'opérations (image, répétée en x ; rectangle de couleur), dessinées dans les variantes
@@ -262,7 +265,11 @@ static func generer() -> int:
 	if GrillePixel.existe("rue/maison"):
 		return 0
 	if not GrillePixel.existe("matiere/ciel"):
-		MatieresPixel.generer_tout()
+		# Ciel, trottoir, chaussée tout de suite ; skyline et cumulus (les plus longs) en tâche de fond
+		GrillePixel.enregistrer("matiere/ciel", MatieresPixel.ciel(64, 720, 1), Vector2i(0, 719))
+		GrillePixel.enregistrer("matiere/trottoir", MatieresPixel.trottoir(1932, 26, 1), Vector2i.ZERO)
+		GrillePixel.enregistrer("matiere/chaussee", MatieresPixel.chaussee(1938, 90, 1), Vector2i.ZERO)
+		_tache(_tache_lointain)
 	Personnages.enregistrer()
 	Voisins.enregistrer("gerard")
 	for n in ["passant_1", "passant_2", "passant_3"]:
@@ -283,11 +290,7 @@ static func generer() -> int:
 		_poser("rue/batiment_%d" % i, r, Vector2i(0, img.get_height() - 1))
 		_auvents["rue/batiment_%d" % i] = r["auvent"]
 	for i in FONDS.size():
-		var f: Array = FONDS[i]
-		var r2: Dictionary = Facades.batiment({"l": f[1], "etages": f[2], "toit": f[3], "rdc": "porte", "brique": "classique", "graine": f[4]})
-		var pale := MatieresPixel.lointain(r2["image"])
-		GrillePixel.enregistrer("rue/fond_%d" % i, pale, Vector2i(0, pale.get_height() - 1))
-		_fenetres["rue/fond_%d" % i] = r2["fenetres"]
+		_tache(_tache_fond, [i])
 	# Arbres : générés en tâche de fond (≈ 0,4 s chacun), enregistrés dès qu'ils sont prêts (_process)
 	PalettePixel.couleur("encre")
 	for k in ARBRE_MODELES.size():
@@ -335,6 +338,20 @@ static func _tache_arbre(k: int, im: int, res: Dictionary) -> void:
 	res["rue/arbre_m%d_%d_ete" % [k, im]] = [img, Vector2i(img.get_width() / 2, img.get_height() - 1)]
 
 
+static func _tache_lointain(res: Dictionary) -> void:
+	res["matiere/skyline"] = [MatieresPixel.skyline(2400, 300, 84), Vector2i(0, 299)]
+	for i in 3:
+		var t: Array = [[450, 126], [330, 99], [195, 69]][i]
+		res["matiere/cumulus_%d" % (i + 1)] = [MatieresPixel.cumulus(t[0], t[1], 10 + i), Vector2i.ZERO]
+
+
+static func _tache_fond(i: int, res: Dictionary) -> void:
+	var f: Array = FONDS[i]
+	var r2: Dictionary = Facades.batiment({"l": f[1], "etages": f[2], "toit": f[3], "rdc": "porte", "brique": "classique", "graine": f[4]})
+	var pale := MatieresPixel.lointain(r2["image"])
+	res["rue/fond_%d" % i] = [pale, Vector2i(0, pale.get_height() - 1), r2["fenetres"]]
+
+
 static func _tache_premier_plan(res: Dictionary) -> void:
 	var pp: Dictionary = Facades.arbre_premier_plan(61)
 	for im in 2:
@@ -355,9 +372,15 @@ static func _recolter() -> bool:
 			var res: Dictionary = t[1]
 			for nom in res:
 				GrillePixel.enregistrer(nom, res[nom][0], res[nom][1])
+				if res[nom].size() > 2:
+					_fenetres[nom] = res[nom][2]
 			_taches.erase(t)
 			change = true
 	return change
+
+
+func premier_plan_visible() -> bool:
+	return _premier_plan != null and _premier_plan.visible
 
 
 ## Vrai quand aucune image n'est en cours de génération (captures, tests).
@@ -484,13 +507,8 @@ func _construire() -> void:
 	_skyline = _couche("Skyline")
 	(_skyline as Couche).image("matiere/skyline", Vector2i(GAUCHE - marge, SOL - 1), largeur + 2 * marge)
 	# Immeubles de fond
-	var fond := _couche("Fond")
-	for i in FONDS.size():
-		var nom := "rue/fond_%d" % i
-		var x: int = FONDS[i][0]
-		fond.image(nom, Vector2i(x, SOL - 1))
-		fond.image("neige/" + nom, Vector2i(x, SOL - 1), 0, "hiver")
-		_allumer(fond, fenetres(nom), Vector2i(x, SOL - GrillePixel.taille(nom).y), 0.2, 600 + i)
+	_fond = _couche("Fond")
+	_construire_fond()
 	# Arbres derrière les bâtiments
 	for i in ARBRES.size():
 		if not ARBRES[i][2]:
@@ -572,12 +590,12 @@ func _construire() -> void:
 	trafic.name = "Trafic"
 	trafic.y_sort_enabled = true
 	add_child(trafic)
-	voiture_maison = _voiture("205", -60.0, Y_GAREE, 0.0, 1)
+	voiture_maison = _voiture("205", -170.0, Y_GAREE, 0.0, 1)
 	potelet = Node2D.new()
 	potelet.set_script(load("res://scripts/ville/accessoire.gd"))
 	potelet.set("rue", self)
 	potelet.set("images", ["objet/potelet_0"])
-	potelet.position = Vector2(150, Y_GAREE - 6)
+	potelet.position = Vector2(-30, Y_GAREE - 6)
 	trafic.add_child(potelet)
 	_dessinables.append(potelet)
 	voitures.append(_voiture("r5", -300.0, Y_VOIE_PROCHE, 72.0, 1))
@@ -633,6 +651,23 @@ func _construire() -> void:
 	for n in GrillePixel.noms():
 		if n.begins_with("rue/") or n.begins_with("matiere/"):
 			_prechauffe.append([n, PalettePixel.ORAGE])
+
+
+## Immeubles de fond (générés en tâche de fond) : posés quand toutes leurs images sont prêtes.
+func _construire_fond() -> void:
+	if _fond_pret:
+		return
+	for i in FONDS.size():
+		if not GrillePixel.existe("rue/fond_%d" % i):
+			return
+	_fond_pret = true
+	for i in FONDS.size():
+		var nom := "rue/fond_%d" % i
+		var x: int = FONDS[i][0]
+		_fond.image(nom, Vector2i(x, SOL - 1))
+		_fond.image("neige/" + nom, Vector2i(x, SOL - 1), 0, "hiver")
+		_allumer(_fond, fenetres(nom), Vector2i(x, SOL - GrillePixel.taille(nom).y), 0.2, 600 + i)
+	_fond.queue_redraw()
 
 
 func _batiment(chemin: String, image: String, x: int) -> Node2D:
@@ -837,7 +872,7 @@ func regler_saison(mois: int, p_annee: int) -> void:
 
 
 func _preparer_saison(s: String) -> void:
-	if s == "hiver" and not _saison_demandee.has("neige"):
+	if s == "hiver" and not _saison_demandee.has("neige") and _fond_pret:
 		_saison_demandee["neige"] = true
 		for n in GrillePixel.noms():
 			if n.begins_with("rue/batiment_") or n.begins_with("rue/fond_") or n in ["rue/maison", "rue/banque", "rue/gazette"]:
@@ -879,8 +914,13 @@ func _maj_arbres() -> void:
 func _process(delta: float) -> void:
 	_placer_plans()
 	if not _taches.is_empty() and _recolter():
+		_construire_fond()
 		if saison != "ete":
 			_preparer_saison(saison)
+		if _arbres_ete_prets():
+			# Toutes les saisons d'avance : le même rendu d'une capture à l'autre
+			for s in ["hiver", "automne", "printemps"]:
+				_preparer_saison(s)
 		_maj_arbres()
 		redessiner_tout()
 	if _taches.is_empty() and not _prechauffe.is_empty():
@@ -926,6 +966,7 @@ func _placer_plans() -> void:
 	var p := Vector2(int(vue.end.x) - PREMIER_PLAN_MARGE, 495)
 	if _premier_plan.position != p:
 		_premier_plan.position = p
+	_premier_plan.visible = not mode_titre
 
 
 func _animer_feuilles(delta: float) -> void:
