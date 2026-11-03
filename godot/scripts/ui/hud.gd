@@ -556,6 +556,7 @@ func _disposer() -> void:
 	# 1280 au téléphone 16:9) : baguette puis badge « EN PAUSE » repliés quand la place manque.
 	var largeur := Ecran.taille().x
 	boite_baguette.visible = not compact and largeur >= 1900.0
+	(barre.get_child(0) as HBoxContainer).add_theme_constant_override("separation", 9 if largeur < 2000.0 else 15)
 	badge_pause.set_meta("replie", compact and largeur < 1400.0)
 	# Téléphone : mêmes blocs, libellés courts et chiffres un peu plus petits
 	l_titre_cc.text = "COMPTE" if compact or largeur < 1900.0 else "COMPTE COURANT"

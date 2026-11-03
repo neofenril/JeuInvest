@@ -160,7 +160,7 @@ func appuyer_bouton(racine: Node, texte: String) -> void:
 ## pos : coordonnées de la fenêtre (pixels).
 func clic_dehors(pos := Vector2(-1, -1)) -> void:
 	if pos.x < 0.0:
-		pos = Vector2(20, get_window().size.y / 2.0)
+		pos = Vector2(6, get_window().size.y / 2.0)   # tout au bord : l'historique du téléphone laisse 15 px de chaque côté
 	for appui in [true, false]:
 		var ev := InputEventMouseButton.new()
 		ev.button_index = MOUSE_BUTTON_LEFT
