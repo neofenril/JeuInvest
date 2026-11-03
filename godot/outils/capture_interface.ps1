@@ -57,7 +57,7 @@ function Monter([string[]]$sources, [string]$sortie) {
     $imgs = @($sources | ForEach-Object { [System.Drawing.Image]::FromFile($_) })
     $l = ($imgs | Measure-Object -Property Width -Sum).Sum + 20 * ($imgs.Count - 1)
     $h = ($imgs | Measure-Object -Property Height -Maximum).Maximum
-    $m = New-Object System.Drawing.Bitmap $l, $h
+    $m = New-Object System.Drawing.Bitmap ([int]$l), ([int]$h)
     $g = [System.Drawing.Graphics]::FromImage($m)
     $g.Clear([System.Drawing.Color]::FromArgb(45, 40, 64))
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
