@@ -1,75 +1,106 @@
 extends Node2D
-## Voiture de profil (09 §2.2) : caisse carrée des années 1980 (R5, 205), vitres, 2 roues qui tournent.
-## Origine = point de contact au sol, au centre. scale.x = -1 pour rouler vers la gauche.
+## Voiture d'époque (lot PX1) : caisse + 2 roues qui tournent (2 images), suspension (caisse relevée 1 image
+## sur 4), ombre au sol, phares et feux la nuit ; position entière. Vitesse × facteur de trafic de la rue ;
+## vitesse 0 : garée (la voiture de Gérard : capot, enjoliveur, hoquets du moteur pendant la panne).
+## modele : r5, 205, 4l, fourgonnette, 944 ; sens 1 : vers la droite (images miroir sinon).
 
-var couleur := Color("c8382e")
-var vitesse := 150.0          # unités par seconde (0 = garée)
-var ville: Node = null
-var capot := 0.0              # 0 fermé → 1 ouvert (panne)
-var bosse := 0.0              # 0 → 1 : avant cabossé (accrochage de la panne)
-var sans_enjoliveur := false  # l'enjoliveur avant s'est fait la malle
-var _roue := 0.0
-const BORNE := 1700.0
+const RUE := preload("res://scripts/ville/rue.gd")
+
+var rue: Node2D
+var modele := "r5"
+var vitesse := 60.0
+var sens := 1
+var arrete := false
+var capot := 0.0:
+	set(v):
+		capot = v
+		queue_redraw()
+var bosse := 0.0
+var sans_enjoliveur := false
+var hoquet := 0:              # caisse abaissée de n px (moteur qui tousse)
+	set(v):
+		hoquet = v
+		queue_redraw()
+var panneau := false:         # panneau « À VENDRE » (Porsche de Jean-Mi)
+	set(v):
+		panneau = v
+		queue_redraw()
+var x_monde := 0.0:
+	set(v):
+		x_monde = v
+		var xi := roundi(v)
+		if position.x != xi:
+			position.x = xi
+var _t := 0.0
+var _image := 0
+var _attente := 0.0
 
 
 func _process(delta: float) -> void:
-	if vitesse == 0.0 or ville == null or ville.facteur_trafic <= 0.0:
+	if rue == null or vitesse <= 0.0 or arrete or not rue.anime:
 		return
-	var v: float = vitesse * ville.facteur_trafic
-	position.x += v * delta * signf(scale.x)
-	_roue += v * delta / 12.0
-	if position.x > BORNE:
-		position.x = -BORNE
-	elif position.x < -BORNE:
-		position.x = BORNE
-	queue_redraw()
+	var f: float = rue.get("facteur")
+	if f <= 0.0:
+		return
+	if _attente > 0.0:
+		_attente -= delta * f
+		return
+	var x := x_monde + vitesse * f * delta * sens
+	_t += delta * 8.0 * f
+	if _t >= 1.0:
+		_t -= floorf(_t)
+		_image = (_image + 1) % 4
+		queue_redraw()
+	if x > RUE.DROITE + 120:
+		x = RUE.GAUCHE - 120
+	elif x < RUE.GAUCHE - 120:
+		x = RUE.DROITE + 120
+	x_monde = x
+
+
+func _info() -> Dictionary:
+	return RUE.voiture_info(modele)
+
+
+## Point du phare avant (px d'art du monde) pour le halo de nuit.
+func point_phare() -> Vector2i:
+	var v := _info()
+	if v.is_empty():
+		return Vector2i(position)
+	var o: Vector2i = v["origine"]
+	var ph: Rect2i = v["phare"]
+	var p: Vector2i = ph.position - o + Vector2i(2, 1)
+	if sens < 0:
+		p.x = -p.x
+	return Vector2i(position) + p
 
 
 func _draw() -> void:
-	var sombre := couleur.darkened(0.2)
-	draw_rect(Rect2(-60, -4, 124, 8), Color(0, 0, 0, 0.25))
-	# Caisse basse et habitacle
-	Dessin.arrondi(self, Rect2(-66, -42, 132, 30), couleur, 7)
-	draw_rect(Rect2(-66, -20, 132, 8), sombre)
-	Dessin.poly(self, [Vector2(-44, -40), Vector2(-32, -66), Vector2(30, -66), Vector2(48, -40)], couleur)
-	Dessin.poly(self, [Vector2(-30, -42), Vector2(-21, -61), Vector2(-2, -61), Vector2(-2, -42)], Color("a9cbe0"))
-	Dessin.poly(self, [Vector2(4, -42), Vector2(4, -61), Vector2(26, -61), Vector2(40, -42)], Color("a9cbe0"))
-	# Pare-chocs, phares, feux
-	draw_rect(Rect2(-70, -24, 10, 8), Color("2f3138"))
-	draw_rect(Rect2(-66, -38, 5, 8), Color("c0302a"))
-	if bosse > 0.01:
-		# Avant enfoncé : pare-chocs de travers, phare éteint et fêlé, tôle froissée
-		draw_set_transform(Vector2(60, -20), 0.35 * bosse)
-		draw_rect(Rect2(-4 * bosse, -4, 10, 8), Color("2f3138"))
-		draw_set_transform(Vector2.ZERO)
-		draw_rect(Rect2(60, -38, 6, 8), Color("8a8a80"))
-		draw_line(Vector2(60, -37), Vector2(66, -31), Color("2f3138"), 1.5)
-		Dessin.poly(self, [Vector2(66, -42), Vector2(66, -30), Vector2(66 - 9 * bosse, -36)], couleur.darkened(0.35))
-	else:
-		draw_rect(Rect2(60, -24, 10, 8), Color("2f3138"))
-		draw_rect(Rect2(60, -38, 6, 8), Color("f6f0c8"))
-	# Capot qui se soulève (panne)
-	if capot > 0.01:
-		draw_set_transform(Vector2(14, -42), -capot * 0.7)
-		draw_rect(Rect2(0, -4, 52, 6), sombre)
-		draw_set_transform(Vector2.ZERO)
-	# Roues
-	for rx in [-38.0, 40.0]:
-		var c := Vector2(rx, -12)
-		draw_circle(c, 13, Color("23242a"))
-		if sans_enjoliveur and rx > 0.0:
-			draw_circle(c, 6, Color("4a4c52"))
-			continue
-		draw_circle(c, 6, Color("9a9ea8"))
-		for k in 3:
-			var a := _roue + k * TAU / 3.0
-			draw_line(c, c + Vector2.from_angle(a) * 6.0, Color("55585f"), 2.0)
-
-
-func dessiner_lumieres(ci: CanvasItem, nuit: float) -> void:
-	if nuit < 0.3:
+	var v := _info()
+	if rue == null or v.is_empty():
 		return
-	var a := (nuit - 0.3) / 0.7
-	var phare := Vector2(66 * signf(scale.x), -34)
-	ci.draw_colored_polygon(PackedVector2Array([phare, phare + Vector2(150 * signf(scale.x), -18), phare + Vector2(150 * signf(scale.x), 30)]), Color(1, 0.95, 0.75, 0.18 * a))
-	Dessin.halo(ci, phare, 14, Color(1, 0.95, 0.75, 0.7 * a))
+	var o: Vector2i = v["origine"]
+	var t: Vector2i = v["taille"]
+	rue.rect(self, Rect2i(-t.x / 2 + 4, -3, t.x - 4, 5), "ombre_froide")
+	var bas := (-1 if _image == 3 and vitesse > 0.0 else 0) + hoquet
+	var dossier := "rue/" if sens > 0 else "miroir/"
+	rue.image(self, dossier + "voiture_" + modele, Vector2i(0, bas))
+	var roue := "rue/roue_%d" % (_image % 2 + 1)
+	for rx in v["roues"]:
+		var x: int = int(rx) - o.x
+		if sens < 0:
+			x = -x
+		rue.image(self, roue, Vector2i(x, 0))
+	if capot > 0.0:
+		rue.image(self, "objet/capot", Vector2i(t.x / 2 - 44 if sens > 0 else -t.x / 2 + 10, -t.y + 34 + bas - int(capot * 3.0)))
+	if panneau:
+		rue.image(self, "objet/a_vendre", Vector2i(-10 * sens, -t.y + 26))
+	if rue.get("melange") > 0.0:
+		var ph: Rect2i = v["phare"]
+		var fe: Rect2i = v["feu"]
+		for e in [[ph, "lumiere"], [fe, "ambre"]]:
+			var r: Rect2i = e[0]
+			var p: Vector2i = r.position - o + Vector2i(0, bas)
+			if sens < 0:
+				p.x = -p.x - r.size.x
+			rue.emissif(self, Rect2i(p, r.size), e[1], rue.get("melange"))

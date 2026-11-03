@@ -3,7 +3,7 @@ extends RefCounted
 ## Petits outils de dessin de la ville (style « diorama en aplats », 09 §2.2) :
 ## volumes à 2 tons, ombres portées, rectangles arrondis, halos, textes.
 
-const OMBRE := Color(0, 0, 0, 0.25)
+const OMBRE := Color(Color.BLACK, 0.25)
 
 
 static func rect(ci: CanvasItem, r: Rect2, c: Color) -> void:
@@ -43,9 +43,8 @@ static var _tex_halo: GradientTexture2D = null
 static func halo(ci: CanvasItem, centre: Vector2, rayon: float, c: Color, _pas := 7) -> void:
 	if _tex_halo == null:
 		var g := Gradient.new()
-		g.set_color(0, Color(1, 1, 1, 1))
-		g.set_color(1, Color(1, 1, 1, 0))
-		g.add_point(0.35, Color(1, 1, 1, 0.45))
+		g.colors = PackedColorArray([Color.WHITE, Color(Color.WHITE, 0.0)])
+		g.add_point(0.35, Color(Color.WHITE, 0.45))
 		_tex_halo = GradientTexture2D.new()
 		_tex_halo.gradient = g
 		_tex_halo.fill = GradientTexture2D.FILL_RADIAL

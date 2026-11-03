@@ -1,7 +1,7 @@
 # Base de connaissances de dev-ville
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-30 (PX0 quater : grille fine 960 × 540, relief).
+> Dernière mise à jour : 2026-11-03 (PX1 : rue du jeu en pixel, §2 sexies).
 
 ## 1. Atelier pixel (`godot/scripts/pixel/`, conservé après PX0)
 
@@ -64,6 +64,16 @@
 - Personnages et mobilier **générés en code** (`personnages.gd` : Gérard 36 × 63, Sylvie 27 × 32 ; `facades.lampadaire/bouche_incendie/boite_poste/plaque`) ; grilles gerard/sylvie/objets.txt supprimées, lefranc.txt gardé. Contour « teinté » (`contour_teinte`).
 - Relief : `ombre_portee()` tramée sous toute saillie ; `_retour()` pan latéral en fuite (cfg "retour" : bâtiments qui avancent, dessinés après les autres) ; toits avec bord, gouttière, sous-face ; cheminée à joue ; embrasures ; marquise ; marches ; auvent avec sous-face, joues et ombre au sol (renvoyé par `batiment()["auvent"]`).
 
+## 2 sexies. PX1 (rue du jeu, branche lot/px1-ville)
+
+- **Fichiers** : `scripts/ville/ville.gd` (API, caméra, défilement, CanvasLayer -5 + VuePixel `mode_reduction`), `rue.gd` (monde : couches, mobiles, météo, saisons, tâches de fond), `batiment.gd` + `maison/banque/media.gd`, `passant.gd`, `voiture.gd`, `accessoire.gd` (sprites des séquences), `sequences.gd` ; atelier : `pixel/edifices.gd` (banque 270 × 285, Gazette 225 × 318, objets des séquences), `pixel/voisins.gd` (figurines paramétrées, enfants, poussettes, vélo, panneau). `dessin.gd` (class_name Dessin) **gardé** : l'UI s'en sert.
+- **Rendu D4** : `VuePixel.facteur_et_reduction(Vector2i)` (N = max(2, ceil(h/540)), R = h/(540 N)) ; SubViewport = vue × N, caméra zoom N, TextureRect réduit (linéaire si R < 1). `art_par_virtuel()`, `px_physiques_par_art()`, `teinter()` (gel). Vitrine PX0 inchangée (mode par défaut).
+- **Repères** : rue GAUCHE -1560 → DROITE 1860 ; Gazette x -795 (centre -683), maison 0-228 (114), banque 678-948 (813) ; bornes caméra = décor ± 200 − demi-vue. Vertical : bas du libre = clamp(haut cible − 4 + h_libre, SOL + 4, 504).
+- **Variantes** : `rue.variantes()` = [[variante, alpha]] (jour, puis orage ×krach, puis nuit ×mélange), quantifiées au 1/32 ; tout dessin passe par `rue.image/rect/emissif/lumiere_nuit`.
+- **Pièges** : `Callable.bind(a).bind(b)` appelle f(b, a) → **un seul `bindv`** pour les tâches WorkerThreadPool ; une erreur dans une tâche de fond est **muette** (vérifier le résultat dans un test). Arbres (0,4 s chacun) et recoloration de saison en tâche de fond, sinon génération 9 s. `--script` : le script de test ne peut pas nommer un autoload (Partie), mais les scripts chargés ensuite le peuvent. Commit : `git commit -F fichier` (un here-string passé à `-F -` n'est pas lu).
+- Recette PX1 passage 1 (KO) corrigée : arbre de premier plan retiré en mode titre (il cachait l'enseigne JEUCLAUDE ; contrôlé dans test_rue) ; `point_etiquette` bornée au-dessus du bas du libre (l'étiquette pend ≈ 40 px d'art sous le point) ; toutes les saisons + neige préparées dès que les arbres sont prêts ; fonds, skyline, cumulus en tâche de fond (génération ≈ 1,1-1,3 s) ; glyphe N ≠ M ; voiture de Gérard et potelet à gauche de la maison (capot loin de Gérard). Toujours regarder **toutes** les captures de format (720, téléphone) du titre : l'arbre de premier plan suit le bord droit de la vue.
+- Captures : `outils/capture_ville.ps1` (1080 en `--fullscreen`, téléphone : la famille passe la fenêtre à 1600 × 720), options `--controle`, `--rue-sans-hud`, `--rue-facteur`, `--rue-passer`. Les scénarios attendent `rue.images_pretes()`.
+
 ## 3. Décisions (étape A)
 
 - Ciel : bandes crème 12, ciel clair 46, ciel 110, bleu ardoise 112, puis bleu nuit ; horizon posé au bas du trottoir. **À régler à l'étape B** avec les bâtiments (la partie claire est surtout cachée ; le haut bleu nuit est sous la barre).
@@ -75,4 +85,6 @@
 
 - Supposer l'échelle d'étirement identique sur les deux axes (voir §2).
 - Commiter un bouchon d'interface ou un `.ttf.import` (propriété de dev-interface PX0).
+- Nommer `R` une fonction PowerShell (alias Invoke-History) : refait en PX1, tout le remplacement est perdu.
+- Le gel de la rue ne se décide jamais sur `Partie.vitesse` seul (saut lancé depuis la pause, lot 02) : passer par `anime` / `facteur_trafic`.
 - Remplacer un bloc de script par `IndexOf('} else {')` : la première occurrence peut être dans une sous-expression (ligne cassée).

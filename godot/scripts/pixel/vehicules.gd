@@ -34,6 +34,39 @@ const MODELES := {
 		"couleurs": ["bleu_gris", "zinc_clair", "ombre_froide"],
 		"pare_chocs": "ardoise_sombre",
 	},
+	# PX1 : Renault 4 verte (caisse haute, hayon droit)
+	"4l": {
+		"taille": Vector2i(67, 31),
+		"profil": [Vector2(1, 25), Vector2(1, 12), Vector2(2, 11), Vector2(4, 2), Vector2(44, 2), Vector2(50, 11),
+			Vector2(63, 13), Vector2(66, 15), Vector2(66, 25)],
+		"vitres": [[Vector2(6, 4), Vector2(21, 4), Vector2(21, 11), Vector2(5, 11)],
+			[Vector2(24, 4), Vector2(43, 4), Vector2(48, 11), Vector2(24, 11)]],
+		"roues": [13, 54],
+		"couleurs": ["vert", "vert_clair", "vert_sombre"],
+		"pare_chocs": "gris_pierre",
+	},
+	# PX1 : fourgonnette blanche (caisse en boîte)
+	"fourgonnette": {
+		"taille": Vector2i(76, 37),
+		"profil": [Vector2(1, 31), Vector2(1, 4), Vector2(2, 3), Vector2(3, 2), Vector2(47, 2), Vector2(56, 17),
+			Vector2(72, 19), Vector2(75, 21), Vector2(75, 31)],
+		"vitres": [[Vector2(6, 6), Vector2(14, 6), Vector2(14, 12), Vector2(6, 12)],
+			[Vector2(41, 5), Vector2(47, 5), Vector2(54, 16), Vector2(41, 16)]],
+		"roues": [15, 61],
+		"couleurs": ["zinc_clair", "blanc_chaud", "gris_pierre"],
+		"pare_chocs": "ardoise_sombre",
+	},
+	# PX1 : Porsche 944 rouge de Jean-Mi (basse, longue)
+	"944": {
+		"taille": Vector2i(86, 24),
+		"profil": [Vector2(1, 20), Vector2(1, 11), Vector2(4, 9), Vector2(27, 2), Vector2(50, 2), Vector2(64, 9),
+			Vector2(83, 12), Vector2(85, 14), Vector2(85, 20)],
+		"vitres": [[Vector2(30, 4), Vector2(40, 4), Vector2(40, 9), Vector2(24, 9)],
+			[Vector2(42, 4), Vector2(50, 4), Vector2(60, 9), Vector2(42, 9)]],
+		"roues": [17, 69],
+		"couleurs": ["rouge_auvent", "tuile", "brique"],
+		"pare_chocs": "rouge_auvent",
+	},
 }
 
 
