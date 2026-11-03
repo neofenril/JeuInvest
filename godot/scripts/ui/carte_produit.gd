@@ -98,7 +98,7 @@ func _draw() -> void:
 			var k := fmod(_t, 4.0) / 0.6
 			if k < 1.0:
 				var x := -40.0 + (r.size.x + 80.0) * k
-				draw_colored_polygon(PackedVector2Array([Vector2(x, 0), Vector2(x + 26, 0), Vector2(x - 14, r.size.y), Vector2(x - 40, r.size.y)]), Color(1, 1, 1, 0.10))
+				draw_colored_polygon(PackedVector2Array([Vector2(x, 0), Vector2(x + 26, 0), Vector2(x - 14, r.size.y), Vector2(x - 40, r.size.y)]), Color(Style.TEXTE, 0.10))
 	if choisie:
 		var s := StyleBoxFlat.new()
 		s.draw_center = false
@@ -117,7 +117,7 @@ func _pointilles(r: Rect2, c: Color) -> void:
 ## Badge « NOUVEAU » et son étoile, coin haut gauche en « coin ».
 func _badge(coin: Vector2) -> void:
 	var txt := "NOUVEAU"
-	var police := Style.capitales()
+	var police := Style.petites_capitales()
 	var l := police.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	var b := Rect2(coin.x, coin.y, l + 34, 24)
 	Dessin.arrondi(self, b, Style.ALERTE, 12)

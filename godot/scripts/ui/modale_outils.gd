@@ -5,24 +5,20 @@ extends RefCounted
 
 
 static func bouton_papier(titre: String, sous: String, petit: bool) -> Button:
+	# Bouton pixel sombre (ardoise) posé sur le papier du journal ou du courrier : contraste fort.
 	var b := Button.new()
 	b.text = titre + ("\n" + sous if sous != "" else "")
-	b.custom_minimum_size = Vector2(0, 80 if petit else 96)
+	b.custom_minimum_size = Vector2(0, maxf(84.0 if petit else 96.0, Style.cible_min()))
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.focus_mode = Control.FOCUS_ALL
-	b.add_theme_font_override("font", Style.ui_gras())
-	b.add_theme_font_size_override("font_size", 22 if petit else 24)
-	var n := Style.boite(Color("2a2722"), 10, 16, 8)
-	Style.bordure(n, Color("000000"), 0, 0, 0, 4)
-	var h := Style.boite(Style.ENCRE_ROUGE, 10, 16, 8)
-	Style.bordure(h, Style.ENCRE_ROUGE.darkened(0.3), 0, 0, 0, 4)
-	b.add_theme_stylebox_override("normal", n)
-	b.add_theme_stylebox_override("hover", h)
-	b.add_theme_stylebox_override("pressed", h)
-	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	b.add_theme_stylebox_override("disabled", Style.boite(Color("2a2722", 0.4), 10, 16, 8))
-	for k in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		b.add_theme_color_override(k, Style.JOURNAL)
+	CadresPixel.habiller_bouton(b, "secondaire")
+	b.add_theme_stylebox_override("focus", Style._focus())
+	if sous == "":
+		b.add_theme_font_override("font", Style.capitales())
+		b.add_theme_font_size_override("font_size", 28)
+	else:
+		b.add_theme_font_override("font", Style.ui_gras())
+		b.add_theme_font_size_override("font_size", 22 if petit else 24)
 	return b
 
 
@@ -58,7 +54,7 @@ static func dessiner_croix(b: Button) -> void:
 ## Trait en travers d'un montant hypothétique (somme qui n'a pas été versée).
 static func barrer(l: Label) -> void:
 	var y := l.size.y * 0.55
-	l.draw_line(Vector2(0, y), Vector2(l.size.x, y), Color(Style.TEXTE_2, 0.9), 3.0, true)
+	l.draw_rect(Rect2(-3, roundf(y / 3.0) * 3.0 - 1.5, l.size.x + 6, 3), Style.TEXTE_PAPIER_2)
 
 
 ## Pastille ronde de la source, avec son pictogramme dessiné (maison, banque à colonnes, journal).

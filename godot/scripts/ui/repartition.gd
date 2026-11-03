@@ -55,18 +55,18 @@ func _draw() -> void:
 				var p0 := a.lerp(b, clampf((r.position.x - sx) / 28.0, 0.0, 1.0))
 				var p1 := a.lerp(b, clampf((r.end.x - sx) / 28.0, 0.0, 1.0))
 				if p1.x > p0.x:
-					draw_line(p0, p1, Color(1, 1, 1, 0.25), 3.0)
+					draw_line(p0, p1, Color(Style.TEXTE, 0.25), 3.0)
 				sx += 12.0
 		elif k == "sicav":
 			var px := r.position.x + 6.0
 			while px < r.end.x - 3.0:
-				draw_circle(Vector2(px, 9), 2.5, Color(1, 1, 1, 0.3))
-				draw_circle(Vector2(px + 6, 19), 2.5, Color(1, 1, 1, 0.3))
+				draw_circle(Vector2(px, 9), 2.5, Color(Style.TEXTE, 0.3))
+				draw_circle(Vector2(px + 6, 19), 2.5, Color(Style.TEXTE, 0.3))
 				px += 12.0
 		elif k == "action":
 			var hx := r.position.x
 			while hx < r.end.x:
-				draw_line(Vector2(hx, 0), Vector2(hx, 28), Color(0, 0, 0, 0.15), 3.0)
+				draw_line(Vector2(hx, 0), Vector2(hx, 28), Color(Style.ENCRE, 0.15), 3.0)
 				hx += 8.0
 		draw_rect(Rect2(r.end.x - 2, 0, 2, 28), Color(Style.PANNEAU_OPAQUE, 0.9))
 		x += w

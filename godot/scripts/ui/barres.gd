@@ -40,7 +40,7 @@ func _draw() -> void:
 	var maxi := 1.0
 	for l in lignes:
 		maxi = maxf(maxi, float(l[1]))
-	var caps := Style.capitales()
+	var caps := Style.petites_capitales()
 	var police := Style.chiffres()
 	var gauche := 170.0
 	var h := size.y / lignes.size()
@@ -51,7 +51,7 @@ func _draw() -> void:
 		draw_string(caps, Vector2(0, y + epaisseur * 0.72), str(l[0]), HORIZONTAL_ALIGNMENT_LEFT, gauche - 10.0, 18, Style.TEXTE)
 		var place := size.x - gauche - 150.0
 		var w := place * float(l[1]) / maxi * avance
-		Dessin.arrondi(self, Rect2(gauche, y, place, epaisseur), Color(1, 1, 1, 0.05), 8)
+		Dessin.arrondi(self, Rect2(gauche, y, place, epaisseur), Color(Style.TEXTE, 0.05), 8)
 		if w > 2.0:
 			Dessin.arrondi(self, Rect2(gauche, y, w, epaisseur), l[2], 8)
 		draw_string(police, Vector2(gauche + w + 12.0, y + epaisseur * 0.78), Format.entier(float(l[1]) * avance, ab), HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Style.TEXTE)

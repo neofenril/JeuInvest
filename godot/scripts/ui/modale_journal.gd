@@ -19,13 +19,10 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 	m.assombrir(0.6)
 	var t := m.get_viewport_rect().size
 	var p := PanelContainer.new()
-	var s := Style.boite(Style.JOURNAL, 2, 24 if compact else 36, 18 if compact else 28)
-	Style.ombre(s, Color(0, 0, 0, 0.7), 30, Vector2(6, 14))
-	p.add_theme_stylebox_override("panel", s)
-	p.custom_minimum_size = Vector2(minf(1100.0, t.x - 80.0), 0)
-	var mat := ShaderMaterial.new()
-	mat.shader = load("res://shaders/papier.gdshader")
-	p.material = mat
+	# Page de la Gazette : papier crème à bords déchirés (cadre pixel répété), docs/16 §5.4
+	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	p.add_theme_stylebox_override("panel", CadresPixel.style_marges("journal", 24 if compact else 36, 24 if compact else 33, 24 if compact else 36, 24 if compact else 33))
+	p.custom_minimum_size = Vector2(minf(1200.0, t.x - 80.0), 0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6 if compact else 10)
 	p.add_child(v)
@@ -34,7 +31,7 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 	var tete := HBoxContainer.new()
 	var ruban := PanelContainer.new()
 	ruban.add_theme_stylebox_override("panel", Style.boite(Style.ENCRE_ROUGE, 3, 12, 2))
-	ruban.add_child(Style.label(str(dj.get("bandeau", "SPÉCIAL")), 22, Style.manchette(), Color.WHITE))
+	ruban.add_child(Style.label(str(dj.get("bandeau", "SPÉCIAL")), 22, Style.manchette(), PalettePixel.couleur("blanc_chaud")))
 	ruban.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tete.add_child(ruban)
 	var nom := Style.label(str(dj.get("nom", "LA GAZETTE")), 40 if compact else 52, Style.titre_journal(), Style.ENCRE)
@@ -81,7 +78,7 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 		m.fixer_largeurs(p)
 		await m.centrer(p)
 		if is_instance_valid(p):
-			p.rotation = deg_to_rad(-1.0)
+			p.rotation = 0.0
 			manchette.visible_ratio = 1.0
 			m.apparaitre(p)
 		return
@@ -104,7 +101,7 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 	await m.centrer(p)
 	# Entrée : le journal jaillit du média en tournoyant, ou tombe simplement
 	var cible_pos := p.position
-	var cible_rot := deg_to_rad(-1.5)
+	var cible_rot := 0.0   # au repos, la page est droite (pixels nets, docs/16 §5.4)
 	m.boutons_actifs = false
 	zone_choix.modulate.a = 0.5
 	var tw := p.create_tween().set_parallel(true)
@@ -168,7 +165,7 @@ func _impact(c: Dictionary, largeur_page: float) -> PanelContainer:
 	if c.has("ecart_livret"):
 		var ecart := float(c["ecart_livret"])
 		var ecart_av := float(c.get("ecart_livret_avant", 0.0))
-		var vert := Color("2f6b45")
+		var vert := PalettePixel.couleur("gain_papier")
 		var lv := HBoxContainer.new()
 		lv.add_theme_constant_override("separation", 10)
 		var tl := Style.label("FACE À « TOUT AU LIVRET A »", 18, Style.capitales(), Style.ENCRE)
@@ -202,7 +199,7 @@ func _impact_journal(p: Control, manchette: Label, spectaculaire: bool) -> void:
 		poussiere.gravity = Vector2(0, 200)
 		poussiere.scale_amount_min = 3.0
 		poussiere.scale_amount_max = 6.0
-		poussiere.color = Color("d8ccb0")
+		poussiere.color = PalettePixel.couleur("pierre_claire")
 		m.add_child(poussiere)
 		m.move_child(poussiere, p.get_index())
 		poussiere.emitting = true

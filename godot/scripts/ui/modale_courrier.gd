@@ -22,16 +22,10 @@ func ouvrir(c: Dictionary, depart: Vector2, e: EtatPartie, lecture_choix := "", 
 	var naissance: bool = c.get("effet", "") == "naissance"
 	var bonne := montant > 0.0
 	var p := PanelContainer.new()
-	var s := Style.boite(Style.COURRIER, 6, 28, 22 if compact else 28)
-	Style.bordure(s, Color("f2a7c3") if naissance else (Style.GAIN if bonne else Style.PERTE), 10, 0, 0, 0)
-	Style.ombre(s, Color(0, 0, 0, 0.6), 24, Vector2(4, 10))
-	p.add_theme_stylebox_override("panel", s)
-	p.custom_minimum_size = Vector2(780, 0)
-	var mat := ShaderMaterial.new()
-	mat.shader = load("res://shaders/papier.gdshader")
-	mat.set_shader_parameter("bruit", 0.03)
-	mat.set_shader_parameter("fibres", 0.0)
-	p.material = mat
+	# Papier à lettre crème, liseré : rose (faire-part), vert (bonne nouvelle), rouge (dépense)
+	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	p.add_theme_stylebox_override("panel", Style.papier("neon_rose" if naissance else ("gain_papier" if bonne else "perte_papier"), 30.0, 24.0 if compact else 30.0))
+	p.custom_minimum_size = Vector2(840, 0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8 if compact else 12)
 	p.add_child(v)
@@ -39,10 +33,10 @@ func ouvrir(c: Dictionary, depart: Vector2, e: EtatPartie, lecture_choix := "", 
 	tete.add_theme_constant_override("separation", 12)
 	var env := Control.new()
 	env.custom_minimum_size = Vector2(40, 30)
-	env.draw.connect(_dessiner_enveloppe.bind(env, Color("6b6458")))
+	env.draw.connect(_dessiner_enveloppe.bind(env, PalettePixel.couleur("pierre_ombre")))
 	env.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tete.add_child(env)
-	var lt := Style.label(("FAIRE-PART · " if naissance else "COURRIER · ") + Dates.texte(a).to_upper(), 20, Style.capitales(), Color("6b6458"))
+	var lt := Style.label(("FAIRE-PART · " if naissance else "COURRIER · ") + Dates.texte(a).to_upper(), 20, Style.capitales(), PalettePixel.couleur("pierre_ombre"))
 	lt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tete.add_child(lt)
@@ -72,7 +66,7 @@ func ouvrir(c: Dictionary, depart: Vector2, e: EtatPartie, lecture_choix := "", 
 		m.fixer_largeurs(p)
 		await m.centrer(p)
 		if is_instance_valid(p):
-			p.rotation = deg_to_rad(1.0)
+			p.rotation = 0.0
 			m.apparaitre(p)
 		return
 	for ch in c["choix"]:
@@ -99,21 +93,21 @@ func _situation(c: Dictionary, e: EtatPartie, a: int, lecture: bool, lecture_cho
 		var t_lec := "Votre choix : " + lecture_choix
 		if not naissance and absf(montant) > 0.004:
 			t_lec += "  ·  " + Format.montant(montant, a, false, true)
-		return Style.label(t_lec, 24, Style.ui_gras(), Color("4a463e"))
+		return Style.label(t_lec, 24, Style.ui_gras(), PalettePixel.couleur("bois_sombre"))
 	if naissance:
 		var reste := float(c.get("reste_apres", 0.0))
 		var t_info := "Dépenses du mois : de %s à %s.  Il vous restera %s par mois." % [
 			Format.montant(float(c.get("depenses_avant", 0.0)), a), Format.montant(float(c.get("depenses_apres", 0.0)), a), Format.montant(reste, a)]
 		if reste < 0.0:
 			t_info += " Le budget du mois devient négatif : il faudra puiser dans l'épargne."
-		return Style.label(t_info, 24, Style.ui_gras() if reste < 0.0 else Style.ui(), Style.ENCRE_ROUGE if reste < 0.0 else Color("4a463e"))
+		return Style.label(t_info, 24, Style.ui_gras() if reste < 0.0 else Style.ui(), Style.ENCRE_ROUGE if reste < 0.0 else PalettePixel.couleur("bois_sombre"))
 	if bonne:
-		return Style.label("Versée sur votre compte courant.", 24, Style.ui(), Color("2f6b45"))
+		return Style.label("Versée sur votre compte courant.", 24, Style.ui(), PalettePixel.couleur("gain_papier"))
 	if cc >= -montant:
 		var dep := float(e.depenses()["total"])
 		var c0 := (maxf(0.0, cc) + e.joueur.livret) / dep
 		var c1 := (maxf(0.0, cc + montant) + e.joueur.livret) / dep
-		return Style.label("Compte courant : %s.  Votre coussin passe de %s à %s mois." % [Format.montant(cc, a), Format.nombre(c0, 1), Format.nombre(c1, 1)], 24, Style.ui(), Color("4a463e"))
+		return Style.label("Compte courant : %s.  Votre coussin passe de %s à %s mois." % [Format.montant(cc, a), Format.nombre(c0, 1), Format.nombre(c1, 1)], 24, Style.ui(), PalettePixel.couleur("bois_sombre"))
 	return Style.label("Compte courant : %s.  Il manque %s." % [Format.montant(cc, a), Format.montant(-montant - cc, a)], 24, Style.ui_gras(), Style.ENCRE_ROUGE)
 
 
@@ -122,7 +116,7 @@ func _entree(p: Control, depart: Vector2) -> void:
 	if not is_instance_valid(p):
 		return
 	var cible := p.position
-	p.rotation = deg_to_rad(1.0)
+	p.rotation = 0.0
 	if Juice.animations_reduites:
 		p.modulate.a = 0.0
 		p.create_tween().tween_property(p, "modulate:a", 1.0, 0.15)
@@ -164,26 +158,26 @@ func _dessiner_enveloppe(c: Control, couleur: Color) -> void:
 
 func _dessiner_grande_enveloppe(c: Control) -> void:
 	var r := Rect2(Vector2.ZERO, c.size)
-	c.draw_rect(r, Color("f3ead6"))
-	c.draw_colored_polygon(PackedVector2Array([r.position, Vector2(r.end.x, 0), r.get_center() + Vector2(0, 8)]), Color("e3d6b8"))
-	c.draw_rect(Rect2(r.end.x - 46, 10, 34, 40), Color("c8382e"))
-	c.draw_rect(r, Color("b9ab8c"), false, 2.0)
+	c.draw_rect(r, PalettePixel.couleur("creme"))
+	c.draw_colored_polygon(PackedVector2Array([r.position, Vector2(r.end.x, 0), r.get_center() + Vector2(0, 8)]), PalettePixel.couleur("pierre_claire"))
+	c.draw_rect(Rect2(r.end.x - 46, 10, 34, 40), PalettePixel.couleur("rouge_auvent"))
+	c.draw_rect(r, PalettePixel.couleur("pierre"), false, 2.0)
 
 
 ## Bébé emmailloté pour le timbre du faire-part (lange, visage, nœud).
 func _dessiner_bebe(t: Control, c: Vector2, lange: Color, k: float) -> void:
 	t.draw_circle(c + Vector2(0, -15) * k, 5 * k, lange.darkened(0.15))
 	Dessin.arrondi(t, Rect2(c + Vector2(-18, -12) * k, Vector2(36, 30) * k), lange, int(12 * k))
-	t.draw_circle(c + Vector2(0, -2) * k, 9 * k, Color("f3cfb0"))
-	t.draw_circle(c + Vector2(-3, -3) * k, 1.4 * k, Color("26272c"))
-	t.draw_circle(c + Vector2(3, -3) * k, 1.4 * k, Color("26272c"))
-	t.draw_arc(c, 3.0 * k, 0.3, PI - 0.3, 6, Color("c0705a"), 1.4 * k)
+	t.draw_circle(c + Vector2(0, -2) * k, 9 * k, PalettePixel.couleur("peau_claire"))
+	t.draw_circle(c + Vector2(-3, -3) * k, 1.4 * k, PalettePixel.couleur("encre"))
+	t.draw_circle(c + Vector2(3, -3) * k, 1.4 * k, PalettePixel.couleur("encre"))
+	t.draw_arc(c, 3.0 * k, 0.3, PI - 0.3, 6, PalettePixel.couleur("terre_cuite_claire"), 1.4 * k)
 
 
 ## Timbre dentelé avec un pictogramme (voiture, dent, billet, bébé, jumeaux).
 func _dessiner_timbre(t: Control, picto: String) -> void:
 	var r := Rect2(Vector2(6, 6), t.size - Vector2(12, 12))
-	t.draw_rect(r, Color("fffaf0"))
+	t.draw_rect(r, PalettePixel.couleur("blanc_chaud"))
 	var k := 0.0
 	while k < r.size.x:
 		t.draw_circle(Vector2(r.position.x + k, r.position.y), 3.5, Style.COURRIER)
@@ -195,26 +189,26 @@ func _dessiner_timbre(t: Control, picto: String) -> void:
 		t.draw_circle(Vector2(r.end.x, r.position.y + k), 3.5, Style.COURRIER)
 		k += 10.0
 	var interieur := r.grow(-8)
-	t.draw_rect(interieur, Color("d9e6ef"))
+	t.draw_rect(interieur, PalettePixel.couleur("ciel_clair"))
 	var c := interieur.get_center()
 	match picto:
 		"voiture":
-			Dessin.arrondi(t, Rect2(c.x - 26, c.y - 4, 52, 16), Color("c8382e"), 4)
-			t.draw_colored_polygon(PackedVector2Array([c + Vector2(-16, -4), c + Vector2(-9, -16), c + Vector2(12, -16), c + Vector2(18, -4)]), Color("c8382e"))
-			t.draw_circle(c + Vector2(-14, 13), 6, Color("23242a"))
-			t.draw_circle(c + Vector2(15, 13), 6, Color("23242a"))
+			Dessin.arrondi(t, Rect2(c.x - 26, c.y - 4, 52, 16), PalettePixel.couleur("rouge_auvent"), 4)
+			t.draw_colored_polygon(PackedVector2Array([c + Vector2(-16, -4), c + Vector2(-9, -16), c + Vector2(12, -16), c + Vector2(18, -4)]), PalettePixel.couleur("rouge_auvent"))
+			t.draw_circle(c + Vector2(-14, 13), 6, PalettePixel.couleur("encre"))
+			t.draw_circle(c + Vector2(15, 13), 6, PalettePixel.couleur("encre"))
 			for i in 3:
-				t.draw_circle(c + Vector2(26 + i * 4, -6 - i * 8), 4 + i, Color(0.4, 0.4, 0.45, 0.7))
+				t.draw_circle(c + Vector2(26 + i * 4, -6 - i * 8), 4 + i, Color(PalettePixel.couleur("gris_pierre"), 0.7))
 		"coeur":
-			t.draw_circle(c + Vector2(-8, -4), 10, Color("c8382e"))
-			t.draw_circle(c + Vector2(8, -4), 10, Color("c8382e"))
-			t.draw_colored_polygon(PackedVector2Array([c + Vector2(-17, 0), c + Vector2(17, 0), c + Vector2(0, 20)]), Color("c8382e"))
+			t.draw_circle(c + Vector2(-8, -4), 10, PalettePixel.couleur("rouge_auvent"))
+			t.draw_circle(c + Vector2(8, -4), 10, PalettePixel.couleur("rouge_auvent"))
+			t.draw_colored_polygon(PackedVector2Array([c + Vector2(-17, 0), c + Vector2(17, 0), c + Vector2(0, 20)]), PalettePixel.couleur("rouge_auvent"))
 		"bebe":
-			_dessiner_bebe(t, c, Color("f7b6c8"), 1.0)
+			_dessiner_bebe(t, c, PalettePixel.couleur("neon_rose"), 1.0)
 		"jumeaux":
-			_dessiner_bebe(t, c + Vector2(-13, 2), Color("f7b6c8"), 0.75)
-			_dessiner_bebe(t, c + Vector2(13, 2), Color("a9d4f5"), 0.75)
+			_dessiner_bebe(t, c + Vector2(-13, 2), PalettePixel.couleur("neon_rose"), 0.75)
+			_dessiner_bebe(t, c + Vector2(13, 2), PalettePixel.couleur("ciel_clair"), 0.75)
 		_:
-			t.draw_rect(Rect2(c.x - 24, c.y - 12, 48, 26), Color("5c9a62"))
-			t.draw_circle(c + Vector2(0, 1), 8, Color("d6ecd2"))
-	t.draw_string(Style.chiffres(), Vector2(r.position.x + 8, r.end.y - 8), "2,20 F", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("6b6458"))
+			t.draw_rect(Rect2(c.x - 24, c.y - 12, 48, 26), PalettePixel.couleur("vert"))
+			t.draw_circle(c + Vector2(0, 1), 8, PalettePixel.couleur("vert_clair"))
+	t.draw_string(Style.chiffres(), Vector2(r.position.x + 8, r.end.y - 8), "2,20 F", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, PalettePixel.couleur("pierre_ombre"))

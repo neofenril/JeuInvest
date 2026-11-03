@@ -11,17 +11,13 @@ func _init(modales: Modales) -> void:
 	m = modales
 
 
-## Portrait réduit : le dessin du portrait est fait pour 120 px, on l'échelonne dans une boîte.
-func _mini_portrait(taille: float) -> Control:
-	var boite := Control.new()
-	boite.custom_minimum_size = Vector2(taille, taille)
-	boite.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	boite.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+## Portrait pixel 48 × 48 dans son cadre (52 texels), agrandi à un nombre entier de texels.
+func _mini_portrait(k: int, grave: bool) -> Control:
 	m.portrait = Portrait.new()
-	m.portrait.size = Vector2(120, 120)
-	m.portrait.scale = Vector2.ONE * taille / 120.0
-	boite.add_child(m.portrait)
-	return boite
+	m.portrait.expression = "grave" if grave else "affable"
+	m.portrait.custom_minimum_size = Vector2(52, 52) * k
+	m.portrait.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	return m.portrait
 
 
 ## c : Banquier.contenu (kind « banquier »). lecture : relecture depuis le carnet (un seul bouton Fermer).
@@ -35,66 +31,83 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false, bandeau := "") -> 
 	m.assombrir(0.5)
 	var vue := m.get_viewport_rect().size
 	var a: int = c.get("ab", 0)
+	# Papier crème à en-tête de la banque, liseré or (docs/16 §5.3)
 	var p := PanelContainer.new()
-	var s := Style.boite(Style.PANNEAU_ELEVE, 22, 22 if compact else 30, 14 if compact else 22)
-	Style.bordure(s, Style.ACCENT, 2, 2, 2, 2)
-	Style.ombre(s, Color(0, 0, 0, 0.7), 24, Vector2(0, 10))
-	p.add_theme_stylebox_override("panel", s)
+	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	p.add_theme_stylebox_override("panel", Style.papier("banque", 24.0 if compact else 33.0, 18.0 if compact else 24.0))
 	p.custom_minimum_size = Vector2(minf(1320.0, vue.x - 60.0), 0)
-	var interieur := p.custom_minimum_size.x - (44.0 if compact else 60.0)
+	var interieur := p.custom_minimum_size.x - (54.0 if compact else 72.0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6 if compact else 12)
 	p.add_child(v)
-	# En-tête : portrait, nom, date, rang ; tuile du produit ; croix
+	# En-tête : « BANQUE DE LA RUE », tampon du produit, croix ; filet or
+	var en_tete := HBoxContainer.new()
+	en_tete.add_theme_constant_override("separation", 18)
+	var banque_rue := Style.label("BANQUE DE LA RUE", 28, Style.capitales(), Style.ENCRE)
+	banque_rue.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	banque_rue.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	en_tete.add_child(banque_rue)
+	var tampon := CadresPixel.panneau("tampon")
+	tampon.add_theme_stylebox_override("panel", CadresPixel.style_marges("tampon", 18, 6, 18, 6))
+	tampon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tampon.rotation = deg_to_rad(-2.0)
+	tampon.add_child(Style.label(str(c.get("titre", "")).to_upper(), 28, Style.capitales(), PalettePixel.couleur("bleu_ardoise")))
+	en_tete.add_child(tampon)
+	var x := Button.new()
+	x.name = "Croix"
+	var cote := maxf(84.0, Style.cible_min())
+	x.custom_minimum_size = Vector2(cote, cote)
+	x.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	x.focus_mode = Control.FOCUS_NONE
+	CadresPixel.habiller_bouton(x, "papier", "croix")
+	x.icon = CadresPixel.texture("croix")
+	x.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	x.pressed.connect(func() -> void: m.fermer(m.choix_exterieur))
+	en_tete.add_child(x)
+	v.add_child(en_tete)
+	v.add_child(ModaleOutils.filet(Style.OR, 3))
+	# Qui parle : portrait 48 × 48 (×3 sur PC, ×2 au téléphone), nom, date, rang
 	var tete := HBoxContainer.new()
-	tete.add_theme_constant_override("separation", 16)
-	tete.add_child(_mini_portrait(64.0 if compact else 104.0))
+	tete.add_theme_constant_override("separation", 18)
+	tete.add_child(_mini_portrait(2 if compact else 3, heritage or str(c.get("id", "")) == "D08"))
 	var vt := VBoxContainer.new()
-	vt.add_theme_constant_override("separation", -2)
+	vt.add_theme_constant_override("separation", 0)
 	vt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	vt.add_child(Style.label(str(m.donnees_demo.get("banquier", {}).get("nom", "M. LEFRANC")) + " · votre banquier", 24 if compact else 28, Style.ui_gras()))
-	var sous := "Banque · " + str(c.get("date", ""))
+	vt.add_child(Style.label(str(m.donnees_demo.get("banquier", {}).get("nom", "M. LEFRANC")).to_upper() + " · votre banquier", 28, Style.capitales(), Style.ENCRE))
+	var sous := str(c.get("date", ""))
 	if lecture:
 		sous += " · relecture"
-	vt.add_child(Style.label(sous, 18 if compact else 20, Style.ui(), Style.TEXTE_2))
+	vt.add_child(Style.label(sous, 20, Style.ui(), Style.TEXTE_PAPIER_2))
 	var rang := "UNE NOUVELLE" if heritage else "NOUVEAU PRODUIT · %d sur %d" % [int(c.get("rang", 1)), int(c.get("total", 9))]
 	if lecture:
 		rang = bandeau if bandeau != "" else "RELECTURE · CHIFFRES D'AUJOURD'HUI"
-	vt.add_child(Style.label(rang, 16 if compact else 18, Style.capitales(), Style.ACCENT))
+	var l_rang := Style.label(rang, 20, Style.petites_capitales(), Style.ENCRE_ROUGE)
+	l_rang.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l_rang.custom_minimum_size.x = 300
+	vt.add_child(l_rang)
 	tete.add_child(vt)
-	var tuile := PanelContainer.new()
-	var st := Style.boite(Color(c.get("couleur", Style.ACCENT), 0.22), 10, 16, 8)
-	Style.bordure(st, c.get("couleur", Style.ACCENT), 8, 0, 0, 0)
-	tuile.add_theme_stylebox_override("panel", st)
-	tuile.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	tuile.add_child(Style.label(str(c.get("titre", "")), 22 if compact else 26, Style.capitales(), Style.TEXTE))
-	tete.add_child(tuile)
-	var x := Button.new()
-	x.custom_minimum_size = Vector2(72, 72)
-	x.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	x.draw.connect(ModaleOutils.dessiner_croix.bind(x))
-	x.pressed.connect(func() -> void: m.fermer(m.choix_exterieur))
-	tete.add_child(x)
+	if compact:
+		# Téléphone : le portrait et le corps partagent la hauteur ; l'en-tête reste sur une ligne
+		tete.add_theme_constant_override("separation", 12)
 	v.add_child(tete)
-	v.add_child(ModaleOutils.filet(Style.FILET, 2))
 	# Corps : le texte à gauche, l'argent du joueur et le comparatif à droite
 	var corps := HBoxContainer.new()
 	corps.add_theme_constant_override("separation", 22 if compact else 36)
 	v.add_child(corps)
 	var largeur_g := floorf(interieur * (0.44 if compact else 0.43))
-	var largeur_d := interieur - largeur_g - (22.0 if compact else 36.0)
+	var largeur_d := interieur - largeur_g - 2.0 * (22.0 if compact else 36.0) - 3.0
 	var gauche := VBoxContainer.new()
 	gauche.add_theme_constant_override("separation", 8)
 	corps.add_child(gauche)
-	var texte := Style.label("« " + str(c.get("texte", "")) + " »", 21 if compact else 26, Style.ui(), Style.TEXTE)
+	var texte := Style.label("« " + str(c.get("texte", "")) + " »", 22 if compact else 26, Style.ui(), Style.ENCRE)
 	texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	texte.custom_minimum_size.x = largeur_g
 	texte.visible_ratio = 0.0
 	texte.name = "Texte"
 	gauche.add_child(texte)
 	if str(c.get("note", "")) != "":
-		var note := Style.label(str(c["note"]), 18 if compact else 20, Style.ui_gras(), Style.ALERTE)
+		var note := Style.label(str(c["note"]), 20, Style.ui_gras(), Style.ENCRE_ROUGE)
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		note.custom_minimum_size.x = largeur_g
 		gauche.add_child(note)
@@ -102,7 +115,14 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false, bandeau := "") -> 
 	droite.add_theme_constant_override("separation", 4 if compact else 8)
 	droite.custom_minimum_size.x = largeur_d
 	corps.add_child(droite)
-	droite.add_child(Style.label("AVEC VOTRE ARGENT", 16 if compact else 18, Style.capitales(), Style.TEXTE_2))
+	# Séparation verticale pierre claire entre le texte et l'argent
+	var sep := ColorRect.new()
+	sep.color = PalettePixel.couleur("pierre_claire")
+	sep.custom_minimum_size = Vector2(3, 0)
+	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	corps.add_child(sep)
+	corps.move_child(sep, 1)
+	droite.add_child(Style.label("AVEC VOTRE ARGENT", 28 if not compact else 20, Style.capitales(), Style.ENCRE))
 	droite.add_child(_ticket(c, a, largeur_d))
 	if c.has("comparatif"):
 		droite.add_child(_comparatif(c["comparatif"], largeur_d))
@@ -135,16 +155,20 @@ func _pied(c: Dictionary, p: Control, texte: Label, lecture: bool, heritage: boo
 	var pied := HBoxContainer.new()
 	pied.add_theme_constant_override("separation", 16)
 	if lecture or heritage:
-		var ok := Style.bouton("FERMER" if lecture else "COMPRIS", false, 72 if compact else 80)
+		# Bouton principal ambre (docs/16 §5.3)
+		var ok := Style.bouton("FERMER" if lecture else "COMPRIS", true)
 		ok.custom_minimum_size.x = 360
 		ok.pressed.connect(func() -> void: m.fermer(m.choix_exterieur))
 		pied.add_child(ok)
 	else:
-		var ouvrir_b := Style.bouton(str(c.get("bouton", "OUVRIR")), false, 72 if compact else 80)
+		# Deux choix de même poids, même style papier (principe 11)
+		var ouvrir_b := Style.bouton(str(c.get("bouton", "OUVRIR")))
+		ouvrir_b.theme_type_variation = "BoutonPapier"
 		ouvrir_b.custom_minimum_size.x = 340 if compact else 380
 		ouvrir_b.pressed.connect(m.fermer.bind("ouvrir"))
 		pied.add_child(ouvrir_b)
-		var tard := Style.bouton("PAS MAINTENANT", false, 72 if compact else 80)
+		var tard := Style.bouton("PAS MAINTENANT")
+		tard.theme_type_variation = "BoutonPapier"
 		tard.custom_minimum_size.x = 340 if compact else 380
 		tard.pressed.connect(m.fermer.bind("plus_tard"))
 		pied.add_child(tard)
@@ -155,10 +179,13 @@ func _pied(c: Dictionary, p: Control, texte: Label, lecture: bool, heritage: boo
 		var plus := Button.new()
 		plus.text = "En savoir plus ›"
 		plus.flat = true
-		plus.custom_minimum_size = Vector2(0, 64)
-		plus.add_theme_color_override("font_color", Style.ACCENT)
-		plus.add_theme_color_override("font_hover_color", Style.ACCENT.lightened(0.2))
-		plus.add_theme_font_size_override("font_size", 22)
+		plus.focus_mode = Control.FOCUS_NONE
+		plus.custom_minimum_size = Vector2(0, maxf(84.0, Style.cible_min()))
+		plus.add_theme_font_override("font", Style.ui_gras())
+		plus.add_theme_color_override("font_color", PalettePixel.couleur("bleu_ardoise"))
+		plus.add_theme_color_override("font_hover_color", PalettePixel.couleur("bleu_nuit"))
+		plus.add_theme_color_override("font_pressed_color", PalettePixel.couleur("bleu_nuit"))
+		plus.add_theme_font_size_override("font_size", 24)
 		plus.pressed.connect(_retourner_carte.bind(p, texte, plus, c))
 		pied.add_child(plus)
 	return pied
@@ -169,9 +196,8 @@ func _ticket(c: Dictionary, a: int, largeur: float) -> Control:
 	var compact := m.compact
 	var tk: Array = c.get("ticket", [])
 	var p := PanelContainer.new()
-	var s := Style.boite(Style.PANNEAU, 12, 18, 8 if compact else 12)
-	Style.bordure(s, Style.OR, 2, 2, 2, 2)
-	p.add_theme_stylebox_override("panel", s)
+	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	p.add_theme_stylebox_override("panel", CadresPixel.style_marges("ticket", 21, 18 if compact else 24, 21, 18 if compact else 24))
 	var taille := 26 if compact else 32
 	if c.get("heritage", false) and tk.size() >= 6:
 		var h := HBoxContainer.new()
@@ -186,16 +212,16 @@ func _ticket(c: Dictionary, a: int, largeur: float) -> Control:
 			col.custom_minimum_size.x = largeur_col
 			if k == 1:
 				col.modulate.a = 0.75
-			var t0 := Style.label(str(tk[3 * k]).to_upper(), 16, Style.capitales(), Style.TEXTE_2)
+			var t0 := Style.label(str(tk[3 * k]).to_upper(), 16, Style.capitales(), Style.TEXTE_PAPIER_2)
 			t0.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			t0.custom_minimum_size.x = largeur_col
 			col.add_child(t0)
-			var lm := Style.label(str(tk[3 * k + 1]), taille, Style.chiffres(), Style.GAIN if k == 0 else Style.TEXTE_2)
+			var lm := Style.label(str(tk[3 * k + 1]), taille, Style.chiffres(), Style.GAIN_PAPIER if k == 0 else Style.TEXTE_PAPIER_2)
 			lm.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 			if k == 1:
 				lm.draw.connect(ModaleOutils.barrer.bind(lm))
 			col.add_child(lm)
-			var t2 := Style.label(str(tk[3 * k + 2]), 18, Style.ui(), Style.TEXTE_2)
+			var t2 := Style.label(str(tk[3 * k + 2]), 18, Style.ui(), Style.TEXTE_PAPIER_2)
 			t2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			t2.custom_minimum_size.x = largeur_col
 			col.add_child(t2)
@@ -205,18 +231,18 @@ func _ticket(c: Dictionary, a: int, largeur: float) -> Control:
 	if c.get("ticket_succession", false) and tk.size() >= 5:
 		var vv := VBoxContainer.new()
 		vv.add_theme_constant_override("separation", 2)
-		vv.add_child(Style.label(str(tk[0]), 18 if compact else 20, Style.ui(), Style.TEXTE))
+		vv.add_child(Style.label(str(tk[0]), 18 if compact else 20, Style.ui(), Style.ENCRE))
 		var h2 := HBoxContainer.new()
 		h2.add_theme_constant_override("separation", 24)
 		for k in 2:
 			var col2 := VBoxContainer.new()
 			col2.add_theme_constant_override("separation", -2)
 			col2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			col2.add_child(Style.label(str(tk[1 + 2 * k]).to_upper(), 16, Style.capitales(), Style.TEXTE_2))
-			col2.add_child(Style.label(str(tk[2 + 2 * k]), taille, Style.chiffres(), Style.TEXTE_2 if k == 0 else Style.GAIN))
+			col2.add_child(Style.label(str(tk[1 + 2 * k]).to_upper(), 16, Style.capitales(), Style.TEXTE_PAPIER_2))
+			col2.add_child(Style.label(str(tk[2 + 2 * k]), taille, Style.chiffres(), Style.TEXTE_PAPIER_2 if k == 0 else Style.GAIN_PAPIER))
 			h2.add_child(col2)
 		vv.add_child(h2)
-		var le := Style.label(str(c.get("ligne_enfant", "")), 18, Style.ui(), Style.TEXTE_2)
+		var le := Style.label(str(c.get("ligne_enfant", "")), 18, Style.ui(), Style.TEXTE_PAPIER_2)
 		le.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		le.custom_minimum_size.x = largeur - 40.0
 		vv.add_child(le)
@@ -224,10 +250,10 @@ func _ticket(c: Dictionary, a: int, largeur: float) -> Control:
 		return p
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 14)
-	hb.add_child(Style.label(str(tk[0]) if tk.size() > 0 else "", taille, Style.chiffres(), Style.TEXTE))
-	var fl := Style.label("›", taille, Style.ui_gras(), Style.OR)
+	hb.add_child(Style.label(str(tk[0]) if tk.size() > 0 else "", taille, Style.chiffres(), Style.ENCRE))
+	var fl := Style.label("›", taille, Style.ui_gras(), PalettePixel.couleur("caramel"))
 	hb.add_child(fl)
-	var suite := Style.label(str(tk[1]) if tk.size() > 1 else "", 20 if compact else 24, Style.ui_gras(), Style.TEXTE)
+	var suite := Style.label(str(tk[1]) if tk.size() > 1 else "", 20 if compact else 24, Style.ui_gras(), Style.ENCRE)
 	suite.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	suite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	suite.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -246,7 +272,7 @@ func _comparatif(cp: Dictionary, largeur: float) -> Control:
 	var titre := "PAR RAPPORT À VOTRE " + ref_nom.to_upper() + " (vous en avez)" if cp["ref_detenu"] else "PAR RAPPORT AU " + ref_nom.to_upper()
 	if cp["ref"] == "cc":
 		titre = "PAR RAPPORT À VOTRE COMPTE COURANT"
-	var lt := Style.label(titre, 16 if compact else 18, Style.capitales(), Style.TEXTE_2)
+	var lt := Style.label(titre, 16 if compact else 18, Style.capitales(), Style.TEXTE_PAPIER_2)
 	lt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lt.custom_minimum_size.x = largeur
 	v.add_child(lt)
@@ -256,16 +282,16 @@ func _comparatif(cp: Dictionary, largeur: float) -> Control:
 	g.add_theme_constant_override("v_separation", 0 if compact else 2)
 	var fs := 18 if compact else 20
 	for h in ["", str(cp["nom"]), "", ref_nom, "", ""]:
-		g.add_child(Style.label(h, 16, Style.ui_gras(), Style.TEXTE_2))
+		g.add_child(Style.label(h, 16, Style.ui_gras(), Style.TEXTE_PAPIER_2))
 	var couleur: Color = Banquier.couleur(str(cp["produit"]))
 	var couleur_ref: Color = Banquier.couleur(str(cp["ref"]))
 	for l in cp["lignes"]:
-		g.add_child(Style.label(str(l["critere"]), fs, Style.ui(), Style.TEXTE_2))
+		g.add_child(Style.label(str(l["critere"]), fs, Style.ui(), Style.TEXTE_PAPIER_2))
 		g.add_child(Pastilles.creer(int(l["note"]), couleur))
-		g.add_child(Style.label(str(l["mot"]), fs, Style.ui(), Style.TEXTE))
+		g.add_child(Style.label(str(l["mot"]), fs, Style.ui(), Style.ENCRE))
 		g.add_child(Pastilles.creer(int(l["note_ref"]), couleur_ref))
-		g.add_child(Style.label(str(l["mot_ref"]), fs, Style.ui(), Style.TEXTE))
-		var sens := Style.label(str(l["sens"]), fs, Style.ui_gras(), Style.TEXTE_2)
+		g.add_child(Style.label(str(l["mot_ref"]), fs, Style.ui(), Style.ENCRE))
+		var sens := Style.label(str(l["sens"]), fs, Style.ui_gras(), Style.TEXTE_PAPIER_2)
 		sens.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		sens.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		g.add_child(sens)
@@ -275,7 +301,7 @@ func _comparatif(cp: Dictionary, largeur: float) -> Control:
 	lf.custom_minimum_size.x = largeur
 	v.add_child(lf)
 	if int(cp["lignes"][0]["note"]) >= 3 and str(cp["lignes"][0]["mot"]).ends_with("*"):
-		v.add_child(Style.label("* espéré, jamais garanti ; le passé ne prédit rien.", 16, Style.ui(), Style.TEXTE_2))
+		v.add_child(Style.label("* espéré, jamais garanti ; le passé ne prédit rien.", 16, Style.ui(), Style.TEXTE_PAPIER_2))
 	return v
 
 

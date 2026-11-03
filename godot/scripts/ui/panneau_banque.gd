@@ -87,7 +87,7 @@ func construire(etat: EtatPartie, id: String, montant_initial: float) -> void:
 	gauche.add_theme_constant_override("separation", 6 if compact else 10)
 	corps.add_child(gauche)
 	var bandeau := PanelContainer.new()
-	bandeau.add_theme_stylebox_override("panel", Style.boite(Color(1, 1, 1, 0.05), 10, 14, 6))
+	bandeau.add_theme_stylebox_override("panel", Style.boite(Color(Style.TEXTE, 0.05), 10, 14, 6))
 	var hb := HBoxContainer.new()
 	hb.add_child(Style.label("COMPTE COURANT", 18, Style.capitales(), Style.TEXTE_2))
 	_l_cc = Style.label("", 22, Style.chiffres(), Style.TEXTE)

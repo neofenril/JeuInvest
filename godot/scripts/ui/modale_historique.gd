@@ -209,7 +209,7 @@ func lecture_notification(h: Dictionary, a: int) -> void:
 	var p := PanelContainer.new()
 	var s := Style.boite(Style.PANNEAU_ELEVE, 18, 28, 20)
 	Style.bordure(s, coul, 10, 0, 0, 0)
-	Style.ombre(s, Color(0, 0, 0, 0.6), 20, Vector2(0, 8))
+	Style.ombre(s, Color(Style.ENCRE, 0.6), 20, Vector2(0, 8))
 	p.add_theme_stylebox_override("panel", s)
 	p.custom_minimum_size = Vector2(minf(980.0, m.get_viewport_rect().size.x - 60.0), 0)
 	var v := VBoxContainer.new()

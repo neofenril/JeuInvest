@@ -13,7 +13,7 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, 14.0, fond)
 	draw_circle(Vector2(0, -1), 12.0, face)
 	draw_arc(Vector2(0, -1), 8.0, 0.0, TAU, 24, fond, 2.0, true)
-	draw_circle(Vector2(-4, -5), 3.0, Color(1, 1, 1, 0.5))
+	draw_circle(Vector2(-4, -5), 3.0, Color(Style.TEXTE, 0.5))
 
 
 func _process(delta: float) -> void:

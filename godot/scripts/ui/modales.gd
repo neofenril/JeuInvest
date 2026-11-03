@@ -49,7 +49,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	theme = Style.theme()
 	fond = ColorRect.new()
-	fond.color = Color(0, 0, 0, 0)
+	fond.color = Color(Style.ENCRE, 0.0)
 	fond.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	fond.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fond.gui_input.connect(_on_fond)
