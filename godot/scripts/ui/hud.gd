@@ -98,6 +98,11 @@ func _ready() -> void:
 	Ecran.format_change.connect(_disposer)
 	if ville != null and ville.has_signal("camera_bougee"):
 		ville.connect("camera_bougee", placer_etiquettes)
+	# A6 (recette PX1) : aucun bouton du HUD ne prend le focus, sinon les flèches ← → (défilement de la rue)
+	# serviraient à la navigation entre boutons au lieu d'atteindre la ville. Le HUD se pilote au toucher,
+	# à la souris et par ses raccourcis (Espace, P, 1-3, M/B, H).
+	for n in find_children("*", "BaseButton", true, false):
+		(n as BaseButton).focus_mode = Control.FOCUS_NONE
 	_disposer()
 
 

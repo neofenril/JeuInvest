@@ -38,7 +38,7 @@ function Lancer([string]$etape, [string]$nom, [string]$taille, [bool]$tel) {
     $code = $LASTEXITCODE
     $erreurs = @($sortie | Where-Object { $_ -match 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access|Cannot call method' })
     $ui = @($sortie | Where-Object { $_ -match '^UI ' })
-    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|recouvert=oui|fermee=non|echap_ignore=non|atkinson=non' })
+    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|recouvert=oui|hud_focalisables=[1-9]|fermee=non|echap_ignore=non|atkinson=non' })
     $pix = $ui | Where-Object { $_ -match 'pixelify_min=(\d+)' } | ForEach-Object { [int]([regex]::Match($_, 'pixelify_min=(\d+)').Groups[1].Value) }
     foreach ($p in $pix) { if ($p -lt 28) { $fautes += "pixelify_min=$p < 28" } }
     return [pscustomobject]@{ Nom = $nom; Etape = $etape; Code = $code; Erreurs = $erreurs; Fautes = $fautes; Lignes = $ui }

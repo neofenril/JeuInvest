@@ -293,6 +293,15 @@ func _hud(jeu: Node) -> void:
 				recouvert = true
 		etats.append(recouvert)
 		print("UI historique hauteur=%d largeur=%d recouvert=%s panneau=%s" % [roundi(r.size.y * echelle), roundi(r.size.x * echelle), "oui" if recouvert else "non", "ouvert" if ouvert else "ferme"])
+	# A6 (recette PX1) : aucun bouton du HUD ne garde les flèches pour la navigation au clavier
+	var focalisables := 0
+	for n in hud.find_children("*", "BaseButton", true, false):
+		if (n as BaseButton).focus_mode != Control.FOCUS_NONE:
+			focalisables += 1
+	var proprio := sc.get_viewport().gui_get_focus_owner()
+	print("UI focus hud_focalisables=%d focus=%s" % [focalisables, "aucun" if proprio == null else String(proprio.name)])
+	# A8 (recette PX1) : zone de la rue recouverte par le panneau « Mon argent » (px virtuels)
+	print("UI panneau rect=%s rect_libre=%s" % [str(hud.panneau.get_global_rect()) if hud.panneau.visible else "replié", str(hud.rect_libre())])
 	hud.basculer_panneau(not Ecran.compact())
 	# On retire les notifications de contrôle avant la capture
 	for c in hud.notifs.get_children():
