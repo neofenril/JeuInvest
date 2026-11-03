@@ -20,8 +20,8 @@ func construire(demo: Dictionary) -> void:
 	theme = Style.theme()
 	var degrade := TextureRect.new()
 	var g := Gradient.new()
-	g.set_color(0, Color(0.05, 0.06, 0.1, 0.0))
-	g.set_color(1, Color(0.05, 0.06, 0.1, 0.85))
+	g.set_color(0, Color(Style.PANNEAU_OPAQUE, 0.0))
+	g.set_color(1, Color(Style.PANNEAU_OPAQUE, 0.85))
 	var tex := GradientTexture2D.new()
 	tex.gradient = g
 	tex.fill_from = Vector2(0, 0)
@@ -46,7 +46,7 @@ func construire(demo: Dictionary) -> void:
 	v.alignment = BoxContainer.ALIGNMENT_END
 	v.add_theme_constant_override("separation", 14)
 	add_child(v)
-	var acc := Style.label(str(demo["titre"]["accroche"]).to_upper(), 36, Style.neon(), Style.TEXTE)
+	var acc := Style.label(str(demo["titre"]["accroche"]).to_upper(), 48, Style.neon(), Style.TEXTE)
 	acc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	acc.add_theme_color_override("font_shadow_color", Color(Style.ACCENT, 0.45))
 	acc.add_theme_constant_override("shadow_outline_size", 10)
@@ -69,7 +69,7 @@ func construire(demo: Dictionary) -> void:
 	boutons.add_child(bouton_jouer)
 	bouton_nouvelle = Style.bouton("NOUVELLE PARTIE", false, 96)
 	bouton_nouvelle.custom_minimum_size = Vector2(340, 96)
-	bouton_nouvelle.add_theme_font_size_override("font_size", 26)
+	bouton_nouvelle.add_theme_font_size_override("font_size", 28)
 	bouton_nouvelle.pressed.connect(func() -> void: nouvelle_partie_demandee.emit())
 	boutons.add_child(bouton_nouvelle)
 	v.add_child(boutons)
@@ -78,6 +78,8 @@ func construire(demo: Dictionary) -> void:
 	v.add_child(l_reprise)
 	# Aide des raccourcis de test : jamais dans la version du joueur, jamais sur mobile
 	l_aide = Style.label("F10 : format téléphone   ·   F8 : moment suivant   ·   F6 / F7 : naissance / jumeaux", 20, Style.ui(), Color(Style.TEXTE_2, 0.8))
+	l_aide.add_theme_color_override("font_outline_color", Style.PANNEAU_OPAQUE)
+	l_aide.add_theme_constant_override("outline_size", 6)
 	l_aide.anchor_left = 0
 	l_aide.anchor_top = 1
 	l_aide.anchor_bottom = 1
@@ -94,8 +96,15 @@ func maj(sauvee: Dictionary, en_cours: bool) -> void:
 	bouton_nouvelle.visible = reprise
 	l_reprise.visible = reprise
 	if reprise:
-		var r: Dictionary = sauvee["resume"]
-		l_reprise.text = "Partie en cours : %s · %s · patrimoine %s" % [str(r.get("prenom", "")), Dates.texte(int(r["ab"])), Format.montant(float(r["patrimoine"]), int(r["ab"]))]
+		# Résumé lu avec garde : un format de sauvegarde différent (format 3, lot 02) peut ne pas avoir
+		# « ab » ou « patrimoine » ; on masque alors la ligne plutôt que d'échouer.
+		var r: Dictionary = sauvee.get("resume", {}) if sauvee.get("resume", {}) is Dictionary else {}
+		if r.has("ab") and r.has("patrimoine"):
+			var ab := int(r.get("ab", 0))
+			l_reprise.text = "Partie en cours : %s · %s · patrimoine %s" % [str(r.get("prenom", "")), Dates.texte(ab), Format.montant(float(r.get("patrimoine", 0.0)), ab)]
+		else:
+			l_reprise.text = "Partie en cours : partie sauvegardée"
+			l_reprise.visible = false
 
 
 ## Texte de la partie en cours, sans le préfixe (pour la confirmation d'effacement).
