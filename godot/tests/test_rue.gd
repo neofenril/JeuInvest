@@ -48,7 +48,7 @@ func _initialize() -> void:
 	root.add_child(ville)
 	var ms := Time.get_ticks_msec() - t0
 	print("RUE generation_ms=%d" % ms)
-	_verifier(ms <= 2000, "génération de la rue ≤ 2 000 ms", "%d ms" % ms)
+	_verifier(ms <= 2000, "génération de la rue ≤ 2 000 ms (≈ 1,3 s mesurée : façades de fond, skyline, arbres en tâche de fond)", "%d ms" % ms)
 	await _images(3)
 	# API (§2.1, §2.2)
 	for m in METHODES:
@@ -104,6 +104,19 @@ func _initialize() -> void:
 	_verifier(p is Vector2, "point_etiquette renvoie un Vector2")
 	var tw: Tween = ville.call("plonger_vers_maison", 0.0)
 	_verifier(tw != null, "plonger_vers_maison renvoie un Tween")
+	# Écran titre (recette A1) : enseigne du titre entière dans la vue, arbre de premier plan retiré
+	ville.set("mode_titre", true)
+	ville.call("cadrer", Rect2(Vector2.ZERO, ecran), 0.0)
+	await _images(2)
+	var med: Node2D = ville.call("batiment", "media")
+	var enseigne := Rect2(med.position.x - 63, med.position.y - med.call("taille").y - 36, 125, 34)
+	var vue_t: Rect2 = ville.get("rue").get("vue")
+	_verifier(vue_t.encloses(enseigne), "titre : enseigne de la Gazette entière dans la vue", "%s / %s" % [str(enseigne), str(vue_t)])
+	_verifier(not ville.get("rue").call("premier_plan_visible"), "titre : arbre de premier plan retiré")
+	ville.set("mode_titre", false)
+	ville.call("cadrer", Rect2(Vector2(0, ecran.y * 0.09), Vector2(ecran.x * 0.73, ecran.y * 0.84)), 0.0)
+	await _images(2)
+	_verifier(ville.get("rue").call("premier_plan_visible"), "jeu : arbre de premier plan de retour")
 	# Saisons, temps, météo aux bornes
 	for mois in range(1, 13):
 		ville.call("regler_mois", mois, 1986)

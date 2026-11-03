@@ -8,7 +8,7 @@ extends RefCounted
 const ETAPES := ["rue", "rue_nuit", "trafic", "crash_anim", "crash_fin", "crash_courrier", "naissance_anim", "naissance_pose", "naissance",
 	"jumeaux_anim", "jumeaux_pose", "jumeaux", "news", "krach_anim", "fps",
 	"rue_banque", "rue_gazette", "rue_libre", "defilement", "saison_hiver", "saison_automne", "saison_printemps", "pluie",
-	"banquier_anim", "banquier_signal", "journal_anim", "sylvie_0", "sylvie_1", "sylvie_2", "planche_personnages", "voisins"]
+	"banquier_anim", "banquier_signal", "journal_anim", "courrier_anim", "jouer_repos", "sylvie_0", "sylvie_1", "sylvie_2", "planche_personnages", "voisins"]
 const PX0 := preload("res://scripts/pixel/px0.gd")
 const RUE := preload("res://scripts/ville/rue.gd")
 const VILLE := preload("res://scripts/ville/ville.gd")
@@ -23,6 +23,18 @@ func jouer(etape: String) -> void:
 	var rue: Node2D = ville.get("rue")
 	_controle = "--controle" in OS.get_cmdline_user_args()
 	await _regler_fenetre(ville)
+	if etape == "jouer_repos":
+		# « Jouer » depuis l'écran titre, la carte du Livret A déjà réglée : la maison au repos (CA-V10)
+		Partie.etat.resolution_auto()
+		await sc.attendre_que(func() -> bool: return rue.call("images_pretes"), 12.0)
+		await sc.delai(1.5)
+		if _controle:
+			print("RUE titre premier_plan=%s" % ("visible" if rue.call("premier_plan_visible") else "masque"))
+		sc.jeu.jouer()
+		await sc.delai(2.4)
+		if _controle:
+			print("RUE jouer camera=%d repos_maison=%s" % [int(ville.call("position_camera")), "oui" if ville.call("est_visible", "maison") else "non"])
+		return
 	sc.partir_de_la_rue(etape)
 	await sc.attendre_que(func() -> bool: return rue.call("images_pretes"), 12.0)
 	if ScenariosCapture.option("rue-sans-hud") != "" or "--rue-sans-hud" in OS.get_cmdline_user_args() or etape in ["planche_personnages", "rue_libre"]:
@@ -141,6 +153,13 @@ func jouer(etape: String) -> void:
 			var c: Dictionary = Partie.etat.contenu_modale().duplicate(true)
 			c["gravite"] = "moyenne"
 			jeu.sequences.vedette(jeu.sequences._sequence_journal.bind(c))
+			await sc.delai(1.6)
+		"courrier_anim":
+			# Courrier ordinaire (sans panne) : contenu de la panne, pictogramme d'enveloppe
+			_jusqua_modale("voiture")
+			var cc: Dictionary = Partie.etat.contenu_modale().duplicate(true)
+			cc["picto"] = "enveloppe"
+			jeu.sequences.vedette(jeu.sequences._sequence_courrier.bind(cc))
 			await sc.delai(1.6)
 		"news":
 			sc.aller_a(Dates.lire("1988-05"), true)
@@ -328,7 +347,10 @@ func _jusqua_modale(id: String) -> void:
 	var garde := 0
 	while e.fin == "" and garde < 100:
 		if not e.modale.is_empty():
-			if str(e.modale.get("id", "")) == id:
+			var ident := str(e.modale.get("id", ""))
+			if e.modale.get("kind", "") == "vie":
+				ident = str(e.calendrier[int(e.modale["idx"])]["type"])
+			if ident == id:
 				break
 			sc.strategie_active(e)
 			if not e.modale.is_empty():
