@@ -83,18 +83,28 @@ func _draw() -> void:
 		if h > 6.0:
 			draw_rect(Rect2(3, roundf((r.size.y - h) / 3.0) * 3.0, r.size.x - 6, h - 3), fond)
 		draw_rect(Rect2(3, 3, 6, r.size.y - 6), Color(couleur, 1.0 if plein else 0.55))
-		draw_multiline_string(gras, Vector2(16, 26), nom.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 22, fs, 2, Style.TEXTE)
+		# Cadenas et calendrier en colonne dans le coin haut droit, jamais sur un chiffre (m2) : le nom leur laisse la place
+		# Calendrier dans le coin haut droit (le nom lui laisse la place, quitte à rapetisser), cadenas en bas à
+		# droite (la 2e ligne lui laisse la place) : jamais sur un chiffre ni coupé (m2)
+		var icones := 30.0 if calendrier and etat != "nouveau" else 0.0
+		var fs_nom := fs
+		var place := r.size.x - 22.0 - icones
+		for mot in nom.to_upper().replace("-", "- ").split(" ", false):
+			while fs_nom > 14 and gras.get_string_size(mot, HORIZONTAL_ALIGNMENT_LEFT, -1, fs_nom).x > place:
+				fs_nom -= 2
+		draw_multiline_string(gras, Vector2(16, 26), nom.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, place, fs_nom, 2, Style.TEXTE)
 		var y2 := r.size.y - 38.0
 		if plein:
 			draw_string(Style.chiffres(), Vector2(16, y2), ligne1, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 22, 22 if compacte else 24, Style.TEXTE)
-			draw_string(ui, Vector2(16, y2 + 24), ligne2, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 22, 16, Style.TEXTE_2)
+			var place2 := r.size.x - 22 - (26 if cadenas else 0)
+			draw_string(ui, Vector2(16, y2 + 24), ligne2, HORIZONTAL_ALIGNMENT_LEFT, -1, _taille_ajustee(ui, ligne2, place2, 16), Style.TEXTE_2)
 		elif etat != "nouveau":
 			draw_string(ui, Vector2(16, y2 + 4), ligne1, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 22, 16, Style.TEXTE_2)
 			draw_string(ui, Vector2(16, y2 + 24), ligne2, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 22, 16, Style.TEXTE_2)
 		if cadenas:
-			_cadenas(Vector2(r.size.x - 22, r.size.y - 26))
+			_cadenas(Vector2(r.size.x - 18, r.size.y - 22))
 		if calendrier and etat != "nouveau":
-			_calendrier(Vector2(r.size.x - 24, r.size.y - 62))
+			_calendrier(Vector2(r.size.x - 21, 21))
 		if etat == "nouveau":
 			_badge(Vector2(14, r.size.y - 36))
 			# Reflet qui passe toutes les 4 s
@@ -141,3 +151,11 @@ func _calendrier(c: Vector2) -> void:
 func _cadenas(c: Vector2) -> void:
 	draw_arc(c + Vector2(0, -4), 6.0, PI, TAU, 12, Style.TEXTE_2, 2.5, true)
 	Dessin.arrondi(self, Rect2(c.x - 9, c.y - 4, 18, 14), Style.TEXTE_2, 3)
+
+
+## Taille de police (≤ taille_max, ≥ 12) pour que le texte tienne dans la largeur : jamais coupé (m2).
+func _taille_ajustee(police: Font, texte: String, largeur: float, taille_max: int) -> int:
+	var t := taille_max
+	while t > 12 and police.get_string_size(texte, HORIZONTAL_ALIGNMENT_LEFT, -1, t).x > largeur:
+		t -= 1
+	return t

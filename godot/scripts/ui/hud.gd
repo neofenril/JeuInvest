@@ -819,9 +819,16 @@ func notifier(n: Dictionary, a: int, depart := Vector2(-1, -1)) -> void:
 		h.add_child(l)
 	var persistant: bool = n.get("persistant", false)
 	if persistant:
-		v.add_child(Style.label("Message de M. Lefranc · touchez pour le fermer (rangé dans l'historique)", 16, Style.ui(), Style.SOURCES["banque"]))
+		# m1 : l'indication passe à la ligne et tient dans le cadre de la notification
+		var ind := Style.label("Message de M. Lefranc · touchez pour le fermer (rangé dans l'historique)", 20, Style.ui(), Style.SOURCES["banque"])
+		ind.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ind.custom_minimum_size = Vector2(320, 0)
+		v.add_child(ind)
 	elif n.get("type", "") == "releve" and float(n.get("frais_total", 0.0)) > 0.0:
-		v.add_child(Style.label("Touchez pour voir le détail des frais", 16, Style.ui(), Style.CUIVRE))
+		var indr := Style.label("Touchez pour voir le détail des frais", 20, Style.ui(), Style.CUIVRE)
+		indr.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		indr.custom_minimum_size = Vector2(320, 0)
+		v.add_child(indr)
 	notifs.add_child(p)
 	_liste_notifs.push_front(p)
 	while _liste_notifs.size() > 3:
