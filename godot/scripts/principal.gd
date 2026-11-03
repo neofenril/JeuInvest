@@ -452,13 +452,6 @@ func expliquer_comparaison() -> void:
 	Partie.bloquee = false
 
 
-func _info(titre_info: String, lignes: Array, b: Node) -> void:
-	Partie.bloquee = true
-	modales.info(titre_info, lignes, ville.call("ecran_batiment", b, Vector2(0, -150)))
-	await modales.choix_fait
-	Partie.bloquee = false
-
-
 ## La fenêtre Banque (13 §2) : carnet, fiche, ordre. montant < -1,5 : ouvrir sur la fiche (pas sur l'ordre).
 func ouvrir_banque(produit: String, montant: float, depuis_sequence := false) -> void:
 	if modales.ouverte() or (sequences.occupe and not depuis_sequence):

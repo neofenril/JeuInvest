@@ -8,7 +8,7 @@ config_version=5
 
 config/name="JeuClaude"
 config/description="Jeu d'apprentissage de la bourse, du point de vue d'un épargnant français."
-config/version="0.2"
+config/version="0.3"
 run/main_scene="res://scenes/principal.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
