@@ -49,6 +49,7 @@ func ouvrir(c: Dictionary, depart: Vector2, e: EtatPartie, lecture_choix := "", 
 	titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(titre)
 	var txt := Style.label(str(c["texte"]), 26, Style.ui(), Style.ENCRE)
+	txt.name = "Defilant"
 	txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(txt)
 	var info := _situation(c, e, a, lecture, lecture_choix, naissance, bonne, montant)

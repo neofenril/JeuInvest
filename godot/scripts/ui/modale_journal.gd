@@ -58,6 +58,7 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 	manchette.visible_ratio = 0.0
 	v.add_child(manchette)
 	var chapo := Style.label(str(c["texte"]), 24 if compact else 26, Style.journal(), Style.ENCRE)
+	chapo.name = "Defilant"
 	chapo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(chapo)
 	v.add_child(_impact(c, p.custom_minimum_size.x))

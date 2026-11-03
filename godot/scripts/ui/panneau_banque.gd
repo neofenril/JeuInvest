@@ -506,7 +506,16 @@ func _afficher_ordre(pid: String, m: String, montant_initial := -1.0) -> void:
 	_b_mode_b.disabled = not Banquier.detenu(e, pid)
 	modes.add_child(_b_mode_a)
 	modes.add_child(_b_mode_b)
-	_droite.add_child(modes)
+	if compact:
+		# Téléphone (lot_px2 §9.1 C4) : « ‹ Fiche », ACHETER et VENDRE sur une ligne ; le nom reste lisible
+		# sur la carte choisie du carnet et le prix dans le récapitulatif : la fenêtre tient dans 648 px.
+		for n in tete.get_children():
+			if n is Label:
+				n.visible = false
+		modes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tete.add_child(modes)
+	else:
+		_droite.add_child(modes)
 	_b_mode_a.set_pressed_no_signal(m == "a")
 	_b_mode_b.set_pressed_no_signal(m == "b")
 	var cloture := _type() == "pel" and m == "b"

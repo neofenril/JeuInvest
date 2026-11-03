@@ -88,6 +88,7 @@ func fin_demo(e: EtatPartie) -> void:
 	v.add_child(lp)
 	# Vous et Tata Livret : 2 barres, l'écart en pastille ; à droite, la courbe des cinq ans (PC)
 	var ligne := HBoxContainer.new()
+	ligne.name = "Defilant"
 	ligne.add_theme_constant_override("separation", 24)
 	v.add_child(ligne)
 	var bloc := VBoxContainer.new()

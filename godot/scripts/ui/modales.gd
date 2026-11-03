@@ -112,6 +112,8 @@ func ouvrir_banque(e: EtatPartie, produit: String, montant: float, depart := Vec
 	var cible := Vector2((t.x - banque.size.x) / 2.0, maxf(6.0, (t.y - banque.size.y) / 2.0))
 	banque.position = cible
 	banque.pivot_offset = banque.size / 2.0
+	# La colonne de droite change de contenu (fiche, ordre, CHAQUE MOIS) : la fenêtre reste dans l'écran
+	banque.resized.connect(_recentrer_banque)
 	if not Juice.animations_reduites:
 		banque.scale = Vector2(0.7, 0.7)
 		banque.modulate.a = 0.0
@@ -120,6 +122,14 @@ func ouvrir_banque(e: EtatPartie, produit: String, montant: float, depart := Vec
 		var tw := banque.create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(banque, "scale", Vector2.ONE, 0.3)
 		tw.tween_property(banque, "modulate:a", 1.0, 0.2)
+
+
+func _recentrer_banque() -> void:
+	if banque == null or not is_instance_valid(banque) or courant != banque:
+		return
+	var t := get_viewport_rect().size
+	banque.position = Vector2((t.x - banque.size.x) / 2.0, maxf(6.0, (t.y - banque.size.y) / 2.0)).round()
+	banque.pivot_offset = banque.size / 2.0
 
 
 func confirmer(titre: String, texte: String, oui: String, non: String) -> void:
@@ -223,7 +233,29 @@ func centrer(p: Control) -> void:
 	p.visible = true
 	p.reset_size()
 	var t := get_viewport_rect().size
-	p.position = (t - p.size) / 2.0
+	# Trop haute pour l'écran (téléphone, lot_px2 §9.1 C4) : seul le corps marqué « Defilant » défile,
+	# les boutons d'action restent visibles hors de la zone qui défile.
+	var dispo := t.y - 12.0
+	if p.size.y > dispo:
+		var z := p.find_child("Defilant", true, false) as Control
+		if z != null and not (z.get_parent() is ScrollContainer):
+			var trop := p.size.y - dispo
+			var defile := ScrollContainer.new()
+			defile.name = "DefilementCorps"
+			defile.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			defile.custom_minimum_size = Vector2(z.size.x, maxf(96.0, z.size.y - trop))
+			defile.size_flags_horizontal = z.size_flags_horizontal
+			var parent := z.get_parent()
+			var indice := z.get_index()
+			parent.remove_child(z)
+			defile.add_child(z)
+			parent.add_child(defile)
+			parent.move_child(defile, indice)
+			await get_tree().process_frame
+			if not is_instance_valid(p):
+				return
+			p.reset_size()
+	p.position = ((t - p.size) / 2.0).max(Vector2(0, 6))
 	p.pivot_offset = p.size / 2.0
 
 

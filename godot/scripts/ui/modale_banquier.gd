@@ -93,6 +93,7 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false, bandeau := "") -> 
 	v.add_child(tete)
 	# Corps : le texte à gauche, l'argent du joueur et le comparatif à droite
 	var corps := HBoxContainer.new()
+	corps.name = "Defilant"   # seul le corps défile si la carte est trop haute (téléphone)
 	corps.add_theme_constant_override("separation", 22 if compact else 36)
 	v.add_child(corps)
 	var largeur_g := floorf(interieur * (0.44 if compact else 0.43))
