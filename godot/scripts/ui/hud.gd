@@ -516,12 +516,15 @@ func _on_etiquette(event: InputEvent, id: String) -> void:
 			batiment_touche.emit(id)
 
 
-## Place les étiquettes (PX2 §2.4) : point de la ville si elle le fournit, sinon sous le bâtiment ;
-## flèche de bord si le bâtiment n'est pas visible.
+## Place les étiquettes (PX2 §2.4, §9.1 point 3, C8) : la ville donne le point, l'interface a le dernier
+## mot. Bâtiment visible : étiquette au point, ramenée entièrement dans rect_libre() (8 px de marge).
+## Bâtiment caché : flèche de bord à 16 px du bord du rectangle libre (donc à gauche du panneau ouvert),
+## à la hauteur de l'étiquette, bornée elle aussi ; deux flèches du même côté s'empilent.
 func placer_etiquettes() -> void:
 	if ville == null:
 		return
-	var largeur := get_viewport_rect().size.x
+	var libre := rect_libre()
+	var occupes := {"gauche": [], "droite": []}
 	for id in etiquettes:
 		var p: PanelContainer = etiquettes[id]
 		var point: Vector2
@@ -532,18 +535,29 @@ func placer_etiquettes() -> void:
 			point = ville.call("position_ecran", b.position + Vector2(0, 56))
 		var cote := ""
 		if ville.has_method("est_visible") and not bool(ville.call("est_visible", id)):
-			cote = "gauche" if point.x < largeur / 2.0 else "droite"
+			cote = "gauche" if point.x < libre.get_center().x else "droite"
 		if cote != str(p.get_meta("fleche", "")):
 			p.set_meta("fleche", cote)
 			p.find_child("ChevronGauche", true, false).visible = cote == "gauche"
 			p.find_child("ChevronDroite", true, false).visible = cote == "droite"
 			p.reset_size()
-		var x := point.x - p.size.x / 2.0
+		var s := p.size
+		var x := point.x - s.x / 2.0
 		if cote == "gauche":
-			x = 12.0
+			x = libre.position.x + 16.0
 		elif cote == "droite":
-			x = largeur - p.size.x - 12.0
-		p.position = Vector2(roundf(x / 3.0) * 3.0, roundf(point.y / 3.0) * 3.0)
+			x = libre.end.x - s.x - 16.0
+		var y_max := libre.end.y - s.y - 8.0
+		var y := clampf(point.y, libre.position.y + 8.0, y_max)
+		x = clampf(x, libre.position.x + 8.0, maxf(libre.position.x + 8.0, libre.end.x - s.x - 8.0))
+		if cote != "":
+			# Empilement : on remonte au-dessus d'une flèche déjà posée du même côté
+			for r: Rect2 in occupes[cote]:
+				if Rect2(x, y, s.x, s.y).intersects(r.grow(4.0)):
+					y = r.position.y - s.y - 8.0
+			y = maxf(y, libre.position.y + 8.0)
+			occupes[cote].append(Rect2(x, y, s.x, s.y))
+		p.position = Vector2(roundf(x / 3.0) * 3.0, floorf(y / 3.0) * 3.0)
 
 
 # =====================================================================

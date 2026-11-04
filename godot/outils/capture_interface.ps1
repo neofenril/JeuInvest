@@ -39,11 +39,19 @@ function Lancer([string]$etape, [string]$nom, [string]$taille, [string]$tel) {
     $a += @("--", "--capture=captures/$nom.png", "--frames=10", "--attente=0", "--etape=$etape")
     if ($tel -eq "1") { $a += "--telephone" }
     if ($tel -eq "169") { $a += "--telephone=169" }
-    $sortie = & $godot @a 2>&1 | ForEach-Object { "$_" }
-    $code = $LASTEXITCODE
+    # Lancement surveillé : journal de Godot dans un fichier, arrêt au bout de 300 s (un blocage n'arrête pas la série)
+    $log = Join-Path $env:TEMP ("px2_" + $nom + "_" + [guid]::NewGuid().ToString("N") + ".log")
+    $p = Start-Process -FilePath $godot -ArgumentList (@("--log-file", $log) + $a) -PassThru -WindowStyle Hidden
+    $null = $p.Handle
+    if (-not $p.WaitForExit(300000)) {
+        Get-CimInstance Win32_Process -Filter "Name like 'Godot%'" | Where-Object { $_.CommandLine -match [regex]::Escape("captures/$nom.png") } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        $code = 124
+    } else { $code = $p.ExitCode }
+    $sortie = @(if (Test-Path $log) { Get-Content $log -Encoding UTF8 } else { @() })
+    Remove-Item $log -ErrorAction SilentlyContinue
     $erreurs = @($sortie | Where-Object { $_ -match 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access|Cannot call method' })
     $ui = @($sortie | Where-Object { $_ -match '^UI |^Images par seconde|^Clic ' } | ForEach-Object { if ($_ -match '^Clic ') { "UI clic_dehors $_" } else { $_ } })
-    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|hors_cadre=[1-9]|hors_ecran=[1-9]|recouvert=oui|recouvre=oui|contenu_coupe=oui|dans_ecran=non|boutons_visibles=non|chiffres_pixelify=[1-9]|hud_focalisables=[1-9]|fermee=non|echap_ignore=non|atkinson=non|: False' })
+    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|hors_cadre=[1-9]|hors_ecran=[1-9]|recouvert=oui|recouvre=oui|contenu_coupe=oui|dans_ecran=non|boutons_visibles=non|chiffres_pixelify=[1-9]|hud_focalisables=[1-9]|dans_libre=non|visible=non|fermee=non|echap_ignore=non|atkinson=non|: False' })
     foreach ($l in ($ui | Where-Object { $_ -match 'atkinson_min=(\d+)' })) { if ([int]([regex]::Match($l, 'atkinson_min=(\d+)').Groups[1].Value) -lt 20) { $fautes += "atkinson_min < 20" } }
     foreach ($l in ($ui | Where-Object { $_ -match '^Images par seconde.*: ([\d.,]+)' })) { if ([double]([regex]::Match($l, ': ([\d.,]+)').Groups[1].Value.Replace(',','.')) -lt 55) { $fautes += "moins de 55 images par seconde" } }
     $pix = $ui | Where-Object { $_ -match 'pixelify_min=(\d+)' } | ForEach-Object { [int]([regex]::Match($_, 'pixelify_min=(\d+)').Groups[1].Value) }
@@ -98,6 +106,13 @@ foreach ($t in @(@("720", "1280x720", ""), @("1366", "1366x768", ""), @("1080", 
 foreach ($t in @(@("720", "1280x720", ""), @("1366", "1366x768", ""), @("1009", "1920x1009", ""), @("tel", "1440x648", "1"), @("tel169", "1280x720", "169"))) {
     $plan.Add(@("cibles", ("px2_cibles_" + $t[0]), $t[1], $t[2]))
 }
+# C8 : étiquettes et flèches de bord bornées au rectangle libre
+foreach ($e in @("etiquettes_bord", "etiquettes_banque", "etiquettes_gazette")) {
+    foreach ($t in @(@("1080", "1920x1080", ""), @("1009", "1920x1009", ""), @("720", "1280x720", ""), @("tel", "1440x648", "1"), @("tel169", "1280x720", "169"))) {
+        $plan.Add(@($e, ("px2_" + $e + "_" + $t[0]), $t[1], $t[2]))
+    }
+}
+$plan.Add(@("etiquettes_aller", "px2_etiquettes_aller_1080", "1920x1080", ""))
 $plan.Add(@("polices_jeu", "px2_polices_jeu", "1920x1080", ""))
 $plan.Add(@("courrier_relu_echap", "px2_courrier_relu_echap", "1280x720", ""))
 $plan.Add(@("fps", "px2_fps_1080", "1920x1080", ""))

@@ -52,10 +52,21 @@ func construire(demo: Dictionary) -> void:
 	acc.add_theme_constant_override("shadow_outline_size", 10)
 	acc.add_theme_constant_override("shadow_offset_x", 0)
 	acc.add_theme_constant_override("shadow_offset_y", 0)
-	v.add_child(acc)
+	# Accroche et sous-titre sur une plaque sombre pixel : lisibles même sur la façade de la Gazette
+	# (téléphone, rue de briques de PX1)
+	var plaque := CadresPixel.panneau("panneau")
+	plaque.add_theme_stylebox_override("panel", CadresPixel.style_marges("panneau", 36, 15, 36, 21))
+	plaque.self_modulate = Color(1, 1, 1, 0.94)
+	plaque.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	plaque.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vp := VBoxContainer.new()
+	vp.add_theme_constant_override("separation", 6)
+	plaque.add_child(vp)
+	vp.add_child(acc)
 	var sous := Style.label(str(demo["titre"]["sous_titre"]), 24, Style.ui(), Style.TEXTE_2)
 	sous.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(sous)
+	vp.add_child(sous)
+	v.add_child(plaque)
 	# « Continuer » (avec la date de jeu et le patrimoine) si une partie est sauvegardée, sinon « Jouer » ;
 	# « Nouvelle partie » demande confirmation quand une sauvegarde existe (principal.gd).
 	var boutons := HBoxContainer.new()

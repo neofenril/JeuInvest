@@ -1,7 +1,7 @@
 ﻿# Captures de la rue pixel du jeu (lot PX1, docs/lots/lot_px1.md §5 et §6), dans godot\captures\.
 # Usage (depuis n'importe quel dossier) :
 #   powershell -File godot\outils\capture_ville.ps1 -Etape rue -Nom px1_rue -Taille 1920x1080 -Controle -SansHud
-#   ... -Telephone (téléphone simulé, fenêtre 1600 x 720, facteur 1,7)  -Facteur 4  -Attente 1.5  -Passer 0.3
+#   ... -Telephone (téléphone simulé, fenêtre 1440 x 648 à 240 dpi, comme F10 ; voir Ecran)  -Facteur 4  -Attente 1.5  -Passer 0.3
 #   ... -Montages : refait seulement les trois montages (captures déjà faites)
 #   ... -Montages : refait seulement les trois montages (captures déjà faites)
 #   ... -Serie : toute la série PX1 (préfixe px1_), ses trois montages et le journal godot\captures\px1_serie.log

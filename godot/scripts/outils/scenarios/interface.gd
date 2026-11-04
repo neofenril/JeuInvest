@@ -6,7 +6,7 @@ extends RefCounted
 ## - hud : bouton HISTORIQUE (taille en px physiques, jamais recouvert, panneau ouvert et fermé) ;
 ## - polices_jeu : planche des polices du jeu (accents français, tnum d'Atkinson).
 
-const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu"]
+const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette"]
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, affiché « › » (Style.sans_fleche)
 
 var sc: ScenariosCapture
@@ -27,6 +27,40 @@ func jouer(etape: String) -> void:
 			await _hud(jeu)
 		"polices_jeu":
 			await _polices_jeu()
+		"etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette":
+			await _etiquettes(etape, jeu)
+
+
+# =====================================================================
+# Étiquettes et flèches de bord bornées au rectangle libre (C8)
+# =====================================================================
+
+func _etiquettes(etape: String, jeu: Node) -> void:
+	sc.partir_de_la_rue(etape)
+	var hud: Hud = jeu.hud
+	var ville: Node2D = jeu.ville
+	await sc.delai(1.2)
+	match etape:
+		"etiquettes_banque":
+			ville.call("aller_vers", "banque", 0.3)
+			await sc.delai(0.8)
+		"etiquettes_gazette":
+			ville.call("aller_vers", "media", 0.3)
+			await sc.delai(0.8)
+		"etiquettes_aller":
+			var f: Control = hud.etiquettes["banque"]
+			print("UI aller avant banque visible=%s mode=%s" % ["oui" if ville.call("est_visible", "banque") else "non", "fleche" if str(f.get_meta("fleche", "")) != "" else "sous"])
+			await sc.clic_dehors(sc.position_fenetre(f))   # vrai toucher simulé au centre de la flèche
+			await sc.delai(1.2)
+			print("UI aller banque visible=%s" % ["oui" if ville.call("est_visible", "banque") else "non"])
+	hud.placer_etiquettes()
+	await sc.get_tree().process_frame
+	var libre := hud.rect_libre()
+	for id in ["maison", "media", "banque"]:
+		var p: Control = hud.etiquettes[id]
+		var mode := "fleche" if str(p.get_meta("fleche", "")) != "" else "sous"
+		print("UI etiquette %s mode=%s dans_libre=%s rect=%s libre=%s" % [id, mode, "oui" if libre.encloses(p.get_global_rect()) else "non", str(p.get_global_rect()), str(libre)])
+	await sc.delai(1.5)   # glissement de la caméra terminé avant la capture et la sortie
 
 
 # =====================================================================
