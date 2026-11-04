@@ -56,6 +56,9 @@ func _capturer() -> void:
 	var err := image.save_png(chemin)
 	if err == OK:
 		print("Capture enregistrée : %s (%d × %d), zone logique %s" % [chemin, image.get_width(), image.get_height(), str(Ecran.taille())])
+		# Laisser finir un glissement de caméra de la rue (PX1) avant de quitter : quitter pendant le
+		# glissement peut bloquer Godot à la sortie (vu en PX2, C8). L'image est déjà enregistrée.
+		await get_tree().create_timer(1.5, true, false, true).timeout
 		get_tree().quit(0)
 	else:
 		push_error("Capture impossible (%s) : %s" % [error_string(err), chemin])
