@@ -79,6 +79,13 @@
 - Zones fragiles : panneau « Mon argent » plus haut que sa place (recouvre la frise) ; montants en Pixelify dans les boutons (5 → S) ; flèches de bord et étiquettes hors `rect_libre()` à la fusion PX1 ; `debordements` ne voit pas les conteneurs.
 - `Copy-Item -Recurse` d'une copie importée : erreurs de chemin trop long sur `.godot\editor\*.cfg` sans conséquence.
 
+## 4 sexies. F1-L (recette 2026-11-04, `lot/f1-logique` 6397542 : OK, 3 mineures)
+- Références : branche 330 ; fusion main 76e3a30 + F1-L : 401 ; `integrale` inchangée (160 749 F / 805,93 F / 11).
+- Insécable = U+00A0 (`Format.ESPACE`) ; contrôle : regex `(\d|\})[ ](%|F\b)` sur les JSON ; glyphes : `Font.has_char(0xA0)` + `get_string_size` (script `--script` absolu hors projet, ça marche).
+- Ancienne sauvegarde : script `recette_sav.gd` (mode écrire sur copie de main / lire sur la fusion, `StrategieTest.aller_a` jusqu'à 1989-06) ; comparer les chiffres de fin.
+- **Étape `carnet_pel` ne quitte pas** (PNG écrit puis fenêtre figée), déjà sur `main` : lancer les captures par `Start-Process -PassThru` + `WaitForExit(ms)`, jamais en boucle bloquante ; je ne peux pas tuer les processus Godot (garde-fou).
+- Reste « → » dans `modales.gd` (l. 521, 873) et des espaces normales dans les autres JSON.
+
 ## 5. Anomalies récurrentes / à surveiller
 - Fichiers « recopiés de main » dans une branche (tests.ps1, trouver_godot.ps1 sur px0-ville) : vérifier `git diff main <branche> -- <fichier>` vide → sans conflit, mineur.
 - Ce que le développeur marque « non vérifié » : le vérifier en priorité (lot 01 : `Jouer_Godot.bat` cassé sans variable).
