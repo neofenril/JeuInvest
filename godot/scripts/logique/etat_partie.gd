@@ -1611,6 +1611,14 @@ func _reparer() -> void:
 	if not modale.is_empty() and not valide.call(modale):
 		modale = {}
 	file = file.filter(func(it: Variant) -> bool: return it is Dictionary and valide.call(it))
+	# F1-L : plus de flèche « → » dans les textes ; une sauvegarde plus ancienne en garde dans l'historique.
+	for h: Variant in historique:
+		if h is Dictionary:
+			h["resume"] = Banquier.sans_fleche(str(h.get("resume", "")))
+			var tk: Variant = h.get("contenu", {}).get("ticket", null) if h.get("contenu", null) is Dictionary else null
+			if tk is Array:
+				for i in (tk as Array).size():
+					tk[i] = Banquier.sans_fleche(str(tk[i]))
 	if banquier_actif():
 		var en_file: Dictionary = banque.get("en_file", {})
 		for id in en_file.keys():

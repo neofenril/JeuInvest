@@ -337,8 +337,8 @@ static func heritage_chiffres() -> Dictionary:
 static func texte_taux_pel(e: EtatPartie, court := false) -> String:
 	var t := taux_pel_joueur(e)
 	if court:
-		return "≈ %s %% fixe" % taux_txt(t[0])
-	return "%s %% + prime d'État ≈ %s %%" % [Format.nombre(t[1], 2), taux_txt(t[0])]
+		return "≈ %s %% fixe" % taux_txt(t[0])
+	return "%s %% + prime d'État ≈ %s %%" % [Format.nombre(t[1], 2), taux_txt(t[0])]
 
 
 ## [taux prime comprise, taux hors prime] du PEL détenu, sinon de l'offre du mois.
@@ -636,7 +636,29 @@ static func resume_historique(c: Dictionary) -> String:
 	var tk: Array = c.get("ticket", [])
 	if c.get("ticket_succession", false) and tk.size() >= 5:
 		return "%s %s par succession, %s par assurance-vie" % [str(tk[0]).trim_suffix(" :"), tk[2], tk[4]]
-	return " → ".join(PackedStringArray(tk.map(func(x: Variant) -> String: return str(x))))
+	return joindre_ticket(tk)
+
+
+## Ticket d'une ligne, sans flèche (F1-L) : « 12 600 F : + 945 F par an », mais « 300 F par mois pendant
+## 4 ans : 19 400 F » (pas de second « : » quand le morceau suivant en porte déjà un).
+static func joindre_ticket(tk: Array) -> String:
+	var t := ""
+	for x in tk:
+		var s := str(x).strip_edges()
+		if s == "":
+			continue
+		if t == "":
+			t = s
+		elif s.contains(":") or t.ends_with(":"):
+			t += " " + s
+		else:
+			t += " : " + s
+	return t
+
+
+## Anciennes sauvegardes (avant F1-L) : « a → b » devient « a : b » dans le résumé et le contenu d'une entrée.
+static func sans_fleche(s: String) -> String:
+	return s.replace(" → ", " : ").replace("→", ":")
 
 
 # =====================================================================
