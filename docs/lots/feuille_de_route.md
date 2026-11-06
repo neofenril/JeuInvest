@@ -15,8 +15,8 @@ Chaque vague lance **trois branches en parallèle**, une par développeur, sur d
 | **3** | **04-L** : P1 (projets, jauge, échéance, report, vente automatique, rappel dans les fiches) | **03-I** : carte de dilemme (sort de la maison, 2 boutons montant + humeur, ligne de conséquence 3 s), composant **Bulle** (Sylvie, réutilisé au lot 05), « Mon foyer » (humeur), historique genre `carte` | **03-V** : Sylvie câblée sur l'humeur, objets des cartes (lueur de télé, antenne, poussette, chien, escargot, diplôme) | F3 | (avec F4) |
 | **4** | **05-L** : P3 + P9 (Jean-Mi sur le vrai cours de Peugeot, levier, classement, calendrier des passages et bulles réactives, kiosque) | **04-I** : carte de choix de projet, jauge sur la maison, « Projet : … dans N mois » dans la fenêtre Banque, carte « le jour J » | **04-V** : réalisations animées (la Super 5 se gare, break, carte postale, chaîne hi-fi), traces P10 des projets | **F4** | **0.5 « le foyer »** (P2 + P1) |
 | **5** | **06-L** : P6 (cours quotidiens 16 → 26/10/1987, instantané, « un an après » au franc près) | **05-I** : bloc « La rue » dans « Mon argent » (4 lignes), bulles des voisins, carte de lecture « La rue » et levier, source `rue` de l'historique | **05-V** : passages des voisins (`faire_passer`), Porsche puis « À VENDRE », Jean-Mi à vélo, kiosque défilant, enfants qui grandissent | F5 | **0.6 « la rue »** |
-| **6** | **07-L** : P5 (rang, titre, record dans `user://records.sav`), mesure de la durée (≤ 20 min avec le bouton) | **06-I** : carte « Le krach, un an après » (3 barres) | **06-V** : séquence du Lundi noir (≤ 15 s, sans compte à rebours) | F6 | **0.7 « le krach »** |
-| **7** | équilibrage, export 1.0 | **07-I** : écran de fin (4 barres, titre, projets, visage de Sylvie), meilleur résultat sur l'écran titre | **07-V** : finitions de la rue | F7 | **1.0 de la démo V3** |
+| **6** | **SV-L** (sauvegarde, §10, non lancé) puis **07-L** : P5 (rang, titre, record dans `user://records.sav`), mesure de la durée (≤ 20 min avec le bouton) | **06-I** : carte « Le krach, un an après » (3 barres) | **06-V** : séquence du Lundi noir (≤ 15 s, sans compte à rebours) | F6 | **0.7 « le krach »** |
+| **7** | équilibrage, export 1.0 | **SV-I** (sauvegarde, §10) puis **07-I** : écran de fin (4 barres, titre, projets, visage de Sylvie), meilleur résultat sur l'écran titre | **07-V** : finitions de la rue | F7 | **1.0 de la démo V3** |
 
 Chaque case est une branche `lot/NN-<dev>` (`lot/px1-ville`, `lot/px2-interface`, `lot/02-logique`, puis `lot/02-interface`, `lot/02-ville`, `lot/03-logique`…), un worktree `C:\Users\arthu\Documents\temp\JeuClaude_lots\<lot>-<dev>`, un passage du testeur (`docs/lots/lot_NN_recette.md`). Les plans des vagues 2 et suivantes (`lot_02.md` pour 02-I et 02-V, `lot_03.md`…) seront écrits par le chef de projet pendant la vague précédente, avec la spec, le contenu des experts et les maquettes UX disponibles.
 
@@ -131,6 +131,7 @@ Vérification faite pour ce plan : aucun fichier n'apparaît deux fois ; les tro
 | 05-L | boursier + banquier | ancrages mensuels de Peugeot 1986-1988, plan de Jean-Mi (règlement mensuel, J1/J2), crédit de la Porsche ; titres datés du kiosque | début de la vague 4 |
 | 06-L, 06-V | boursier ; UX | clôtures quotidiennes du 16 au 26/10/1987 ; storyboard du Lundi noir | début de la vague 5 |
 | 07-L | client, game designer | textes des titres et « pourquoi » | début de la vague 6 |
+| SV-L, SV-I | UX ; game designer | maquette menu / 3 emplacements / bandeau / « Sauvegarder d'abord » ; relecture des seuils (§10, lot non lancé) | début de la vague 6 |
 
 Les silhouettes des voisins sont proposées par dev-ville en PX1 (planche) et jugées par le joueur, au lieu d'attendre l'UX.
 
@@ -151,3 +152,23 @@ T16, T9, T15, B1, B3 → PX2 ; T14, T17 (`tests.ps1`), T18 (`tests.ps1`) → 02-
 | Budget d'interruptions et durée (≤ 20 min avec le bouton) | Tests de cadence à chaque lot logique ; mesure en 07-L, retrait de créneaux dans l'ordre de docs/15 §2.4 |
 | Garde-fous pédagogiques (pas de timing récompensé, saut jamais avant un événement, Jean-Mi jamais enviable) | Un test par garde-fou dans le lot qui l'introduit |
 | APK jamais essayé sur téléphone (T2) ; cibles tactiles | `Ecran.dp` + CA-I4/I6 de PX2 ; liste de contrôle donnée au joueur avec la 0.3 |
+| Sauvegardes multiples : triche sur le record ; propositions agaçantes | Compteur `retours` (partie « hors record ») ; bandeau non bloquant, liste fermée, espacement de 6 mois, option de désactivation (§10) |
+
+## 10. Sauvegarde à la demande et avant les grandes décisions (demande du joueur du 06/11)
+
+> **Statut : planifié, NON LANCÉ** (le joueur, 06/11 : « note les éléments de cette fonctionnalité pour plus tard, à ne pas lancer tout de suite »). Plan détaillé : `docs/lots/lot_sauvegarde.md`. Livré **dans la 1.0** (vagues 6 et 7), lancé seulement sur demande du coordinateur.
+
+- **Décisions du joueur (06/11)** : **3 emplacements** ; **le joueur choisit l'emplacement à écraser** à chaque sauvegarde (y compris celle proposée avant une décision) ; **liste des décisions importantes validée** ; **une recharge exclut la partie courante du record**.
+- **Design** : l'automatique actuel (« Continuer ») est gardé tel quel (protection technique, pas un emplacement) ; menu SAUVEGARDER / CHARGER, écran titre CHARGER, écrasement confirmé. Même format 3, aucune rupture de sauvegarde.
+- **Proposition avant une décision** : bandeau **non bloquant** « Sauvegarder avant de choisir » dans la carte (un toucher ouvre les 3 emplacements, ou on l'ignore ; défaut retenu, le joueur n'a pas tranché ce point). Décisions « toujours » : krach, héritage, choix et échéance de projet (et plus tard « un an après » si le game designer le veut). « Avec seuil » : carte de dilemme ≥ 1 mois de salaire, escargots, ordre ≥ 20 % du patrimoine et ≥ 5 000 F, au plus une fois tous les 6 mois. Jamais : présentations du banquier, événements de vie sans choix, notifications. Option « Proposer de sauvegarder… oui / non » dans le menu. Seuils et liste dans `rythme.json > sauvegarde` (réglables sans code).
+- **Record et R-MIROIR** : R-MIROIR intact (les témoins sont dans l'état sauvegardé). Recharger un emplacement (pas « Continuer ») incrémente `retours` ; une partie avec `retours > 0` est **« hors record »** (rang et titre affichés, record non mis à jour : à respecter par **07-L** via `bilan["record_possible"]`, et par **07-I** à l'écran de fin). Le hasard est figé par la graine : recharger ne change que les choix.
+- **Lots** :
+
+| Lot | Développeur | Place | Dépend de | Sortie |
+|---|---|---|---|---|
+| **SV-L** (`lot/sv-logique`) | dev-logique | vague 6, **avant 07-L** (≈ 1 jour) | 03-L à 06-L sur `main` (cartes, C06, projets, krach, « un an après ») | aucune visible |
+| **SV-I** (`lot/sv-interface`) | dev-interface | vague 7, **avant 07-I** | PX2 (T9), 06-I et SV-L sur `main`, maquette UX | **1.0** (F7) |
+
+- dev-ville : rien. UX : maquette du menu, de l'écran des 3 emplacements, du bandeau et du bouton « Sauvegarder d'abord » (début de vague 6, §7). Game designer : relecture des seuils ; « un an après » dans la liste « toujours » ou non.
+- Conséquences : **07-L** lit `bilan["record_possible"]` (record non mis à jour si faux) ; **07-I** affiche « Partie rejouée depuis une sauvegarde : hors record ». Aucun lot avant la vague 6 ne dépend de SV.
+- Restés par défaut (pas de nouvelle question avant le lancement) : bandeau plutôt que question ; titre d'une partie rejouée gardé dans la collection (à confirmer par le client en 07-L).

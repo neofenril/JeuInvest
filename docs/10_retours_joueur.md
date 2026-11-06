@@ -85,3 +85,13 @@ Décisions : style PX0 bis validé sous réserve de se rapprocher de rue_pixel_v
 
 Verbatim (retour sur PX0 ter, 2026-10-30) : « Tu peux faire encore plus proche, l'image d'origine est libre de droit, inspire-toi à fond, en particulier le mini effet 3D qui est présent sur les bâtiments, pour donner plus de relief à l'ensemble. Des graphismes un peu moins pixelisés si possible. »
 
+
+## 2026-11-06 — Demande de fonctionnalité : sauvegarde avant la version finale
+
+Verbatim : « prévoir l'ajout d'une fonctionalité de sauvegarde avant la version finale. Permettre au joueur de sauvegarder la partie quand il le souhaite, et lui proposer automatiquement avant chaque décision importante »
+Contexte : une sauvegarde automatique unique existe déjà (partie_en_cours.sav, format 3). La demande ajoute la sauvegarde manuelle à la demande et des points de sauvegarde proposés avant les décisions importantes.
+
+
+Verbatim (réponses, 2026-11-06) : « 3 emplacements possibles. l'utilisateur choisis quel emplacement écraser lors d'une nouvelle sauvegarde. je valide les décisions importantes. Je confirme une recharge de sauvegarde annule la prise en compte de la partie courante dans le record. note les éléments de cette fonctionnalité pour plus tard, à ne pas lancer tout de suite »
+Décisions : 3 emplacements ; le joueur choisit l'emplacement à écraser ; la liste des « décisions importantes » proposée par le CDP est validée ; recharger une sauvegarde annule la prise en compte de la partie courante dans le record ; fonctionnalité à NOTER seulement, NE PAS LANCER maintenant.
+
