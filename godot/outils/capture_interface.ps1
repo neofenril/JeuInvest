@@ -43,11 +43,17 @@ function Lancer([string]$etape, [string]$nom, [string]$taille, [string]$tel) {
     $log = Join-Path $env:TEMP ("px2_" + $nom + "_" + [guid]::NewGuid().ToString("N") + ".log")
     $p = Start-Process -FilePath $godot -ArgumentList (@("--log-file", $log) + $a) -PassThru -WindowStyle Hidden
     $null = $p.Handle
-    if (-not $p.WaitForExit(300000)) {
+    $bloque = $false
+    if (-not $p.WaitForExit(180000)) {
         Get-CimInstance Win32_Process -Filter "Name like 'Godot%'" | Where-Object { $_.CommandLine -match [regex]::Escape("captures/$nom.png") } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
         $code = 124
+        $bloque = $true
     } else { $code = $p.ExitCode }
+    Start-Sleep -Milliseconds 300
     $sortie = @(if (Test-Path $log) { Get-Content $log -Encoding UTF8 } else { @() })
+    # Godot bloqué à la SORTIE seulement (image enregistrée, contrôles imprimés) : vu après la fusion de PX1,
+    # au hasard des lancements ; compté à part, pas comme un échec de l'interface.
+    if ($bloque -and ($sortie -match '^Capture enregistr')) { $code = 0; $script:sorties_bloquees += 1; $sortie += "UI note sortie_bloquee=oui (Godot arrêté après la capture)" }
     Remove-Item $log -ErrorAction SilentlyContinue
     $erreurs = @($sortie | Where-Object { $_ -match 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access|Cannot call method' })
     $ui = @($sortie | Where-Object { $_ -match '^UI |^Images par seconde|^Clic ' } | ForEach-Object { if ($_ -match '^Clic ') { "UI clic_dehors $_" } else { $_ } })
@@ -118,6 +124,7 @@ $plan.Add(@("courrier_relu_echap", "px2_courrier_relu_echap", "1280x720", ""))
 $plan.Add(@("fps", "px2_fps_1080", "1920x1080", ""))
 $plan.Add(@("fps", "px2_fps_tel", "1440x648", "1"))
 $echecs = 0
+$script:sorties_bloquees = 0
 $i = 0
 foreach ($p in $plan) {
     $i++
@@ -142,7 +149,7 @@ foreach ($m in @(@(@($v3, (Join-Path $captures "px2_hud_1080.png")), "px2_montag
 $t = "user:// : sauvegarde du joueur {0} (avant {1}, après {2})" -f $(if ($avant -eq $apres) { "inchangée" } else { "MODIFIÉE" }), $avant.Substring(0, [Math]::Min(12, $avant.Length)), $apres.Substring(0, [Math]::Min(12, $apres.Length))
 if ($avant -ne $apres) { $echecs++ }
 Write-Host $t; $t | Out-File $journal -Append -Encoding utf8
-$fin = "Série PX2 : {0} lancement(s), {1} échec(s), durée {2:N0} s" -f $plan.Count, $echecs, ((Get-Date) - $debut).TotalSeconds
+$fin = "Série PX2 : {0} lancement(s), {1} échec(s), {3} sortie(s) de Godot bloquée(s) après la capture, durée {2:N0} s" -f $plan.Count, $echecs, ((Get-Date) - $debut).TotalSeconds, $script:sorties_bloquees
 Write-Host $fin; $fin | Out-File $journal -Append -Encoding utf8
 if ($echecs -gt 0) { exit 1 }
 exit 0

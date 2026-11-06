@@ -49,7 +49,7 @@ func _etiquettes(etape: String, jeu: Node) -> void:
 			await sc.delai(0.8)
 		"etiquettes_aller":
 			var f: Control = hud.etiquettes["banque"]
-			print("UI aller avant banque visible=%s mode=%s" % ["oui" if ville.call("est_visible", "banque") else "non", "fleche" if str(f.get_meta("fleche", "")) != "" else "sous"])
+			print("UI aller avant banque cachee=%s mode=%s" % ["non" if ville.call("est_visible", "banque") else "oui", "fleche" if str(f.get_meta("fleche", "")) != "" else "sous"])
 			await sc.clic_dehors(sc.position_fenetre(f))   # vrai toucher simulé au centre de la flèche
 			await sc.delai(1.2)
 			print("UI aller banque visible=%s" % ["oui" if ville.call("est_visible", "banque") else "non"])
