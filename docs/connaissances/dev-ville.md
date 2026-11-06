@@ -1,7 +1,7 @@
 # Base de connaissances de dev-ville
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-11-03 (PX1 : rue du jeu en pixel, §2 sexies).
+> Dernière mise à jour : 2026-11-07 (PX1-bis : sortie propre, préchauffage, §2 septies).
 
 ## 1. Atelier pixel (`godot/scripts/pixel/`, conservé après PX0)
 
@@ -73,6 +73,14 @@
 - **Pièges** : `Callable.bind(a).bind(b)` appelle f(b, a) → **un seul `bindv`** pour les tâches WorkerThreadPool ; une erreur dans une tâche de fond est **muette** (vérifier le résultat dans un test). Arbres (0,4 s chacun) et recoloration de saison en tâche de fond, sinon génération 9 s. `--script` : le script de test ne peut pas nommer un autoload (Partie), mais les scripts chargés ensuite le peuvent. Commit : `git commit -F fichier` (un here-string passé à `-F -` n'est pas lu).
 - Recette PX1 passage 1 (KO) corrigée : arbre de premier plan retiré en mode titre (il cachait l'enseigne JEUCLAUDE ; contrôlé dans test_rue) ; `point_etiquette` bornée au-dessus du bas du libre (l'étiquette pend ≈ 40 px d'art sous le point) ; toutes les saisons + neige préparées dès que les arbres sont prêts ; fonds, skyline, cumulus en tâche de fond (génération ≈ 1,1-1,3 s) ; glyphe N ≠ M ; voiture de Gérard et potelet à gauche de la maison (capot loin de Gérard). Toujours regarder **toutes** les captures de format (720, téléphone) du titre : l'arbre de premier plan suit le bord droit de la vue.
 - Captures : `outils/capture_ville.ps1` (1080 en `--fullscreen`, téléphone : la famille passe la fenêtre à 1600 × 720), options `--controle`, `--rue-sans-hud`, `--rue-facteur`, `--rue-passer`. Les scénarios attendent `rue.images_pretes()`.
+
+## 2 septies. PX1-bis (sortie, A11, A3)
+
+- **Tâches de fond** : lancées en tête de `generer()` (arbres + leurs 4 saisons dans la même tâche, premier plan, skyline, fonds avec leur neige, neige des façades **quelle que soit la saison**), puis variantes nuit / orage de tout par lots de 6 (`_tache_variantes`) ; chaque récolte relance les variantes des nouvelles images. `GrillePixel.poser_variantes` (contrôle d'identité de l'image source), `variante_prete`, `texture_prete`.
+- **Préchauffage** : file [nom, variante] de **toutes** les images (jour, nuit, orage), budget 4 ms par image, attend la variante si une tâche tourne encore. `images_pretes()` = tâches **et** préchauffage finis (≈ 3 à 4 s après le lancement, headless). Mesuré : krach 8 ms, première nuit 6 ms (contre 300 à 660 ms) ; test_rue imprime `RUE image_max_ms`, le scénario `RUE image_max etape=…`.
+- **Sortie** : `_exit_tree` → `attendre_taches()` (attend et récolte ; les lots de variantes s'arrêtent tôt via `_arret`). Cause probable du blocage : fils de GDScript encore actifs pendant la fermeture du moteur (carnet_pel saute en décembre → neige et saisons lancées juste avant la sortie). Une sortie dans les ~3 s du lancement attend la fin des arbres.
+- **Pièges** : `wait_for_task_completion` invalide l'identifiant (`is_task_completed` ensuite = « Invalid Task ID ») ; `add_task(…, true)` (haute priorité, 16 fils de GDScript) ralentit le fil principal ×5 (génération 7 s) : rester en basse priorité. `recolorer` : octets précalculés (plus d'appel de palette par pixel).
+- Arbres : plus de repli sur l'été (`_maj_arbres`) ; un arbre pas encore prêt n'est pas dessiné.
 
 ## 3. Décisions (étape A)
 

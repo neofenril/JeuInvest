@@ -45,10 +45,13 @@ func jouer(etape: String) -> void:
 	match etape:
 		"rue", "rue_nuit", "rue_libre", "pluie":
 			sc.aller_a(Dates.lire("1987-05"), true)
+			await sc.get_tree().process_frame
+			_chrono_debut()
 			ville.set("phase", 0.72 if etape == "rue_nuit" else 0.18)
 			ville.set("pluie", etape == "pluie")
 			Partie.changer_vitesse(1)
 			await sc.delai(2.6)
+			_chrono_fin(etape)
 			if _controle:
 				await _controle_palette(ville, "rue_nuit" if etape == "rue_nuit" else "rue")
 				_lignes_rue(ville)
@@ -168,8 +171,10 @@ func jouer(etape: String) -> void:
 			await sc.delai(0.9)
 		"krach_anim":
 			sc.aller_a_modale("p1e6", true)
+			_chrono_debut()
 			await sc.attendre_que(func() -> bool: return jeu.sequences.occupe, 15.0)
 			await sc.delai(1.05)
+			_chrono_fin("krach_anim")
 			if _controle:
 				await sc.attendre_que(func() -> bool: return float(ville.get("krach")) >= 1.0, 3.0)
 				await _controle_palette(ville, "krach_anim")
@@ -226,6 +231,31 @@ func _controle_palette(ville: Node2D, etape: String) -> void:
 	rue.call("afficher_lumieres", true)
 	var variante: int = {"jour": PalettePixel.JOUR, "nuit": PalettePixel.NUIT, "orage": PalettePixel.ORAGE}.get(nom, PalettePixel.JOUR)
 	print("RUE palette etape=%s variante=%s pixels=%d hors_palette=%d" % [etape, nom, img.get_width() * img.get_height(), PalettePixel.compter_hors_palette(img, variante)])
+
+
+## Chronomètre des images (A11) : la plus longue image entre _chrono_debut et _chrono_fin.
+var _pire_us := 0
+var _prec_us := 0
+
+
+func _noter_image() -> void:
+	var t := Time.get_ticks_usec()
+	_pire_us = maxi(_pire_us, t - _prec_us)
+	_prec_us = t
+
+
+func _chrono_debut() -> void:
+	_pire_us = 0
+	_prec_us = Time.get_ticks_usec()
+	if not sc.get_tree().process_frame.is_connected(_noter_image):
+		sc.get_tree().process_frame.connect(_noter_image)
+
+
+func _chrono_fin(etape: String) -> void:
+	if sc.get_tree().process_frame.is_connected(_noter_image):
+		sc.get_tree().process_frame.disconnect(_noter_image)
+	if _controle:
+		print("RUE image_max etape=%s ms=%.1f" % [etape, _pire_us / 1000.0])
 
 
 func _controle_grille(ville: Node2D) -> void:
