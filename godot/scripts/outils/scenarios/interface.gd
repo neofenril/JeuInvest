@@ -7,7 +7,7 @@ extends RefCounted
 ## - polices_jeu : planche des polices du jeu (accents français, tnum d'Atkinson).
 
 const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette"]
-const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, affiché « › » (Style.sans_fleche)
+const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
 var sc: ScenariosCapture
 var _pix_min := 999
@@ -235,7 +235,7 @@ func _cibles(jeu: Node) -> void:
 	await sc.delai(2.0)
 	_mesurer("fin", modales.courant)
 	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d atkinson=%s" % [_pix_min, _atk_min, _chiffres_pixelify, "oui" if PolicesPixel.est_atkinson(hud.l_patr.get_theme_font("font")) and PolicesPixel.est_atkinson(hud.l_cc.get_theme_font("font")) else "non"])
-	print("UI fleches_texte=%d (« → » ou « › » affichés en texte ; attendu 0 après F1-L)" % _fleches)
+	print("UI fleches_texte=%d (« → » affichés en texte ; 0 depuis F1-L)" % _fleches)
 
 
 ## Contrôles d'un écran (racine : fenêtre, HUD ou titre) : cibles tactiles (px physiques ; seuil :
@@ -337,8 +337,9 @@ var _fleches := 0
 func _police(c: Control, texte: String) -> void:
 	var f: Font = c.get_theme_font("font")
 	var t := c.get_theme_font_size("font_size")
-	if texte.contains("→") or texte.contains("›") or texte.contains("‹"):
+	if texte.contains("→"):
 		_fleches += 1
+		print("UI fleche_en_texte « %s »" % texte.left(40).replace("\n", " "))
 	if PolicesPixel.est_pixelify(f):
 		if t < PolicesPixel.TAILLE_MIN_PIXELIFY:
 			print("UI pixelify_petit taille=%d %s %s" % [t, c.get_class(), texte.left(20)])

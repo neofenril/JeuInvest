@@ -57,7 +57,7 @@ function Lancer([string]$etape, [string]$nom, [string]$taille, [string]$tel) {
     Remove-Item $log -ErrorAction SilentlyContinue
     $erreurs = @($sortie | Where-Object { $_ -match 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access|Cannot call method' })
     $ui = @($sortie | Where-Object { $_ -match '^UI |^Images par seconde|^Clic ' } | ForEach-Object { if ($_ -match '^Clic ') { "UI clic_dehors $_" } else { $_ } })
-    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|hors_cadre=[1-9]|hors_ecran=[1-9]|recouvert=oui|recouvre=oui|contenu_coupe=oui|dans_ecran=non|boutons_visibles=non|chiffres_pixelify=[1-9]|hud_focalisables=[1-9]|dans_libre=non|visible=non|fermee=non|echap_ignore=non|atkinson=non|: False' })
+    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|hors_cadre=[1-9]|hors_ecran=[1-9]|recouvert=oui|recouvre=oui|contenu_coupe=oui|dans_ecran=non|boutons_visibles=non|chiffres_pixelify=[1-9]|hud_focalisables=[1-9]|dans_libre=non|visible=non|fleches_texte=[1-9]|fermee=non|echap_ignore=non|atkinson=non|: False' })
     foreach ($l in ($ui | Where-Object { $_ -match 'atkinson_min=(\d+)' })) { if ([int]([regex]::Match($l, 'atkinson_min=(\d+)').Groups[1].Value) -lt 20) { $fautes += "atkinson_min < 20" } }
     foreach ($l in ($ui | Where-Object { $_ -match '^Images par seconde.*: ([\d.,]+)' })) { if ([double]([regex]::Match($l, ': ([\d.,]+)').Groups[1].Value.Replace(',','.')) -lt 55) { $fautes += "moins de 55 images par seconde" } }
     $pix = $ui | Where-Object { $_ -match 'pixelify_min=(\d+)' } | ForEach-Object { [int]([regex]::Match($_, 'pixelify_min=(\d+)').Groups[1].Value) }
