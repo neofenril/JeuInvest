@@ -99,6 +99,20 @@ func ouvrir(e: EtatPartie, filtre := "", defilement := 0) -> void:
 		b.set_pressed_no_signal(f == filtre)
 		b.toggled.connect(_on_filtre_bascule.bind(e, f))
 		b.name = "Filtre_" + (f if f != "" else "tout")
+		# Lot 02 (D5) : nombre de nouveautés de l'onglet (entrées non lues), pastille ambre si > 0
+		var nouveaux := e.non_lues(f)
+		if nouveaux > 0:
+			var pn := Control.new()
+			pn.name = "Nouveautes"
+			pn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			pn.set_meta("texte", Hud.texte_badge(nouveaux))
+			pn.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+			pn.offset_left = -39.0
+			pn.offset_right = -6.0
+			pn.offset_top = 3.0
+			pn.offset_bottom = 36.0
+			pn.draw.connect(func() -> void: Hud.dessiner_pastille(pn, str(pn.get_meta("texte")), 20))
+			b.add_child(pn)
 		filtres.add_child(b)
 	v.add_child(filtres)
 	# Page du classeur : papier crème, liste défilante de lignes
@@ -181,6 +195,23 @@ func _ligne(e: EtatPartie, h: Dictionary, largeur: float) -> Control:
 	date.custom_minimum_size.x = 96 if compact else 110
 	date.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hb.add_child(date)
+	# Lot 02 (D5) : entrée arrivée pendant un saut et pas encore vue ; l'étiquette reste tant que le classeur
+	# est ouvert (marquer_lues à la fermeture finale)
+	if not bool(h.get("lu", true)):
+		var nv := Style.label("NOUVEAU", 20 if compact else 28, Style.ui_gras() if compact else Style.capitales(), Style.ENCRE)
+		nv.name = "Nouveau"
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Style.ACCENT
+		sb.border_color = Style.ENCRE
+		sb.set_border_width_all(3)
+		sb.content_margin_left = 9
+		sb.content_margin_right = 9
+		sb.content_margin_top = 0
+		sb.content_margin_bottom = 0
+		sb.anti_aliasing = false
+		nv.add_theme_stylebox_override("normal", sb)
+		nv.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		hb.add_child(nv)
 	var vt := VBoxContainer.new()
 	vt.add_theme_constant_override("separation", -2)
 	vt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -230,6 +261,30 @@ func _on_ligne(ev: InputEvent, i: int) -> void:
 		_appui = Vector2(-1, -1)
 		m.historique_defilement = _defile.scroll_vertical if is_instance_valid(_defile) else 0
 		m.fermer("ouvrir:%d" % i)
+
+
+## Relecture de l'entrée i (déplacée de principal.gd au lot 02) : présentation, journal, courrier, relevé ou
+## notification, en lecture seule. Faux si l'indice n'existe pas.
+func relire(e: EtatPartie, i: int) -> bool:
+	if i < 0 or i >= e.historique.size():
+		return false
+	var h: Dictionary = e.historique[i]
+	var a := e.ab_de(int(h["m"]))
+	var c: Dictionary = h["contenu"]
+	match str(h["genre"]):
+		"appel":
+			var bandeau := "HISTORIQUE · %s · VOTRE CHOIX : %s" % [Dates.texte(a).to_upper(), str(h["choix"]).to_upper()]
+			m.presentation(c, Vector2(-1, -1), true, bandeau)
+		"journal":
+			m.journal(c, Vector2(-1, -1), false, str(h["choix"]))
+		"courrier":
+			m.courrier(c, Vector2(-1, -1), e, str(h["choix"]), a)
+		_:
+			if str(h["type"]) == "releve" and float(c.get("frais_total", 0.0)) > 0.0:
+				m.releve(c, a)
+			else:
+				m.lecture_notification(h, a)
+	return true
 
 
 ## Relecture d'une notification de l'historique (message du banquier, nouvelle, petit courrier…).

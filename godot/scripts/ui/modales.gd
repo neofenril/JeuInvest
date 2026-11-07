@@ -164,6 +164,12 @@ func lecture_notification(h: Dictionary, a: int) -> void:
 	await _historique.lecture_notification(h, a)
 
 
+## Ouvre la relecture de l'entrée i de l'historique telle qu'elle est apparue (chiffres d'alors), sans rejouer
+## la décision. Faux si l'indice n'existe pas ; sinon la fermeture émet choix_fait comme toute modale.
+func relire_historique(e: EtatPartie, i: int) -> bool:
+	return _historique.relire(e, i)
+
+
 func ouverte() -> bool:
 	return courant != null
 

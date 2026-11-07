@@ -14,7 +14,6 @@ var hud: Hud
 var modales: Modales
 var titre: EcranTitre
 var sequences: Sequences
-var ciel: ColorRect
 var calque_hud: CanvasLayer
 var en_titre := true
 var pluie_jusqua := -1            # la pluie du krach dure jusqu'à ce mois (Sequences)
@@ -41,6 +40,7 @@ func _ready() -> void:
 	hud.frais_demandes.connect(_detail_frais)
 	hud.notif_touchee.connect(toucher_notif)
 	hud.historique_demande.connect(func() -> void: ouvrir_historique(""))
+	hud.courrier_demande.connect(demander_saut)
 	hud.batiment_touche.connect(toucher_batiment)
 	hud.disposition_changee.connect(func() -> void: _recadrer(0.3))
 	ville.batiment_touche.connect(toucher_batiment)
@@ -55,10 +55,16 @@ func _ready() -> void:
 	# automatique tant qu'on est sur l'écran titre (sinon une partie neuve passerait pour une partie en cours).
 	Partie.sauvegarde_auto = false
 	if ScenariosCapture.mode_capture():
+		# T17 : un fichier par processus (effacé à la sortie) ; sauver_fermer / reprise (deux lancements) : un par
+		# copie du projet (worktree), pour que deux séries lancées en même temps n'écrivent jamais le même fichier.
 		var etape := ScenariosCapture.option("etape")
-		Partie.chemin_sauvegarde = "user://capture_reprise.sav" if etape in ["sauver_fermer", "reprise"] else "user://capture.sav"
+		var duo := etape in ["sauver_fermer", "reprise"]
+		Partie.chemin_sauvegarde = ("user://capture_reprise_%s.sav" % ProjectSettings.globalize_path("res://").md5_text().left(12)) if duo else ("user://capture_%d.sav" % OS.get_process_id())
+		print("Capture : sauvegarde de la partie dans %s" % Partie.chemin_sauvegarde)
 		if etape != "reprise":
 			Sauvegarde.effacer(Partie.chemin_sauvegarde)
+		if not duo:
+			tree_exiting.connect(func() -> void: Sauvegarde.effacer(Partie.chemin_sauvegarde))
 	var sauvee := Sauvegarde.lire(Partie.chemin_sauvegarde)
 	if sauvee.is_empty() or not reprendre(sauvee):
 		nouvelle_partie()
@@ -73,22 +79,10 @@ func _notification(what: int) -> void:
 
 
 func modales_init() -> void:
-	# Ciel (plan 0, shader)
-	var calque_ciel := CanvasLayer.new()
-	calque_ciel.layer = -10
-	add_child(calque_ciel)
-	ciel = ColorRect.new()
-	ciel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	ciel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var mat := ShaderMaterial.new()
-	mat.shader = load("res://shaders/ciel.gdshader")
-	ciel.material = mat
-	calque_ciel.add_child(ciel)
-	# Ville
+	# Ville (le ciel est peint par la rue pixel : plus de ciel vectoriel ni de shader, lot 02 I7)
 	ville = Node2D.new()
 	ville.set_script(load("res://scripts/ville/ville.gd"))
 	add_child(ville)
-	ville.set("ciel_mat", mat)
 	# HUD, effets, titre, modales
 	calque_hud = CanvasLayer.new()
 	calque_hud.layer = 1
@@ -153,6 +147,7 @@ func _apres_mise_en_place() -> void:
 	sequences.maj_media(false)
 	hud.maj(e, false)
 	hud.maj_vitesse(0)
+	hud.maj_badge(e.non_lues())
 	hud.point_banque(false)
 	if titre != null:
 		maj_titre()
@@ -274,6 +269,27 @@ func _process(delta: float) -> void:
 	if e != null:
 		ville.get("banque").set("aiguille", Partie.progression_mois())
 		ville.get("banque").queue_redraw()
+	hud.maj_courrier(hud.etat_courrier_pour(e, _occupe()))
+
+
+## Écran titre, fenêtre ou modale ouverte, séquence animée : le joueur ne peut pas lancer de saut.
+func _occupe() -> bool:
+	return en_titre or modales.ouverte() or sequences.occupe
+
+
+## Bouton COURRIER ou touche N (D1, D4) : lance le saut « jusqu'au prochain courrier », ou l'arrête.
+func demander_saut() -> void:
+	hud.fermer_bulle_courrier()
+	if Partie.saut_actif:
+		Partie.arreter_saut()
+	elif hud.etat_courrier_pour(Partie.etat, _occupe()) == "repos":
+		Partie.sauter_jusqu_au_prochain_arret()
+
+
+## Une fenêtre s'ouvre (D4) : le saut s'arrête, puis le temps est figé derrière elle.
+func _bloquer() -> void:
+	Partie.arreter_saut()
+	Partie.bloquee = true
 
 
 ## Touches de jeu (toujours actives). Les raccourcis de test (F6-F8) sont dans RaccourcisTest, F10 dans Ecran.
@@ -290,6 +306,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			ouvrir_banque("", -2.0)
 		KEY_H:
 			ouvrir_historique("")
+		KEY_N:
+			demander_saut()
 		_:
 			return
 	get_viewport().set_input_as_handled()
@@ -324,8 +342,12 @@ func _on_mois(res: Dictionary) -> void:
 	var patr := e.patrimoine(e.joueur)
 	_max_patr = maxf(_max_patr, patr)
 	ville.set("pluie", patr < 0.85 * _max_patr or e.m <= pluie_jusqua)
-	# Salaire : 3 pièces de la banque vers le compte (en ×1 seulement)
-	if anime and Partie.vitesse == 1 and e.m > e.m_depart:
+	hud.maj_badge(e.non_lues())
+	# Pièces du mois (lot 02, §3.2, D9) : Sequences (dev-ville) si elle les sait ; sinon les pièces du salaire
+	if sequences.has_method("pieces_du_mois"):
+		if not en_titre:
+			sequences.call("pieces_du_mois", res)
+	elif anime and Partie.vitesse == 1 and e.m > e.m_depart:
 		var depart: Vector2 = ville.call("ecran_batiment", ville.get("banque"), Vector2(0, -150))
 		Juice.pieces(depart, _cible_argent(), 3)
 
@@ -354,7 +376,7 @@ func _on_notif(n: Dictionary) -> void:
 		var b: Vector2 = ville.call("ecran_batiment", ville.get("banque"), Vector2(0, -150))
 		if type == "releve":
 			dernier_releve = n
-		if type in ["interets", "releve", "coupon"] and float(n.get("montant", 0.0)) > 0.0:
+		if type in ["interets", "releve", "coupon"] and float(n.get("montant", 0.0)) > 0.0 and not sequences.has_method("pieces_du_mois"):
 			Juice.pieces(b, _cible_argent(), 5)
 		ville.get("banque").call("ondes", 1)
 		depart = b
@@ -365,7 +387,7 @@ func _on_notif(n: Dictionary) -> void:
 func toucher_notif(n: Dictionary) -> void:
 	if n.get("type", "") != "releve" or float(n.get("frais_total", 0.0)) <= 0.0 or sequences.occupe or modales.ouverte() or en_titre:
 		return
-	Partie.bloquee = true
+	_bloquer()
 	modales.releve(n, Partie.etat.ab_courant())
 	await modales.choix_fait
 	Partie.bloquee = false
@@ -381,7 +403,7 @@ func _detail_frais() -> void:
 		"texte": "Droits d'entrée de la SICAV et de l'assurance-vie, courtage des actions, frais de gestion de la SICAV (prélevés chaque jour dans sa valeur) : %s au total. Tata Livret, elle, n'a payé aucun frais." % Format.entier(e.frais_payes(), a)}
 	if e.frais_payes() <= 0.005:
 		n["texte"] = "Vous n'avez payé aucun frais pour l'instant : le Livret A, le PEL et l'emprunt d'État n'en ont pas. La SICAV, l'assurance-vie et les actions en ont."
-	Partie.bloquee = true
+	_bloquer()
 	modales.releve(n, a)
 	await modales.choix_fait
 	Partie.bloquee = false
@@ -423,7 +445,7 @@ func toucher_batiment(id: String) -> void:
 			var auto := Versements.total_mensuel(e) if e.banquier_actif() else 0.0
 			if auto > 0.005:
 				lignes_foyer.insert(lignes_foyer.size() - 2, "Versements automatiques : %s par mois, partis le 1er, avant les dépenses." % Format.entier(auto, a))
-			Partie.bloquee = true
+			_bloquer()
 			modales.info("MON FOYER · " + e.prenom().to_upper(), lignes_foyer, ville.call("ecran_batiment", ville.get("maison"), Vector2(0, -150)), "COURRIERS REÇUS  ›")
 			var r: Array = await modales.choix_fait
 			Partie.bloquee = false
@@ -447,7 +469,7 @@ func expliquer_comparaison() -> void:
 		verdict = "Vos choix font mieux : %s de plus." % Format.ecart(ecart, a).trim_prefix("+")
 	elif Format.en_devise(ecart, Format.devise(a)) <= -0.5:
 		verdict = "Vos choix font moins bien : %s de moins." % Format.ecart(-ecart, a).trim_prefix("+")
-	Partie.bloquee = true
+	_bloquer()
 	modales.info("VOS CHOIX FACE À « TOUT AU LIVRET A »", [
 		"Repère : le même salaire, les mêmes dépenses et les mêmes coups durs que vous, mais tout l'argent reste sur le compte courant et le Livret A (dans la limite du plafond). C'est le réflexe de beaucoup d'épargnants.",
 		"Avec ce choix : %s.   Vous : %s." % [Format.montant(tata, a), Format.montant(e.patrimoine(e.joueur), a)],
@@ -464,7 +486,7 @@ func ouvrir_banque(produit: String, montant: float, depuis_sequence := false) ->
 	var e := Partie.etat
 	if e == null or e.fin != "":
 		return
-	Partie.bloquee = true
+	_bloquer()
 	hud.point_banque(false)
 	var depart: Vector2 = ville.call("ecran_batiment", ville.get("banque"), Vector2(0, -150))
 	modales.ouvrir_banque(e, produit, montant, depart)
@@ -489,7 +511,7 @@ func _relire(id: String) -> void:
 	var c := Banquier.contenu(e, id)
 	var p := int(e.banque["presentes"].get(id, e.m))
 	c["date"] = Dates.texte(e.ab_de(p))
-	Partie.bloquee = true
+	_bloquer()
 	modales.presentation(c, Vector2(-1, -1), true)
 	await modales.choix_fait
 	Partie.bloquee = false
@@ -512,7 +534,7 @@ func _on_ordre(pos: Vector2, _montant: float, achat: bool, frais: float) -> void
 func ouvrir_menu() -> void:
 	if modales.ouverte() or sequences.occupe:
 		return
-	Partie.bloquee = true
+	_bloquer()
 	modales.menu()
 	var r: Array = await modales.choix_fait
 	Partie.bloquee = false
@@ -536,7 +558,7 @@ func ouvrir_historique(filtre: String, defilement := 0, depuis_banque := false) 
 	var e := Partie.etat
 	if e == null:
 		return
-	Partie.bloquee = true
+	_bloquer()
 	while true:
 		modales.historique(e, filtre, defilement)
 		var r: Array = await modales.choix_fait
@@ -546,33 +568,14 @@ func ouvrir_historique(filtre: String, defilement := 0, depuis_banque := false) 
 		filtre = modales.historique_filtre
 		defilement = modales.historique_defilement
 		await get_tree().create_timer(0.2).timeout
-		await _relire_historique(int(id.split(":")[1]))
+		if modales.relire_historique(e, int(id.split(":")[1])):   # relecture en lecture seule (ModaleHistorique)
+			await modales.choix_fait
 		await get_tree().create_timer(0.2).timeout
+	# D5 : les nouveautés sont vues à la fermeture finale (après les relectures) ; le badge disparaît
+	e.marquer_lues()
+	hud.maj_badge(0)
 	Partie.bloquee = false
-
-
-## Relit une entrée de l'historique telle qu'elle est apparue (chiffres d'alors), sans rejouer la décision.
-func _relire_historique(i: int) -> void:
-	var e := Partie.etat
-	if i < 0 or i >= e.historique.size():
-		return
-	var h: Dictionary = e.historique[i]
-	var a := e.ab_de(int(h["m"]))
-	var c: Dictionary = h["contenu"]
-	match str(h["genre"]):
-		"appel":
-			var bandeau := "HISTORIQUE · %s · VOTRE CHOIX : %s" % [Dates.texte(a).to_upper(), str(h["choix"]).to_upper()]
-			modales.presentation(c, Vector2(-1, -1), true, bandeau)
-		"journal":
-			modales.journal(c, Vector2(-1, -1), false, str(h["choix"]))
-		"courrier":
-			modales.courrier(c, Vector2(-1, -1), e, str(h["choix"]), a)
-		_:
-			if str(h["type"]) == "releve" and float(c.get("frais_total", 0.0)) > 0.0:
-				modales.releve(c, a)
-			else:
-				modales.lecture_notification(h, a)
-	await modales.choix_fait
+	Partie.sauvegarder()
 
 
 ## Captures d'écran (--etape=, autoload Capture) : les scénarios sont dans ScenariosCapture.
