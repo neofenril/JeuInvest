@@ -59,7 +59,14 @@ function Lancer([string]$etape, [string]$nom, [string]$taille, [string]$tel, [st
     Remove-Item $log -ErrorAction SilentlyContinue
     $erreurs = @($sortie | Where-Object { $_ -match 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access|Cannot call method' })
     $ui = @($sortie | Where-Object { $_ -match '^UI |^Images par seconde|^Clic |^Intégrale |^Capture : sauvegarde' } | ForEach-Object { if ($_ -match '^Clic ') { "UI clic_dehors $_" } else { $_ } })
-    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|hors_cadre=[1-9]|hors_ecran=[1-9]|recouvert=oui|recouvre=oui|contenu_coupe=oui|dans_ecran=non|boutons_visibles=non|chiffres_pixelify=[1-9]|hud_focalisables=[1-9]|dans_libre=non|visible=non|fleches_texte=[1-9]|fermee=non|echap_ignore=non|atkinson=non|: False|une_ligne=non|dans_barre=non|retour=non|decale=non|sans_modale=[1-9]|vitesses_ecarts=[1-9]|chevauchements=[1-9]|hors_libre=[1-9]|incoherences=[1-9]' })
+    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|hors_cadre=[1-9]|hors_ecran=[1-9]|recouvert=oui|recouvre=oui|contenu_coupe=oui|dans_ecran=non|boutons_visibles=non|chiffres_pixelify=[1-9]|hud_focalisables=[1-9]|dans_libre=non|(?<![a-z_])visible=non|fleches_texte=[1-9]|fermee=non|echap_ignore=non|atkinson=non|: False|une_ligne=non|dans_barre=non|retour=non|decale=non|sans_modale=[1-9]|vitesses_ecarts=[1-9]|chevauchements=[1-9]|hors_libre=[1-9]|incoherences=[1-9]' })
+    # C4 : barre haute (E3, E4)
+    foreach ($l in ($ui | Where-Object { $_ -match '^UI barre ' })) {
+        if ($l -match 'SAUT_IMPOSSIBLE') { $fautes += "barre : saut non lancé" }
+        if ($l -match 'format=1440x648' -and $l -match 'pause_visible=non') { $fautes += "barre 1440 × 648 : EN PAUSE / » ×6 replié" }
+        if ($l -match 'format=1920x10(80|09) ' -and ($l -match 'var=non' -or $l -match 'libelle_courrier=non')) { $fautes += "barre 1920 : variation ou libellé COURRIER replié" }
+        if ($l -notmatch 'tel ' -and $l -match 'pause_visible=non') { $fautes += "barre PC : EN PAUSE replié" }
+    }
     foreach ($l in ($ui | Where-Object { $_ -match 'UI timbre taille=(\d+)' })) { if ([int]([regex]::Match($l, 'taille=(\d+)').Groups[1].Value) -lt 20) { $fautes += "timbre sous 20 px" } }
     # Lot 02 : tuiles du carnet ≥ 20 px (m10), badge = non_lues
     foreach ($l in ($ui | Where-Object { $_ -match 'UI tuiles taille_min=(\d+)' })) { if ([int]([regex]::Match($l, 'taille_min=(\d+)').Groups[1].Value) -lt 20) { $fautes += "tuile sous 20 px" } }

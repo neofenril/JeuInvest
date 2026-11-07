@@ -587,6 +587,22 @@ func _hud(jeu: Node) -> void:
 	hud.point_banque(false)
 	await sc.delai(0.6)
 	_mesurer("hud", hud)
+	# C4 : barre haute en pause puis pendant un saut (le saut est arrêté avant la capture)
+	var e := Partie.etat
+	var format := "%dx%d%s" % [sc.get_window().size.x, sc.get_window().size.y, " tel" if Ecran.telephone_simule else ""]
+	Partie.changer_vitesse(0)
+	await sc.delai(0.3)
+	print("UI barre format=%s etat=pause %s" % [format, hud.etat_barre()])
+	StrategieTest.jouer_mois(e, true)
+	if not e.modale.is_empty():
+		e.resolution_auto()
+	jeu.demander_saut()
+	await sc.delai(0.4)
+	print("UI barre format=%s etat=%s %s" % [format, "saut" if Partie.saut_actif else "SAUT_IMPOSSIBLE", hud.etat_barre()])
+	if Partie.saut_actif:
+		jeu.demander_saut()
+	Partie.changer_vitesse(0)
+	await sc.delai(0.4)
 
 
 ## « UI panneau … » : bas du panneau ≤ haut de la frise − 6, aucun enfant visible hors du cadre (CA-C2).

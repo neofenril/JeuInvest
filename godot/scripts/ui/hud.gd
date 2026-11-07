@@ -49,6 +49,8 @@ var _bulle: Control = null
 var _bulle_faite := false
 var badge_non_lus: Control
 var _n_non_lus := 0
+var replis_barre := PackedStringArray()   # replis de la barre haute en vigueur (contrôle « UI barre »)
+var manque_cc := 0.0                      # px qui manquaient pour garder « COMPTE COURANT » (0 s'il tient)
 var carte_cc: PanelContainer
 var boite_cc: VBoxContainer
 var l_titre_cc: Label
@@ -519,35 +521,65 @@ func _verifier_bulle() -> void:
 		montrer_bulle_courrier()
 
 
-## Replis de la barre quand elle manque de largeur (D1) : d'abord la variation du patrimoine, puis le libellé
-## du bouton COURRIER (icône seule, 84 × 84). Jamais le bouton lui-même.
+## Replis de la barre quand elle manque de largeur (passage 2, E3 / E4), chacun seulement si elle déborde encore.
+## PC : « VS LIVRET A », « COMPTE », variation, libellé COURRIER ; « EN PAUSE » / « » ×6 » jamais replié.
+## Téléphone (titres courts d'office) : libellé COURRIER, puis seulement « EN PAUSE » / « » ×6 ».
+## Mesuré avec le badge visible (pire cas) ; jamais le bouton lui-même. replis_barre et manque_cc : contrôles.
 func _replier_barre() -> void:
 	if barre == null:
 		return
 	var h := barre.get_child(0) as HBoxContainer
 	var dispo := Ecran.taille().x - 30.0
-	var long := not compact and Ecran.taille().x >= 1900.0
-	l_titre_cc.text = "COMPTE COURANT" if long else "COMPTE"
-	l_titre_livret.text = "VS TOUT AU LIVRET A" if long else "VS LIVRET A"
+	var trop := func() -> bool: return h.get_combined_minimum_size().x > dispo
+	replis_barre = PackedStringArray()
+	manque_cc = 0.0
+	# Largeur du badge : la plus large de ses deux chaînes (rien ne bouge quand le saut commence)
+	var lp := Style.neon().get_string_size("EN PAUSE", HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x
+	var ls := Style.police_pour(Style.neon(), 28, "» ×6").get_string_size("» ×6", HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x
+	badge_pause.custom_minimum_size.x = ceilf(maxf(lp, ls) / 3.0) * 3.0
+	l_titre_cc.text = "COMPTE" if compact else "COMPTE COURANT"
+	l_titre_livret.text = "VS LIVRET A" if compact else "VS TOUT AU LIVRET A"
 	l_var.visible = not compact
-	var replie := compact and Ecran.taille().x < 1400.0
-	badge_pause.set_meta("replie", replie)
-	badge_pause.visible = not replie   # mesuré visible (pire cas), réglé selon la vitesse à la fin
+	badge_pause.set_meta("replie", false)
+	badge_pause.visible = true
 	_disposer_courrier(true)
-	# Avant les replis de D1, le titre court « COMPTE » (repli existant des fenêtres étroites)
-	if h.get_combined_minimum_size().x > dispo:
-		l_titre_cc.text = "COMPTE"
-	if h.get_combined_minimum_size().x > dispo:
-		l_var.visible = false
-	# Téléphone : le badge « EN PAUSE » se replie avant le libellé (le bouton lecture et le cadre de gel le disent)
-	if compact and h.get_combined_minimum_size().x > dispo:
-		badge_pause.set_meta("replie", true)
-		badge_pause.visible = false
-	if h.get_combined_minimum_size().x > dispo:
-		_disposer_courrier(false)
-	if h.get_combined_minimum_size().x > dispo:
-		l_titre_livret.text = "VS LIVRET A"
+	if not compact:
+		if trop.call():
+			l_titre_livret.text = "VS LIVRET A"
+			replis_barre.append("titre_livret")
+		if trop.call():
+			l_titre_cc.text = "COMPTE"
+			replis_barre.append("titre_cc")
+			l_titre_cc.text = "COMPTE COURANT"
+			manque_cc = h.get_combined_minimum_size().x - dispo   # ce qu'il manquait pour « COMPTE COURANT »
+			l_titre_cc.text = "COMPTE"
+		if trop.call():
+			l_var.visible = false
+			replis_barre.append("variation")
+		if trop.call():
+			_disposer_courrier(false)
+			replis_barre.append("libelle_courrier")
+	else:
+		if trop.call():
+			_disposer_courrier(false)
+			replis_barre.append("libelle_courrier")
+		if trop.call():
+			badge_pause.set_meta("replie", true)
+			replis_barre.append("pause")
 	badge_pause.visible = (Partie.vitesse == 0 or Partie.saut_actif) and not badge_pause.get_meta("replie", false)
+
+
+## Ligne de contrôle de la barre (C4) : badge du temps, libellé COURRIER, variation, titres, replis.
+func etat_barre() -> String:
+	var h := barre.get_child(0) as HBoxContainer
+	var marge := Ecran.taille().x - 30.0 - h.get_combined_minimum_size().x
+	var avant := badge_pause.visible
+	badge_pause.visible = true   # place qu'il faudrait au badge du temps (« EN PAUSE » ou « » ×6 »)
+	var marge_badge := Ecran.taille().x - 30.0 - h.get_combined_minimum_size().x
+	badge_pause.visible = avant
+	return "marge=%d marge_avec_badge=%d pause_visible=%s libelle_courrier=%s var=%s titre_cc=« %s » titre_livret=« %s » replis=%s manque_cc=%d" % [roundi(marge), roundi(marge_badge),
+		"oui" if badge_pause.is_visible_in_tree() else "non", "oui" if _l_courrier.visible else "non", "oui" if l_var.visible else "non",
+		l_titre_cc.text, l_titre_livret.text, ",".join(replis_barre) if not replis_barre.is_empty() else "aucun", roundi(manque_cc)]
 
 
 # =====================================================================
