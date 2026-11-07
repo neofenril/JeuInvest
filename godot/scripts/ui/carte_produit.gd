@@ -18,7 +18,12 @@ var calendrier := false   # versement automatique actif (11 §8, VP11)
 var choisie := false
 var compacte := false
 var remplissage := 1.0   # déblocage animé : la couleur monte de bas en haut
+var taille_min_dessinee := 999   # plus petite taille de police du dernier dessin (contrôle « UI tuiles », m10)
 var _t := 0.0
+
+const TAILLE_MIN := 20
+## Noms abrégés quand la tuile est trop étroite pour le nom en 20 px (téléphone).
+const ABREGES := {"ASSURANCE-VIE": "ASS.-VIE", "SAINT-GOBAIN": "ST-GOBAIN"}
 
 
 func _init() -> void:
@@ -68,12 +73,17 @@ func _draw() -> void:
 	var r := Rect2(Vector2.ZERO, size)
 	var ui := Style.ui()
 	var gras := Style.ui_gras()
-	var fs := 18 if compacte else 20
+	var fs := TAILLE_MIN   # m10 (recette PX2) : aucun texte de tuile sous 20 px ; on raccourcit plutôt
+	taille_min_dessinee = 999
 	if etat == "silhouette":
 		draw_rect(r, Style.SILHOUETTE)
 		_pointilles(r.grow(-2), Style.FILET)
-		Dessin.texte(self, Style.neon(), Vector2(r.size.x / 2.0, r.size.y * 0.42), "?", 44 if not compacte else 38, Color(Style.TEXTE_2, 0.7))
-		draw_multiline_string(ui, Vector2(8, r.size.y * 0.62), indice, HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 16, 16 if compacte else 17, 2, Style.TEXTE_2)
+		# Indice en bas (jusqu'à 3 lignes de 20 px), le « ? » centré dans la place restante au-dessus
+		var lignes_indice := _lignes(ui, indice, r.size.x - 12.0, fs, 3)
+		var y0 := r.size.y - 12.0 - 22.0 * (lignes_indice.size() - 1)
+		Dessin.texte(self, Style.neon(), Vector2(r.size.x / 2.0, (y0 - 20.0) / 2.0 + 2.0), "?", 38 if compacte else 44, Color(Style.TEXTE_2, 0.7))
+		for i in lignes_indice.size():
+			_ecrire(ui, Vector2(6, y0 + i * 22.0), lignes_indice[i], fs, Style.TEXTE_2, r.size.x - 12.0, HORIZONTAL_ALIGNMENT_CENTER)
 	else:
 		var plein := etat == "detenu"
 		draw_rect(r, Style.ENCRE)
@@ -87,20 +97,20 @@ func _draw() -> void:
 		# Calendrier dans le coin haut droit (le nom lui laisse la place, quitte à rapetisser), cadenas en bas à
 		# droite (la 2e ligne lui laisse la place) : jamais sur un chiffre ni coupé (m2)
 		var icones := 30.0 if calendrier and etat != "nouveau" else 0.0
-		var fs_nom := fs
 		var place := r.size.x - 22.0 - icones
-		for mot in nom.to_upper().replace("-", "- ").split(" ", false):
-			while fs_nom > 14 and gras.get_string_size(mot, HORIZONTAL_ALIGNMENT_LEFT, -1, fs_nom).x > place:
-				fs_nom -= 2
-		draw_multiline_string(gras, Vector2(16, 26), nom.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, place, fs_nom, 2, Style.TEXTE)
+		var lignes_nom := _lignes(gras, nom.to_upper(), place, fs, 2)
+		if "…" in "".join(lignes_nom) and ABREGES.has(nom.to_upper()):
+			lignes_nom = _lignes(gras, ABREGES[nom.to_upper()], place, fs, 2)   # « ASS.-VIE » comme la légende de « Mon argent »
+		for i in lignes_nom.size():
+			_ecrire(gras, Vector2(16, 26 + i * 24.0), lignes_nom[i], fs, Style.TEXTE, place)
 		var y2 := r.size.y - 38.0
 		if plein:
-			draw_string(Style.chiffres(), Vector2(16, y2), ligne1, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 22, 22 if compacte else 24, Style.TEXTE)
-			var place2 := r.size.x - 22 - (26 if cadenas else 0)
-			draw_string(ui, Vector2(16, y2 + 24), ligne2, HORIZONTAL_ALIGNMENT_LEFT, -1, _taille_ajustee(ui, ligne2, place2, 16), Style.TEXTE_2)
+			_ecrire(Style.chiffres(), Vector2(16, y2), ligne1, 22 if compacte else 24, Style.TEXTE, r.size.x - 22.0)
+			var place2 := r.size.x - 22.0 - (26.0 if cadenas else 0.0)
+			_ecrire(ui, Vector2(16, y2 + 24), raccourcir(ui, ligne2, place2, fs), fs, Style.TEXTE_2, place2)
 		elif etat != "nouveau":
-			draw_string(ui, Vector2(16, y2 + 4), ligne1, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 22, 16, Style.TEXTE_2)
-			draw_string(ui, Vector2(16, y2 + 24), ligne2, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 22, 16, Style.TEXTE_2)
+			_ecrire(ui, Vector2(16, y2 + 2), raccourcir(ui, ligne1, r.size.x - 22.0, fs), fs, Style.TEXTE_2, r.size.x - 22.0)
+			_ecrire(ui, Vector2(16, y2 + 24), raccourcir(ui, ligne2, r.size.x - 22.0, fs), fs, Style.TEXTE_2, r.size.x - 22.0)
 		if cadenas:
 			_cadenas(Vector2(r.size.x - 18, r.size.y - 22))
 		if calendrier and etat != "nouveau":
@@ -130,10 +140,14 @@ func _pointilles(r: Rect2, c: Color) -> void:
 func _badge(coin: Vector2) -> void:
 	var txt := "NOUVEAU"
 	var police := Style.petites_capitales()
-	var l := police.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-	var b := Rect2(coin.x, coin.y, l + 34, 24)
+	var l := police.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, TAILLE_MIN).x
+	var place := size.x - coin.x - 6.0
+	var etoile := l + 34.0 <= place   # tuile étroite (téléphone) : le mot entier, sans l'étoile
+	var b := Rect2(coin.x if etoile else maxf(6.0, coin.x - 8.0), coin.y - 6.0, l + (34.0 if etoile else 12.0), 30)
 	draw_rect(b, Style.ALERTE)
-	draw_string(police, Vector2(b.position.x + 8, b.position.y + 18), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Style.ENCRE_ACCENT)
+	_ecrire(police, Vector2(b.position.x + 6, b.position.y + 22), txt, TAILLE_MIN, Style.ENCRE_ACCENT)
+	if not etoile:
+		return
 	var c := Vector2(b.end.x - 13, b.get_center().y)
 	var pts := PackedVector2Array()
 	for i in 8:
@@ -153,9 +167,53 @@ func _cadenas(c: Vector2) -> void:
 	Dessin.arrondi(self, Rect2(c.x - 9, c.y - 4, 18, 14), Style.TEXTE_2, 3)
 
 
-## Taille de police (≤ taille_max, ≥ 12) pour que le texte tienne dans la largeur : jamais coupé (m2).
-func _taille_ajustee(police: Font, texte: String, largeur: float, taille_max: int) -> int:
-	var t := taille_max
-	while t > 12 and police.get_string_size(texte, HORIZONTAL_ALIGNMENT_LEFT, -1, t).x > largeur:
-		t -= 1
+## Écrit une ligne (taille ≥ TAILLE_MIN) et retient la plus petite taille dessinée (contrôle « UI tuiles »).
+func _ecrire(police: Font, pos: Vector2, texte: String, taille: int, couleur: Color, largeur := -1.0, alignement := HORIZONTAL_ALIGNMENT_LEFT) -> void:
+	if texte == "":
+		return
+	taille_min_dessinee = mini(taille_min_dessinee, taille)
+	draw_string(police, pos, texte, alignement, largeur, taille, couleur)
+
+
+## m10 : un texte trop long pour la tuile est raccourci, jamais rapetissé sous 20 px : « 4,5 % cette année »
+## devient « 4,5 %/an », « 11 % fixe » « 11 %/an », « ≈ 8,25 % fixe » « ≈ 8,25 % » ; en dernier recours, « … ».
+static func raccourcir(police: Font, texte: String, largeur: float, taille: int) -> String:
+	var t := texte
+	if police.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, taille).x <= largeur:
+		return t
+	if t.contains(" cette année"):
+		t = t.replace(" cette année", "/an")
+	elif t.contains(" fixe"):
+		t = t.replace(" fixe", "" if t.begins_with("≈") else "/an")
+	if t.ends_with("/an") and police.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, taille).x > largeur:
+		t = t.trim_suffix("/an")   # « 11,5 % » : le taux seul, la fiche dit le reste
+	while t.length() > 1 and police.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, taille).x > largeur:
+		t = t.left(t.length() - (2 if t.ends_with("…") else 1)).strip_edges() + "…"
 	return t
+
+
+## Lignes d'un texte coupé aux espaces et après les traits d'union, au plus n lignes (la dernière raccourcie).
+func _lignes(police: Font, texte: String, largeur: float, taille: int, n: int) -> PackedStringArray:
+	var morceaux := PackedStringArray()
+	for mot in texte.split(" ", false):
+		var parties := mot.split("-")
+		for i in parties.size():
+			morceaux.append(parties[i] + ("-" if i < parties.size() - 1 else ""))
+	var lignes := PackedStringArray()
+	var courante := ""
+	for m: String in morceaux:
+		var essai := m if courante == "" else (courante + m if courante.ends_with("-") else courante + " " + m)
+		if courante == "" or police.get_string_size(essai, HORIZONTAL_ALIGNMENT_LEFT, -1, taille).x <= largeur:
+			courante = essai
+		else:
+			lignes.append(courante)
+			courante = m
+	if courante != "":
+		lignes.append(courante)
+	if lignes.size() > n:
+		var reste := " ".join(lignes.slice(n - 1))
+		lignes = lignes.slice(0, n - 1)
+		lignes.append(reste)
+	for i in lignes.size():
+		lignes[i] = raccourcir(police, lignes[i], largeur, taille)
+	return lignes
