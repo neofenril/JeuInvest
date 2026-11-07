@@ -858,11 +858,18 @@ func _on_etiquette(event: InputEvent, id: String) -> void:
 ## mot. Bâtiment visible : étiquette au point, ramenée entièrement dans rect_libre() (8 px de marge).
 ## Bâtiment caché : flèche de bord à 16 px du bord du rectangle libre (donc à gauche du panneau ouvert),
 ## à la hauteur de l'étiquette, bornée elle aussi ; deux flèches du même côté s'empilent.
+## Lot 02, passage 2 (E1, E2) : maison et banque sont « vues » si leur porte l'est (ville.porte_ecran, même
+## règle que les pièces du mois) ; la Gazette (sans porte) si elle est entière (est_visible). Les flèches de bord
+## sont posées d'abord (empilées), puis les étiquettes en place ; une étiquette qui en touche une autre est
+## poussée à côté (8 px, vers le centre d'abord), faute de place au-dessus. Jamais de chevauchement, jamais masquée.
 func placer_etiquettes() -> void:
 	if ville == null:
 		return
 	var libre := rect_libre()
 	var occupes := {"gauche": [], "droite": []}
+	var poses: Array = []   # Rect2 déjà posés (flèches puis étiquettes)
+	var en_place: Array = []
+	var points := {}
 	for id in etiquettes:
 		var p: PanelContainer = etiquettes[id]
 		var point: Vector2
@@ -871,31 +878,103 @@ func placer_etiquettes() -> void:
 		else:
 			var b: Node2D = ville.call("batiment", id)
 			point = ville.call("position_ecran", b.position + Vector2(0, 56))
+		points[id] = point
 		var cote := ""
-		if ville.has_method("est_visible") and not bool(ville.call("est_visible", id)):
+		if not batiment_vu(id):
 			cote = "gauche" if point.x < libre.get_center().x else "droite"
 		if cote != str(p.get_meta("fleche", "")):
 			p.set_meta("fleche", cote)
 			p.find_child("ChevronGauche", true, false).visible = cote == "gauche"
 			p.find_child("ChevronDroite", true, false).visible = cote == "droite"
 			p.reset_size()
+		if cote == "":
+			en_place.append(id)
+			continue
 		var s := p.size
-		var x := point.x - s.x / 2.0
-		if cote == "gauche":
-			x = libre.position.x + 16.0
-		elif cote == "droite":
-			x = libre.end.x - s.x - 16.0
-		var y_max := libre.end.y - s.y - 8.0
-		var y := clampf(point.y, libre.position.y + 8.0, y_max)
-		x = clampf(x, libre.position.x + 8.0, maxf(libre.position.x + 8.0, libre.end.x - s.x - 8.0))
-		if cote != "":
-			# Empilement : on remonte au-dessus d'une flèche déjà posée du même côté
-			for r: Rect2 in occupes[cote]:
-				if Rect2(x, y, s.x, s.y).intersects(r.grow(4.0)):
-					y = r.position.y - s.y - 8.0
-			y = maxf(y, libre.position.y + 8.0)
-			occupes[cote].append(Rect2(x, y, s.x, s.y))
-		p.position = Vector2(roundf(x / 3.0) * 3.0, floorf(y / 3.0) * 3.0)
+		var x := libre.position.x + 16.0 if cote == "gauche" else libre.end.x - s.x - 16.0
+		var y := clampf(point.y, libre.position.y + 8.0, libre.end.y - s.y - 8.0)
+		# Empilement : on remonte au-dessus d'une flèche déjà posée du même côté
+		for r: Rect2 in occupes[cote]:
+			if Rect2(x, y, s.x, s.y).intersects(r.grow(4.0)):
+				y = r.position.y - s.y - 8.0
+		y = maxf(y, libre.position.y + 8.0)
+		occupes[cote].append(Rect2(x, y, s.x, s.y))
+		p.position = _au_texel(Vector2(x, y))
+		poses.append(Rect2(p.position, s))
+	en_place.sort_custom(func(a: String, b: String) -> bool: return points[a].x < points[b].x)
+	for id: String in en_place:
+		var p: PanelContainer = etiquettes[id]
+		var s := p.size
+		var base := Vector2(points[id].x - s.x / 2.0, points[id].y)
+		p.position = _place_libre(base, s, libre, poses)
+		poses.append(Rect2(p.position, s))
+
+
+## Vrai si le bâtiment est vu (pas de flèche de bord) : porte visible pour maison et banque (repli : est_visible).
+func batiment_vu(id: String) -> bool:
+	if ville == null:
+		return true
+	if id != "media" and ville.has_method("porte_ecran"):
+		return ville.call("porte_ecran", id) != Vector2(-1, -1)
+	return not ville.has_method("est_visible") or bool(ville.call("est_visible", id))
+
+
+static func _au_texel(v: Vector2) -> Vector2:
+	return Vector2(roundf(v.x / 3.0) * 3.0, floorf(v.y / 3.0) * 3.0)
+
+
+## Position la plus proche de « base » (taille s) dans le rectangle libre, sans toucher les rectangles posés
+## (marge 8 px) : à côté d'un obstacle (vers le centre d'abord), puis au-dessus, puis plus haut encore.
+func _place_libre(base: Vector2, s: Vector2, libre: Rect2, poses: Array) -> Vector2:
+	var bornes := Rect2(libre.position + Vector2(8, 8), libre.size - s - Vector2(16, 16))
+	var depart := base.clamp(bornes.position, bornes.end)
+	var candidats: Array = [depart]
+	var ys: Array = [depart.y]
+	for r: Rect2 in poses:
+		ys.append(r.position.y - s.y - 8.0)
+	for y: float in ys:
+		candidats.append(Vector2(depart.x, y))
+		for r: Rect2 in poses:
+			candidats.append(Vector2(r.end.x + 8.0, y))
+			candidats.append(Vector2(r.position.x - s.x - 8.0, y))
+	var centre := libre.get_center().x
+	candidats.sort_custom(func(a: Vector2, b: Vector2) -> bool: return Hud._cout(a, depart, centre) < Hud._cout(b, depart, centre))
+	for c: Vector2 in candidats:
+		var q := _au_texel(c)
+		if not libre.grow(-4.0).encloses(Rect2(q, s)):
+			continue
+		var libre_ici := true
+		for r: Rect2 in poses:
+			if Rect2(q, s).grow(4.0).intersects(r):
+				libre_ici = false
+				break
+		if libre_ici:
+			return q
+	return _au_texel(depart)   # aucune place (ne doit pas arriver) : la position naturelle
+
+
+## Coût d'un candidat : distance à la position naturelle ; monter coûte plus cher que glisser (E2).
+static func _cout(c: Vector2, depart: Vector2, centre: float) -> float:
+	var vers_centre := 0.0 if absf(c.x - centre) <= absf(depart.x - centre) else 30.0
+	return absf(c.x - depart.x) + 3.0 * absf(c.y - depart.y) + vers_centre
+
+
+## Contrôle (C2) : paires d'étiquettes ou flèches qui se recouvrent (l'une agrandie de 4 px : il faut au moins
+## 4 px d'écart) + étiquettes hors du rectangle libre.
+func chevauchements_etiquettes() -> int:
+	var libre := rect_libre()
+	var rects: Array = []
+	var n := 0
+	for id in etiquettes:
+		var p: Control = etiquettes[id]
+		var r := Rect2(p.position, p.size)
+		if not libre.grow(1.0).encloses(r):
+			n += 1
+		for q: Rect2 in rects:
+			if r.grow(4.0).intersects(q):
+				n += 1
+		rects.append(r)
+	return n
 
 
 # =====================================================================
