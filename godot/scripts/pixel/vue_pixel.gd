@@ -35,8 +35,8 @@ var _a_zone := false
 var _signature := ""
 ## PX1 (arbitrage D4, lot_px1 §2.3) : la vue montre toujours HAUTEUR_ART px d'art de haut ; le monde est
 ## rendu à N = max(2, ceil(h / 540)) dans le SubViewport (caméra zoomée ×N : blocs N × N nets), puis
-## l'image est réduite (filtre linéaire) d'un rapport R = h / (540 × N) ≤ 1, jamais agrandie. Faux : règle
-## de PX0 (vitrine), N = floor(h / 540), sans réduction.
+## l'image est réduite (filtre linéaire) d'un rapport R = h / (540 × N) ≤ 1, jamais agrandie. Faux : ancienne
+## règle de la vitrine PX0 (retirée au lot 02), N = floor(h / 540), sans réduction ; plus utilisée par le jeu.
 var mode_reduction := false
 var _reduction := 1.0
 
@@ -227,3 +227,43 @@ func art_par_virtuel() -> Vector2:
 ## Image du SubViewport, avant agrandissement (taille_vue).
 func image_monde() -> Image:
 	return _sv.get_texture().get_image()
+
+
+## Contrôle des pixels nets (repris de la vitrine PX0, lot 02) : renvoie (blocs complets, blocs non uniformes)
+## pour des blocs n × n alignés sur l'origine. Voie rapide : réduction puis agrandissement au plus proche
+## voisin, comparés à l'original ; en cas d'écart, comptage exact bloc par bloc.
+static func controler_blocs(img: Image, n: int) -> Vector2i:
+	var src := Image.new()
+	src.copy_from(img)
+	src.convert(Image.FORMAT_RGBA8)
+	var bx := src.get_width() / n
+	var by := src.get_height() / n
+	if bx == 0 or by == 0:
+		return Vector2i.ZERO
+	src.crop(bx * n, by * n)
+	if n == 1:
+		return Vector2i(bx * by, 0)
+	var aller := Image.new()
+	aller.copy_from(src)
+	aller.resize(bx, by, Image.INTERPOLATE_NEAREST)
+	aller.resize(bx * n, by * n, Image.INTERPOLATE_NEAREST)
+	if aller.get_data() == src.get_data():
+		return Vector2i(bx * by, 0)
+	var d := src.get_data()
+	var l := bx * n
+	var irreguliers := 0
+	for j in by:
+		for i in bx:
+			var ref := d.decode_u32(((j * n) * l + i * n) * 4)
+			var ok := true
+			for y in n:
+				var base := ((j * n + y) * l + i * n) * 4
+				for x in n:
+					if d.decode_u32(base + x * 4) != ref:
+						ok = false
+						break
+				if not ok:
+					break
+			if not ok:
+				irreguliers += 1
+	return Vector2i(bx * by, irreguliers)
