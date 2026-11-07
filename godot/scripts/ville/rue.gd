@@ -9,7 +9,8 @@ extends Node2D
 ## la variante d'arrivée est posée par-dessus avec un alpha (variantes()), opération par opération. Fondu
 ## terminé : une seule variante (contrôle de palette exact). Lumières (fenêtres, globes) : opérations « nuit
 ## seulement » ; halos : calque additif (3 disques). Saisons : feuillages recolorés (printemps, automne, hiver
-## aux branches nues), neige sur les toits et au sol en hiver.
+## givré), neige sur les toits et au sol en hiver. Images lourdes et variantes nuit / orage faites en tâche de
+## fond, textures préchauffées (A11) ; les tâches sont attendues à la sortie (blocage de Godot en quittant).
 
 const Facades := preload("res://scripts/pixel/facades.gd")
 const Vehicules := preload("res://scripts/pixel/vehicules.gd")
@@ -37,6 +38,8 @@ const HALOS_PHARE := [[15, 0.12], [7, 0.3]]
 const PREMIER_PLAN_MARGE := 36
 const GLOBE := Rect2i(3, 12, 9, 6)
 const QUANTUM := 32.0                                     # pas des fondus (redessins limités)
+const VARIANTES := "#variantes"                           # clé des résultats de tâche : variantes nuit / orage
+const BUDGET_PRECHAUFFE_US := 4000                        # temps de préchauffage des textures par image
 
 ## Immeubles : [x gauche de l'image, réglages de Facades.batiment()].
 const BATIMENTS := [
@@ -108,12 +111,13 @@ var _rng := RandomNumberGenerator.new()
 var _nuage_t := 0.0
 var _arbre_t := 0.0
 var _arbre_image := 0
-var _prechauffe: Array = []
+var _prechauffe: Array = []          # [nom, variante] des textures à créer
+var _prechauffe_vu := {}
 static var _fenetres := {}
 static var _auvents := {}
 static var _voitures := {}
 static var _taches: Array = []      # [identifiant WorkerThreadPool, résultats {nom: [Image, origine]}]
-var _saison_demandee := {}
+static var _arret := false          # vrai pendant attendre_taches (sortie)
 var _fond: Couche
 var _fond_pret := false
 var mode_titre := false            # écran titre : l'arbre de premier plan est retiré (il cachait l'enseigne)
@@ -264,12 +268,21 @@ static func generer() -> int:
 	var t0 := Time.get_ticks_msec()
 	if GrillePixel.existe("rue/maison"):
 		return 0
+	PalettePixel.couleur("encre")      # palette préparée sur le fil principal avant toute tâche de fond
+	# Tâches de fond lancées d'abord (elles tournent pendant la génération ci-dessous) : arbres avec leurs
+	# 4 saisons (≈ 0,3 à 1 s chacun), arbre de premier plan, skyline et cumulus, façades de fond
+	for k in ARBRE_MODELES.size():
+		for im in 2:
+			_tache(_tache_arbre, [k, im])
+	_tache(_tache_premier_plan)
+	if not GrillePixel.existe("matiere/skyline"):
+		_tache(_tache_lointain)
+	for i in FONDS.size():
+		_tache(_tache_fond, [i])
 	if not GrillePixel.existe("matiere/ciel"):
-		# Ciel, trottoir, chaussée tout de suite ; skyline et cumulus (les plus longs) en tâche de fond
 		GrillePixel.enregistrer("matiere/ciel", MatieresPixel.ciel(64, 720, 1), Vector2i(0, 719))
 		GrillePixel.enregistrer("matiere/trottoir", MatieresPixel.trottoir(1932, 26, 1), Vector2i.ZERO)
 		GrillePixel.enregistrer("matiere/chaussee", MatieresPixel.chaussee(1938, 90, 1), Vector2i.ZERO)
-		_tache(_tache_lointain)
 	Personnages.enregistrer()
 	Voisins.enregistrer("gerard")
 	for n in ["passant_1", "passant_2", "passant_3"]:
@@ -289,14 +302,6 @@ static func generer() -> int:
 		var img: Image = r["image"]
 		_poser("rue/batiment_%d" % i, r, Vector2i(0, img.get_height() - 1))
 		_auvents["rue/batiment_%d" % i] = r["auvent"]
-	for i in FONDS.size():
-		_tache(_tache_fond, [i])
-	# Arbres : générés en tâche de fond (≈ 0,4 s chacun), enregistrés dès qu'ils sont prêts (_process)
-	PalettePixel.couleur("encre")
-	for k in ARBRE_MODELES.size():
-		for im in 2:
-			_tache(_tache_arbre, [k, im])
-	_tache(_tache_premier_plan)
 	GrillePixel.enregistrer("rue/muret", Facades.muret(MURET.size.x, MURET.size.y - 6, 9), Vector2i(0, MURET.size.y - 1))
 	GrillePixel.enregistrer("rue/haie", Facades.haie(120, 27, 5), Vector2i(0, 26))
 	GrillePixel.enregistrer("rue/portail", Facades.portail(PORTAIL.size.x, PORTAIL.size.y), Vector2i(0, PORTAIL.size.y - 1))
@@ -323,19 +328,70 @@ static func generer() -> int:
 		_voitures[modele] = {"roues": v["roues"], "phare": v["phare"], "feu": v["feu"], "taille": img2.get_size(), "origine": o}
 	for i in 2:
 		GrillePixel.enregistrer("rue/roue_%d" % (i + 1), Vehicules.roue(i), Vector2i(Vehicules.ROUE / 2, Vehicules.ROUE - 1))
+	# Neige des toits, quelle que soit la saison de départ (A3 : pas de toit nu puis enneigé au chargement d'un hiver)
+	for n in GrillePixel.noms():
+		if n.begins_with("rue/batiment_") or n in ["rue/maison", "rue/banque", "rue/gazette"]:
+			_tache(_tache_neige, [n, GrillePixel.image(n), GrillePixel.origine(n)])
+	# Variantes nuit et orage de tout ce qui existe déjà, en tâche de fond (A11 : pas de conversion à la 1re nuit)
+	var liste: Array = []
+	for n in GrillePixel.noms():
+		if not GrillePixel.variante_prete(n, PalettePixel.ORAGE):
+			liste.append([n, GrillePixel.image(n)])
+	_taches_variantes(liste)
 	return Time.get_ticks_msec() - t0
 
 
 ## Lance f(args…, res) en tâche de fond (un seul bind : l'ordre des arguments de binds successifs est inversé).
+## Les variantes nuit et orage des images produites sont calculées ensuite par d'autres tâches (_recolter).
 static func _tache(f: Callable, args := []) -> void:
 	var res := {}
+	# Basse priorité (par défaut) : en haute priorité, 16 fils de GDScript ralentissent le fil principal ×5
 	_taches.append([WorkerThreadPool.add_task(f.bindv(args + [res])), res])
+
+
+## Variantes nuit et orage des images données ([nom, Image]), par lots, en tâche de fond.
+static func _taches_variantes(liste: Array) -> void:
+	var lot: Array = []
+	for e in liste:
+		lot.append(e)
+		if lot.size() >= 6:
+			_tache(_tache_variantes, [lot])
+			lot = []
+	if not lot.is_empty():
+		_tache(_tache_variantes, [lot])
+
+
+## [image de référence, nuit, orage].
+static func _variantes_de(img: Image) -> Array:
+	return [img, PalettePixel.convertir(img, PalettePixel.JOUR, PalettePixel.NUIT), PalettePixel.convertir(img, PalettePixel.JOUR, PalettePixel.ORAGE)]
+
+
+static func _tache_variantes(lot: Array, res: Dictionary) -> void:
+	var v := {}
+	for e in lot:
+		if _arret:
+			break               # sortie : les variantes manquantes seraient calculées à la demande
+		v[e[0]] = _variantes_de(e[1])
+	res[VARIANTES] = v
+
+
+## Feuillages des trois autres saisons (printemps, automne, hiver givré) à partir de l'image d'été.
+static func _saisons(nom_ete: String, img: Image, origine: Vector2i, res: Dictionary) -> void:
+	for s in ["printemps", "automne", "hiver"]:
+		var table: Dictionary = SAISONS_FEUILLES.get(s, {})
+		if s == "hiver":
+			# Feuillage givré et enneigé (des branches nues tramées donnaient un nuage de points illisible)
+			table = {"feuille_eclat": "blanc_chaud", "feuille_vive": "zinc_clair", "feuille": "vert_sombre", "feuille_sombre": "feuille_profonde", "feuille_profonde": "feuille_profonde"}
+		res[nom_ete.trim_suffix("ete") + s] = [recolorer(img, table), origine]
 
 
 static func _tache_arbre(k: int, im: int, res: Dictionary) -> void:
 	var a: Array = ARBRE_MODELES[k]
 	var img := Facades.arbre_ete(a[0], a[1], a[2], im)
-	res["rue/arbre_m%d_%d_ete" % [k, im]] = [img, Vector2i(img.get_width() / 2, img.get_height() - 1)]
+	var nom := "rue/arbre_m%d_%d_ete" % [k, im]
+	var o := Vector2i(img.get_width() / 2, img.get_height() - 1)
+	res[nom] = [img, o]
+	_saisons(nom, img, o, res)
 
 
 static func _tache_lointain(res: Dictionary) -> void:
@@ -349,43 +405,70 @@ static func _tache_fond(i: int, res: Dictionary) -> void:
 	var f: Array = FONDS[i]
 	var r2: Dictionary = Facades.batiment({"l": f[1], "etages": f[2], "toit": f[3], "rdc": "porte", "brique": "classique", "graine": f[4]})
 	var pale := MatieresPixel.lointain(r2["image"])
-	res["rue/fond_%d" % i] = [pale, Vector2i(0, pale.get_height() - 1), r2["fenetres"]]
+	var o := Vector2i(0, pale.get_height() - 1)
+	res["rue/fond_%d" % i] = [pale, o, r2["fenetres"]]
+	res["neige/rue/fond_%d" % i] = [neige_sur(pale), o]
 
 
 static func _tache_premier_plan(res: Dictionary) -> void:
 	var pp: Dictionary = Facades.arbre_premier_plan(61)
 	for im in 2:
-		res["rue/premier_plan_%d_ete" % im] = [pp["image%d" % im], Vector2i(Facades.PP_TRONC, 0)]
+		var nom := "rue/premier_plan_%d_ete" % im
+		res[nom] = [pp["image%d" % im], Vector2i(Facades.PP_TRONC, 0)]
+		_saisons(nom, pp["image%d" % im], Vector2i(Facades.PP_TRONC, 0), res)
 
 
-static func _tache_saison(noms: Array, table: Dictionary, trames: Dictionary, saison_cible: String, res: Dictionary) -> void:
-	for n in noms:
-		res[String(n[0]).trim_suffix("ete") + saison_cible] = [recolorer(n[1], table, trames), n[2]]
-
-
-## Enregistre les images des tâches terminées ; vrai si quelque chose a changé.
+## Enregistre les images des tâches terminées (et leurs variantes) ; vrai si quelque chose a changé.
 static func _recolter() -> bool:
 	var change := false
+	var nouvelles: Array = []
 	for t in _taches.duplicate():
 		if WorkerThreadPool.is_task_completed(t[0]):
 			WorkerThreadPool.wait_for_task_completion(t[0])
-			var res: Dictionary = t[1]
-			for nom in res:
-				GrillePixel.enregistrer(nom, res[nom][0], res[nom][1])
-				if res[nom].size() > 2:
-					_fenetres[nom] = res[nom][2]
+			_enregistrer_resultats(t[1])
+			for nom in t[1]:
+				if nom != VARIANTES:
+					nouvelles.append([nom, GrillePixel.image(nom)])
 			_taches.erase(t)
 			change = true
+	_taches_variantes(nouvelles)
 	return change
+
+
+static func _enregistrer_resultats(res: Dictionary) -> void:
+	for nom in res:
+		if nom == VARIANTES:
+			continue
+		GrillePixel.enregistrer(nom, res[nom][0], res[nom][1])
+		if res[nom].size() > 2:
+			_fenetres[nom] = res[nom][2]
+	var v: Dictionary = res.get(VARIANTES, {})
+	for nom in v:
+		GrillePixel.poser_variantes(nom, v[nom][0], v[nom][1], v[nom][2])
+
+
+## Attend la fin de toutes les tâches de fond (sortie du jeu : un fil de travail qui exécute encore du
+## GDScript pendant la fermeture du moteur peut bloquer Godot à la sortie).
+static func attendre_taches() -> void:
+	_arret = true                 # les tâches de variantes (simple cache) s'arrêtent tôt
+	for t in _taches:
+		WorkerThreadPool.wait_for_task_completion(t[0])   # l'identifiant n'est plus valable ensuite
+		_enregistrer_resultats(t[1])
+	_taches.clear()
+	_arret = false
+
+
+func _exit_tree() -> void:
+	attendre_taches()
 
 
 func premier_plan_visible() -> bool:
 	return _premier_plan != null and _premier_plan.visible
 
 
-## Vrai quand aucune image n'est en cours de génération (captures, tests).
+## Vrai quand aucune image n'est en cours de génération et que toutes les textures sont préchauffées (captures, tests).
 func images_pretes() -> bool:
-	return _taches.is_empty()
+	return _taches.is_empty() and _prechauffe.is_empty()
 
 
 static func _poser(nom: String, r: Dictionary, origine: Vector2i) -> void:
@@ -407,8 +490,12 @@ static func recolorer(img: Image, table: Dictionary, trames := {}) -> Image:
 	src.copy_from(img)
 	src.convert(Image.FORMAT_RGBA8)
 	var cles := {}
+	var octets := {}             # nom de départ -> octets RGB d'arrivée (vide = transparent)
 	for de in table:
 		cles[PalettePixel.cle(PalettePixel.couleur(de))] = de
+		var vers: String = table[de]
+		var c := PalettePixel.couleur(vers) if vers != "" else Color.TRANSPARENT
+		octets[de] = PackedByteArray([c.r8, c.g8, c.b8]) if vers != "" else PackedByteArray()
 	var d := src.get_data()
 	var l := src.get_width()
 	var i := 0
@@ -418,18 +505,15 @@ static func recolorer(img: Image, table: Dictionary, trames := {}) -> Image:
 			var k := (d[i] << 16) | (d[i + 1] << 8) | d[i + 2]
 			var de = cles.get(k)
 			if de != null:
-				var vers: String = table[de]
-				var px := (i / 4) % l
-				var py := (i / 4) / l
-				if trames.has(de) and not MatieresPixel.trame(px, py, float(trames[de])):
-					vers = ""
-				if vers == "":
+				var o: PackedByteArray = octets[de]
+				if trames.has(de) and not MatieresPixel.trame((i / 4) % l, (i / 4) / l, float(trames[de])):
+					o = PackedByteArray()
+				if o.is_empty():
 					d[i + 3] = 0
 				else:
-					var c := PalettePixel.couleur(vers)
-					d[i] = c.r8
-					d[i + 1] = c.g8
-					d[i + 2] = c.b8
+					d[i] = o[0]
+					d[i + 1] = o[1]
+					d[i + 2] = o[2]
 		i += 4
 	return Image.create_from_data(src.get_width(), src.get_height(), false, Image.FORMAT_RGBA8, d)
 
@@ -644,13 +728,36 @@ func _construire() -> void:
 	_maj_arbres()
 	_maj_lumieres()
 	preparer_capture()
-	# Préchauffage des variantes nuit et orage (une texture par image, pour éviter un à-coup au crépuscule)
+	_mettre_en_prechauffe()
+
+
+## Ajoute à la file de préchauffage les textures (jour, nuit, orage) des images apparues depuis le dernier appel.
+func _mettre_en_prechauffe() -> void:
 	for n in GrillePixel.noms():
-		if n.begins_with("rue/") or n.begins_with("matiere/") or n.begins_with("ville/"):
-			_prechauffe.append([n, PalettePixel.NUIT])
-	for n in GrillePixel.noms():
-		if n.begins_with("rue/") or n.begins_with("matiere/"):
-			_prechauffe.append([n, PalettePixel.ORAGE])
+		if not _prechauffe_vu.has(n):
+			_prechauffe_vu[n] = true
+			for v in [PalettePixel.JOUR, PalettePixel.NUIT, PalettePixel.ORAGE]:
+				_prechauffe.append([n, v])
+
+
+## Crée les textures en attente, dans un budget de temps par image (A11 : aucune texture créée en direct à la
+## première nuit ni au premier orage). Une variante pas encore calculée par une tâche de fond attend la tâche.
+func _prechauffer() -> void:
+	if _prechauffe.is_empty():
+		return
+	var t0 := Time.get_ticks_usec()
+	var attente: Array = []
+	var i := 0
+	while i < _prechauffe.size() and Time.get_ticks_usec() - t0 < BUDGET_PRECHAUFFE_US:
+		var p: Array = _prechauffe[i]
+		i += 1
+		if not GrillePixel.existe(p[0]) or GrillePixel.texture_prete(p[0], p[1]):
+			continue
+		if not GrillePixel.variante_prete(p[0], p[1]) and not _taches.is_empty():
+			attente.append(p)
+			continue
+		GrillePixel.texture(p[0], p[1])
+	_prechauffe = attente + _prechauffe.slice(i)
 
 
 ## Immeubles de fond (générés en tâche de fond) : posés quand toutes leurs images sont prêtes.
@@ -861,7 +968,6 @@ func regler_saison(mois: int, p_annee: int) -> void:
 	annee = p_annee
 	if s != saison:
 		saison = s
-		_preparer_saison(s)
 		_maj_arbres()
 		redessiner_tout()
 	_meteo.neige = s == "hiver"
@@ -871,42 +977,17 @@ func regler_saison(mois: int, p_annee: int) -> void:
 		b.queue_redraw()
 
 
-func _preparer_saison(s: String) -> void:
-	if s == "hiver" and not _saison_demandee.has("neige") and _fond_pret:
-		_saison_demandee["neige"] = true
-		for n in GrillePixel.noms():
-			if n.begins_with("rue/batiment_") or n.begins_with("rue/fond_") or n in ["rue/maison", "rue/banque", "rue/gazette"]:
-				_tache(_tache_neige, [n, GrillePixel.image(n), GrillePixel.origine(n)])
-	if s == "ete" or _saison_demandee.has(s) or not _arbres_ete_prets():
-		return
-	_saison_demandee[s] = true
-	var table: Dictionary = SAISONS_FEUILLES.get(s, {})
-	var trames := {}
-	if s == "hiver":
-		# Feuillage givré et enneigé (des branches nues tramées donnaient un nuage de points illisible)
-		table = {"feuille_eclat": "blanc_chaud", "feuille_vive": "zinc_clair", "feuille": "vert_sombre", "feuille_sombre": "feuille_profonde", "feuille_profonde": "feuille_profonde"}
-	for n in GrillePixel.noms():
-		if (n.begins_with("rue/arbre_") or n.begins_with("rue/premier_plan_")) and n.ends_with("_ete"):
-			_tache(_tache_saison, [[[n, GrillePixel.image(n), GrillePixel.origine(n)]], table, trames, s])
-
-
-func _arbres_ete_prets() -> bool:
-	for k in ARBRE_MODELES.size():
-		if not GrillePixel.existe("rue/arbre_m%d_1_ete" % k) or not GrillePixel.existe("rue/arbre_m%d_0_ete" % k):
-			return false
-	return GrillePixel.existe("rue/premier_plan_0_ete") and GrillePixel.existe("rue/premier_plan_1_ete")
-
-
 func regler_pluie(v: bool) -> void:
 	_meteo.pluie = v
 	_meteo.queue_redraw()
 
 
+## Arbres de la saison du moment (chaque arbre arrive avec ses 4 saisons : jamais de feuillage d'été en hiver,
+## A3 ; tant que la tâche de fond n'a pas fini, l'arbre n'est pas dessiné).
 func _maj_arbres() -> void:
-	var s := saison if GrillePixel.existe("rue/premier_plan_0_" + saison) else "ete"
 	for a in _arbres:
-		(a[0] as Mobile).poser([[a[1] + "%d_%s" % [_arbre_image, s], Vector2i.ZERO]])
-	_premier_plan.poser([["rue/premier_plan_%d_%s" % [_arbre_image, s], Vector2i(0, -585)]])
+		(a[0] as Mobile).poser([[a[1] + "%d_%s" % [_arbre_image, saison], Vector2i.ZERO]])
+	_premier_plan.poser([["rue/premier_plan_%d_%s" % [_arbre_image, saison], Vector2i(0, -585)]])
 
 
 # --- Animation ----------------------------------------------------------------------------------------------
@@ -915,18 +996,9 @@ func _process(delta: float) -> void:
 	_placer_plans()
 	if not _taches.is_empty() and _recolter():
 		_construire_fond()
-		if saison != "ete":
-			_preparer_saison(saison)
-		if _arbres_ete_prets():
-			# Toutes les saisons d'avance : le même rendu d'une capture à l'autre
-			for s in ["hiver", "automne", "printemps"]:
-				_preparer_saison(s)
-		_maj_arbres()
+		_mettre_en_prechauffe()
 		redessiner_tout()
-	if _taches.is_empty() and not _prechauffe.is_empty():
-		var p: Array = _prechauffe.pop_front()
-		if GrillePixel.existe(p[0]):
-			GrillePixel.texture(p[0], p[1])
+	_prechauffer()
 	if not anime:
 		return
 	_meteo.avancer(delta)

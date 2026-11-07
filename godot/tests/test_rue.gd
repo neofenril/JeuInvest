@@ -117,6 +117,45 @@ func _initialize() -> void:
 	ville.call("cadrer", Rect2(Vector2(0, ecran.y * 0.09), Vector2(ecran.x * 0.73, ecran.y * 0.84)), 0.0)
 	await _images(2)
 	_verifier(ville.get("rue").call("premier_plan_visible"), "jeu : arbre de premier plan de retour")
+	# A3 : chargement d'une partie en hiver, avant la fin des tâches de fond : jamais un arbre d'été sous la neige
+	var rue: Node2D = ville.get("rue")
+	ville.call("regler_mois", 1, 1988)
+	await _images(1)
+	var noms_arbres: Array = []
+	for a in rue.get("_arbres"):
+		noms_arbres.append(String(a[0].parts[0][0]))
+	noms_arbres.append(String(rue.get("_premier_plan").parts[0][0]))
+	_verifier(noms_arbres.all(func(n: String) -> bool: return n.ends_with("_hiver")), "hiver (A3) : arbres et premier plan demandés en feuillage d'hiver", ", ".join(noms_arbres))
+	ville.call("regler_mois", 5, 1987)
+	# A11 : tâches de fond et préchauffage terminés, la première nuit et le premier orage ne créent plus rien en direct
+	var t_attente := Time.get_ticks_msec()
+	var t_arbres := -1
+	while not rue.call("images_pretes") and Time.get_ticks_msec() - t_attente < 20000:
+		await process_frame
+		if t_arbres < 0 and GrillePixel.existe("rue/arbre_m3_1_hiver") and GrillePixel.existe("rue/premier_plan_1_hiver"):
+			t_arbres = Time.get_ticks_msec() - debut
+	print("RUE arbres_depuis_debut_ms=%d taches_et_prechauffage_ms=%d" % [t_arbres, Time.get_ticks_msec() - t_attente])
+	_verifier(rue.call("images_pretes"), "arbres et préchauffage : tâches de fond terminées")
+	var sans_texture: Array = []
+	for n in GrillePixel.noms():
+		if n.begins_with("rue/") or n.begins_with("matiere/") or n.begins_with("neige/") or n.begins_with("ville/"):
+			for v in [PalettePixel.JOUR, PalettePixel.NUIT, PalettePixel.ORAGE]:
+				if not GrillePixel.texture_prete(n, v):
+					sans_texture.append("%s|%d" % [n, v])
+	_verifier(sans_texture.is_empty(), "préchauffage (A11) : textures jour, nuit et orage de la rue toutes créées", "%d manquantes, ex. %s" % [sans_texture.size(), ", ".join(sans_texture.slice(0, 4))])
+	var pire := 0
+	for reglage in [[0.7, 0.0], [0.1, 1.0], [0.1, 0.0], [0.4, 0.6]]:
+		ville.set("phase", reglage[0])
+		ville.set("krach", reglage[1])
+		var t_prec := Time.get_ticks_usec()
+		for i in 8:
+			await process_frame
+			var t_im := Time.get_ticks_usec()
+			pire = maxi(pire, t_im - t_prec)
+			t_prec = t_im
+	print("RUE image_max_ms=%.1f (première nuit, premier orage, fondus, après préchauffage)" % (pire / 1000.0))
+	_verifier(pire <= 50000, "première nuit et premier orage : aucune image > 50 ms (A11)", "%.1f ms" % (pire / 1000.0))
+	ville.set("krach", 0.0)
 	# Saisons, temps, météo aux bornes
 	for mois in range(1, 13):
 		ville.call("regler_mois", mois, 1986)
@@ -167,15 +206,21 @@ func _initialize() -> void:
 			for v in [PalettePixel.JOUR, PalettePixel.NUIT, PalettePixel.ORAGE]:
 				hors += PalettePixel.compter_hors_palette(GrillePixel.image(n, v), v)
 	_verifier(hors == 0, "palette : images de la rue, objets, édifices dans les 3 variantes", "%d pixels hors palette" % hors)
-	var garde := 0
-	while not ville.get("rue").call("images_pretes") and garde < 600:
-		await process_frame
-		garde += 1
-	_verifier(ville.get("rue").call("images_pretes"), "arbres : tâches de fond terminées")
 	_verifier(GrillePixel.existe("rue/arbre_m0_0_ete") and GrillePixel.existe("rue/arbre_m3_1_ete") and GrillePixel.existe("rue/premier_plan_1_ete"), "arbres : 4 modèles × 2 images et premier plan enregistrés")
-	_verifier(GrillePixel.existe("neige/rue/maison") and GrillePixel.existe("neige/rue/banque"), "hiver : neige sur les toits générée")
-	_verifier(GrillePixel.existe("rue/arbre_m0_0_automne"), "automne : feuillages recolorés")
+	_verifier(GrillePixel.existe("neige/rue/maison") and GrillePixel.existe("neige/rue/banque") and GrillePixel.existe("neige/rue/fond_0"), "hiver : neige sur les toits générée")
+	_verifier(GrillePixel.existe("rue/arbre_m0_0_automne") and GrillePixel.existe("rue/premier_plan_1_hiver"), "automne, hiver : feuillages recolorés")
 	ville.queue_free()
 	await _images(2)
+	# Sortie propre : une rue quittée pendant que ses tâches de fond tournent les attend (blocage à la sortie, PX1-bis)
+	var rue2 := Node2D.new()
+	rue2.set_script(RUE)
+	root.add_child(rue2)
+	RUE._tache(func(res: Dictionary) -> void:
+		OS.delay_msec(300)
+		res["test/sortie"] = [Image.create_empty(2, 2, false, Image.FORMAT_RGBA8), Vector2i.ZERO])
+	var t_sortie := Time.get_ticks_msec()
+	rue2.queue_free()
+	await _images(2)
+	_verifier(RUE._taches.is_empty() and GrillePixel.existe("test/sortie"), "sortie : tâches de fond attendues et récoltées quand la rue quitte l'arbre", "%d en cours après %d ms" % [RUE._taches.size(), Time.get_ticks_msec() - t_sortie])
 	print("test_rue : %d OK, %d KO (%d ms)" % [_ok, _ko, Time.get_ticks_msec() - debut])
 	quit(1 if _ko > 0 else 0)

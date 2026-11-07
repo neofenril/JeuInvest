@@ -240,6 +240,27 @@ static func image(nom: String, variante := PalettePixel.JOUR) -> Image:
 	return _cache[k]
 
 
+## Pose les variantes nuit et orage calculées ailleurs (tâche de fond), si l'image de référence est toujours
+## celle à partir de laquelle elles ont été calculées.
+static func poser_variantes(nom: String, source: Image, nuit: Image, orage: Image) -> void:
+	if not _images.has(nom) or _images[nom]["image"] != source:
+		return
+	for p in [[PalettePixel.NUIT, nuit], [PalettePixel.ORAGE, orage]]:
+		var k := "%s|%d" % [nom, p[0]]
+		if not _cache.has(k):
+			_cache[k] = p[1]
+
+
+## Vrai si l'image de la variante est déjà calculée (pas de conversion à faire).
+static func variante_prete(nom: String, variante: int) -> bool:
+	return variante == PalettePixel.JOUR or _cache.has("%s|%d" % [nom, variante])
+
+
+## Vrai si la texture de la variante existe déjà.
+static func texture_prete(nom: String, variante: int) -> bool:
+	return _textures.has("%s|%d" % [nom, variante])
+
+
 ## Texture d'une variante (en cache). Nom inconnu : push_error, null.
 static func texture(nom: String, variante := PalettePixel.JOUR) -> ImageTexture:
 	var k := "%s|%d" % [nom, variante]
