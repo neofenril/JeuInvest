@@ -36,6 +36,8 @@ const PASSAGES := [Rect2i(255, 436, 105, 68), Rect2i(1150, 436, 105, 68)]
 const HALOS := [[45, 0.08], [28, 0.16], [15, 0.28]]
 const HALOS_PHARE := [[15, 0.12], [7, 0.3]]
 const PREMIER_PLAN_MARGE := 36
+const PREMIER_PLAN_FONDU_S := 0.3                         # M1 (lot 02) : l'arbre de premier plan arrive en fondu
+const PREMIER_PLAN_PAS := 8.0                             # alpha du fondu par pas de 1/8 (images entières, pas de dégradé continu)
 const GLOBE := Rect2i(3, 12, 9, 6)
 const QUANTUM := 32.0                                     # pas des fondus (redessins limités)
 const VARIANTES := "#variantes"                           # clé des résultats de tâche : variantes nuit / orage
@@ -111,6 +113,7 @@ var _rng := RandomNumberGenerator.new()
 var _nuage_t := 0.0
 var _arbre_t := 0.0
 var _arbre_image := 0
+var _premier_plan_alpha := 0.0
 var _prechauffe: Array = []          # [nom, variante] des textures à créer
 var _prechauffe_vu := {}
 static var _fenetres := {}
@@ -994,6 +997,7 @@ func _maj_arbres() -> void:
 
 func _process(delta: float) -> void:
 	_placer_plans()
+	_fondu_premier_plan(delta)
 	if not _taches.is_empty() and _recolter():
 		_construire_fond()
 		_mettre_en_prechauffe()
@@ -1039,6 +1043,25 @@ func _placer_plans() -> void:
 	if _premier_plan.position != p:
 		_premier_plan.position = p
 	_premier_plan.visible = not mode_titre
+
+
+## M1 (recette PX1-bis) : l'arbre de premier plan n'apparaît jamais d'un coup (« Jouer » rapide avant la fin de sa
+## tâche de fond, sortie de l'écran titre) : fondu de PREMIER_PLAN_FONDU_S dès que son image est prête, par pas
+## de 1/PREMIER_PLAN_PAS ; retiré tout de suite en mode titre.
+func _fondu_premier_plan(delta: float) -> void:
+	var pret := GrillePixel.existe("rue/premier_plan_%d_%s" % [_arbre_image, saison])
+	if mode_titre or not pret:
+		_premier_plan_alpha = 0.0
+	else:
+		_premier_plan_alpha = move_toward(_premier_plan_alpha, 1.0, delta / PREMIER_PLAN_FONDU_S)
+	var a := floorf(_premier_plan_alpha * PREMIER_PLAN_PAS) / PREMIER_PLAN_PAS
+	if _premier_plan.modulate.a != a:
+		_premier_plan.modulate.a = a
+
+
+## Alpha affiché de l'arbre de premier plan (contrôles M1).
+func premier_plan_alpha() -> float:
+	return _premier_plan.modulate.a if _premier_plan.visible else 0.0
 
 
 func _animer_feuilles(delta: float) -> void:

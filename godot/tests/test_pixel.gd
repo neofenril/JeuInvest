@@ -334,7 +334,7 @@ func _tests_matieres() -> void:
 	_verifier(avec_retour["image"].get_width() == 136 and avec_retour["facade_x"] == 0, "décor : retour de façade en perspective (+16 px de pan latéral)")
 	_verifier(facades.arbre_ete(70, 110, 3, 0).get_size() == Vector2i(70, 110) and facades.arbre_ete(70, 110, 3, 0).get_data() != facades.arbre_ete(70, 110, 3, 1).get_data(), "décor : arbre d'été 70 × 110, 2 images")
 	var hauteurs := {}
-	for b in RuePx0.BATIMENTS:
+	for b in load("res://scripts/ville/rue.gd").BATIMENTS:
 		var r: Dictionary = facades.batiment(b[1])
 		hauteurs[r["image"].get_height()] = true
 	_verifier(hauteurs.size() >= 5, "décor : bâtiments de hauteurs variées (%s)" % str(hauteurs.keys()))
@@ -343,12 +343,6 @@ func _tests_matieres() -> void:
 	var g205: Dictionary = vehicules.caisse("205")
 	_verifier(r5["image"].get_width() >= 66 and r5["image"].get_height() >= 28 and g205["image"].get_width() >= 66 and g205["image"].get_height() >= 28, "décor : voitures d'au moins 66 × 28")
 	_verifier(vehicules.roue(0).get_size() == Vector2i(vehicules.ROUE, vehicules.ROUE) and vehicules.ROUE >= 12 and vehicules.roue(0).get_data() != vehicules.roue(1).get_data(), "décor : roues d'au moins 12 px (%d), 2 images" % vehicules.ROUE)
-	RuePx0.generer_decor()
-	var nd := 0
-	for n in GrillePixel.noms():
-		if n.begins_with("decor/"):
-			nd += 1
-	_verifier(nd >= 30 and GrillePixel.existe("decor/maison") and GrillePixel.existe("miroir/gerard_marche_1"), "décor : %d images enregistrées (façades, fond, arbres, mobilier, voitures, halos)" % nd)
 	# Chaque pixel de chaque image du catalogue appartient à la palette de sa variante
 	for vi in VARIANTES.size():
 		var fautifs := PackedStringArray()
@@ -361,19 +355,18 @@ func _tests_matieres() -> void:
 		_verifier(fautifs.is_empty() and total >= 4, "palette : les %d images du catalogue sont dans la palette %s" % [total, NOMS_VARIANTES[vi]], ", ".join(fautifs))
 
 
-# --- Contrôle des pixels nets (fonction de px0.gd) -----------------------------------------------
+# --- Contrôle des pixels nets (VuePixel.controler_blocs, repris de la vitrine PX0 au lot 02) --------
 
 func _tests_blocs() -> void:
-	var px0: Script = load("res://scripts/pixel/px0.gd")
 	var art := MatieresPixel.chaussee(40, 16, 3)
 	var grand := Image.new()
 	grand.copy_from(art)
 	grand.resize(120, 48, Image.INTERPOLATE_NEAREST)
-	var r: Vector2i = px0.controler_blocs(grand, 3)
+	var r: Vector2i = VuePixel.controler_blocs(grand, 3)
 	_verifier(r == Vector2i(40 * 16, 0), "blocs : image agrandie ×3 sans bloc irrégulier", str(r))
 	grand.set_pixel(4, 4, PalettePixel.couleur("perte"))
 	grand.set_pixel(100, 40, PalettePixel.couleur("perte"))
-	r = px0.controler_blocs(grand, 3)
+	r = VuePixel.controler_blocs(grand, 3)
 	_verifier(r == Vector2i(40 * 16, 2), "blocs : deux pixels déplacés = deux blocs irréguliers", str(r))
 	grand.resize(121, 49, Image.INTERPOLATE_NEAREST)
-	_verifier(px0.controler_blocs(grand, 3).x == 40 * 16, "blocs : seuls les blocs complets sont comptés")
+	_verifier(VuePixel.controler_blocs(grand, 3).x == 40 * 16, "blocs : seuls les blocs complets sont comptés")

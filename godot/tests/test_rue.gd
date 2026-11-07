@@ -10,11 +10,11 @@ const RUE := preload("res://scripts/ville/rue.gd")
 const VILLE_GD := "res://scripts/ville/ville.gd"
 const METHODES := ["cadrer", "viser", "revenir", "plonger_vers_maison", "position_ecran", "ecran_batiment", "batiment", "regler_mois",
 	"point_etiquette", "est_visible", "aller_vers", "position_camera", "bornes_rue", "regler_humeur_sylvie", "humeur_sylvie",
-	"faire_passer", "point_tete"]
+	"faire_passer", "point_tete", "porte_ecran", "centrer_sur", "a_la_maison", "calme"]
 const PROPRIETES := ["anime", "interactif", "mode_titre", "facteur_trafic", "phase", "nuit", "krach", "gel", "pluie", "ciel_mat",
 	"camera", "maison", "banque", "media", "voiture_maison", "potelet", "passants"]
 const FORMATS := [[Vector2i(1280, 720), 2, 0.667], [Vector2i(1366, 768), 2, 0.711], [Vector2i(1600, 720), 2, 0.667],
-	[Vector2i(1920, 1080), 2, 1.0], [Vector2i(2560, 1440), 3, 0.889], [Vector2i(3840, 2160), 4, 1.0]]
+	[Vector2i(1920, 1080), 2, 1.0], [Vector2i(2560, 1440), 3, 0.889], [Vector2i(3840, 2160), 4, 1.0], [Vector2i(1440, 648), 2, 0.600]]
 
 var _ok := 0
 var _ko := 0
@@ -41,6 +41,11 @@ func _initialize() -> void:
 	for f in FORMATS:
 		var r: Vector2 = VuePixel.facteur_et_reduction(f[0])
 		_verifier(int(r.x) == f[1] and absf(r.y - f[2]) < 0.0015, "rendu : %dx%d → N=%d R=%.3f" % [f[0].x, f[0].y, f[1], f[2]], "N=%d R=%.3f" % [int(r.x), r.y])
+	# Téléphone de référence (PX2, 1440 × 648) : Gérard (63 px d'art) ≈ 76 px à l'écran (lot 02, V6)
+	var tel: Vector2 = VuePixel.facteur_et_reduction(Vector2i(1440, 648))
+	var gerard_tel := roundi(63.0 * tel.x * tel.y)
+	print("RUE fenetre=1440x648 facteur=%d reduction=%.3f gerard_ecran=%d" % [int(tel.x), tel.y, gerard_tel])
+	_verifier(absi(gerard_tel - 76) <= 1, "téléphone 1440 × 648 : Gérard ≈ 76 px à l'écran (± 1)", str(gerard_tel))
 	# Génération et instanciation de ville.gd seule
 	var t0 := Time.get_ticks_msec()
 	var ville := Node2D.new()
@@ -100,6 +105,23 @@ func _initialize() -> void:
 		ville.call("_appliquer")
 		var x: float = ville.call("position_camera")
 		_verifier(x >= bornes.x - 0.01 and x <= bornes.y + 0.01, "caméra : défilement de %+d px, reste dans les bornes" % int(d), "%f hors de %s" % [x, str(bornes)])
+	# Portes (pièces du mois, lot 02) : celle de la maison à l'écran au repos ; celle de la banque après aller_vers
+	ville.call("revenir", 0.0)
+	await _images(2)
+	var pm: Vector2 = ville.call("porte_ecran", "maison")
+	_verifier(pm.x >= 0.0 and ville.call("a_la_maison"), "portes : porte de la maison à l'écran au repos (caméra à la maison)", str(pm))
+	ville.call("aller_vers", "banque", 0.0)
+	await _images(2)
+	var pb: Vector2 = ville.call("porte_ecran", "banque")
+	_verifier(pb.x >= 0.0 and not ville.call("a_la_maison"), "portes : porte de la banque à l'écran après aller_vers ; caméra plus à la maison", str(pb))
+	_verifier((ville.call("porte_ecran", "media") as Vector2).x < 0.0, "portes : la Gazette n'a pas de porte de pièces")
+	_verifier(consts.get("RETOUR_AUTO_S", 0.0) == 10.0 and consts.get("RETOUR_DUREE_S", 0.0) == 0.8, "D7 : retour automatique après 10 s, glissement de 0,8 s")
+	ville.set("interactif", true)
+	await _images(30)
+	_verifier(float(ville.call("calme")) == 0.0, "D7 : temps à l'arrêt (aucune partie) : le compteur de retour n'avance pas")
+	ville.set("interactif", false)
+	ville.call("revenir", 0.0)
+	await _images(2)
 	var p: Vector2 = ville.call("point_etiquette", "maison")
 	_verifier(p is Vector2, "point_etiquette renvoie un Vector2")
 	var tw: Tween = ville.call("plonger_vers_maison", 0.0)

@@ -3,7 +3,7 @@ extends RefCounted
 ## pixels qu'en PX0 ter, les matières gardent la même taille de motif → plus de détails, traits plus fins).
 ## Générés en code dans la palette « Rue 84 ». Pas de class_name : preload("res://scripts/pixel/facades.gd").
 ## Chaque bâtiment est déterministe (graine) et renvoie {"image", "fenetres": [Rect2i], "auvent": Vector2i}
-## (vitres allumées la nuit ; étendue de l'auvent pour son ombre au sol, posée par RuePx0).
+## (vitres allumées la nuit ; étendue de l'auvent pour son ombre au sol, posée par la rue, scripts/ville/rue.gd).
 ## Relief (« mini 3D » de rue_pixel_v2) : lumière en haut à gauche, face éclairée / face à l'ombre ;
 ## retours de façade (pan de mur latéral en perspective légère) ; toits avec épaisseur, gouttière et
 ## sous-face ; corniches, bandeaux, linteaux et appuis en saillie avec ombre portée tramée ; embrasures
@@ -302,7 +302,7 @@ static func usure(img: Image, x: int, y: int, l: int, h: int, ombre: String, gra
 
 
 ## Fenêtre ouverte de Sylvie (39 × 48) : embrasure profonde, pièce sombre, rideaux noués, battants vitrés
-## repliés ; Sylvie (buste 27 × 32) est posée par RuePx0 ; la pièce s'allume la nuit derrière elle.
+## repliés ; Sylvie (buste 27 × 32) est posée par la maison (scripts/ville/maison.gd) ; la pièce s'allume la nuit derrière elle.
 static func _fenetre_sylvie(img: Image, x: int, y: int, fen: Array) -> void:
 	var l := FENETRE_SYLVIE.size.x
 	var h := FENETRE_SYLVIE.size.y

@@ -86,5 +86,5 @@ feuille_sombre` ; sol `dalle / dalle_ombre`, `goudron_clair / goudron`, marquage
 
 Une grille peut être tapée directement. Pour les grandes images, il est plus sûr de l'écrire en « suites »
 (ex. `12. 3e 4p 1e` = 12 transparents, 3 encre, 4 peau, 1 encre) puis de la développer en rangées complétées
-par des points : la largeur est alors garantie. Vérifier ensuite à l'écran avec l'étape `planche`
-(`godot/outils/capture_px0.ps1 -Etape planche -Taille 1920x1080`).
+par des points : la largeur est alors garantie. Vérifier ensuite à l'écran avec l'étape `planche_personnages`
+(`godot/outils/capture_ville.ps1 -Etape planche_personnages`) ; la vitrine PX0 (`capture_px0.ps1`) est retirée depuis le lot 02.
