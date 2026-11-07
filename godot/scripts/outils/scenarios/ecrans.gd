@@ -44,6 +44,8 @@ func jouer(etape: String) -> void:
 				Partie.changer_vitesse(3)
 				await sc.attendre_que(func() -> bool: return modales.genre_courant == "courrier", 15.0)
 				await sc.delai(1.3)
+				var timbre := modales.courant.find_child("Timbre", true, false) if modales.ouverte() else null
+				print("UI timbre taille=%d" % (int(timbre.get_meta("taille_valeur", 0)) if timbre != null else 0))
 		"comparaison", "comparaison_info":
 			sc.aller_a(Dates.lire("1988-06"), true)
 			hud.basculer_panneau(true)
