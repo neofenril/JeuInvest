@@ -7,7 +7,8 @@ extends RefCounted
 ## - polices_jeu : planche des polices du jeu (accents français, tnum d'Atkinson).
 
 const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette",
-	"courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau"]
+	"courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau",
+	"etiquettes_balayage"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -31,6 +32,8 @@ func jouer(etape: String) -> void:
 			await _polices_jeu()
 		"etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette":
 			await _etiquettes(etape, jeu)
+		"etiquettes_balayage":
+			await _balayage(jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -160,6 +163,78 @@ func _etiquettes(etape: String, jeu: Node) -> void:
 		var mode := "fleche" if str(p.get_meta("fleche", "")) != "" else "sous"
 		print("UI etiquette %s mode=%s dans_libre=%s rect=%s libre=%s" % [id, mode, "oui" if libre.encloses(p.get_global_rect()) else "non", str(p.get_global_rect()), str(libre)])
 	await sc.delai(1.5)   # glissement de la caméra terminé avant la capture et la sortie
+
+
+## C3 (passage 2) : toute la rue balayée par pas de 30 px d'art, panneau ouvert (PC) : aucune étiquette ni
+## flèche chevauchée, toutes dans le rectangle libre, et pour maison / banque flèche ⇔ porte invisible.
+## Captures : cadrage de pieces_glisse (maison presque entière au bord gauche, image « _glisse »), puis
+## celui de pieces_or (entre les deux portes ; au téléphone, banque entière), image finale.
+func _balayage(jeu: Node) -> void:
+	sc.partir_de_la_rue("etiquettes_balayage")
+	var hud: Hud = jeu.hud
+	var ville: Node2D = jeu.ville
+	await sc.delai(1.0)
+	hud.basculer_panneau(not Ecran.compact())
+	await sc.delai(0.4)
+	var b: Vector2 = ville.call("bornes_rue")
+	var decalage: float = ville.call("_cx_pour", 0.0)
+	var n := 0
+	var chev := 0
+	var hors := 0
+	var incoh := 0
+	var cx := b.x
+	while cx <= b.y + 29.0:
+		ville.call("centrer_sur", minf(cx, b.y) - decalage, 0.0)
+		hud.placer_etiquettes()
+		n += 1
+		var m := _mesure_etiquettes(hud, ville)
+		chev += m[0]
+		hors += m[1]
+		incoh += m[2]
+		if m[0] + m[1] + m[2] > 0 and chev + hors + incoh <= 6:
+			print("UI etiquettes ecart cx=%.0f chevauchements=%d hors_libre=%d incoherences=%d" % [ville.call("position_camera"), m[0], m[1], m[2]])
+		cx += 30.0
+	print("UI etiquettes balayage positions=%d chevauchements=%d hors_libre=%d incoherences=%d" % [n, chev, hors, incoh])
+	var maison: Node2D = ville.get("maison")
+	var banque: Node2D = ville.get("banque")
+	var milieu: float = (maison.position.x + maison.call("porte").get_center().x + banque.position.x + banque.call("porte").get_center().x) / 2.0
+	for cadrage: Array in [["glisse", milieu - 150.0], ["milieu", milieu]]:
+		ville.call("centrer_sur", float(cadrage[1]), 0.0)
+		hud.placer_etiquettes()
+		await sc.delai(0.6)
+		var m2 := _mesure_etiquettes(hud, ville)
+		print("UI etiquettes cadrage=%s chevauchements=%d hors_libre=%d incoherences=%d fleches=%s" % [cadrage[0], m2[0], m2[1], m2[2],
+			str(["maison", "media", "banque"].map(func(id: String) -> String: return "%s:%s" % [id, str(hud.etiquettes[id].get_meta("fleche", "")) if str(hud.etiquettes[id].get_meta("fleche", "")) != "" else "non"]))])
+		if cadrage[0] == "glisse":
+			await RenderingServer.frame_post_draw
+			var chemin := ScenariosCapture.option("capture").replace(".png", "_glisse.png")
+			if chemin.is_relative_path():
+				chemin = ProjectSettings.globalize_path("res://").path_join(chemin)
+			sc.get_viewport().get_texture().get_image().save_png(chemin)
+
+
+## [chevauchements, hors du rectangle libre, incohérences flèche / porte] des étiquettes à l'instant.
+func _mesure_etiquettes(hud: Hud, ville: Node2D) -> Array:
+	var libre := hud.rect_libre()
+	var rects: Array = []
+	var chev := 0
+	var hors := 0
+	var incoh := 0
+	for id: String in ["maison", "media", "banque"]:
+		var p: Control = hud.etiquettes[id]
+		var r := Rect2(p.position, p.size)
+		if not libre.grow(1.0).encloses(r):
+			hors += 1
+		for q: Rect2 in rects:
+			if r.grow(4.0).intersects(q):
+				chev += 1
+		rects.append(r)
+		if id != "media":
+			var fleche := str(p.get_meta("fleche", "")) != ""
+			var porte_cachee: bool = ville.call("porte_ecran", id) == Vector2(-1, -1)
+			if fleche != porte_cachee:
+				incoh += 1
+	return [chev, hors, incoh]
 
 
 # =====================================================================

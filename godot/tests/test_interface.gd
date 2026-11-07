@@ -85,6 +85,7 @@ func _test_courrier() -> void:
 	scene.call("demarrer_direct", 0)
 	await _images(3)
 	_verifier("COURRIER : visible au repos après la 1re modale résolue", h.etat_courrier() == "repos" and h.b_courrier.is_visible_in_tree(), h.etat_courrier())
+	await _balayer_etiquettes(scene, h)
 	await _touche(KEY_N)
 	var par_n := Partie.saut_actif
 	await _images(2)
@@ -159,6 +160,34 @@ func _test_courrier() -> void:
 	Juice.camera = null
 	Juice.hud = null
 	Juice.calque_effets = null
+
+
+## C3 (passage 2) : toute la rue balayée (pas de 30 px d'art), panneau ouvert : aucune étiquette ni flèche
+## chevauchée ou hors du rectangle libre, et pour maison / banque, flèche de bord ⇔ porte invisible (E1).
+func _balayer_etiquettes(scene: Node, h: Hud) -> void:
+	var ville: Node2D = scene.get("ville")
+	h.basculer_panneau(true)
+	await _images(2)
+	var b: Vector2 = ville.call("bornes_rue")
+	var decalage: float = ville.call("_cx_pour", 0.0)
+	var n := 0
+	var chev := 0
+	var incoh := []
+	var cx := b.x
+	while cx <= b.y + 29.0:
+		ville.call("centrer_sur", minf(cx, b.y) - decalage, 0.0)
+		h.placer_etiquettes()
+		n += 1
+		chev += h.chevauchements_etiquettes()
+		for id: String in ["maison", "banque"]:
+			var fleche := str(h.etiquettes[id].get_meta("fleche", "")) != ""
+			if fleche != (ville.call("porte_ecran", id) == Vector2(-1, -1)):
+				incoh.append("%s à cx=%.0f" % [id, ville.call("position_camera")])
+		cx += 30.0
+	_verifier("étiquettes : rue balayée (%d positions, panneau ouvert) sans chevauchement ni sortie du rectangle libre" % n, n >= 10 and chev == 0, "%d" % chev)
+	_verifier("étiquettes : flèche de bord de la maison et de la banque si et seulement si leur porte est invisible", incoh.is_empty(), str(incoh.slice(0, 4)))
+	ville.call("revenir", 0.0)
+	await _images(2)
 
 
 ## Modale arrivée pendant le saut (séquence de la ville puis carte) : fermée par le choix par défaut.

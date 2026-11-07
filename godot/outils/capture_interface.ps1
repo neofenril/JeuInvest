@@ -59,7 +59,8 @@ function Lancer([string]$etape, [string]$nom, [string]$taille, [string]$tel, [st
     Remove-Item $log -ErrorAction SilentlyContinue
     $erreurs = @($sortie | Where-Object { $_ -match 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access|Cannot call method' })
     $ui = @($sortie | Where-Object { $_ -match '^UI |^Images par seconde|^Clic |^Intégrale |^Capture : sauvegarde' } | ForEach-Object { if ($_ -match '^Clic ') { "UI clic_dehors $_" } else { $_ } })
-    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|hors_cadre=[1-9]|hors_ecran=[1-9]|recouvert=oui|recouvre=oui|contenu_coupe=oui|dans_ecran=non|boutons_visibles=non|chiffres_pixelify=[1-9]|hud_focalisables=[1-9]|dans_libre=non|visible=non|fleches_texte=[1-9]|fermee=non|echap_ignore=non|atkinson=non|: False|une_ligne=non|dans_barre=non|retour=non|decale=non|sans_modale=[1-9]|vitesses_ecarts=[1-9]' })
+    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|hors_cadre=[1-9]|hors_ecran=[1-9]|recouvert=oui|recouvre=oui|contenu_coupe=oui|dans_ecran=non|boutons_visibles=non|chiffres_pixelify=[1-9]|hud_focalisables=[1-9]|dans_libre=non|visible=non|fleches_texte=[1-9]|fermee=non|echap_ignore=non|atkinson=non|: False|une_ligne=non|dans_barre=non|retour=non|decale=non|sans_modale=[1-9]|vitesses_ecarts=[1-9]|chevauchements=[1-9]|hors_libre=[1-9]|incoherences=[1-9]' })
+    foreach ($l in ($ui | Where-Object { $_ -match 'UI timbre taille=(\d+)' })) { if ([int]([regex]::Match($l, 'taille=(\d+)').Groups[1].Value) -lt 20) { $fautes += "timbre sous 20 px" } }
     # Lot 02 : tuiles du carnet ≥ 20 px (m10), badge = non_lues
     foreach ($l in ($ui | Where-Object { $_ -match 'UI tuiles taille_min=(\d+)' })) { if ([int]([regex]::Match($l, 'taille_min=(\d+)').Groups[1].Value) -lt 20) { $fautes += "tuile sous 20 px" } }
     foreach ($l in ($ui | Where-Object { $_ -match '^UI badge n=(\S*) = non_lues=(\d+)' })) { $m = [regex]::Match($l, 'n=(\S*) = non_lues=(\d+)'); $k = [int]$m.Groups[2].Value; $att = if ($k -gt 9) { "9+" } elseif ($k -eq 0) { "" } else { "$k" }; if ($m.Groups[1].Value -ne $att) { $fautes += "badge différent de non_lues" } }
@@ -142,6 +143,10 @@ foreach ($e in @("notifs_saut", "badge_non_lus", "historique_nouveau")) {
 $plan.Add(@("courrier_saut_pause", "l2_courrier_saut_pause_1080", "1920x1080", ""))
 $plan.Add(@("courrier_saut_pause", "l2_courrier_saut_pause_1080_b", "1920x1080", "", "0.5"))   # 0,5 s plus tard : voitures déplacées
 $plan.Add(@("integrale_saut", "l2_integrale_saut", "1280x720", ""))
+# Passage 2 (C3) : balayage de toute la rue, étiquettes et flèches de bord (image finale + image « _glisse »)
+foreach ($t in @(@("1080", "1920x1080", ""), @("1152", "1152x648", ""), @("tel", "1440x648", "1"), @("tel169", "1280x720", "169"))) {
+    $plan.Add(@("etiquettes_balayage", ("l2_etiquettes_balayage_" + $t[0]), $t[1], $t[2]))
+}
 $echecs = 0
 $script:sorties_bloquees = 0
 $i = 0
