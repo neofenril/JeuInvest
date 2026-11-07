@@ -16,6 +16,7 @@ const HORLOGE := Vector2i(135, 29)            # centre du cadran
 const RAYON_HORLOGE := 11
 const FENETRE_BANQUIER := Rect2i(196, 200, 44, 56)
 const DISTRIBUTEUR := Vector2i(80, 206)        # coin haut gauche du distributeur
+const PORTE_BANQUE := Rect2i(110, 192, 50, 84)  # porte à deux battants (sans l'arc) : départ des pièces d'or
 
 const GAZETTE := Vector2i(225, 318)
 const ECRAN := Rect2i(25, 3, 175, 34)          # intérieur du journal lumineux
@@ -87,7 +88,7 @@ static func banque(graine := 91) -> Dictionary:
 	# Rez-de-chaussée : fenêtre du guichet, porte à deux battants sous arc, fenêtre du banquier
 	F.fenetre(img, 30, 200, 44, 56, fen, "vive", "voilage")
 	F.fenetre(img, FENETRE_BANQUIER.position.x, FENETRE_BANQUIER.position.y, FENETRE_BANQUIER.size.x, FENETRE_BANQUIER.size.y, fen, "vive", "")
-	_porte_double(img, 110, 192, 50, 84)
+	_porte_double(img, PORTE_BANQUE.position.x, PORTE_BANQUE.position.y, PORTE_BANQUE.size.x, PORTE_BANQUE.size.y)
 	F._marches(img, 104, 276, 62, 1)
 	F._soubassement(img, 0, BANQUE.y - 9, l, 9)
 	# Plaque de cuivre près de la porte

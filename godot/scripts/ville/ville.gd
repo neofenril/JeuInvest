@@ -16,6 +16,11 @@ const SEUIL_TOUCHER := 14.0
 const HAUT_MAISON := 140.0               # haut de la cheminée (144) moins une marge
 const INERTIE_MAX_S := 0.35
 const BAS_MAX := 504.0                   # bas du rectangle libre au plus (haut de la frise à 1080p)
+const PORTE_VISIBLE_MIN := 8.0           # px d'art de porte visibles pour que les pièces en partent (porte_ecran)
+## D7 (lot 02, à l'essai, réversible) : temps qui tourne (hors pause, hors saut, hors séquence) et rue non touchée
+## depuis RETOUR_AUTO_S secondes → la caméra revient seule à la maison en RETOUR_DUREE_S. 0 = jamais.
+const RETOUR_AUTO_S := 10.0
+const RETOUR_DUREE_S := 0.8
 
 var anime := true
 var facteur_trafic := 1.0
@@ -61,6 +66,8 @@ var _inertie := 0.0
 var _frein := 0.0
 var _survol: Batiment = null
 var _humeur := 1
+var _calme := 0.0                        # secondes de temps qui tourne sans toucher la rue (D7)
+var _controle := false
 
 
 func _ready() -> void:
@@ -84,6 +91,7 @@ func _ready() -> void:
 	_voitures = rue.get("voitures")
 	vue.vue_change.connect(_recalculer)
 	_recalculer()
+	_controle = "--controle" in OS.get_cmdline_user_args()
 
 
 # =====================================================================
@@ -117,6 +125,43 @@ func _process(delta: float) -> void:
 		_repos_cx = _cx
 		_appliquer()
 		_repos_cx = _cx
+	_retour_auto(delta)
+
+
+## D7 : retour automatique de la caméra à la maison (voir RETOUR_AUTO_S). Le compteur n'avance que pendant que
+## le temps tourne ; il repart de zéro à chaque toucher de la rue (glisser, molette, flèches, étiquette).
+func _retour_auto(delta: float) -> void:
+	if RETOUR_AUTO_S <= 0.0 or mode_titre or not interactif or _appui or not _temps_tourne():
+		return
+	if a_la_maison():
+		_calme = 0.0
+		return
+	if _cam_tween != null and _cam_tween.is_valid():
+		return
+	_calme += delta
+	if _calme >= RETOUR_AUTO_S:
+		if _controle:
+			print("RUE camera retour apres=%.1f glissement=%.1f" % [_calme, RETOUR_DUREE_S])
+		_calme = 0.0
+		plonger_vers_maison(RETOUR_DUREE_S)
+
+
+## Le temps tourne pour le joueur : vitesse > 0, hors saut, partie en cours, sans modale ni fenêtre qui bloque.
+func _temps_tourne() -> bool:
+	return Partie.vitesse > 0 and not Partie.saut_actif and not Partie.bloquee and Partie.etat != null \
+		and Partie.etat.modale.is_empty() and Partie.etat.fin == ""
+
+
+## Vrai si la caméra est au repos sur la maison (position automatique, ou ramenée à la main au même endroit).
+func a_la_maison() -> bool:
+	if _vise:
+		return false
+	return _repos_auto or absf(_cx - clampf(_cx_pour(maison.position.x), bornes_rue().x, bornes_rue().y)) < 1.0
+
+
+## Secondes de temps qui tourne depuis le dernier toucher de la rue (contrôles D7).
+func calme() -> float:
+	return _calme
 
 
 ## (jour, couchant) selon la phase du cycle.
@@ -249,8 +294,9 @@ func viser(b: Batiment, duree := 0.35, _zoom_en_plus := 1.06) -> void:
 	_aller(_cx_pour(b.position.x), minf(HAUT_MAISON, b.position.y - b.taille().y), duree)
 
 
-## Glisse vers un bâtiment sans changer la position de repos.
+## Glisse vers un bâtiment sans changer la position de repos (flèche de bord touchée : compte comme un toucher).
 func aller_vers(id: String, duree := 0.5) -> Tween:
+	_calme = 0.0
 	var b := batiment(id)
 	if b == null:
 		return _aller(_cx, _haut, 0.0)
@@ -258,6 +304,15 @@ func aller_vers(id: String, duree := 0.5) -> Tween:
 		_avant = _cx
 	_vise = true
 	return _aller(_cx_pour(b.position.x), minf(HAUT_MAISON, b.position.y - b.taille().y), duree)
+
+
+## Met x_monde au milieu du rectangle libre, comme un défilement du joueur (la position devient celle de
+## repos ; captures et scénarios).
+func centrer_sur(x_monde: float, duree := 0.0) -> Tween:
+	_manuel()
+	var t := _aller(_cx_pour(x_monde), HAUT_MAISON, duree)
+	_repos_cx = clampf(_cx_pour(x_monde), bornes_rue().x, bornes_rue().y)
+	return t
 
 
 ## Revient à la position d'avant le dernier viser / aller_vers (ou à la maison).
@@ -312,6 +367,21 @@ func est_visible(id: String) -> bool:
 	return libre_monde.encloses(r)
 
 
+## Point d'écran (px virtuels) de la porte d'un bâtiment (maison, banque) : milieu de sa partie visible dans le
+## rectangle libre, ou Vector2(-1, -1) si moins de PORTE_VISIBLE_MIN px d'art de porte s'y voient (pièces du mois,
+## lot 02 : à 1080p, panneau ouvert, les deux portes tiennent ensemble à l'écran, pas les deux façades).
+func porte_ecran(id: String) -> Vector2:
+	var b := batiment(id)
+	if b == null or not b.has_method("porte"):
+		return Vector2(-1, -1)
+	var r: Rect2 = b.call("porte")
+	r.position += b.position
+	var vu := r.intersection(libre_monde())
+	if vu.size.x < PORTE_VISIBLE_MIN or vu.size.y < PORTE_VISIBLE_MIN:
+		return Vector2(-1, -1)
+	return position_ecran(vu.get_center())
+
+
 ## Rectangle libre en px d'art du monde (contrôles des captures).
 func libre_monde() -> Rect2:
 	var la := _libre_art()
@@ -364,6 +434,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if mb != null:
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
+				_calme = 0.0
 				_appui = true
 				_glisse = false
 				_appui_pos = mb.position
@@ -421,6 +492,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Défilement manuel : la position choisie devient la position de repos.
 func _manuel() -> void:
+	_calme = 0.0
 	if _cam_tween != null and _cam_tween.is_valid():
 		_cam_tween.kill()
 	_vise = false

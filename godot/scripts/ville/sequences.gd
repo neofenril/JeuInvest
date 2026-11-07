@@ -532,6 +532,149 @@ func petite_news(n: Dictionary) -> void:
 		print("RUE sequence petite_news duree=0.00 camera=%s->%s" % [cam, cam])
 
 
+# =====================================================================
+# Pièces du mois (lot 02, P4 « le mois utile » : D8, D9, D10)
+# =====================================================================
+
+## Appelé par principal.gd à chaque mois_passe (par has_method). Or : revenus du mois, de la porte de la banque à
+## celle de la maison ; cuivre : frais, de la maison vers la banque. Un bâtiment dont la porte n'est pas à
+## l'écran : départ ou arrivée au bord intérieur de sa flèche de bord, qui saute (hud.sauter_etiquette). Aucune
+## porte à l'écran : pas de pièce, seulement le montant flottant près du compteur COMPTE. Rien en pause, à ×3,
+## pendant un saut, après un saut de test (F8), à l'écran titre ni quand une séquence arrive (une seule vedette).
+func pieces_du_mois(res: Dictionary) -> void:
+	var raison := ""
+	var p := {}
+	if typeof(res.get("flux")) != TYPE_DICTIONARY:
+		raison = "pas_de_flux"
+	elif res.get("saut", false):
+		raison = "saut_test"
+	elif jeu == null or jeu.en_titre or Partie.etat == null:
+		raison = "titre"
+	else:
+		p = PiecesMois.plan(res["flux"], Partie.vitesse, Partie.saut_actif or bool(res.get("pendant_saut", false)), Partie.etat.ab_courant() - 1)
+		raison = p["raison"]
+		if raison == "" and (occupe or not (res.get("modale", {}) as Dictionary).is_empty() or str(res.get("fin", "")) != ""):
+			raison = "sequence"
+	if raison == "" and _lieu_pieces("maison") != "maison" and _lieu_pieces("banque") != "banque":
+		raison = "hors_champ"
+		_flottants_compte(p)
+	if raison != "":
+		_trace("RUE pieces aucune raison=%s" % raison)
+		return
+	var delai := 0.0
+	if not p["or"].is_empty():
+		_lancer_pieces(p["or"], p["lignes"], false)
+		delai = 0.6
+	if not p["cuivre"].is_empty():
+		if delai > 0.0:
+			get_tree().create_timer(delai).timeout.connect(_lancer_pieces.bind(p["cuivre"], [], true))
+		else:
+			_lancer_pieces(p["cuivre"], [], true)
+
+
+func _lancer_pieces(regle: Dictionary, lignes: Array, cuivre: bool) -> void:
+	var de := "maison" if cuivre else "banque"
+	var vers := "banque" if cuivre else "maison"
+	var n: int = regle["n"]
+	_trace("RUE pieces genre=%s n=%d depart=%s arrivee=%s montant=%s" % ["cuivre" if cuivre else "or", n, _lieu_pieces(de), _lieu_pieces(vers), regle["texte"]])
+	var couleur := Style.CUIVRE if cuivre else Style.GAIN
+	var etat := {"arrivees": 0}
+	if cuivre:
+		# Les frais partent de la maison : le montant s'affiche au départ
+		_flottant_pres(str(regle["texte"]), _point_pieces(de), couleur)
+	Juice.pieces_suivies(_point_pieces.bind(de), _point_pieces.bind(vers), n, cuivre,
+		_piece_arrivee.bind(vers, regle, lignes, couleur, cuivre, etat, n), _piece_depart.bind(de))
+
+
+func _piece_depart(id: String) -> void:
+	_sauter_si_fleche(id)
+
+
+func _piece_arrivee(id: String, regle: Dictionary, lignes: Array, couleur: Color, cuivre: bool, etat: Dictionary, n: int) -> void:
+	etat["arrivees"] = int(etat["arrivees"]) + 1
+	_sauter_si_fleche(id)
+	if etat["arrivees"] == 1 and not cuivre:
+		# L'argent qui a travaillé arrive à la maison : le montant, puis une ligne par coupon ou dividende
+		var pos := _point_pieces(id)
+		_flottant_pres(str(regle["texte"]), pos, couleur)
+		for k in lignes.size():
+			_trace("RUE pieces ligne texte=%s" % lignes[k])
+			get_tree().create_timer(0.3 * (k + 1)).timeout.connect(_flottant_pres.bind(str(lignes[k]), pos + Vector2(0, 40 * (k + 1)), couleur))
+	if etat["arrivees"] == n and _controle:
+		var cible := _point_pieces(id)
+		print("RUE pieces arrivee genre=%s lieu=%s ecart=%d" % ["cuivre" if cuivre else "or", _lieu_pieces(id), roundi(Juice.derniere_arrivee.distance_to(cible))])
+
+
+## Où partent ou arrivent les pièces d'un bâtiment : son nom (porte à l'écran), « fleche_gauche » ou
+## « fleche_droite » (flèche de bord du HUD), sinon "" (ni l'un ni l'autre : bord de l'écran).
+func _lieu_pieces(id: String) -> String:
+	var porte: Vector2 = ville.call("porte_ecran", id) if ville.has_method("porte_ecran") else Vector2(-1, -1)
+	if porte.x >= 0.0:
+		return id
+	var et: Control = hud.etiquettes.get(id) if hud != null else null
+	if et != null and et.is_visible_in_tree() and str(et.get_meta("fleche", "")) != "":
+		return "fleche_" + str(et.get_meta("fleche", ""))
+	return ""
+
+
+## Point d'écran (relu à chaque image) : porte, bord intérieur de la flèche de bord (milieu du côté tourné vers
+## le centre du rectangle libre), sinon le bâtiment ramené au bord de l'écran.
+func _point_pieces(id: String) -> Vector2:
+	var lieu := _lieu_pieces(id)
+	if lieu == id:
+		return ville.call("porte_ecran", id)
+	if lieu.begins_with("fleche_"):
+		var r: Rect2 = (hud.etiquettes[id] as Control).get_global_rect()
+		return Vector2(r.end.x if lieu == "fleche_gauche" else r.position.x, r.get_center().y)
+	return _depart(ville.call("batiment", id))
+
+
+func _sauter_si_fleche(id: String) -> void:
+	if _lieu_pieces(id).begins_with("fleche_") and hud != null and hud.has_method("sauter_etiquette"):
+		hud.call("sauter_etiquette", id)
+
+
+## Montant flottant au-dessus d'un point, gardé dans le rectangle libre du HUD.
+func _flottant_pres(texte: String, pos: Vector2, couleur: Color) -> void:
+	var libre: Rect2 = hud.rect_libre() if hud != null else ville.get_viewport_rect()
+	var p := pos + Vector2(0, -36)
+	var demi := Style.chiffres().get_string_size(texte, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x / 2.0 + 16.0
+	p.x = clampf(p.x, libre.position.x + demi, maxf(libre.position.x + demi, libre.end.x - demi))
+	p.y = clampf(p.y, libre.position.y + 90.0, maxf(libre.position.y + 90.0, libre.end.y - 20.0))
+	Juice.flottant(texte, p, couleur)
+
+
+## Ni maison ni banque à l'écran : seulement les montants, près du compteur COMPTE (D8).
+func _flottants_compte(p: Dictionary) -> void:
+	if hud == null:
+		return
+	var l: Label = hud.l_cc if hud.l_cc != null and hud.l_cc.is_visible_in_tree() else hud.l_patr
+	# Sous le compteur, dans la rue : le montant monte de 60 px et s'efface sans recouvrir le chiffre
+	var r := l.get_global_rect()
+	var libre: Rect2 = hud.rect_libre()
+	var pos := Vector2(r.get_center().x, maxf(r.end.y, libre.position.y) + 100.0)
+	var demi := Style.chiffres().get_string_size(str(p["or"]["texte"]) if not p.get("or", {}).is_empty() else "", HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x / 2.0 + 16.0
+	pos.x = clampf(pos.x, libre.position.x + demi, maxf(libre.position.x + demi, libre.end.x - demi))
+	var textes: Array = []
+	if not p.get("or", {}).is_empty():
+		textes.append([str(p["or"]["texte"]), Style.GAIN])
+		for t in p.get("lignes", []):
+			textes.append([str(t), Style.GAIN])
+	if not p.get("cuivre", {}).is_empty():
+		textes.append([str(p["cuivre"]["texte"]), Style.CUIVRE])
+	for k in textes.size():
+		if k == 0:
+			Juice.flottant(textes[k][0], pos, textes[k][1])
+		else:
+			get_tree().create_timer(0.3 * k).timeout.connect(Juice.flottant.bind(textes[k][0], pos + Vector2(0, 40 * k), textes[k][1]))
+		_trace("RUE pieces flottant compte texte=%s" % textes[k][0])
+
+
+func _trace(t: String) -> void:
+	if _controle:
+		print(t)
+
+
 func _sequence_fin() -> void:
 	var e := Partie.etat
 	ville.set("pluie", false)

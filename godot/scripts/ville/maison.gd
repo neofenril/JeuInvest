@@ -58,6 +58,11 @@ func point_fenetre() -> Vector2:
 	return Vector2(coin_image() + FENETRE_GERARD.get_center())
 
 
+## Porte d'entrée (arrivée des pièces d'or, départ des pièces de cuivre), rectangle local.
+func porte() -> Rect2:
+	return Rect2(Vector2(coin_image() + F.PORTE.position), Vector2(F.PORTE.size))
+
+
 func point_boite() -> Vector2:
 	return Vector2(coin_image() + BOITE.get_center())
 
