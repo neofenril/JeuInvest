@@ -1,7 +1,8 @@
 # Base de connaissances de dev-ville
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-11-07 (PX1-bis : sortie propre, préchauffage, §2 septies).
+> Dernière mise à jour : 2026-11-07 (lot 02-V : pièces du mois, retour de la caméra, PX0 retiré, §2 octies).
+> Téléphone de référence (PX2) : 1440 × 648 → N = 2, R = 0,600, Gérard 76 px ; les mesures 1600 × 720 de §2 sont historiques.
 
 ## 1. Atelier pixel (`godot/scripts/pixel/`, conservé après PX0)
 
@@ -81,6 +82,19 @@
 - **Sortie** : `_exit_tree` → `attendre_taches()` (attend et récolte ; les lots de variantes s'arrêtent tôt via `_arret`). Cause probable du blocage : fils de GDScript encore actifs pendant la fermeture du moteur (carnet_pel saute en décembre → neige et saisons lancées juste avant la sortie). Une sortie dans les ~3 s du lancement attend la fin des arbres.
 - **Pièges** : `wait_for_task_completion` invalide l'identifiant (`is_task_completed` ensuite = « Invalid Task ID ») ; `add_task(…, true)` (haute priorité, 16 fils de GDScript) ralentit le fil principal ×5 (génération 7 s) : rester en basse priorité. `recolorer` : octets précalculés (plus d'appel de palette par pixel).
 - Arbres : plus de repli sur l'été (`_maj_arbres`) ; un arbre pas encore prêt n'est pas dessiné.
+
+## 2 octies. Lot 02-V (pièces du mois, D7, M1, retrait de PX0)
+
+- **Vitrine PX0 retirée** (px0.gd, rue_px0.gd, px0.tscn, capture_px0.ps1, Voir_PX0.bat) ; `VuePixel.controler_blocs` (statique). §1 (rue_px0, px0) et §2 ter-quinquies = historique. Reste : ligne de `ecran.gd` (dev-interface) et `$px0` de `capture_interface.ps1` (dev-interface).
+- **Pièces** : `PiecesMois.plan(flux, vitesse, en_saut, ab)` pur (ab = mois **écoulé** = `ab_courant() - 1` : le flux de fin de mois est celui du mois passé ; `verse_en_decembre` est déjà faux en décembre côté logique). Seuils et nombre comptés en **francs** (`Format.en_devise(eur, "F")`, tolérance 1e-6 : 10 F en euros ×6,55957 ≠ 10 exactement). 1 + round(log10(F/10)) : 312 F → 2, 1 152 F → 3.
+- `Sequences.pieces_du_mois(res)` : raisons pas_de_flux, saut_test, titre, saut, pause, vitesse3, sous_seuil, sequence (modale ou fin dans res, ou vedette en cours), hors_champ. Lieux : **porte visible** (`ville.porte_ecran`, partie visible ≥ 8 px d'art de la porte dans le libre) plutôt que bâtiment entier : à 1080p panneau ouvert, le libre fait 698 px d'art et les deux portes sont à 700 px l'une de l'autre (bords intérieurs : 658) → seul moyen d'avoir « maison et banque visibles ». Sinon bord intérieur de la flèche (`hud.etiquettes[id]`, méta `fleche`), sinon bord d'écran.
+- `Juice.pieces_suivies` : Callables relus à chaque image, position arrondie à 3 px virtuels, `pieces_creees` (compteur), `derniere_arrivee`. `Juice.pieces` et `duree` tiennent compte de `Partie.saut_actif`.
+- **D7** (`ville.gd`) : `RETOUR_AUTO_S` 10, `RETOUR_DUREE_S` 0,8 ; `_calme` n'avance que si `_temps_tourne()` (vitesse > 0, hors saut, non bloquée, sans modale) et `interactif` ; remis à 0 par tout appui, molette, flèche, `aller_vers` (flèche de bord). `a_la_maison()`, `centrer_sur(x, d)` (= défilement du joueur).
+- **M1** (`rue.gd`) : arbre de premier plan en fondu 0,3 s par pas de 1/8 dès que son image existe (mesuré : prêt 1,4 s après un « Jouer » immédiat, plus grand saut d'alpha 0,125).
+- Captures : les étapes à flux fabriqué figent le temps par `Partie.bloquee = true` (vitesse ×1, rue animée, aucun vrai mois). Image `<nom>_vol.png` enregistrée par la famille pendant le vol. `capture.gd` prend l'image juste après le retour de `jouer()` (frames=10 ≈ instantané sans vsync) : régler le moment par le dernier `delai` de l'étape. Le flottant vit 0,9 s.
+- Avance rapide des captures par `StrategieTest` (plus `sc.strategie_active/aller_a/aller_a_modale`, que 02-I retire).
+- Piège : `git rm` met les suppressions dans l'index ; un `commit` suivant de quelques fichiers les emporte aussi.
+- Vu en capture, côté HUD (dev-interface) : au téléphone, flèches « ‹ LA GAZETTE » et « ‹ MA MAISON » qui se chevauchent quand la maison est à moitié visible.
 
 ## 3. Décisions (étape A)
 

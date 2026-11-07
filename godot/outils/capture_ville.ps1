@@ -2,16 +2,18 @@
 # Usage (depuis n'importe quel dossier) :
 #   powershell -File godot\outils\capture_ville.ps1 -Etape rue -Nom px1_rue -Taille 1920x1080 -Controle -SansHud
 #   ... -Telephone (téléphone simulé, fenêtre 1440 x 648 à 240 dpi, comme F10 ; voir Ecran)  -Facteur 4  -Attente 1.5  -Passer 0.3
-#   ... -Montages : refait seulement les trois montages (captures déjà faites)
-#   ... -Montages : refait seulement les trois montages (captures déjà faites)
-#   ... -Serie : toute la série PX1 (préfixe px1_), ses trois montages et le journal godot\captures\px1_serie.log
+#   ... -Montages : refait seulement les deux montages (captures déjà faites)
+#   ... -Serie : toute la série PX1 + lot 02 (préfixe px1_), ses deux montages et le journal godot\captures\px1_serie.log
+#   (aucune image de référence PX0 n'est plus demandée : la vitrine PX0 est retirée au lot 02)
 # Étapes : celles de la scène principale (capture.ps1) ; famille « ville » : rue, rue_nuit, rue_banque, rue_gazette,
 #   rue_libre, defilement, saison_hiver, saison_automne, saison_printemps, pluie, banquier_anim, banquier_signal,
 #   journal_anim, krach_anim, crash_anim, crash_fin, naissance_anim, jumeaux_anim, news, sylvie_0..2,
-#   planche_personnages, voisins, trafic, fps.
+#   planche_personnages, voisins, trafic, fps ; lot 02 : pieces_or, pieces_fleche, pieces_cuivre, pieces_dividende,
+#   pieces_glisse (+ image <nom>_vol.png pendant le vol), pieces_x3, pieces_saut, pieces_hors_champ, pieces_sous_seuil,
+#   camera_retour, pieces_jeu, jouer_rapide.
 # 1920 x 1080 : plein écran (taille exacte). Journal de Godot hors de user:// (--log-file).
 # Code de sortie 0 seulement si chaque lancement rend 0, sans erreur de script, et si tous les contrôles sont à
-# zéro (hors_palette=0, irreguliers=0). 3 : Godot introuvable.
+# zéro (hors_palette=0, irreguliers=0, hors_texel=0). 3 : Godot introuvable.
 param(
     [string]$Etape = "rue",
     [string]$Nom = "px1",
@@ -69,7 +71,7 @@ function Capturer([hashtable]$o) {
     $r = Lancer $a
     $rue = @($r.sortie | Where-Object { $_ -like "RUE *" -or $_ -like "Images par seconde*" -or $_ -like "Capture enregistr*" })
     $erreurs = @($r.sortie | Where-Object { $l = $_; $motifsErreur | Where-Object { $l -like "*$_*" } })
-    $ko = @($rue | Where-Object { ($_ -match 'hors_palette=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'irreguliers=(\d+)' -and [int]$matches[1] -ne 0) })
+    $ko = @($rue | Where-Object { ($_ -match 'hors_palette=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'irreguliers=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'hors_texel=(\d+)' -and [int]$matches[1] -ne 0) })
     $ok = ($r.code -eq 0) -and ($erreurs.Count -eq 0) -and ($ko.Count -eq 0)
     Ecrire ("--- {0} ({1}, {2}{3}) : code {4}{5}" -f $o.Nom, $o.Etape, $(if ($o.Telephone) { "téléphone" } else { $taille }), $(if ($o.Facteur) { " x$($o.Facteur)" } else { "" }), $r.code, $(if ($ok) { "" } else { "  ** ECHEC **" }))
     foreach ($l in $r.sortie) {
@@ -105,14 +107,11 @@ function Monter([string[]]$images, [string]$sortie) {
 }
 
 function Faire-Montages {
-    # Montages : référence | rue_1080, PX0 quater | rue_1080, rue_720 | rue_tel | rue_1080
+    # Montages : référence | rue_1080, rue_720 | rue_tel | rue_1080
     $p = "px1_"
     $ref = Join-Path $depot "docs\sources\graphisme\references\rue_pixel_v2.jpg"
     $rue = Join-Path $captures "${p}rue_1080.png"
-    $px0 = Join-Path $captures "px0_quater_jour_1080.png"
-    if (-not (Test-Path -LiteralPath $px0)) { $px0 = Join-Path $depot "godot\captures\px0_quater_jour_1080.png" }
     $ok = Monter @($ref, $rue) (Join-Path $captures "${p}montage_ref.png")
-    $ok = (Monter @($px0, $rue) (Join-Path $captures "${p}montage_px0.png")) -and $ok
     $ok = (Monter @((Join-Path $captures "${p}rue_720.png"), (Join-Path $captures "${p}rue_tel.png"), $rue) (Join-Path $captures "${p}montage_formats.png")) -and $ok
     return $ok
 }
@@ -181,16 +180,31 @@ if ($Serie) {
         @{ Nom = "${p}voisins"; Etape = "voisins"; Controle = $true },
         @{ Nom = "${p}trafic"; Etape = "trafic"; Controle = $true },
         @{ Nom = "${p}fps"; Etape = "fps"; Controle = $true },
-        @{ Nom = "${p}fps_tel"; Etape = "fps"; Telephone = $true; Controle = $true }
+        @{ Nom = "${p}fps_tel"; Etape = "fps"; Telephone = $true; Controle = $true },
+        # Lot 02 : pièces du mois (D8, D10), retour de la caméra (D7), arbre de premier plan (M1)
+        @{ Nom = "${p}pieces_or"; Etape = "pieces_or"; Controle = $true },
+        @{ Nom = "${p}pieces_or_tel"; Etape = "pieces_or"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}pieces_fleche"; Etape = "pieces_fleche"; Controle = $true },
+        @{ Nom = "${p}pieces_fleche_tel"; Etape = "pieces_fleche"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}pieces_cuivre"; Etape = "pieces_cuivre"; Controle = $true },
+        @{ Nom = "${p}pieces_cuivre_tel"; Etape = "pieces_cuivre"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}pieces_dividende"; Etape = "pieces_dividende"; Controle = $true },
+        @{ Nom = "${p}pieces_dividende_tel"; Etape = "pieces_dividende"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}pieces_glisse"; Etape = "pieces_glisse"; Controle = $true },
+        @{ Nom = "${p}pieces_glisse_tel"; Etape = "pieces_glisse"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}pieces_hors_champ"; Etape = "pieces_hors_champ"; Controle = $true },
+        @{ Nom = "${p}pieces_hors_champ_tel"; Etape = "pieces_hors_champ"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}pieces_x3"; Etape = "pieces_x3"; Controle = $true },
+        @{ Nom = "${p}pieces_saut"; Etape = "pieces_saut"; Controle = $true },
+        @{ Nom = "${p}pieces_sous_seuil"; Etape = "pieces_sous_seuil"; Controle = $true },
+        @{ Nom = "${p}camera_retour"; Etape = "camera_retour"; Controle = $true },
+        @{ Nom = "${p}jouer_rapide"; Etape = "jouer_rapide"; Controle = $true },
+        @{ Nom = "${p}pieces_jeu"; Etape = "pieces_jeu"; Controle = $true }
     )
     foreach ($o in $liste) {
         if (-not $o.ContainsKey("Attente")) { $o.Attente = 0 }
         if (-not (Capturer $o)) { $toutOk = $false }
     }
-    $ref = Join-Path $depot "docs\sources\graphisme\references\rue_pixel_v2.jpg"
-    $rue = Join-Path $captures "${p}rue_1080.png"
-    $px0 = Join-Path $captures "px0_quater_jour_1080.png"
-    if (-not (Test-Path -LiteralPath $px0)) { $px0 = Join-Path $depot "godot\captures\px0_quater_jour_1080.png" }
     if (-not (Faire-Montages)) { $toutOk = $false }
 } elseif ($Montages) {
     $script:journal = Join-Path $captures "px1_serie.log"

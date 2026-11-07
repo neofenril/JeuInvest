@@ -1,7 +1,7 @@
 # Base de connaissances du testeur
 
 > À lire au début de chaque mission (après `CLAUDE.md` et le socle `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-11-07 (PX2 passage 2 : 5d23c3b OK). Avant : 2026-11-03 (PX2 : `lot/px2-interface` c890d61 KO ; PX1 : `lot/px1-ville` 48ecd10 KO, A1 titre, puis 7733938 OK). Avant : 2026-10-30 (02-L : `lot/02-logique` 252f8b0 OK ; PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
+> Dernière mise à jour : 2026-11-07 (02-I : `lot/02-interface` baf2664 KO + fusion simulée avec 02-V ; avant : PX2 passage 2 : 5d23c3b OK). Avant : 2026-11-03 (PX2 : `lot/px2-interface` c890d61 KO ; PX1 : `lot/px1-ville` 48ecd10 KO, A1 titre, puis 7733938 OK). Avant : 2026-10-30 (02-L : `lot/02-logique` 252f8b0 OK ; PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
 
 ## 1. Règles de travail
 - Je ne modifie jamais un fichier suivi par Git dans le worktree d'un développeur ; pour les mutations, worktree jetable :
@@ -97,6 +97,24 @@
 - Blocage à la sortie : `carnet_pel` ×12 et `--quit-after N` (1 à 2 000) via `Start-Process -PassThru` + `WaitForExit(45000)` : quitte toujours ; ≈ 5,7 s minimum (attente des tâches de fond ≈ 3 s).
 - Démarrage : étape jetable `jouer_tot` dans `scenarios/titre.gd` d'une copie (chrono par image + captures à t, « Jouer » à t via variable d'environnement) : arbre de premier plan absent ≈ 2 s ; une image de ≈ 170 ms à t ≈ 0,17 s (origine inconnue).
 - `partie_en_cours.sav` peut changer pendant la recette parce que le joueur joue (Godot non console lancé) : noter la date d'écriture du fichier pour se disculper.
+
+## 4 octies. 02-V (recette 2026-11-07, `lot/02-ville` 586385e : OK, 5 mineures ; rapport commité sur la branche, f109d19)
+- Références : 539 vérifications (`main` 495) ; série `capture_ville.ps1 -Serie` = 74 lancements, 861 s, **passe sur copie neuve** (plus d'image PX0). Durées de séquence `main` = branche (journal_krach 1,36-1,39 ; l'étape `courrier` donne 1,22 : autre mesure, pas une régression).
+- Un lancement en arrière-plan de l'outil n'est pas tué à 10 min : la série complète peut tourner en tâche de fond.
+- Lignes à lire : `RUE pieces genre=… n=… depart=… arrivee=…`, `en_vol=… hors_texel=0`, `arrivee … ecart=1`, `aucune raison=…`, `noeuds_crees=0`, `camera … calme=0.0`, `premier_plan … fondu_s`.
+- Zones fragiles : pièces d'or sur l'enseigne dorée de l'épicerie (même couleur) ; flottants longs sur le décor ; « porte visible ≥ 8 px » (pièces au bord d'écran à côté de deux flèches de bord) ; changement porte → flèche en plein vol (saut possible) ; flèches « ‹ LA GAZETTE » / « ‹ MA MAISON » qui se chevauchent (HUD, aussi à 1080p).
+- Mon `test_recette_decoupage` sortait « 1 resources still in use at exit » : corrigé au 02-I (0026dbb) en fermant la carte du Livret A avant `queue_free` (une modale ouverte laisse des coroutines `GDScriptFunctionState` en attente). Diagnostic : lancer la scène avec `--verbose` → « Resource still in use: <script> ».
+- `partie_en_cours.sav` absent le 07/11 : noter l'absence avant / après.
+- Rapport dans le worktree de la branche si le coordinateur le demande (commit local) ; risque d'ajout des deux côtés si l'autre branche crée le même fichier.
+
+## 4 nonies. 02-I (recette 2026-11-07, `lot/02-interface` baf2664 : KO, A1 test aléatoire, A2 flèches chevauchées ; rapport + tests commités 0026dbb)
+- Références : branche 504 (+ recette 29) ; fusion main + 02-V + 02-I : 548 (+ 29) ; `integrale` et `integrale_saut` = 160 749 F / 805,93 F / 11 ; `capture_interface.ps1 -Serie` = 131 lancements ≈ 27 min (fps et `clic_dehors` journalisés) ; `capture_ville.ps1 -Serie` = 72 lancements ≈ 15 min. Les deux séries en une seule commande de fond.
+- **Relancer un test plusieurs fois** (4-5) avant de croire un « vert » : `test_interface` dépendait de la graine de vie aléatoire de `principal._config()` (8 KO sur 9). Chercher `randi` / graine non fixée dans tout nouveau test qui instancie `principal.tscn`.
+- Mon `test_recette_saut` (D4) : graine fixe par `Partie.nouvelle_partie(Donnees.config_demo(G))` entouré de `scene._ignorer_modales = true/false` puis `scene._apres_mise_en_place()`.
+- Lignes à lire (02-I) : `UI saut anime=… gel=… badge_pause=…`, `UI courrier etat=… taille=… libelle=… dans_barre=…`, `UI badge n=k = non_lues=k`, `UI saut bilan arrets=… sans_modale=0 … vitesses_ecarts=0`, `UI tuiles taille_min`, `Capture : sauvegarde … capture_<pid>.sav`.
+- Exe exporté depuis une copie isolée : il hérite du `custom_user_dir_name` (aucun risque pour le joueur). **2 ERROR `GrillePixel` (cadres.txt / icones.txt l. 1) préexistantes dans tout exe depuis 0.3** : ne pas les imputer au lot, mais les citer à CA-F5.
+- Zones fragiles : `Hud.placer_etiquettes` (étiquette « MA MAISON » sous la flèche « ‹ LA GAZETTE » quand la maison est au bord gauche ; flèche de bord affichée pour un bâtiment pourtant à l'écran, seuil différent de celui des pièces) ; replis de la barre haute (variation, « COURANT », « EN PAUSE », libellé COURRIER : comparer chaque format à `main`) ; pastille VS LIVRET A dont couleur et chiffre roulant divergent ; captures de carnet prises pendant le retournement des tuiles (`scale.x`).
+- Ajout des deux côtés d'un même rapport : copier l'autre version **à l'octet** (`cmd /c git show <branche>:<f> > f`, vérifier `git hash-object`) puis ajouter mes sections : conflit trivial à la fusion.
 
 ## 5. Anomalies récurrentes / à surveiller
 - Fichiers « recopiés de main » dans une branche (tests.ps1, trouver_godot.ps1 sur px0-ville) : vérifier `git diff main <branche> -- <fichier>` vide → sans conflit, mineur.

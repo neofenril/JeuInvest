@@ -50,6 +50,11 @@ func point_fenetre() -> Vector2:
 	return Vector2(coin_image() + E.FENETRE_BANQUIER.get_center())
 
 
+## Porte à deux battants (départ des pièces d'or, arrivée des pièces de cuivre), rectangle local.
+func porte() -> Rect2:
+	return Rect2(Vector2(coin_image() + E.PORTE_BANQUE.position), Vector2(E.PORTE_BANQUE.size))
+
+
 func _dessiner_dessus(d: Vector2i) -> void:
 	var c := coin_image() + d
 	if annee >= 1986:
