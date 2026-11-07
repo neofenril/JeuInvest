@@ -1,7 +1,7 @@
 # Base de connaissances du testeur
 
 > À lire au début de chaque mission (après `CLAUDE.md` et le socle `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-11-03 (PX2 : `lot/px2-interface` c890d61 KO ; PX1 : `lot/px1-ville` 48ecd10 KO, A1 titre, puis 7733938 OK). Avant : 2026-10-30 (02-L : `lot/02-logique` 252f8b0 OK ; PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
+> Dernière mise à jour : 2026-11-07 (PX2 passage 2 : 5d23c3b OK). Avant : 2026-11-03 (PX2 : `lot/px2-interface` c890d61 KO ; PX1 : `lot/px1-ville` 48ecd10 KO, A1 titre, puis 7733938 OK). Avant : 2026-10-30 (02-L : `lot/02-logique` 252f8b0 OK ; PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
 
 ## 1. Règles de travail
 - Je ne modifie jamais un fichier suivi par Git dans le worktree d'un développeur ; pour les mutations, worktree jetable :
@@ -78,6 +78,11 @@
 - Glyphes : script `--script` dans une copie avec `PolicesPixel.manquants(chemin, texte)` sur tous les caractères non ASCII des données et scripts. Manquent : → ← ▲ ▼ ○ ●.
 - Zones fragiles : panneau « Mon argent » plus haut que sa place (recouvre la frise) ; montants en Pixelify dans les boutons (5 → S) ; flèches de bord et étiquettes hors `rect_libre()` à la fusion PX1 ; `debordements` ne voit pas les conteneurs.
 - `Copy-Item -Recurse` d'une copie importée : erreurs de chemin trop long sur `.godot\editor\*.cfg` sans conséquence.
+
+- **Passage 2 (5d23c3b : OK, 5 mineures)** : 491 vérifications (branche = fusion, `main` dans la branche) ; `capture_interface.ps1 -Serie` = 106 lancements ≈ 26 min (lancer en arrière-plan, les commandes > 180 s passent en tâche de fond) ; `capture_ville.ps1 -Serie` ≈ 11 min, « échec » attendu depuis un worktree (montage `px0_quater_jour_1080.png` absent). Téléphone simulé = 1440 × 648 à 240 dpi (+ `-Telephone169` 1280 × 720 à 320 dpi). Lignes à lire : `UI panneau … recouvre/contenu_coupe`, `UI etiquette … dans_libre`, `UI fenetre … dans_ecran`, `UI polices`, `cibles`.
+- Zones fragiles restantes : textes dessinés par `draw_string` (tuiles du carnet 16 → 12 px, badge NOUVEAU 14 px) invisibles pour `atkinson_min` ; blocage aléatoire de Godot à la sortie (rue PX1).
+- Le scratchpad peut être partagé avec une autre session (copies `pb`, `pi`, captures `pel_*`) : préfixer mes fichiers (`testeur_*`) et ne toucher à rien d'autre.
+- `partie_en_cours.sav` peut changer hors de mes lancements (vu le 07/11 à 00:49) : noter l'horodatage (`LastWriteTime`) en plus du SHA-256 pour prouver que ce n'est pas la recette.
 
 ## 4 sexies. F1-L (recette 2026-11-04, `lot/f1-logique` 6397542 : OK, 3 mineures)
 - Références : branche 330 ; fusion main 76e3a30 + F1-L : 401 ; `integrale` inchangée (160 749 F / 805,93 F / 11).

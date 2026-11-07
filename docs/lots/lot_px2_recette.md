@@ -94,3 +94,46 @@
 3. M3, A2, A8 : qui garde les étiquettes, les flèches et les bulles dans le rectangle libre ? PX2 (`placer_etiquettes` borné par `rect_libre()`) ou PX1 (`point_etiquette`, `point_tete`) ?
 4. m3 : flèche en sprite dans le texte, ou réécriture des données par dev-logique (« à », « : ») ?
 5. m4 : faut-il un T minimal de 2 sur PC ?
+
+## Passage 2 : 2026-11-06/07, branche `lot/px2-interface`, commit testé 5d23c3b (corrections C1-C9, `main` fusionné : 79a57f0 PX1 + 02-L, 79b2444 F1-L)
+
+**Verdict : OK** (0 bloquante, 0 majeure, 5 mineures). M1 à M4 sont corrigés et vérifiés à l'image. Je recommande le push de la branche.
+
+### Ce qui a été lancé
+- Base : `main` ae19d02 (F1-L) est dans la branche. Le seul commit de `main` qui n'y est pas, dfd5ca4, ne touche que `docs/` (4 fichiers, aucun en commun avec la branche).
+- `tests.ps1` depuis le worktree : **11 étapes, 491 OK, 0 KO, 0 erreur de script**, import propre. `test_ecran` passe de 55 à 90 vérifications (CA-C1 : ≥ 20 nouvelles).
+- `capture_interface.ps1 -Serie` : **106 lancements, 0 échec, 0 SCRIPT ERROR**, 3 montages écrits, sauvegarde du joueur inchangée pendant la série. Godot reste bloqué à la sortie 2 fois (`pause_tel169`, `historique_tel169`) : l'image est enregistrée et les contrôles sont imprimés. Ce blocage vient de la rue PX1 et dev-ville le corrige : **non imputé à PX2**.
+- `capture_ville.ps1 -Serie` : **54 étapes OK, 0 SCRIPT ERROR**. Le seul « échec » est le montage `px1_montage_ref`, faute de la référence `px0_quater_jour_1080.png`, absente du worktree (elle n'existe que dans le dépôt principal, dossier ignoré par Git). C'est de l'outillage, pas une anomalie. `RUE cadrage` : les 3 bâtiments sont dans le rectangle libre à tous les formats. Téléphone : `fenetre=1440x648 reduction=0.600 vue=1200x540 gerard_ecran=76`, comme attendu au §9.5. fps : 459 en PC, 760 au téléphone.
+- Fusion simulée (worktree jetable sur `main` dfd5ca4 + `merge --no-ff`, puis supprimé) : aucun conflit, arbre `godot/` identique à la branche. **491 OK.** `integrale` : **160 749 F, frais 805,93 F, 11 interruptions, fin décembre 1988** (appel 8, banque 4, courrier 2, journal 1, fin 1).
+- Vitrine PX0 (`scenes/px0.tscn -- --px0-quitter-apres=5`) : code 0, sans erreur.
+
+### Corrections et critères
+- [x] **CA-C1 / M4** : les règles d'`ecran.gd` sont conformes au §9.1. Pour un 2400 × 1080 à 400 dpi : T = 5, zone 1440 × 648, `cible_min` = 72 px virtuels = 48 dp, bouton dessiné de 84 px = 56 dp. Sur PC : T ≥ 2 et `min_size` 1152 × 648. `cibles` aux deux téléphones : `sous_seuil=0` (minimum 72 à 1440 × 648, 84 à 1280 × 720 ; 60 à 1920 × 1009). « ACHETER POUR 953,68 F » est entier et visible (`banque_ordre_tel`, montage des téléphones). La carte de l'héritage tient (`heritage_tel`). 70 lignes `UI fenetre … dans_ecran=oui boutons_visibles=oui`, aucune « fenêtre hors écran ».
+- [x] **CA-C2 / M1** : `UI panneau recouvre=non contenu_coupe=non` aux 7 formats. Exemples bas/frise : 972/984 à 1080p, 901/913 à 1009, 864/876 à 1152 × 648, 540/552 au téléphone, 612/624 au 16:9. À l'image (`hud_1080`, `hud_1009`, `hud_1152`, `hud_720`, `panneau_tel`, `panneau_tel169`) : l'année, le curseur et le drapeau de la frise sont visibles, et le bouton BANQUE est entier. Les replis se font dans l'ordre prévu (légende et coussin repliés à 1009 et au téléphone). « Actions 5 % » ne déborde plus.
+- [x] **CA-C3 / M2** : `UI polices pixelify_min=28 atkinson_min=20 chiffres_pixelify=0`. Les captures sont relues et **aucun 5 ne se lit S** : 300 / 500 / 1 000 F, 10 / 25 / 50 %, ACHETER POUR 953,68 F, PAYER 8 139 F, titres de fin et d'accroche. Voir m10 pour les textes dessinés.
+- [x] **CA-C4** : voir CA-C1. Le corps de CHAQUE MOIS au téléphone tient jusqu'au bas de la fenêtre.
+- [x] **CA-C5** : m1 est corrigé (la notification « Un mot après le krach » tient dans son cadre, `courrier_1080`). m2 est corrigé : le cadenas est en bas à droite et le calendrier en haut à droite, sans recouvrir de chiffre (`carnet_tel`, `f01_tel`, `carnet_1080`).
+- [x] **CA-C6** : chevrons en sprite sur les flèches de bord. `fleches_texte=0`. Dans `scripts/ui/`, il ne reste « → » que dans des commentaires.
+- [x] **CA-C7** : la série recopie fps et `clic_dehors`, contrôle `hors_cadre` et `hors_ecran`, couvre les deux téléphones et `hud_1009`.
+- [x] **CA-C8 / M3 / A2** : `UI etiquette … dans_libre=oui` pour les 3 bâtiments × 3 vues × 5 formats (45 lignes). Les flèches s'empilent quand il y en a deux du même côté. `etiquettes_aller` : `UI aller banque visible=oui`. À l'image, « MA BANQUE › » est lisible entièrement à gauche du panneau (`etiquettes_bord_1080`) et de la languette (`_tel`), et « LA GAZETTE » est au-dessus de la frise au téléphone (`etiquettes_gazette_tel`).
+- [x] CA-I11 (non-régression) : le clic à côté ferme le foyer, les nouvelles, la banque, le menu et la carte (« pas maintenant »), et le journal du krach reste ouvert, aux 3 formats. `courrier_relu_echap` est vert. CA-I13 : 453 images/s à 1080p, 753 au téléphone.
+- [x] Cohérence des chiffres : HUD, notification, courrier et historique concordent (compte 9 598 F, coussin 5,8 mois, 8 139 F, 60 000 F / 32 500 F). La fin au téléphone (172 556 F, +9 425 F) correspond au HUD. Le « −500 F / −1 000 F » de versements entre `pause` et `panneau` est voulu : l'étape `panneau` programme 500 F de plus.
+- [x] **Périmètre** : 65 fichiers, tous au §1 ou à l'exception du §9.3. Dans `ville.gd`, seul `_regler_fenetre` change. Dans `capture_ville.ps1`, seul le commentaire de la ligne 4 change. Dans `project.godot`, seul `config/version="0.3"` change. `principal.gd` perd `_info()` (B3). Aucun `.bat`, `data/*.json`, `scripts/logique` ou `export_presets.cfg` n'est touché.
+
+### Anomalies (mineures, n'empêchent pas l'OK)
+1. **m10 (mineure) : la ligne sous le montant des tuiles du carnet est dessinée en 16 px, et descend à 12 px quand la place manque.** C'est `carte_produit.gd` l. 100 (`_taille_ajustee(…, 16)`, plancher 12). Les lignes concernées : « 11 % cette année », « ≈ 8,25 % fixe », « +4 537 F ». Le badge « NOUVEAU » (14 px) et le timbre « 2,20 F » (14 px) sont dans le même cas.
+   - Ces textes sont dessinés par `draw_string` : le contrôle `atkinson_min` ne les voit pas.
+   - Sur un vrai 2400 × 1080 à 400 dpi, 12 px virtuels font environ 8 dp, 16 px environ 11 dp : c'est sous le minimum de docs/16 §3.1 (20 px).
+   - Je l'accepte comme information secondaire, puisque le taux et le gain sont repris en grand dans la fiche. À reprendre en 02-V ou 03 : texte plus court (« 11 %/an ») plutôt que plus petit, et contrôle étendu aux `draw_string`.
+2. **m11 (mineure) : au téléphone, la languette affiche « MON / ARGENT / 82 k / F »**, avec le « F » seul sur sa ligne (`pause_tel`, `etiquettes_bord_tel`).
+3. **m12 (mineure, outillage) : `capture_ville.ps1 -Serie` rend « au moins un échec » depuis un worktree** à cause de la seule référence `px0_quater_jour_1080.png`, absente. Il faudrait que ce montage soit facultatif ou que la référence soit copiée.
+4. **m13 (mineure, information) : `fleches_texte` ne compte plus que « → »**, alors que le plan disait « → ou › ». Les « › » qui restent sont voulus : « En savoir plus › », « COURRIERS REÇUS › ».
+5. m9 (relevé « 417 F + 42 F = 458 F ») est toujours là, et prévu en 03-L. Le blocage de Godot à la sortie (2 fois sur 106) est suivi par dev-ville sur `lot/px1-ville`.
+
+### Sauvegarde du joueur
+- Pendant la série d'interface, mes tests et la partie complète, `partie_en_cours.sav` n'a pas bougé (E2B314A8… puis 836B1610… de part et d'autre de chaque lancement, contrôlé par les scripts).
+- Le fichier a été réécrit le 07/11 à **00:49:26** : après la fin de mes séries (00:41) et avant mes derniers tests (08:53), pendant la pause de la session. Ce n'est donc **pas** dû à la recette. Le joueur, ou un autre agent, l'a modifié. À confirmer par le chef de projet.
+
+### Non vérifié
+- Vrai téléphone (T2, après l'export 0.3) : dpi réel, confort des cibles à 48 dp, défilement tactile.
+- Toucher réel de la flèche : il est seulement simulé par `Input.parse_input_event`.
