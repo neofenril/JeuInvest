@@ -3,7 +3,8 @@
 #   powershell -ExecutionPolicy Bypass -File godot\outils\capture_interface.ps1 -Etape cibles -Nom essai -Telephone
 #   ... -Serie : toute la série PX2 (écrans de CA-I10 en PC 1920 × 1080 et au téléphone simulé, hud_720 / hud_1366 /
 #       hud_1080 / hud_tel, planche_cadres sur 4 formats, cibles sur 3 formats, polices_jeu, courrier_relu_echap,
-#       fps sur 2 formats, montages). Journal : godot\captures\px2_serie.log.
+#       fps sur 2 formats, montages ; lot 02 : étapes du bouton COURRIER, du saut et du badge, préfixe l2_, et
+#       integrale_saut). Journal : godot\captures\px2_serie.log.
 # Code 0 seulement si chaque lancement rend 0, sans erreur de script, et si tous les contrôles « UI » sont à
 # zéro (irreguliers=0, sous_seuil=0, debordements=0, hors_cadre=0, hors_ecran=0, recouvert=non, recouvre=non,
 # contenu_coupe=non, dans_ecran=oui, boutons_visibles=oui, chiffres_pixelify=0, atkinson_min ≥ 20, clic à
@@ -33,10 +34,10 @@ function Empreinte {
 }
 
 # Un lancement : renvoie un objet { Nom, Code, Erreurs, Fautes, Lignes }
-function Lancer([string]$etape, [string]$nom, [string]$taille, [string]$tel) {
+function Lancer([string]$etape, [string]$nom, [string]$taille, [string]$tel, [string]$attente = "0") {
     $a = @("--path", $projet, "--resolution", $taille)
     if ($taille -eq "1920x1080" -and $tel -eq "") { $a += "--fullscreen" }
-    $a += @("--", "--capture=captures/$nom.png", "--frames=10", "--attente=0", "--etape=$etape")
+    $a += @("--", "--capture=captures/$nom.png", "--frames=10", "--attente=$attente", "--etape=$etape")
     if ($tel -eq "1") { $a += "--telephone" }
     if ($tel -eq "169") { $a += "--telephone=169" }
     # Lancement surveillé : journal de Godot dans un fichier, arrêt au bout de 300 s (un blocage n'arrête pas la série)
@@ -44,7 +45,8 @@ function Lancer([string]$etape, [string]$nom, [string]$taille, [string]$tel) {
     $p = Start-Process -FilePath $godot -ArgumentList (@("--log-file", $log) + $a) -PassThru -WindowStyle Hidden
     $null = $p.Handle
     $bloque = $false
-    if (-not $p.WaitForExit(180000)) {
+    $limite = if ($etape -like "integrale*") { 450000 } else { 180000 }   # la partie intégrale dure 3 à 4 min
+    if (-not $p.WaitForExit($limite)) {
         Get-CimInstance Win32_Process -Filter "Name like 'Godot%'" | Where-Object { $_.CommandLine -match [regex]::Escape("captures/$nom.png") } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
         $code = 124
         $bloque = $true
@@ -56,8 +58,11 @@ function Lancer([string]$etape, [string]$nom, [string]$taille, [string]$tel) {
     if ($bloque -and ($sortie -match '^Capture enregistr')) { $code = 0; $script:sorties_bloquees += 1; $sortie += "UI note sortie_bloquee=oui (Godot arrêté après la capture)" }
     Remove-Item $log -ErrorAction SilentlyContinue
     $erreurs = @($sortie | Where-Object { $_ -match 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access|Cannot call method' })
-    $ui = @($sortie | Where-Object { $_ -match '^UI |^Images par seconde|^Clic ' } | ForEach-Object { if ($_ -match '^Clic ') { "UI clic_dehors $_" } else { $_ } })
-    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|hors_cadre=[1-9]|hors_ecran=[1-9]|recouvert=oui|recouvre=oui|contenu_coupe=oui|dans_ecran=non|boutons_visibles=non|chiffres_pixelify=[1-9]|hud_focalisables=[1-9]|dans_libre=non|visible=non|fleches_texte=[1-9]|fermee=non|echap_ignore=non|atkinson=non|: False' })
+    $ui = @($sortie | Where-Object { $_ -match '^UI |^Images par seconde|^Clic |^Intégrale |^Capture : sauvegarde' } | ForEach-Object { if ($_ -match '^Clic ') { "UI clic_dehors $_" } else { $_ } })
+    $fautes = @($ui | Where-Object { $_ -match 'irreguliers=[1-9]|sous_seuil=[1-9]|debordements=[1-9]|hors_cadre=[1-9]|hors_ecran=[1-9]|recouvert=oui|recouvre=oui|contenu_coupe=oui|dans_ecran=non|boutons_visibles=non|chiffres_pixelify=[1-9]|hud_focalisables=[1-9]|dans_libre=non|visible=non|fleches_texte=[1-9]|fermee=non|echap_ignore=non|atkinson=non|: False|une_ligne=non|dans_barre=non|retour=non|decale=non|sans_modale=[1-9]|vitesses_ecarts=[1-9]' })
+    # Lot 02 : tuiles du carnet ≥ 20 px (m10), badge = non_lues
+    foreach ($l in ($ui | Where-Object { $_ -match 'UI tuiles taille_min=(\d+)' })) { if ([int]([regex]::Match($l, 'taille_min=(\d+)').Groups[1].Value) -lt 20) { $fautes += "tuile sous 20 px" } }
+    foreach ($l in ($ui | Where-Object { $_ -match '^UI badge n=(\S*) = non_lues=(\d+)' })) { $m = [regex]::Match($l, 'n=(\S*) = non_lues=(\d+)'); $k = [int]$m.Groups[2].Value; $att = if ($k -gt 9) { "9+" } elseif ($k -eq 0) { "" } else { "$k" }; if ($m.Groups[1].Value -ne $att) { $fautes += "badge différent de non_lues" } }
     foreach ($l in ($ui | Where-Object { $_ -match 'atkinson_min=(\d+)' })) { if ([int]([regex]::Match($l, 'atkinson_min=(\d+)').Groups[1].Value) -lt 20) { $fautes += "atkinson_min < 20" } }
     foreach ($l in ($ui | Where-Object { $_ -match '^Images par seconde.*: ([\d.,]+)' })) { if ([double]([regex]::Match($l, ': ([\d.,]+)').Groups[1].Value.Replace(',','.')) -lt 55) { $fautes += "moins de 55 images par seconde" } }
     $pix = $ui | Where-Object { $_ -match 'pixelify_min=(\d+)' } | ForEach-Object { [int]([regex]::Match($_, 'pixelify_min=(\d+)').Groups[1].Value) }
@@ -123,12 +128,26 @@ $plan.Add(@("polices_jeu", "px2_polices_jeu", "1920x1080", ""))
 $plan.Add(@("courrier_relu_echap", "px2_courrier_relu_echap", "1280x720", ""))
 $plan.Add(@("fps", "px2_fps_1080", "1920x1080", ""))
 $plan.Add(@("fps", "px2_fps_tel", "1440x648", "1"))
+# Lot 02 (bouton COURRIER, saut, badge) : préfixe l2_
+foreach ($e in @("courrier_repos", "courrier_saut", "courrier_inactif", "courrier_bulle")) {
+    foreach ($t in @(@("1080", "1920x1080", ""), @("1152", "1152x648", ""), @("tel", "1440x648", "1"), @("tel169", "1280x720", "169"))) {
+        $plan.Add(@($e, ("l2_" + $e + "_" + $t[0]), $t[1], $t[2]))
+    }
+}
+foreach ($e in @("notifs_saut", "badge_non_lus", "historique_nouveau")) {
+    foreach ($t in @(@("1080", "1920x1080", ""), @("tel", "1440x648", "1"))) {
+        $plan.Add(@($e, ("l2_" + $e + "_" + $t[0]), $t[1], $t[2]))
+    }
+}
+$plan.Add(@("courrier_saut_pause", "l2_courrier_saut_pause_1080", "1920x1080", ""))
+$plan.Add(@("courrier_saut_pause", "l2_courrier_saut_pause_1080_b", "1920x1080", "", "0.5"))   # 0,5 s plus tard : voitures déplacées
+$plan.Add(@("integrale_saut", "l2_integrale_saut", "1280x720", ""))
 $echecs = 0
 $script:sorties_bloquees = 0
 $i = 0
 foreach ($p in $plan) {
     $i++
-    $r = Lancer $p[0] $p[1] $p[2] $p[3]
+    $r = Lancer $p[0] $p[1] $p[2] $p[3] $(if ($p.Count -gt 4) { $p[4] } else { "0" })
     $etat = if ($r.Code -eq 0 -and $r.Erreurs.Count -eq 0 -and $r.Fautes.Count -eq 0) { "OK" } else { "ÉCHEC"; $echecs++ }
     $ligne = "[{0}/{1}] {2} {3} ({4}{5}) code {6}" -f $i, $plan.Count, $etat, $r.Nom, $p[2], $(if ($p[3] -eq "1") { ", téléphone" } elseif ($p[3] -eq "169") { ", téléphone 16:9" } else { "" }), $r.Code
     Write-Host $ligne

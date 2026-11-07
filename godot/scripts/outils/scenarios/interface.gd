@@ -6,7 +6,9 @@ extends RefCounted
 ## - hud : bouton HISTORIQUE (taille en px physiques, jamais recouvert, panneau ouvert et fermé) ;
 ## - polices_jeu : planche des polices du jeu (accents français, tnum d'Atkinson).
 
-const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette"]
+const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette",
+	"courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau"]
+const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
 var sc: ScenariosCapture
@@ -29,6 +31,103 @@ func jouer(etape: String) -> void:
 			await _polices_jeu()
 		"etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette":
 			await _etiquettes(etape, jeu)
+		_:
+			await _courrier(etape, jeu)
+
+
+# =====================================================================
+# Bouton COURRIER, notifications du saut, badge des non-lus (lot 02, CA-I2, CA-I3, CA-I5, CA-I6)
+# =====================================================================
+
+func _courrier(etape: String, jeu: Node) -> void:
+	sc.partir_de_la_rue(etape)
+	var hud: Hud = jeu.hud
+	var ville: Node2D = jeu.ville
+	var modales: Modales = jeu.modales
+	var e := Partie.etat
+	sc.aller_a(Dates.lire(MOIS_COURRIER), true)
+	StrategieTest.jouer_mois(e, true)   # la modale du mois d'arrivée, s'il y en a une, est résolue : saut possible
+	if not e.modale.is_empty():
+		e.resolution_auto()
+	sc.rafraichir_apres_saut()
+	Partie.changer_vitesse(0 if etape == "courrier_saut_pause" else 1)
+	await sc.delai(1.0)
+	match etape:
+		"courrier_repos":
+			var p: Control = hud.etiquettes["banque"]
+			var y0 := p.position.y
+			hud.sauter_etiquette("banque")
+			var decale := p.position.y == y0 - 3.0
+			await sc.delai(0.3)
+			print("UI sauter_etiquette decale=%s retour=%s" % ["oui" if decale else "non", "oui" if p.position.y == y0 else "non"])
+			Partie.changer_vitesse(0)
+			await sc.delai(0.6)
+		"courrier_saut", "courrier_saut_pause", "notifs_saut", "badge_non_lus", "historique_nouveau":
+			jeu.demander_saut()
+			print("UI saut depart=%s vitesse=%d saut=%s" % [Dates.texte(e.ab_courant()), Partie.vitesse, "oui" if Partie.saut_actif else "non"])
+			await sc.delai(1.6)
+			if etape == "notifs_saut":
+				# En 1986, les vraies notifications sont rares : on en ajoute 4 (titres repris de l'historique, marquées
+				# « pendant le saut ») pour montrer la pile de 3 et la 4e qui pousse la plus ancienne vers HISTORIQUE.
+				var modeles := e.historique_recent("").slice(0, 4)
+				for h: Dictionary in modeles:
+					hud.notifier({"source": h["source"], "titre": h["titre"], "texte": "", "pendant_saut": true}, e.ab_courant())
+					await sc.delai(0.12)
+				await sc.delai(0.1)
+				print("UI notifs fabriquees=%d (fiche volante en vol : %s)" % [modeles.size(), "oui" if hud.find_child("FicheVolante", true, false) != null else "non"])
+			print("UI saut anime=%s gel=%.2f badge_pause=%s vitesse=%d saut=%s trafic=%.2f bouton=%s mois=%s" % ["oui" if ville.get("anime") else "non", float(ville.get("gel")),
+				"oui" if hud.badge_pause.visible and hud.badge_pause.text == "EN PAUSE" else "non", Partie.vitesse, "oui" if Partie.saut_actif else "non",
+				float(ville.get("facteur_trafic")), hud.etat_courrier(), Dates.texte(e.ab_courant())])
+			if etape == "notifs_saut":
+				_notifs_compactes(hud)
+			elif etape in ["badge_non_lus", "historique_nouveau"]:
+				await sc.attendre_que(func() -> bool: return e.non_lues() >= 3 or not Partie.saut_actif, 6.0)
+				jeu.demander_saut()   # nouvel appui : le saut s'arrête, la vitesse d'avant revient
+				Partie.changer_vitesse(0)
+				await sc.delai(0.6)
+				print("UI badge n=%s = non_lues=%d (saut arrêté : %s, vitesse %d)" % [hud.texte_badge_affiche(), e.non_lues(), "oui" if not Partie.saut_actif else "non", Partie.vitesse])
+				if etape == "historique_nouveau":
+					jeu.ouvrir_historique("")
+					await sc.delai(1.2)
+					var nouveaux := modales.courant.find_children("Nouveau", "Label", true, false).size() if modales.ouverte() else 0
+					var pastilles := modales.courant.find_children("Nouveautes", "Control", true, false).size() if modales.ouverte() else 0
+					print("UI historique_nouveau etiquettes=%d pastilles=%d non_lues=%d" % [nouveaux, pastilles, e.non_lues()])
+		"courrier_inactif":
+			jeu.ouvrir_banque("", -2.0)
+			await sc.delai(1.2)
+			print("UI courrier inactif bouton=%s modale=%s" % [hud.etat_courrier(), modales.genre_courant])
+		"courrier_bulle":
+			Partie.changer_vitesse(0)
+			await sc.delai(0.3)
+			hud.montrer_bulle_courrier()   # forcée (comme --bulle-courrier) : jamais lue ni écrite en capture
+			await sc.delai(0.8)
+			var b := hud.find_child("BulleCourrier", true, false) as Control
+			print("UI bulle visible=%s dans_libre=%s" % ["oui" if b != null and b.is_visible_in_tree() else "non",
+				"oui" if b != null and hud.rect_libre().grow(1.0).encloses(b.get_global_rect()) else "non"])
+	var r := hud.b_courrier.get_global_rect()
+	var echelle := sc.get_viewport().get_final_transform().get_scale().x
+	print("UI courrier etat=%s taille=%dx%d px libelle=%s dans_barre=%s" % [hud.etat_courrier(), roundi(r.size.x * echelle), roundi(r.size.y * echelle),
+		"oui" if (hud.b_courrier.get_node("Contenu").get_child(1) as Control).visible else "non",
+		"oui" if hud.barre.get_global_rect().grow(1.0).encloses(r) else "non"])
+	_mesurer(etape, hud)
+
+
+## Notifications compactes du saut : une ligne chacune, dans le rectangle libre (CA-I5).
+func _notifs_compactes(hud: Hud) -> void:
+	var libre := hud.rect_libre()
+	var n := 0
+	var une_ligne := true
+	var dedans := true
+	for c in hud.notifs.get_children():
+		if not c.has_meta("compacte") or (c as Control).is_queued_for_deletion():
+			continue
+		n += 1
+		var p := c as Control
+		if p.size.y > 78.0:
+			une_ligne = false
+		if not libre.grow(1.0).encloses(p.get_global_rect()):
+			dedans = false
+	print("UI notifs compactes=%d une_ligne=%s dans_libre=%s badge=%s non_lues=%d" % [n, "oui" if une_ligne else "non", "oui" if dedans else "non", hud.texte_badge_affiche(), Partie.etat.non_lues()])
 
 
 # =====================================================================
@@ -186,6 +285,8 @@ func _cibles(jeu: Node) -> void:
 	jeu.ouvrir_banque("sicav", -2.0)
 	await sc.delai(1.5)
 	_mesurer("banque_carnet_fiche", modales.courant)
+	var tailles := modales.courant.find_children("*", "Control", true, false).filter(func(c: Node) -> bool: return c is CarteProduit).map(func(c: Node) -> int: return int(c.get("taille_min_dessinee")))
+	print("UI tuiles taille_min=%d (cartes %d ; m10 : aucun texte de tuile sous 20 px)" % [tailles.min() if not tailles.is_empty() else 0, tailles.size()])
 	modales.banque.call("_afficher_ordre", "sicav", "a", -1.0)
 	await sc.delai(0.6)
 	_mesurer("banque_ordre", modales.courant)
