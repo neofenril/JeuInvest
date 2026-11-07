@@ -88,3 +88,44 @@ Ressenti du glissement et de l'inertie ; « grouillement » des pixels en mouvem
 
 ### Non vérifié
 Le même qu'au passage 1 ; en plus, l'à-coup d'A11 dans une vraie partie lancée de janvier 1984 jusqu'au krach (mesuré seulement après 10 s de préchauffage, ce qui reproduit le cas d'une longue partie) et la durée de l'à-coup de la première nuit (textures mesurées, image non chronométrée).
+
+## PX1-bis : 2026-11-07, branche `lot/px1-ville`, commit testé adf593d (base `main` dfd5ca4)
+
+**Verdict : OK** (A11, A3 et le blocage à la sortie corrigés ; 3 mineures).
+
+### Ce qui a été lancé
+- Périmètre : `git diff main...lot/px1-ville --stat` = 5 fichiers : `scripts/ville/rue.gd`, `scripts/pixel/grille.gd`, `scripts/outils/scenarios/ville.gd`, `tests/test_rue.gd`, `docs/connaissances/dev-ville.md`. Tous attribués à dev-ville par le §1 de `lot_px1.md` (`grille.gd` : ligne « `scripts/pixel/*.gd` hors `scripts/pixel/ui/` (… `grille` …) »). Aucun fichier temporaire ni `.import`. Worktree propre.
+- `tests.ps1` (worktree) : 10 étapes, **405 OK, 0 KO, 0 erreur de script, 58,7 s**, import propre. `test_rue` 75 OK : génération 1 408 ms, `RUE image_max_ms=16.0` (première nuit, premier orage, fondus, après préchauffage), tâches + préchauffage 2,8 s.
+- `capture_ville.ps1 -Serie` (copie isolée de adf593d, `user://` à part, 519 s) : 55 lancements à code 0, 0 erreur de script, `hors_palette=0` (14/14), `irreguliers=0` (5/5). Le « au moins un échec » final venait seulement du montage `px1_montage_px0` (image de référence `px0_quater_jour_1080.png` absente de ma copie, fichier non suivi) ; après copie de l'image, `-Montages` : « PX1 : tout est vert ». Images/s 351 (1080p) / 612 (tél.), un peu moins qu'au passage 2 (426 / 694), machine chargée par un autre testeur en parallèle ; ≫ 60.
+- Fusion simulée : worktree jetable détaché sur `main` dfd5ca4 + `merge --no-ff lot/px1-ville` → aucun conflit, **arbre identique** à adf593d (la branche part de `main`) : les 405 tests valent pour la fusion. **Partie complète** (`integrale` sur la copie) : **160 749 F, frais 805,93 F, 11 interruptions**, fin déc. 1988, modales appel 8 / banque 4 / courrier 2 / journal 1 / fin 1 (= référence). Worktree et copies supprimés.
+- `partie_en_cours.sav` du joueur : SHA-256 E2B314A8… au début de ma recette, 836B1610… à la fin, fichier daté du 07/11 à 00:49:26 : écrit par une partie lancée à 00:28 (2 Godot qui n'étaient pas à moi, fermés depuis), pas par mes lancements (tous en `user://` isolé, sauf `tests.ps1`, qui n'y touche pas).
+
+### A11 (à-coup au premier orage / à la première nuit) : corrigée
+- Série : `RUE image_max etape=krach_anim` 6,1 / 17,1 / 43,6 ms (au lieu de 604 à 664 ms) ; `rue` 2-4 ms, `rue_nuit` 3,4 ms, `pluie` 4,0 ms. Toucher pour passer le krach : `journal_krach duree=0.27` s (0,73 s au passage 2), `delai=0.00` ; banquier 0,28, crash 0,26, naissance 0,26 s.
+- Durées normales inchangées : banquier 2,24 s, journal 0,96, krach 1,30, crash 1,78 / 1,74, courrier 0,96, naissance 1,83 s.
+- **Démarrage** (copie instrumentée : chrono des images et captures à 0,2 à 5 s après le début du scénario, « Jouer » à 0,3 s puis à 1,5 s) : les 7 arbres de la rue sont dessinables dès 0,2 s ; seul l'**arbre de premier plan** manque jusqu'à ≈ 2 s (préchauffage fini à ≈ 2,2 s). Au titre il est masqué de toute façon ; en jeu, il n'apparaît d'un coup (bord droit) que si le joueur clique « Jouer » dans les ≈ 2 premières secondes. Une image de 165-173 ms à t ≈ 0,17 s, sur l'écran titre (origine non recherchée : peut-être déjà sur `main`, compilation des shaders au premier affichage). Voir M1.
+
+### A3 (arbre vert sous les toits enneigés) : corrigée
+- `px1_pause` (01/1988, étape qui n'attend pas les tâches de fond) : arbre givré sous des toits enneigés, comme `px1_saison_hiver` ; même chose sur ma capture de démarrage en janvier 1984 (arbres givrés dès 0,2 s). Contrôle ajouté dans `test_rue` (noms des feuillages demandés en hiver).
+
+### Blocage à la sortie : corrigé
+- Étape `carnet_pel` (qui figeait Godot sur `main` depuis F1-L) : **12 lancements sur 12** ont quitté seuls, en 6 à 7 s, PNG écrit, 0 erreur.
+- Arrêt pendant la génération (`--quit-after` 1, 2, 5, 10, 30, 60, 120, 250, 500, 1 000, 2 000 images) : **11 sur 11** quittent, 0 erreur ni fuite signalée. Durée totale 5,7-5,8 s, même pour un arrêt à la 1re image (6,5 s à 1 000 images, 8,4 s à 2 000) : quitter juste après le lancement coûte bien ≈ 3 s d'attente des tâches de fond. Voir M2.
+- Je n'ai fermé aucun Godot (les miens se sont tous arrêtés seuls).
+
+### Anomalies (mineures)
+- **M1** : au démarrage, si le joueur clique « Jouer » dans les ≈ 2 s, l'arbre de premier plan apparaît d'un coup au bord droit de la rue. Attendu : arbre présent dès l'arrivée en jeu ou apparition discrète (fondu). Peu visible (bord d'écran, caméra en mouvement vers la banque au 1er appel).
+- **M2** : fermer le jeu dans les ≈ 3 s qui suivent le lancement fige la fenêtre ≈ 3 s avant qu'elle se ferme (le fil principal attend les tâches dans `_exit_tree`). Acceptable (bien mieux qu'un Godot bloqué), à garder en tête sur téléphone (fermeture par le système).
+- **M3** : `capture_ville.ps1 -Serie` finit en « au moins un échec » quand l'image de référence de PX0 manque (copie neuve, autre poste) alors que tous les contrôles sont verts : le montage manquant devrait être signalé sans faire échouer la série.
+- Restent ouvertes depuis le passage 2 : A2 (étiquette « LA GAZETTE » sous la frise au téléphone), A6, A8.
+
+### Critères vérifiés
+- [x] 405 tests verts, import propre, 0 SCRIPT ERROR.
+- [x] Série : 0 erreur, `hors_palette=0`, `irreguliers=0`.
+- [x] A11 : plus longue image au premier orage / première nuit < 50 ms après préchauffage ; toucher du krach 0,27 s.
+- [x] A3 : arbre givré sous toits enneigés en janvier 1988.
+- [x] Sortie : 12/12 `carnet_pel`, 11/11 arrêts précoces.
+- [x] Périmètre conforme ; fusion sans conflit, partie complète = référence.
+
+### Non vérifié
+Vrai téléphone (durée du préchauffage et de l'attente à la sortie sur un processeur mobile, fermeture de l'appli par Android) ; reproduction du blocage sur `main` dans cette recette (non relancée pour ne pas laisser de Godot figés que je ne peux pas fermer ; constaté à F1-L) ; origine de l'image de 165 ms sur l'écran titre.

@@ -88,8 +88,15 @@
 - Références : branche 330 ; fusion main 76e3a30 + F1-L : 401 ; `integrale` inchangée (160 749 F / 805,93 F / 11).
 - Insécable = U+00A0 (`Format.ESPACE`) ; contrôle : regex `(\d|\})[ ](%|F\b)` sur les JSON ; glyphes : `Font.has_char(0xA0)` + `get_string_size` (script `--script` absolu hors projet, ça marche).
 - Ancienne sauvegarde : script `recette_sav.gd` (mode écrire sur copie de main / lire sur la fusion, `StrategieTest.aller_a` jusqu'à 1989-06) ; comparer les chiffres de fin.
-- **Étape `carnet_pel` ne quitte pas** (PNG écrit puis fenêtre figée), déjà sur `main` : lancer les captures par `Start-Process -PassThru` + `WaitForExit(ms)`, jamais en boucle bloquante ; je ne peux pas tuer les processus Godot (garde-fou).
+- **Étape `carnet_pel` ne quitte pas** (corrigé par PX1-bis adf593d, vrai sur `main` avant sa fusion) (PNG écrit puis fenêtre figée), déjà sur `main` : lancer les captures par `Start-Process -PassThru` + `WaitForExit(ms)`, jamais en boucle bloquante ; je ne peux pas tuer les processus Godot (garde-fou).
 - Reste « → » dans `modales.gd` (l. 521, 873) et des espaces normales dans les autres JSON.
+
+## 4 septies. PX1-bis (recette 2026-11-07, `lot/px1-ville` adf593d : OK, 3 mineures)
+- Références : 405 tests (branche = fusion, même arbre) ; `integrale` inchangée ; `test_rue` imprime `RUE image_max_ms`, la série `RUE image_max etape=…` (krach ≤ 44 ms, toucher krach 0,27 s).
+- Série dans une copie neuve : copier `px0_quater_jour_1080.png` dans `captures/` sinon le montage px0 fait échouer la série (faux KO).
+- Blocage à la sortie : `carnet_pel` ×12 et `--quit-after N` (1 à 2 000) via `Start-Process -PassThru` + `WaitForExit(45000)` : quitte toujours ; ≈ 5,7 s minimum (attente des tâches de fond ≈ 3 s).
+- Démarrage : étape jetable `jouer_tot` dans `scenarios/titre.gd` d'une copie (chrono par image + captures à t, « Jouer » à t via variable d'environnement) : arbre de premier plan absent ≈ 2 s ; une image de ≈ 170 ms à t ≈ 0,17 s (origine inconnue).
+- `partie_en_cours.sav` peut changer pendant la recette parce que le joueur joue (Godot non console lancé) : noter la date d'écriture du fichier pour se disculper.
 
 ## 5. Anomalies récurrentes / à surveiller
 - Fichiers « recopiés de main » dans une branche (tests.ps1, trouver_godot.ps1 sur px0-ville) : vérifier `git diff main <branche> -- <fichier>` vide → sans conflit, mineur.
