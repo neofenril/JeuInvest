@@ -75,13 +75,6 @@ func aller_a_modale(id: String, actif: bool) -> void:
 	Partie.rouvrir_modale()
 
 
-## Compatibilité : scripts/outils/scenarios/ville.gd (fichier de dev-ville au lot 02) appelle encore
-## sc.strategie_active(e). Délègue à StrategieTest (aucune copie de stratégie ici) ; à retirer quand
-## ville.gd appellera StrategieTest.jouer_mois directement.
-func strategie_active(e: EtatPartie) -> void:
-	StrategieTest.jouer_mois(e, true)
-
-
 func rafraichir_apres_saut() -> void:
 	var e := Partie.etat
 	jeu.ville.call("regler_mois", Dates.mois(e.ab_courant()), Dates.annee(e.ab_courant()))
