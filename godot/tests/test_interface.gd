@@ -208,12 +208,11 @@ func _visiter_banque(e: EtatPartie) -> Dictionary:
 		modales.ouvrir_banque(e, pid, -2.0)
 		var fiche_ok := await _attendre_genre("banque")
 		var pb := modales.banque
-		# Accès interne à PanneauBanque, toléré au lot 01 ; à remplacer par des accesseurs publics au lot 02 (T15).
-		# Champ introuvable (renommé ?) : la vérification échoue avec un message clair, sans erreur de script.
-		var droite: Control = pb.get("_droite")
+		# Accesseurs publics de PanneauBanque (T15, lot PX2)
+		var droite: Control = pb.zone_droite()
 		if droite == null:
 			ok = false
-			vus.append("PanneauBanque : champ interne _droite introuvable (renommé ?), voir T15")
+			vus.append("PanneauBanque.zone_droite() renvoie null")
 			pb.fermer_demande.emit()
 			break
 		fiche_ok = fiche_ok and droite.get_child_count() > 0 and _textes(droite).size() >= 3
@@ -226,12 +225,12 @@ func _visiter_banque(e: EtatPartie) -> Dictionary:
 		modales.ouvrir_banque(e, pid, -1.0)
 		var ordre_ok := await _attendre_genre("banque")
 		pb = modales.banque
-		# Accès interne à PanneauBanque, toléré au lot 01 ; à remplacer par des accesseurs publics au lot 02 (T15).
-		var b_ok: Variant = pb.get("_b_ok")
-		var droite_ordre: Control = pb.get("_droite")
+		# Accesseurs publics de PanneauBanque (T15, lot PX2)
+		var b_ok: Button = pb.bouton_valider()
+		var droite_ordre: Control = pb.zone_droite()
 		if b_ok == null or droite_ordre == null:
 			ok = false
-			vus.append("PanneauBanque : champ interne %s introuvable (renommé ?), voir T15" % ("_b_ok" if b_ok == null else "_droite"))
+			vus.append("PanneauBanque.%s renvoie null" % ("bouton_valider()" if b_ok == null else "zone_droite()"))
 			pb.fermer_demande.emit()
 			break
 		ordre_ok = ordre_ok and is_instance_valid(b_ok) and droite_ordre.is_ancestor_of(b_ok)

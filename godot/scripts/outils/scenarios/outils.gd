@@ -56,7 +56,7 @@ func _integrale(jeu: Node) -> void:
 					modales.fermer("ouvrir" if n_appels % 2 == 1 else "plus_tard")
 			"banque":
 				var pb: PanneauBanque = modales.banque
-				if pb.get("_b_ok") != null and is_instance_valid(pb.get("_b_ok")) and pb.get("_droite").is_ancestor_of(pb.get("_b_ok")):
+				if pb.bouton_valider() != null and pb.zone_droite().is_ancestor_of(pb.bouton_valider()):
 					pb.call("_part", 0.25)
 					pb.call("_confirmer")
 					await sc.delai(2.6)
@@ -164,13 +164,13 @@ func _degager(jeu: Node) -> void:
 	Partie.changer_vitesse(0)
 
 
-## Vérifie que les chiffres de Bahnschrift sont à chasse fixe (tnum) : tous les chiffres ont la même avance.
+## Vérifie que les chiffres d'Atkinson (police embarquée) sont à chasse fixe (tnum) : même avance pour tous.
 func _verifier_polices() -> void:
 	var f := Style.chiffres()
 	var largeurs := []
 	for ch in "0123456789":
 		largeurs.append(snappedf(f.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, 48).x, 0.01))
-	var base := (f as FontVariation).base_font as SystemFont
+	var base := (f as FontVariation).base_font
 	var sans := []
 	for ch in "0123456789":
 		sans.append(snappedf(base.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, 48).x, 0.01))

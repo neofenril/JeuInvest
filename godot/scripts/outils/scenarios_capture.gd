@@ -6,7 +6,7 @@ extends Node
 ## Ajouter une étape : son nom dans ETAPES de la famille, son cas dans jouer(), et la liste de capture.ps1.
 ## Créé à la demande par principal.preparer_capture (enfant de la scène principale).
 
-const FAMILLES := ["titre", "banque", "ville", "ecrans", "outils"]
+const FAMILLES := ["titre", "banque", "ville", "ecrans", "outils", "interface"]
 const DOSSIER := "res://scripts/outils/scenarios/"
 
 var jeu: Node   # scène principale (principal.gd)
@@ -160,7 +160,7 @@ func appuyer_bouton(racine: Node, texte: String) -> void:
 ## pos : coordonnées de la fenêtre (pixels).
 func clic_dehors(pos := Vector2(-1, -1)) -> void:
 	if pos.x < 0.0:
-		pos = Vector2(20, get_window().size.y / 2.0)
+		pos = Vector2(6, get_window().size.y / 2.0)   # tout au bord : l'historique du téléphone laisse 15 px de chaque côté
 	for appui in [true, false]:
 		var ev := InputEventMouseButton.new()
 		ev.button_index = MOUSE_BUTTON_LEFT

@@ -38,6 +38,16 @@ var _maj_en_cours := false
 var _largeur_droite := 780.0
 
 
+## T15 : colonne de droite (fiche, ordre, CHAQUE MOIS) et bouton de validation de l'ordre (null hors
+## formulaire), pour les tests et les captures (à la place de _droite / _b_ok).
+func zone_droite() -> Control:
+	return _droite
+
+
+func bouton_valider() -> Button:
+	return _b_ok if is_instance_valid(_b_ok) else null
+
+
 func construire(etat: EtatPartie, id: String, montant_initial: float) -> void:
 	e = etat
 	compact = Ecran.compact()
@@ -69,13 +79,20 @@ func construire(etat: EtatPartie, id: String, montant_initial: float) -> void:
 	pause.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tete.add_child(pause)
 	_b_messages = Button.new()
-	_b_messages.custom_minimum_size = Vector2(0, 64 if compact else 72)
-	_b_messages.add_theme_font_size_override("font_size", 20)
+	_b_messages.name = "Historique"
+	_b_messages.custom_minimum_size = Vector2(0, 84)
+	_b_messages.focus_mode = Control.FOCUS_NONE
+	CadresPixel.habiller_bouton(_b_messages, "secondaire", "historique")
+	_b_messages.add_theme_constant_override("h_separation", 9)
 	_b_messages.pressed.connect(func() -> void: historique_demande.emit())
 	tete.add_child(_b_messages)
 	var x := Button.new()
-	x.custom_minimum_size = Vector2(72 if compact else 80, 64 if compact else 72)
-	x.draw.connect(_dessiner_croix.bind(x))
+	x.name = "Croix"
+	x.custom_minimum_size = Vector2(84, 84)
+	x.focus_mode = Control.FOCUS_NONE
+	CadresPixel.habiller_bouton(x, "secondaire")
+	x.icon = CadresPixel.texture("croix", CadresPixel.ECHELLE, {"encre": "creme"})
+	x.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	x.pressed.connect(func() -> void: fermer_demande.emit())
 	tete.add_child(x)
 	v.add_child(tete)
@@ -87,7 +104,8 @@ func construire(etat: EtatPartie, id: String, montant_initial: float) -> void:
 	gauche.add_theme_constant_override("separation", 6 if compact else 10)
 	corps.add_child(gauche)
 	var bandeau := PanelContainer.new()
-	bandeau.add_theme_stylebox_override("panel", Style.boite(Color(1, 1, 1, 0.05), 10, 14, 6))
+	bandeau.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bandeau.add_theme_stylebox_override("panel", CadresPixel.style_marges("plaquette", 15, 6, 15, 6))
 	var hb := HBoxContainer.new()
 	hb.add_child(Style.label("COMPTE COURANT", 18, Style.capitales(), Style.TEXTE_2))
 	_l_cc = Style.label("", 22, Style.chiffres(), Style.TEXTE)
@@ -118,6 +136,7 @@ func construire(etat: EtatPartie, id: String, montant_initial: float) -> void:
 	var pied := Style.label("Simplifié : en 1984, le Livret A s'ouvrait à la Caisse d'épargne ou à la Poste ; la banque de la rue regroupe ici tous les guichets.", 16 if compact else 18, Style.ui(), Color(Style.TEXTE_2, 0.85))
 	pied.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pied.custom_minimum_size.x = custom_minimum_size.x - 40.0
+	pied.visible = not compact   # téléphone : la fenêtre tient dans la hauteur (cibles de 48 dp)
 	v.add_child(pied)
 	_maj_carnet()
 	var depart := id if id != "" else _premier_produit()
@@ -195,7 +214,7 @@ func _sous_titre(pid: String) -> String:
 		"av":
 			return Banquier.taux_txt(Produits.taux_av(Dates.annee(a))) + " % cette année"
 	var pv := e.plus_value_latente(e.joueur, pid)
-	return ("▲ " if pv >= 0.0 else "▼ ") + Format.montant(pv, a, false, true)
+	return Format.montant(pv, a, false, true)   # signe + / − (pas de ▲ ▼ : absents des polices embarquées)
 
 
 func _on_carte(pid: String) -> void:
@@ -487,7 +506,16 @@ func _afficher_ordre(pid: String, m: String, montant_initial := -1.0) -> void:
 	_b_mode_b.disabled = not Banquier.detenu(e, pid)
 	modes.add_child(_b_mode_a)
 	modes.add_child(_b_mode_b)
-	_droite.add_child(modes)
+	if compact:
+		# Téléphone (lot_px2 §9.1 C4) : « ‹ Fiche », ACHETER et VENDRE sur une ligne ; le nom reste lisible
+		# sur la carte choisie du carnet et le prix dans le récapitulatif : la fenêtre tient dans 648 px.
+		for n in tete.get_children():
+			if n is Label:
+				n.visible = false
+		modes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tete.add_child(modes)
+	else:
+		_droite.add_child(modes)
 	_b_mode_a.set_pressed_no_signal(m == "a")
 	_b_mode_b.set_pressed_no_signal(m == "b")
 	var cloture := _type() == "pel" and m == "b"
@@ -514,6 +542,15 @@ func _afficher_ordre(pid: String, m: String, montant_initial := -1.0) -> void:
 		r.pressed.connect(_part.bind(float(k[0])))
 		rapides.add_child(r)
 	_droite.add_child(rapides)
+	if compact:
+		# Téléphone : montant et parts rapides sur une seule ligne (la fenêtre tient dans 720 px)
+		_droite.remove_child(rapides)
+		lm.get_child(0).visible = false
+		_l_montant.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		_l_montant.custom_minimum_size.x = 240
+		rapides.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lm.add_theme_constant_override("separation", 12)
+		lm.add_child(rapides)
 	lm.visible = not cloture
 	_slider.visible = not cloture
 	rapides.visible = not cloture

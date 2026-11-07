@@ -62,7 +62,7 @@ func _piece(c: Vector2, rx: float, ry: float, face: Color, bord: Color) -> void:
 	var reflet := PackedVector2Array()
 	for v in _ellipse:
 		reflet.append(c + Vector2(v.x * rx * 0.55 - rx * 0.12, v.y * ry * 0.45 - ry * 0.1))
-	draw_colored_polygon(reflet, Color(1, 1, 1, 0.18))
+	draw_colored_polygon(reflet, Color(Style.TEXTE, 0.18))
 
 
 func _fantome(c: Vector2, rx: float, ry: float, couleur: Color) -> void:
@@ -78,7 +78,7 @@ func _draw() -> void:
 		return
 	var police := Style.chiffres()
 	var ui := Style.ui()
-	var caps := Style.capitales()
+	var caps := Style.petites_capitales()
 	var montant := float(donnees["montant"])
 	var finales := [float(donnees["sans"]), float(donnees["produit"]), float(donnees["charge"])]
 	var departs := [montant, montant - float(donnees["tout_de_suite"]), montant - float(donnees["tout_de_suite"])]

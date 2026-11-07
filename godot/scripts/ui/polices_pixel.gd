@@ -1,11 +1,12 @@
+class_name PolicesPixel
 extends RefCounted
-## Polices embarquées de l'interface pixel (docs/16 §3.2, lot PX0 §2.5). Sans class_name : chargé par chemin.
-## FontFile importées en niveaux de gris, sans hinting ni sous-pixel, sans MSDF, sans repli système
-## (réglages des .ttf.import) ; graisses par FontVariation (axe « wght »). Aucune SystemFont.
-##   Pixelify Sans : titres, étiquettes, boutons, jamais sous 28 px virtuels (TAILLE_MIN_PIXELIFY).
+## Polices embarquées de l'interface (docs/16 §3.2 ; reprises de PX0, lot PX2). FontFile importées en
+## niveaux de gris, sans hinting ni sous-pixel, sans MSDF, sans repli système (réglages des .ttf.import) ;
+## graisses par FontVariation (axe « wght »). Aucune SystemFont.
+##   Pixelify Sans : titres, étiquettes, boutons, manchettes ; jamais sous 28 px virtuels (TAILLE_MIN_PIXELIFY).
 ##   Atkinson Hyperlegible Next : chiffres (avec « tnum » : chiffres de même largeur), textes longs,
 ##   et tout texte de moins de 28 px.
-##   Jersey 10 : variante de la date et du patrimoine (touche P). Doto : planche des polices seulement.
+##   Doto : affichages lumineux (journal du toit, distributeur). Jersey 10 : gardée dans le dépôt, inutilisée.
 
 const PIXELIFY := "res://polices/pixelify_sans/PixelifySans-Variable.ttf"
 const ATKINSON := "res://polices/atkinson_hyperlegible_next/AtkinsonHyperlegibleNext-Variable.ttf"
@@ -22,8 +23,8 @@ static func _base(chemin: String) -> FontFile:
 	return _cache[chemin]
 
 
-static func _variation(chemin: String, graisse: int, chiffres_fixes: bool) -> Font:
-	var k := "%s|%d|%s" % [chemin, graisse, chiffres_fixes]
+static func _variation(chemin: String, graisse: int, chiffres_fixes: bool, espacement := 0) -> Font:
+	var k := "%s|%d|%s|%d" % [chemin, graisse, chiffres_fixes, espacement]
 	if not _cache.has(k):
 		var v := FontVariation.new()
 		v.base_font = _base(chemin)
@@ -31,6 +32,8 @@ static func _variation(chemin: String, graisse: int, chiffres_fixes: bool) -> Fo
 			v.variation_opentype = {"wght": graisse}
 		if chiffres_fixes:
 			v.opentype_features = {"tnum": 1}
+		if espacement != 0:
+			v.spacing_glyph = espacement
 		_cache[k] = v
 	return _cache[k]
 
@@ -40,9 +43,9 @@ static func pixelify(graisse := 500) -> Font:
 	return _variation(PIXELIFY, graisse, false)
 
 
-## Chiffres et textes (graisse 200 à 800), chiffres tabulaires.
-static func atkinson(graisse := 400) -> Font:
-	return _variation(ATKINSON, graisse, true)
+## Chiffres et textes (graisse 200 à 800), chiffres tabulaires ; espacement facultatif (petites capitales).
+static func atkinson(graisse := 400, espacement := 0) -> Font:
+	return _variation(ATKINSON, graisse, true, espacement)
 
 
 static func jersey() -> Font:
@@ -58,13 +61,9 @@ static func est_pixelify(f: Font) -> bool:
 	return fv != null and fv.base_font == _base(PIXELIFY)
 
 
-## Nombre de polices chargées (les 4 fichiers).
-static func chargees() -> int:
-	var n := 0
-	for c in [PIXELIFY, ATKINSON, JERSEY, DOTO]:
-		if _base(c) != null:
-			n += 1
-	return n
+static func est_atkinson(f: Font) -> bool:
+	var fv := f as FontVariation
+	return fv != null and fv.base_font == _base(ATKINSON)
 
 
 ## Vrai si les chiffres d'Atkinson ont tous la même largeur avec « tnum ».
@@ -74,7 +73,7 @@ static func tnum_atkinson() -> bool:
 	for ch in "123456789":
 		if absf(f.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x - l) > 0.01:
 			return false
-	return f.get_string_size("1111", HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x == f.get_string_size("0000", HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x
+	return true
 
 
 ## Caractères du texte absents de la police (renvoie les caractères manquants).
@@ -85,7 +84,3 @@ static func manquants(chemin: String, texte: String) -> String:
 		if ch != " " and not f.has_char(ch.unicode_at(0)) and not m.contains(ch):
 			m += ch
 	return m
-
-
-static func chemins() -> PackedStringArray:
-	return PackedStringArray([PIXELIFY, ATKINSON, JERSEY, DOTO])

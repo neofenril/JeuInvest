@@ -1,149 +1,157 @@
 class_name Style
 extends RefCounted
-## Direction artistique (09 §2.6-2.8) : palette, polices système, boîtes (StyleBoxFlat) et thème.
-## Tout est construit en code (aucune ressource externe) et mis en cache.
+## Direction artistique de l'interface (docs/16 §3, lot PX2) : couleurs de la palette « Rue 84 »
+## (PalettePixel, 40 premières couleurs), polices embarquées (PolicesPixel : Pixelify Sans pour les titres
+## et boutons, jamais sous 28 px ; Atkinson Hyperlegible Next pour les chiffres et les textes), cadres
+## pixel en 9-patch (CadresPixel) et thème. Tout est construit en code et mis en cache.
+## Les noms (constantes devenues variables statiques, fonctions) sont ceux de la V2 : la ville vectorielle
+## et le reste de l'interface s'en servent sans changement.
 
 # --- HUD ---
-const PANNEAU := Color(0.086, 0.118, 0.18, 0.88)      # #161E2E α 0,88
-const PANNEAU_OPAQUE := Color("161e2e")
-const PANNEAU_ELEVE := Color("1f2a3f")
-const PANNEAU_SURVOL := Color("26334c")
-const FILET := Color("2e3b55")
-const TEXTE := Color("edeae0")
-const TEXTE_2 := Color("9aa6bd")
-const GAIN := Color("46e08a")
-const PERTE := Color("ff5c5c")
-const OR := Color("f2c14e")
-const OR_OMBRE := Color("b8862b")
-const GEL := Color("7fd6ff")
-const ALERTE := Color("ffc94d")
-const ACCENT := Color("ffb547")                       # P1 : ambre
-const ENCRE_ACCENT := Color("14100a")
+static var PANNEAU := PalettePixel.couleur_alpha("nuit", 0.94)
+static var PANNEAU_OPAQUE := PalettePixel.couleur("nuit")
+static var PANNEAU_ELEVE := PalettePixel.couleur("ardoise_sombre")
+static var PANNEAU_SURVOL := PalettePixel.couleur("ardoise")
+static var FILET := PalettePixel.couleur("ardoise")
+static var TEXTE := PalettePixel.couleur("creme")
+static var TEXTE_2 := PalettePixel.couleur("zinc_clair")
+static var GAIN := PalettePixel.couleur("gain")
+static var PERTE := PalettePixel.couleur("perte")
+static var OR := PalettePixel.couleur("or")
+static var OR_OMBRE := PalettePixel.couleur("caramel")
+static var GEL := PalettePixel.couleur("gel")
+static var ALERTE := PalettePixel.couleur("lumiere")
+static var ACCENT := PalettePixel.couleur("ambre")
+static var ENCRE_ACCENT := PalettePixel.couleur("nuit")
 
 # --- Papier ---
-const JOURNAL := Color("f7f3ea")                      # années 1980 (04 §7.3)
-const ENCRE := Color("1b1a17")
-const ENCRE_ROUGE := Color("b3261e")
-const COURRIER := Color("fbf8f1")
+static var JOURNAL := PalettePixel.couleur("creme")
+static var ENCRE := PalettePixel.couleur("encre")
+static var ENCRE_ROUGE := PalettePixel.couleur("perte_papier")
+static var COURRIER := PalettePixel.couleur("blanc_chaud")
+static var GAIN_PAPIER := PalettePixel.couleur("gain_papier")
+static var TEXTE_PAPIER_2 := PalettePixel.couleur("pierre_ombre")
 
-# --- Catégories (barre de répartition, familles du carnet : data/banque.json) ---
-const CATEGORIES := {
-	"cc": Color("8c96a8"), "livret": Color("4ea8de"), "pel": Color("8f8cf2"), "emprunt": Color("d9b44a"),
-	"av": Color("c48bd6"), "sicav": Color("5cc8a0"), "action": Color("ff8a65"),
+# --- Catégories (barre de répartition, familles du carnet) ---
+static var CATEGORIES := {
+	"cc": PalettePixel.couleur("gris_pierre"), "livret": PalettePixel.couleur("ciel"), "pel": PalettePixel.couleur("bleu_vif"),
+	"emprunt": PalettePixel.couleur("or"), "av": PalettePixel.couleur("neon_rose"), "sicav": PalettePixel.couleur("vert_clair"),
+	"action": PalettePixel.couleur("orange"),
 }
 
 # --- Frais (13 §3.1) : cuivre, jamais le rouge des pertes ---
-const CUIVRE := Color("c77b4a")
-const CUIVRE_LISERE := Color("8a4f2b")
-const SILHOUETTE := Color("0f1522")
+static var CUIVRE := PalettePixel.couleur("cuivre")
+static var CUIVRE_LISERE := PalettePixel.couleur("bois")
+static var SILHOUETTE := PalettePixel.couleur("encre")
 
-# --- Sources des messages (bord gauche des notifications) ---
-const SOURCES := {
-	"maison": Color("f28c5b"), "banque": Color("c9a24a"), "media": Color("ff6fa8"),
+# --- Sources des messages (liseré des notifications, onglets, lignes de l'historique) ---
+static var SOURCES := {
+	"maison": PalettePixel.couleur("orange"), "banque": PalettePixel.couleur("or"), "media": PalettePixel.couleur("neon_rose"),
 }
+## Noms de palette des sources (substitution des cadres et des icônes).
+const NOMS_PALETTE_SOURCES := {"maison": "orange", "banque": "or", "media": "neon_rose"}
 
 static var _polices: Dictionary = {}
 static var _theme: Theme = null
 
 
 # =====================================================================
-# Polices
+# Polices (embarquées)
 # =====================================================================
 
-static func _systeme(noms: PackedStringArray, poids: int, msdf := false) -> SystemFont:
-	var f := SystemFont.new()
-	f.font_names = noms
-	f.font_weight = poids
-	f.multichannel_signed_distance_field = msdf
-	f.allow_system_fallback = true
-	return f
-
-
-## Chiffres, date, compteurs : Bahnschrift, chiffres à chasse fixe (tnum).
+## Chiffres, date, compteurs : Atkinson, chiffres à chasse fixe (tnum).
 static func chiffres() -> Font:
-	if not _polices.has("chiffres"):
-		var base := _systeme(PackedStringArray(["Bahnschrift", "Roboto Condensed", "sans-serif-condensed", "sans-serif"]), 600, true)
-		var v := FontVariation.new()
-		v.base_font = base
-		var ts := TextServerManager.get_primary_interface()
-		v.opentype_features = {ts.name_to_tag("tnum"): 1}
-		v.variation_opentype = {ts.name_to_tag("wght"): 600}
-		_polices["chiffres"] = v
-	return _polices["chiffres"]
+	return PolicesPixel.atkinson(600)
 
 
 static func ui() -> Font:
-	if not _polices.has("ui"):
-		_polices["ui"] = _systeme(PackedStringArray(["Segoe UI", "Roboto", "sans-serif"]), 400)
-	return _polices["ui"]
+	return PolicesPixel.atkinson(400)
 
 
 static func ui_gras() -> Font:
-	if not _polices.has("ui_gras"):
-		_polices["ui_gras"] = _systeme(PackedStringArray(["Segoe UI", "Roboto", "sans-serif"]), 600)
-	return _polices["ui_gras"]
+	return PolicesPixel.atkinson(700)
 
 
-## Titres en capitales espacées (titres de panneaux).
+## Titres en capitales : Pixelify (Style.label passe en petites capitales Atkinson sous 28 px).
 static func capitales() -> Font:
-	if not _polices.has("capitales"):
-		var v := FontVariation.new()
-		v.base_font = ui_gras()
-		v.spacing_glyph = 2
-		_polices["capitales"] = v
-	return _polices["capitales"]
+	return PolicesPixel.pixelify(600)
+
+
+## Petites capitales espacées (titres de moins de 28 px) : Atkinson grasse.
+static func petites_capitales() -> Font:
+	return PolicesPixel.atkinson(700, 2)
 
 
 static func led() -> Font:
-	if not _polices.has("led"):
-		_polices["led"] = _systeme(PackedStringArray(["Consolas", "Lucida Console", "monospace"]), 700)
-	return _polices["led"]
+	return PolicesPixel.doto(700)
 
 
-## Manchettes des années 1980 : Impact, capitales serrées (04 §7.3).
+## Manchettes : Pixelify grasse.
 static func manchette() -> Font:
-	if not _polices.has("manchette"):
-		_polices["manchette"] = _systeme(PackedStringArray(["Impact", "Arial Black", "sans-serif-condensed", "sans-serif"]), 800, true)
-	return _polices["manchette"]
+	return PolicesPixel.pixelify(700)
 
 
-## Nom du journal, enseignes : Rockwell, sinon Georgia.
+## Nom du journal, enseignes : Pixelify grasse.
 static func titre_journal() -> Font:
-	if not _polices.has("titre_journal"):
-		_polices["titre_journal"] = _systeme(PackedStringArray(["Rockwell", "Georgia", "serif"]), 700, true)
-	return _polices["titre_journal"]
+	return PolicesPixel.pixelify(700)
 
 
 static func journal() -> Font:
-	if not _polices.has("journal"):
-		_polices["journal"] = _systeme(PackedStringArray(["Georgia", "serif"]), 400)
-	return _polices["journal"]
+	return PolicesPixel.atkinson(400)
 
 
 static func neon() -> Font:
-	if not _polices.has("neon"):
-		var v := FontVariation.new()
-		v.base_font = _systeme(PackedStringArray(["Bahnschrift", "Roboto Condensed", "sans-serif-condensed", "sans-serif"]), 700, true)
-		v.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): 700}
-		v.spacing_glyph = 6
-		_polices["neon"] = v
-	return _polices["neon"]
+	return PolicesPixel.pixelify(700)
+
+
+## Police sûre (lot_px2 §9.1 point 6) : tout texte qui contient un chiffre est en Atkinson (grasse si la
+## police demandée était Pixelify) ; Pixelify sous 28 px devient des petites capitales Atkinson.
+static func police_pour(police: Font, taille: int, texte := "") -> Font:
+	if police != null and PolicesPixel.est_pixelify(police):
+		if a_chiffre(texte):
+			return PolicesPixel.atkinson(700)
+		if taille < PolicesPixel.TAILLE_MIN_PIXELIFY:
+			return petites_capitales()
+	return police
+
+
+static func a_chiffre(texte: String) -> bool:
+	for ch in texte:
+		if ch >= "0" and ch <= "9":
+			return true
+	return false
+
+
+## Garde d'un bouton dont le texte change après coup (montants, nombres) : la police suit la règle des
+## chiffres à chaque dessin. Appelé par les garde-fous de Modales et de Hud.
+static func garder_police(b: Button) -> void:
+	if b.has_meta("police_gardee"):
+		return
+	b.set_meta("police_gardee", true)
+	b.set_meta("police_demandee", b.get_theme_font("font"))
+	b.draw.connect(_ajuster_police.bind(b))
+	_ajuster_police(b)
+
+
+static func _ajuster_police(b: Button) -> void:
+	var demandee: Font = b.get_meta("police_demandee")
+	var voulue := police_pour(demandee, b.get_theme_font_size("font_size"), b.text)
+	if voulue != b.get_theme_font("font"):
+		b.add_theme_font_override.call_deferred("font", voulue)
 
 
 # =====================================================================
-# Boîtes
+# Boîtes simples (aplats à angles droits) et cadres pixel (9-patch)
 # =====================================================================
 
-static func boite(fond: Color, coins := 18, marge_h := 20, marge_v := 16) -> StyleBoxFlat:
+static func boite(fond: Color, _coins := 18, marge_h := 20, marge_v := 16) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = fond
-	s.set_corner_radius_all(coins)
 	s.content_margin_left = marge_h
 	s.content_margin_right = marge_h
 	s.content_margin_top = marge_v
 	s.content_margin_bottom = marge_v
-	s.anti_aliasing = true
-	s.corner_detail = 8
+	s.anti_aliasing = false
 	return s
 
 
@@ -156,74 +164,81 @@ static func bordure(s: StyleBoxFlat, couleur: Color, gauche := 0, haut := 0, dro
 	return s
 
 
-static func ombre(s: StyleBoxFlat, couleur: Color, taille: int, decalage := Vector2.ZERO) -> StyleBoxFlat:
-	s.shadow_color = couleur
-	s.shadow_size = taille
-	s.shadow_offset = decalage
+## Ombre portée en aplat (pas de flou, docs/16 §2.4) : décalage seulement.
+static func ombre(s: StyleBoxFlat, couleur: Color, _taille: int, decalage := Vector2.ZERO) -> StyleBoxFlat:
+	s.shadow_color = Color(ENCRE, minf(couleur.a, 0.5))
+	s.shadow_size = 1
+	s.shadow_offset = Vector2(0, 6) if decalage == Vector2.ZERO else Vector2(roundf(decalage.x / 3.0) * 3.0, maxf(3.0, roundf(decalage.y / 3.0) * 3.0))
 	return s
 
 
-## Panneau du HUD : lumière d'en haut (bordure haute plus claire), ombre portée.
-static func panneau(coins := 18) -> StyleBoxFlat:
-	var s := boite(PANNEAU, coins)
-	bordure(s, Color(1, 1, 1, 0.09), 1, 2, 1, 1)
-	return ombre(s, Color(0, 0, 0, 0.6), 18, Vector2(0, 8))
+## Panneau sombre pixel (barre haute, frise, « Mon argent », fenêtres) ; « coins » est ignoré.
+static func panneau(_coins := 18) -> StyleBox:
+	var s := CadresPixel.style_marges("panneau", 21, 18, 21, 24)
+	s.modulate_color = Color(1, 1, 1, 0.97)
+	return s
 
 
-static func carte(couleur_categorie := Color.TRANSPARENT) -> StyleBoxFlat:
-	var s := boite(PANNEAU_ELEVE, 14, 18, 14)
-	bordure(s, Color(1, 1, 1, 0.10), 1, 2, 1, 1)
+static func carte(couleur_categorie := Color.TRANSPARENT) -> StyleBox:
+	var s := CadresPixel.style_marges("panneau", 18, 15, 18, 21)
 	if couleur_categorie.a > 0.0:
-		s.border_width_left = 6
-		s.border_color = couleur_categorie
-	return ombre(s, Color(0, 0, 0, 0.5), 10, Vector2(0, 6))
-
-
-static func bouton_principal(etat := "normal") -> StyleBoxFlat:
-	var fond := ACCENT
-	if etat == "survol":
-		fond = ACCENT.lightened(0.08)
-	elif etat == "desactive":
-		fond = Color(ACCENT, 0.35)
-	var s := boite(fond, 16, 28, 14)
-	var bas := 1 if etat == "appui" else 4
-	bordure(s, ACCENT.darkened(0.3), 0, 0, 0, bas)
-	if etat == "appui":
-		s.content_margin_top = 17
-	if etat == "survol":
-		ombre(s, Color(ACCENT, 0.35), 14, Vector2(0, 4))
-	elif etat != "desactive":
-		ombre(s, Color(0, 0, 0, 0.4), 6, Vector2(0, 4))
+		s.modulate_color = Color(1, 1, 1, 1)
 	return s
 
 
-static func bouton_secondaire(etat := "normal") -> StyleBoxFlat:
-	var fond := Color(1, 1, 1, 0.06)
-	if etat == "survol":
-		fond = Color(1, 1, 1, 0.12)
+## Papier crème au liseré de la source (carte du banquier, courrier, relectures).
+static func papier(source := "banque", marge_h := 30.0, marge_v := 24.0) -> StyleBox:
+	var nom: String = NOMS_PALETTE_SOURCES.get(source, source)
+	return CadresPixel.style_marges("carte_papier", marge_h + 6.0, marge_v, marge_h, marge_v + 6.0, {} if nom == "or" else {"or": nom})
+
+
+static func bouton_principal(etat := "normal") -> StyleBox:
+	var s: StyleBoxTexture = CadresPixel.style("bouton_principal_enfonce" if etat == "appui" else "bouton_principal").duplicate()
+	_marges_bouton(s, etat == "appui")
+	if etat == "desactive":
+		s.modulate_color = Color(1, 1, 1, 0.45)
+	return s
+
+
+static func bouton_secondaire(etat := "normal") -> StyleBox:
+	var nom := "bouton_secondaire"
+	if etat == "actif":
+		nom = "bouton_principal_enfonce"
 	elif etat == "appui":
-		fond = Color(1, 1, 1, 0.03)
-	elif etat == "actif":
-		fond = Color(ACCENT, 0.9)
-	var s := boite(fond, 16, 24, 12)
-	return bordure(s, Color(1, 1, 1, 0.2) if etat != "actif" else ACCENT.darkened(0.3), 2, 2, 2, 2)
+		nom = "bouton_secondaire_enfonce"
+	var s: StyleBoxTexture = CadresPixel.style(nom).duplicate()
+	_marges_bouton(s, etat == "appui" or etat == "actif")
+	return s
 
 
-static func boite_notification(source: String) -> StyleBoxFlat:
-	var s := boite(Color(PANNEAU_ELEVE, 0.95), 14, 18, 12)
-	bordure(s, SOURCES.get(source, ACCENT), 6, 0, 0, 0)
-	return ombre(s, Color(0, 0, 0, 0.6), 16, Vector2(0, 6))
+static func bouton_papier(etat := "normal") -> StyleBox:
+	var s: StyleBoxTexture = CadresPixel.style("bouton_papier_enfonce" if etat == "appui" else "bouton_papier").duplicate()
+	_marges_bouton(s, etat == "appui")
+	return s
 
 
-static func etiquette_batiment() -> StyleBoxFlat:
-	var s := boite(Color(PANNEAU_OPAQUE, 0.85), 999, 16, 6)
-	bordure(s, Color(1, 1, 1, 0.14), 1, 1, 1, 1)
-	return ombre(s, Color(0, 0, 0, 0.5), 8, Vector2(0, 4))
+static func _marges_bouton(s: StyleBoxTexture, enfonce: bool) -> void:
+	s.content_margin_left = 24
+	s.content_margin_right = 24
+	s.content_margin_top = 15 if enfonce else 12
+	s.content_margin_bottom = 18 if enfonce else 21
 
 
-static func pastille(couleur: Color, coins := 999, marge_v := 8) -> StyleBoxFlat:
-	var s := boite(Color(couleur, 0.16), coins, 20, marge_v)
-	return bordure(s, couleur, 2, 2, 2, 2)
+static func boite_notification(source: String) -> StyleBox:
+	var nom: String = NOMS_PALETTE_SOURCES.get(source, "or")
+	return CadresPixel.style_marges("notification", 24, 15, 18, 21, {} if nom == "or" else {"or": nom})
+
+
+static func etiquette_batiment() -> StyleBox:
+	return CadresPixel.style_marges("etiquette", 18, 6, 18, 6)
+
+
+## Pastille (pilule en escalier) au contour de la couleur donnée (gain, perte, cuivre, encre rouge…).
+static func pastille(couleur: Color, _coins := 999, marge_v := 8) -> StyleBox:
+	var nom := PalettePixel.nom_de(couleur)
+	if nom == "" or not PalettePixel.existe(nom):
+		nom = "gain"
+	return CadresPixel.style_marges("pastille", 21, marge_v, 21, marge_v, {} if nom == "gain" else {"gain": nom})
 
 
 # =====================================================================
@@ -237,72 +252,88 @@ static func theme() -> Theme:
 	t.default_font = ui()
 	t.default_font_size = 24
 	t.set_color("font_color", "Label", TEXTE)
-	# Boutons : secondaire par défaut
+	# Boutons : secondaire par défaut (ardoise sombre), texte Pixelify 28
 	t.set_stylebox("normal", "Button", bouton_secondaire())
-	t.set_stylebox("hover", "Button", bouton_secondaire("survol"))
+	t.set_stylebox("hover", "Button", bouton_secondaire())
 	t.set_stylebox("pressed", "Button", bouton_secondaire("appui"))
 	t.set_stylebox("hover_pressed", "Button", bouton_secondaire("actif"))
-	t.set_stylebox("disabled", "Button", bouton_secondaire("appui"))
+	t.set_stylebox("disabled", "Button", bouton_secondaire())
 	t.set_stylebox("focus", "Button", _focus())
 	t.set_color("font_color", "Button", TEXTE)
-	t.set_color("font_hover_color", "Button", TEXTE)
-	t.set_color("font_pressed_color", "Button", ENCRE_ACCENT)
+	t.set_color("font_hover_color", "Button", PalettePixel.couleur("blanc_chaud"))
+	t.set_color("font_pressed_color", "Button", TEXTE)
 	t.set_color("font_hover_pressed_color", "Button", ENCRE_ACCENT)
+	t.set_color("font_focus_color", "Button", TEXTE)
 	t.set_color("font_disabled_color", "Button", Color(TEXTE, 0.4))
-	t.set_font("font", "Button", ui_gras())
-	t.set_font_size("font_size", "Button", 24)
-	# Bouton principal (variation)
+	t.set_font("font", "Button", capitales())
+	t.set_font_size("font_size", "Button", 28)
+	# Bouton principal (variation) : ambre, texte nuit
 	t.set_type_variation("BoutonPrincipal", "Button")
 	t.set_stylebox("normal", "BoutonPrincipal", bouton_principal())
-	t.set_stylebox("hover", "BoutonPrincipal", bouton_principal("survol"))
+	t.set_stylebox("hover", "BoutonPrincipal", bouton_principal())
 	t.set_stylebox("pressed", "BoutonPrincipal", bouton_principal("appui"))
+	t.set_stylebox("hover_pressed", "BoutonPrincipal", bouton_principal("appui"))
 	t.set_stylebox("disabled", "BoutonPrincipal", bouton_principal("desactive"))
-	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
 		t.set_color(c, "BoutonPrincipal", ENCRE_ACCENT)
 	t.set_color("font_disabled_color", "BoutonPrincipal", Color(ENCRE_ACCENT, 0.5))
-	# Bouton bascule (onglets, vitesses) : l'état « pressed » est l'état actif
+	# Bouton papier (variation) : crème, texte encre
+	t.set_type_variation("BoutonPapier", "Button")
+	t.set_stylebox("normal", "BoutonPapier", bouton_papier())
+	t.set_stylebox("hover", "BoutonPapier", bouton_papier())
+	t.set_stylebox("pressed", "BoutonPapier", bouton_papier("appui"))
+	t.set_stylebox("hover_pressed", "BoutonPapier", bouton_papier("appui"))
+	t.set_stylebox("disabled", "BoutonPapier", bouton_papier())
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+		t.set_color(c, "BoutonPapier", ENCRE)
+	t.set_color("font_disabled_color", "BoutonPapier", Color(ENCRE, 0.45))
+	# Bouton bascule (onglets, vitesses) : l'état « pressed » est l'état actif (ambre)
 	t.set_type_variation("BoutonBascule", "Button")
 	t.set_stylebox("pressed", "BoutonBascule", bouton_secondaire("actif"))
 	t.set_stylebox("hover_pressed", "BoutonBascule", bouton_secondaire("actif"))
+	t.set_color("font_pressed_color", "BoutonBascule", ENCRE_ACCENT)
+	t.set_color("font_hover_pressed_color", "BoutonBascule", ENCRE_ACCENT)
 	# Panneaux
 	t.set_stylebox("panel", "PanelContainer", panneau())
 	t.set_stylebox("panel", "Panel", panneau())
 	# Curseur
-	var piste := boite(FILET, 6, 0, 4)
+	var piste := boite(PANNEAU_ELEVE, 0, 0, 6)
+	bordure(piste, ENCRE, 3, 3, 3, 3)
 	t.set_stylebox("slider", "HSlider", piste)
-	var rempli := boite(ACCENT, 6, 0, 4)
+	var rempli := boite(ACCENT, 0, 0, 6)
+	bordure(rempli, ENCRE, 3, 3, 3, 3)
 	t.set_stylebox("grabber_area", "HSlider", rempli)
 	t.set_stylebox("grabber_area_highlight", "HSlider", rempli)
-	t.set_icon("grabber", "HSlider", _rond(34, TEXTE))
-	t.set_icon("grabber_highlight", "HSlider", _rond(38, Color.WHITE))
+	t.set_icon("grabber", "HSlider", _carre(36, TEXTE))
+	t.set_icon("grabber_highlight", "HSlider", _carre(36, PalettePixel.couleur("blanc_chaud")))
 	t.set_constant("center_grabber", "HSlider", 1)
-	# Barre de défilement discrète
-	t.set_stylebox("scroll", "VScrollBar", boite(Color(1, 1, 1, 0.04), 6, 4, 4))
-	t.set_stylebox("grabber", "VScrollBar", boite(Color(1, 1, 1, 0.25), 6, 4, 4))
+	# Barre de défilement : rail sombre, poignée ardoise, à angles droits
+	t.set_stylebox("scroll", "VScrollBar", boite(Color(ENCRE, 0.35), 0, 6, 6))
+	var poignee := boite(PANNEAU_SURVOL, 0, 6, 6)
+	t.set_stylebox("grabber", "VScrollBar", poignee)
+	t.set_stylebox("grabber_highlight", "VScrollBar", boite(PalettePixel.couleur("gris_pierre"), 0, 6, 6))
+	t.set_stylebox("grabber_pressed", "VScrollBar", boite(PalettePixel.couleur("gris_pierre"), 0, 6, 6))
 	_theme = t
 	return t
 
 
+## Cadre de focus (clavier) : 1 texel blanc chaud (docs/16 §3.3).
 static func _focus() -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.draw_center = false
-	s.set_corner_radius_all(18)
-	bordure(s, Color.WHITE, 3, 3, 3, 3)
-	s.expand_margin_left = 4
-	s.expand_margin_right = 4
-	s.expand_margin_top = 4
-	s.expand_margin_bottom = 4
+	bordure(s, PalettePixel.couleur("blanc_chaud"), 3, 3, 3, 3)
+	s.expand_margin_left = 3
+	s.expand_margin_right = 3
+	s.expand_margin_top = 3
+	s.expand_margin_bottom = 3
 	return s
 
 
-static func _rond(d: int, c: Color) -> ImageTexture:
+## Poignée carrée pixel (contour encre de 1 texel).
+static func _carre(d: int, c: Color) -> ImageTexture:
 	var img := Image.create(d, d, false, Image.FORMAT_RGBA8)
-	var r := d / 2.0
-	for y in d:
-		for x in d:
-			var dist := Vector2(x + 0.5 - r, y + 0.5 - r).length()
-			var a := clampf(r - dist, 0.0, 1.0)
-			img.set_pixel(x, y, Color(c, a))
+	img.fill(ENCRE)
+	img.fill_rect(Rect2i(3, 3, d - 6, d - 6), c)
 	return ImageTexture.create_from_image(img)
 
 
@@ -310,22 +341,35 @@ static func _rond(d: int, c: Color) -> ImageTexture:
 # Raccourcis pour créer des nœuds
 # =====================================================================
 
+## Libellé. Pixelify sous 28 px est remplacée par des petites capitales Atkinson (lisibilité, docs/16 §3.1).
 static func label(texte: String, taille := 24, police: Font = null, couleur := TEXTE) -> Label:
 	var l := Label.new()
 	l.text = texte
+	var p := police_pour(police, taille, texte)
+	if p == null or PolicesPixel.est_atkinson(p):
+		taille = maxi(taille, 20)   # Atkinson jamais sous 20 px virtuels (docs/16 §3.1)
 	l.add_theme_font_size_override("font_size", taille)
-	if police != null:
-		l.add_theme_font_override("font", police)
+	if p != null:
+		l.add_theme_font_override("font", p)
 	l.add_theme_color_override("font_color", couleur)
 	return l
 
 
-static func bouton(texte: String, principal := false, hauteur := 80) -> Button:
+## Côté minimal d'une cible tactile en px virtuels (Ecran.cible_min, 48 dp sur mobile).
+static func cible_min() -> float:
+	var ecran: Node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("Ecran") if Engine.get_main_loop() is SceneTree else null
+	return float(ecran.call("cible_min")) if ecran != null else 72.0
+
+
+## Bouton pixel ; hauteur au moins la cible tactile minimale.
+static func bouton(texte: String, principal := false, hauteur := 84) -> Button:
 	var b := Button.new()
 	b.text = texte
-	b.custom_minimum_size = Vector2(0, hauteur)
+	var cote := maxf(float(hauteur), cible_min())
+	b.custom_minimum_size = Vector2(cote, cote)
 	if principal:
 		b.theme_type_variation = "BoutonPrincipal"
+	b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	b.focus_mode = Control.FOCUS_ALL
 	return b
 

@@ -190,7 +190,7 @@ func jouer(etape: String) -> void:
 func _regler_fenetre(ville: Node2D) -> void:
 	var fen := sc.get_window()
 	if Ecran.telephone_simule:
-		fen.size = Vector2i(1600, 720)
+		fen.size = Ecran.FENETRE_TELEPHONE_169 if Ecran.format_telephone == "169" else Ecran.FENETRE_TELEPHONE   # téléphones de référence (Ecran, lot_px2 §9.1)
 		fen.move_to_center()
 	elif "--rue-borderless" in OS.get_cmdline_user_args():
 		var t := fen.size

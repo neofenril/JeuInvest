@@ -334,3 +334,136 @@ swwwwwwwwwwwwwwwwwwwwwws
 swwwwwwwwwwwwwwwwwwwwwws
 swwsswwsswwsswwsswwsswws
 .ss..ss..ss..ss..ss..ss.
+
+# --- PX2 : onglets du classeur (historique) ; inactif ardoise, actif crème : marges 4 (bas ouvert) ---
+: e encre
+: l ardoise
+: a ardoise_sombre
+image onglet 16x16
+..eeeeeeeeeeee..
+.elllllllllllle.
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+eaaaaaaaaaaaaaae
+: w blanc_chaud
+: c creme
+image onglet_actif 16x16
+..eeeeeeeeeeee..
+.ewwwwwwwwwwwwe.
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+ecccccccccccccce
+
+# --- PX2 : page de journal (bords haut et bas déchirés, répétés en largeur) : marges 8 ---
+: c creme
+: p pierre_claire
+: o encre 60
+image journal 32x32
+c.cc.cccc.cc.cccc.cc.cccc.cc.ccc
+cccccccccccccccccccccccccccccccc
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+pccccccccccccccccccccccccccccccp
+cccccccccccccccccccccccccccccccc
+cc.c.ccccc.c.ccccc.c.ccccc.c.ccc
+oo.o.ooooo.o.ooooo.o.ooooo.o.ooo
+
+# --- PX2 : notification (panneau nuit, liseré de 2 texels à gauche, couleur de la source) : marges 6 ---
+: e encre
+: n nuit
+: b ardoise_sombre
+: g or
+: o encre 60
+image notification 24x24
+..eeeeeeeeeeeeeeeeeeee..
+.eggbbbbbbbbbbbbbbbbbbe.
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+eggnnnnnnnnnnnnnnnnnnnne
+oeggnnnnnnnnnnnnnnnnnneo
+ooeeeeeeeeeeeeeeeeeeeeoo
+.oooooooooooooooooooooo.
+..oooooooooooooooooooo..
+
+# --- PX2 : ligne du classeur (papier ligné, liseré de la source à gauche) : marges 4 ---
+: g or
+: w blanc_chaud
+: r pierre_claire
+image ligne 24x16
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggwwwwwwwwwwwwwwwwwwwwww
+ggrrrrrrrrrrrrrrrrrrrrrr
