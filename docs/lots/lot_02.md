@@ -203,5 +203,62 @@ func sauter_etiquette(id: String) -> void   # l'étiquette ou la flèche de bord
 Fichiers modifiés (comparés au §2), décisions prises à l'intérieur des règles (ex. M1 : fondu ou présence), écarts d'interface (aucun attendu), non vérifié, nombre de vérifications avant / après, captures à relire en priorité, base de connaissances à jour.
 
 ## 9. Validation (rempli par le chef de projet)
-- [ ] 02-I : CA-I1 à I9 · [ ] 02-V : CA-V1 à V7 · [ ] fusion : CA-F1 à F5 · [ ] captures relues · [ ] bases à jour
-- Décision :
+- [ ] 02-I : CA-I1 à I9 · [x] 02-V : CA-V1 à V7 · [ ] fusion : CA-F1 à F5 · [ ] captures relues · [ ] bases à jour
+- Décision (07/11) : **02-V validé** (recette OK passage 1, 586385e, 539 vérifications ; ses mineures m1, m2, m4, m5 vont en 03-V, §10.6) → fusion de `lot/02-ville` dans `main` tout de suite (§10.1). **02-I : KO passage 1** (A1, A2) → corrections du §10.
+
+## 10. Corrections passage 2 (02-I, dev-interface seul) — 07/11
+
+Origine : `lot_02_recette.md`, sections « 02-I passage 1 » et « Fusion simulée ». Le jeu fonctionne ; deux majeures (A1 test aléatoire, A2 étiquettes chevauchées) et des mineures. **dev-ville n'a rien à faire dans ce passage** (`lot/02-ville` reste telle quelle, OK et poussée).
+
+### 10.1 Mise en place (coordinateur), dans cet ordre
+1. Supprimer dans le dépôt principal les `polices/*.ttf.import` non suivis s'il y en a.
+2. Fusionner `lot/02-ville` dans `main` (`merge --no-ff`), `tests.ps1` sur `main` (≥ 539 vérifications, 0 erreur de script), push de `main`. Sur `main` seule, `principal.gd` n'appelle pas encore `pieces_du_mois` : l'ancien comportement des pièces reste (attendu, §3.2).
+3. Fusionner `main` dans `lot/02-interface` (dans le worktree `lot02-interface`). Conflit attendu « ajouté des deux côtés » sur `docs/lots/lot_02_recette.md` : **garder la version de `lot/02-interface`** (elle commence par la section 02-V à l'octet près). Aucun autre conflit attendu (fichiers disjoints). `tests.ps1` sur la branche : seul A1 peut être rouge.
+4. Lancer dev-interface sur `lot/02-interface`. Il lit cette section dans `C:\Users\arthu\Documents\temp\JeuClaude_lots\lot02-interface\docs\lots\lot_02.md` (arrivée par l'étape 3).
+Raison de l'ordre : A2 s'appuie sur `ville.porte_ecran` (fourni par 02-V) et se règle sur la vraie rue avec les vraies pièces ; la branche devient la fusion elle-même, que le testeur vérifie d'un coup (§10.5).
+
+### 10.2 Fichiers (dev-interface)
+Ceux du §2.1, **plus `scripts/ui/modale_courrier.gd`** (C5 seulement). Toujours interdits : `scripts/ville/*`, `scripts/pixel/*` (dont `grille.gd`), `juice.gd`, `scripts/outils/scenarios/ville.gd`, `capture_ville.ps1`, `tests/test_{pieces,rue,pixel}.gd`, logique, données, `tests/recette/`, `docs/` hors sa base.
+
+### 10.3 Décisions du chef de projet
+| # | Sujet | Décision |
+|---|---|---|
+| E1 | Règle de visibilité d'une étiquette (m3 de 02-V) | **Alignée sur celle des pièces** : pour `maison` et `banque`, le bâtiment est « vu » (étiquette en place, sans chevron) si `ville.porte_ecran(id) != Vector2(-1, -1)` (au moins 8 px d'art de porte dans le rectangle libre, règle de 02-V **validée**) ; sinon flèche de bord. Pour `media` (sans porte) : `est_visible` comme aujourd'hui. Appel par `has_method("porte_ecran")`, repli sur `est_visible`. Ainsi : flèche affichée ⇔ les pièces passent par la flèche ; jamais de flèche à côté d'un bâtiment dont on voit la porte. |
+| E2 | Chevauchements (A2) | Invariant : **aucune étiquette ni flèche n'en recouvre une autre** (rectangles agrandis de 4 px), toutes dans `rect_libre()`. Méthode conseillée : poser d'abord les flèches de bord (empilement actuel), puis les étiquettes en place ; une étiquette qui touche une flèche du même côté est poussée à côté d'elle vers le centre (à 8 px), et, faute de place, au-dessus. Masquer une étiquette est interdit. |
+| E3 | Replis de la barre haute (m1), PC (`compact` faux) | Dans cet ordre, chacun seulement si la barre déborde encore : (1) « VS TOUT AU LIVRET A » → « VS LIVRET A » ; (2) « COMPTE COURANT » → « COMPTE » ; (3) variation `l_var` ; (4) libellé COURRIER (icône seule, info-bulle gardée). « EN PAUSE » / « » ×6 » ne se replie **jamais** sur PC. Objectif 1920 × 1080 et 1920 × 1009 : variation et libellé COURRIER visibles (obligatoire) ; « COMPTE COURANT » s'il tient (sinon « COMPTE », dire de combien de px il manquait). 1152 × 648 : icône seule acceptée (écart à D1 validé). |
+| E4 | Replis, téléphone (`compact` vrai) | Ordre : (1) libellé COURRIER (icône seule 84 × 84 ; la bulle de 1re apparition l'explique) ; (2) seulement ensuite « EN PAUSE » / « » ×6 ». **Téléphone de référence 1440 × 648 : « EN PAUSE » en pause et « » ×6 » pendant le saut toujours visibles** (écart à D1 assumé : l'état du temps prime sur le libellé du bouton). 1280 × 720 : visibles si possible ; sinon repli permis (dire pourquoi). La largeur mini de `badge_pause` peut descendre à la plus large des deux chaînes. |
+| E5 | `strategie_active` (m3 de 02-I) | Après l'étape 3 du §10.1, plus aucun appelant (`scenarios/ville.gd` de 02-V ne l'appelle plus) : dev-interface **supprime** la délégation et son commentaire. |
+| E6 | Erreurs `GrillePixel` dans l'exe (m4) | Préexistantes, identiques en 0.3 ; **non bloquantes** pour la 0.4 (écart accepté à CA-F5 pour ces deux lignes seulement). Constat : `cadres.txt` commence bien par « # Cadres » (octets 35 32, sans BOM) : la cause est dans la lecture par l'exe, à chercher par le propriétaire de `scripts/pixel/grille.gd` → **03-V, dev-ville** (§10.6). Ne pas retirer les commentaires des `.txt` pour masquer l'erreur. |
+
+### 10.4 Tâches (dev-interface), un commit par tâche, `tests.ps1` vert avant chaque commit
+- **C1 (A1) `test_interface` déterministe.** `_test_courrier` ne dépend plus de la graine aléatoire de `principal._config()` : relancer la partie avec `Donnees.config_demo(GRAINE)` après l'instanciation de la scène, **et** faire franchir au saut une notification connue indépendante de la vie (ex. partir de janvier 1986 par `StrategieTest.aller_a`, saut qui franchit « Le Livret A baisse »). Ajouter une vérification de **précondition** explicite (`non_lues() > 0` avant d'ouvrir l'historique), pour que « historique fermé : non_lues() == 0 » ne puisse plus passer à vide. Les autres vérifications du test gardent leur sens.
+- **C2 (A2 + E1 + E2) `Hud.placer_etiquettes`.** Règle E1, invariant E2. Ajouter `func chevauchements_etiquettes() -> int` (nombre de paires qui se recouvrent, rectangles agrandis de 4 px, + étiquettes hors `rect_libre()`), lu par les tests et les captures. Le méta `"fleche"` et `Hud.etiquettes` restent gelés (lus par `Sequences`).
+- **C3 Contrôles de C2.** (a) `test_interface` : balayage de toute la rue (caméra déplacée par l'API de la ville, `aller_vers` / `position_camera` / `bornes_rue`, pas ≤ 30 px d'art), panneau ouvert, au format du test : `chevauchements_etiquettes() == 0` à chaque position ; à chaque position, pour `maison` et `banque`, flèche affichée ⇔ `porte_ecran == (-1, -1)`. (b) Nouvelle étape de capture `etiquettes_balayage` (famille `interface`, ajoutée à la série de `capture_interface.ps1`) aux formats PC 1080, PC 1152 × 648, téléphone 1440 × 648, téléphone 1280 × 720, qui imprime `UI etiquettes balayage positions=<n> chevauchements=0 hors_libre=0 incoherences=0` et capture les deux cadrages de la recette : « maison presque entière au bord gauche » (celui de `pieces_glisse`) et « banque entière au téléphone » (celui de `pieces_or_tel`).
+- **C4 (m1, E3, E4) Replis de la barre.** `_replier_barre` dans l'ordre E3 / E4. Ligne de contrôle dans l'étape `cibles` (ou `courrier_*`) : `UI barre format=<…> etat=<pause|saut> pause_visible=<oui|non> libelle_courrier=<oui|non> var=<oui|non> titre_cc=<…> titre_livret=<…> replis=<liste>` aux 7 formats de la série, en pause **et** pendant un saut.
+- **C5 (m2 de 02-I) Timbre « 2,20 F »** (`modale_courrier.gd` l. 215) : ≥ 20 px, en Atkinson (`Style.chiffres()`), lisible dans le timbre (agrandir le timbre si besoin) ; contrôle `UI timbre taille=<n>` ≥ 20 dans l'étape `courrier`.
+- **C6 (E5)** : suppression de `strategie_active` ; `git grep -n "func strategie_active" godot/scripts/outils` vide.
+- **C7 (m5) Pastille « VS LIVRET A »** : couleur et flèche suivent le **signe du chiffre affiché** (roulant), à la même image. Étape de capture `pastille_signe` (écart forcé de + 198 F à − 4 F, échantillonné à chaque image du roulement) : `UI pastille signe images=<n> incoherences=0`.
+- **C8 (m6, petit)** : `notifs_saut` passe par de vraies entrées d'historique non lues, de sorte que l'incrément du badge à l'arrivée de la fiche volante se voie (capture pendant et après le vol ; `UI badge n=<k> = non_lues=<k>` avec k > 0). Le krach depuis ×1 reste couvert par `test_partie` : rien à faire pour `integrale_saut`.
+- Base `dev-interface.md` et compte rendu (§8) : fichiers modifiés, total de vérifications avant / après, mesures de C4 (px manquants éventuels), captures à relire en priorité.
+
+### 10.5 Critères d'acceptation du passage 2 (testeur, sur `lot/02-interface` qui contient désormais `main` + 02-V)
+- **CA-C1 (A1)** : `tests.ps1 -SansImport -Filtre test_interface` lancé **10 fois de suite** : 10 fois vert ; la précondition `non_lues() > 0` est imprimée. `tests.ps1 -Recette` vert, 0 erreur de script, total ≥ 548 + 18 + 11 + nouvelles vérifications (548 = fusion simulée du passage 1).
+- **CA-C2 (A2)** : `etiquettes_balayage` aux 4 formats : `chevauchements=0 hors_libre=0 incoherences=0` ; captures des deux cadrages relues : plus de « ‹ LA GAZETTE |AISON » ni de flèche « MA BANQUE › » à côté d'une banque dont on voit la porte. Étapes de dev-ville relancées sur la branche (`capture_ville.ps1 -Etape pieces_or`, `pieces_glisse`, `pieces_fleche`, `pieces_hors_champ`, PC 1080 et `-Telephone`) : aucune étiquette chevauchée, flèche de bord présente **seulement** quand les pièces partent ou arrivent par elle (lignes `RUE pieces … depart=/arrivee=` cohérentes avec les flèches visibles).
+- **CA-C3 (m1)** : lignes `UI barre …` : 1440 × 648 `pause_visible=oui` en pause et en saut (« » ×6 » vu à l'image `l2_courrier_saut_tel`) ; 1920 × 1080 et 1920 × 1009 `var=oui libelle_courrier=oui` (et `titre_cc` dit) ; aucun `hors_cadre` / `hors_ecran` dans la barre aux 7 formats ; bouton toujours ≥ `cible_min`.
+- **CA-C4 (m2)** : `UI timbre taille=` ≥ 20 ; capture `courrier` relue (PC et téléphone).
+- **CA-C5 (m3)** : recherche de C6 vide ; `capture_interface.ps1 -Serie` et `capture_ville.ps1 -Serie` complètes, code 0 partout (`pieces_jeu` compris).
+- **CA-C6 (m5)** : `UI pastille signe … incoherences=0`.
+- **CA-C7 (m6)** : capture `notifs_saut` : badge > 0 après l'arrivée d'une fiche, ligne `UI badge` juste.
+- **CA-C8 (fusion)** : CA-F1 à F4 rejoués **sur la branche** (elle contient `main` + 02-V) : `integrale` et `integrale_saut` 160 749 F, 805,93 F, 11 interruptions ; `pieces_jeu` 2, 2, 3 nœuds à ×1, 0 à ×3 et en saut. CA-F5 : exe exporté, `titre` et `courrier_saut` capturés ; seules lignes d'erreur tolérées : les deux `GrillePixel` de E6.
+- **CA-C9 (périmètre)** : `git diff main...lot/02-interface --stat` (après l'étape 3 du §10.1) : fichiers du §10.2 seulement.
+- Toujours : `partie_en_cours.sav` du joueur intact, aucun Godot d'autrui fermé.
+
+Après OK : push de la branche, ma validation, fusion `--no-ff` dans `main` (sans conflit attendu : `main` y est déjà), tests et deux séries relancés sur `main`, puis sortie 0.4 (F2).
+
+### 10.6 Reporté en 03-V (dev-ville), à écrire dans le plan 03-V
+- m1 de 02-V : pièces d'or confondues avec l'enseigne ÉPICERIE (arc plus haut ou plus bas, contour sombre, éclat) ; contrôle : aucune pièce sur l'enseigne pendant le vol, PC et téléphone.
+- m2 de 02-V : montants flottants longs posés sur le décor (texte de D10 plus court ou sur plaquette ; avis UX à demander avant) ; cuivre peu contrasté sur la brique.
+- m4 de 02-V : saut d'une pièce quand le point de départ bascule de la porte à la flèche pendant le vol (figer le départ au lancement, ou interpoler) ; à vérifier en mouvement (suivi image par image : aucun pas > 2 fois le pas moyen).
+- m5 de 02-V : image de `camera_retour` prise juste après le retour.
+- E6 : erreurs `GrillePixel` des `.txt` d'interface dans l'exe (`scripts/pixel/grille.gd`) ; contrôle : journal de l'exe sans aucune ligne `ERROR`.
+- Rien de cela ne bloque la 0.4.
