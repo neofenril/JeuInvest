@@ -75,6 +75,8 @@ func _test_courrier() -> void:
 	var scene: Node = load("res://scenes/principal.tscn").instantiate()
 	add_child(scene)
 	await _images(5)
+	scene.call("nouvelle_partie", Donnees.config_demo(GRAINE))   # A1 : jamais la graine aléatoire de principal._config()
+	await _images(2)
 	var h: Hud = scene.get("hud")
 	var md: Modales = scene.get("modales")
 	var e := Partie.etat
@@ -106,17 +108,32 @@ func _test_courrier() -> void:
 	_verifier("COURRIER : inactif avec une modale ouverte, sans effet au toucher", inactif_modale and not Partie.saut_actif)
 	md.fermer("non")
 	await get_tree().create_timer(0.4).timeout
-	# Saut qui franchit des notifications : badge = non_lues() (mois avancés à la main, sans attendre)
+	# Saut qui franchit des notifications connues, indépendantes de la vie : départ en janvier 1986 (joueur actif),
+	# le saut franchit « Le Livret A baisse » (mai 1986) avant D07 (novembre 1986). Mois avancés à la main.
+	StrategieTest.aller_a(e, Dates.lire("1986-01"), true)
+	StrategieTest.jouer_mois(e, true)
+	if not e.modale.is_empty():
+		e.resolution_auto()
+	h.maj(e, false)
+	await _images(2)
 	scene.call("demander_saut")
+	var lance_1986 := Partie.saut_actif
+	var franchis := []
 	var garde := 0
-	while Partie.saut_actif and e.non_lues() == 0 and garde < 24:
+	while Partie.saut_actif and garde < 12:
 		Partie.avancer_un_mois()
 		garde += 1
+		for hh: Dictionary in e.historique_recent(""):
+			if not bool(hh.get("lu", true)) and not (str(hh["titre"]) in franchis):
+				franchis.append(str(hh["titre"]))
+		if franchis.has("Le Livret A baisse"):
+			break
 	if Partie.saut_actif:
 		scene.call("demander_saut")
 	await _images(2)
 	var n := e.non_lues()
-	_verifier("badge : égal à non_lues() après un saut qui franchit des notifications (%d)" % n, n > 0 and h.texte_badge_affiche() == Hud.texte_badge(n), "« %s »" % h.texte_badge_affiche())
+	_verifier("badge : égal à non_lues() après un saut depuis janvier 1986 qui franchit « Le Livret A baisse » (%d non lue(s) : %s)" % [n, ", ".join(franchis)],
+		lance_1986 and franchis.has("Le Livret A baisse") and n > 0 and h.texte_badge_affiche() == Hud.texte_badge(n), "« %s », %s" % [h.texte_badge_affiche(), Dates.texte(e.ab_courant())])
 	await _vider_modale(e, md, scene)
 	h.maj_badge(10)
 	var neuf_plus := h.texte_badge_affiche()
@@ -124,6 +141,9 @@ func _test_courrier() -> void:
 	var absent := not h.badge_non_lus.visible
 	h.maj_badge(e.non_lues())
 	_verifier("badge : « 9+ » à 10, absent à 0", neuf_plus == "9+" and absent, neuf_plus)
+	var avant_historique := e.non_lues()
+	_verifier("précondition : non_lues() > 0 avant d'ouvrir l'historique (%d), badge affiché" % avant_historique,
+		avant_historique > 0 and h.badge_non_lus.visible)
 	scene.call("ouvrir_historique", "")
 	await get_tree().create_timer(0.8).timeout
 	var ouvert := md.genre_courant == "historique"

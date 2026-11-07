@@ -120,11 +120,12 @@ func _config() -> Dictionary:
 	return Donnees.config_demo(-1 if ScenariosCapture.mode_capture() else randi_range(1, 2147483646))
 
 
-func nouvelle_partie() -> void:
+## config : partie imposée (tests : graine fixe) ; vide : graine de vie tirée au hasard.
+func nouvelle_partie(config := {}) -> void:
 	_max_patr = 0.0
 	pluie_jusqua = -1
 	_ignorer_modales = true
-	Partie.nouvelle_partie(_config())
+	Partie.nouvelle_partie(_config() if config.is_empty() else config)
 	_ignorer_modales = false
 	_apres_mise_en_place()
 
