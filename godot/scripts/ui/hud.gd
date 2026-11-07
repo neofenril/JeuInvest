@@ -269,6 +269,36 @@ func _styler_pastille(sens: int) -> void:
 	fleche_ecart.queue_redraw()
 
 
+## Pastille « VS LIVRET A » : le chiffre roule de « de » à « vers » (euros) ; signe, couleur et flèche suivent.
+func rouler_ecart(de: float, vers: float, a: int, duree := 0.6, anime := true) -> void:
+	Juice.rouler(l_ecart, de, vers, func(v: float) -> String: return _texte_ecart(v, a, anime), duree)
+	_ecart_affiche = vers
+
+
+## Vrai si la pastille montre le signe de son chiffre (contrôle C7) : « + » vert ▲, « − » rouge ▼, sinon neutre.
+func pastille_coherente() -> bool:
+	var t := l_ecart.text
+	var sens := 1 if t.begins_with("+") else (-1 if (t.begins_with("−") or t.begins_with("-")) and not t.begins_with("−0") and not t.begins_with("-0") else 0)
+	return sens == _sens_ecart and l_ecart.get_theme_color("font_color") == (_couleur_sens(sens) if sens != 0 else Style.TEXTE)
+
+
+## Texte de l'écart affiché (valeur roulante v) ; la pastille prend le signe de ce texte au même moment.
+func _texte_ecart(v: float, a: int, anime: bool) -> String:
+	var sens := signe_ecart(v, a)
+	if sens != _sens_ecart:
+		_sens_ecart = sens
+		_styler_pastille(sens)
+		if anime:
+			Juice.pop(pastille_livret)
+	return Format.ecart(v, a)
+
+
+## Signe d'un écart tel qu'il s'affiche (arrondi à l'unité de la devise : « = 0 F » à moins de 0,5).
+static func signe_ecart(v: float, a: int) -> int:
+	var x := Format.en_devise(v, Format.devise(a))
+	return 1 if x >= 0.5 else (-1 if x <= -0.5 else 0)
+
+
 static func _couleur_sens(sens: int) -> Color:
 	return Style.GAIN if sens > 0 else (Style.PERTE if sens < 0 else Style.TEXTE_2)
 
@@ -1139,18 +1169,8 @@ func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 	_patr_affiche = patr
 	# Écart avec « tout au Livret A » (même vie, tout sur compte + Livret A : témoin Tata Livret)
 	var ecart := e.ecart_livret()
-	var sens := 0
-	if Format.en_devise(ecart, Format.devise(a)) >= 0.5:
-		sens = 1
-	elif Format.en_devise(ecart, Format.devise(a)) <= -0.5:
-		sens = -1
-	Juice.rouler(l_ecart, _ecart_affiche, ecart, func(v: float) -> String: return Format.ecart(v, a), d)
-	_ecart_affiche = ecart
-	if sens != _sens_ecart:
-		_sens_ecart = sens
-		_styler_pastille(sens)
-		if anime:
-			Juice.pop(pastille_livret)
+	# m5 (passage 2) : couleur et flèche suivent le signe du chiffre affiché, à chaque image du roulement
+	rouler_ecart(_ecart_affiche, ecart, a, d, anime)
 	# Variation sur 12 mois (ou depuis le début de la tranche)
 	var m0 := maxi(e.m_depart, e.m - 12)
 	var ref: float = e.hist["j"][m0]

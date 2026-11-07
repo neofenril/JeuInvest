@@ -150,6 +150,7 @@ foreach ($e in @("notifs_saut", "badge_non_lus", "historique_nouveau")) {
 $plan.Add(@("courrier_saut_pause", "l2_courrier_saut_pause_1080", "1920x1080", ""))
 $plan.Add(@("courrier_saut_pause", "l2_courrier_saut_pause_1080_b", "1920x1080", "", "0.5"))   # 0,5 s plus tard : voitures déplacées
 $plan.Add(@("integrale_saut", "l2_integrale_saut", "1280x720", ""))
+$plan.Add(@("pastille_signe", "l2_pastille_signe_1080", "1920x1080", ""))
 # Passage 2 (C3) : balayage de toute la rue, étiquettes et flèches de bord (image finale + image « _glisse »)
 foreach ($t in @(@("1080", "1920x1080", ""), @("1152", "1152x648", ""), @("tel", "1440x648", "1"), @("tel169", "1280x720", "169"))) {
     $plan.Add(@("etiquettes_balayage", ("l2_etiquettes_balayage_" + $t[0]), $t[1], $t[2]))

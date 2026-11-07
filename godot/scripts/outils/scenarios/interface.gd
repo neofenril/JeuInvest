@@ -8,7 +8,7 @@ extends RefCounted
 
 const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette",
 	"courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau",
-	"etiquettes_balayage"]
+	"etiquettes_balayage", "pastille_signe"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -34,6 +34,8 @@ func jouer(etape: String) -> void:
 			await _etiquettes(etape, jeu)
 		"etiquettes_balayage":
 			await _balayage(jeu)
+		"pastille_signe":
+			await _pastille_signe(jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -211,6 +213,29 @@ func _balayage(jeu: Node) -> void:
 			if chemin.is_relative_path():
 				chemin = ProjectSettings.globalize_path("res://").path_join(chemin)
 			sc.get_viewport().get_texture().get_image().save_png(chemin)
+
+
+## C7 (passage 2) : écart forcé de + 198 F à − 4 F (roulement de 0,6 s), vérifié à chaque image : le signe du
+## chiffre affiché, la couleur et la flèche de la pastille vont ensemble. La capture montre l'état final (− 4 F).
+func _pastille_signe(jeu: Node) -> void:
+	sc.partir_de_la_rue("pastille_signe")
+	var hud: Hud = jeu.hud
+	var a := Partie.etat.ab_courant()
+	await sc.delai(1.0)
+	hud.rouler_ecart(Produits.f(-4.0), Produits.f(198.0), a, 0.0, false)
+	await sc.get_tree().process_frame
+	var images := 0
+	var incoherences := 0
+	var signes := {}
+	hud.rouler_ecart(Produits.f(198.0), Produits.f(-4.0), a, 0.6)
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 900:
+		await sc.get_tree().process_frame
+		images += 1
+		signes[hud.l_ecart.text.left(1)] = true
+		if not hud.pastille_coherente():
+			incoherences += 1
+	print("UI pastille signe images=%d incoherences=%d textes_vus=%s final=« %s »" % [images, incoherences, str(signes.keys()), hud.l_ecart.text])
 
 
 ## [chevauchements, hors du rectangle libre, incohérences flèche / porte] des étiquettes à l'instant.
