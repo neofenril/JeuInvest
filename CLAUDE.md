@@ -62,6 +62,11 @@ Chaque agent a une base de connaissances dans `docs/connaissances/<agent>.md` : 
 ## État du projet
 - Export configuré (2026-10-27) : `Exporter_Windows.bat` → `export\windows\JeuClaude.exe` (fichier unique, ~105 Mo, vérifié : lancement, données, sauvegarde) ; `Exporter_Android.bat` → `export\android\JeuClaude.apk` (debug, ~55 Mo, export réussi, pas encore essayé sur un téléphone). Outils : modèles d'export dans `%APPDATA%\Godot\export_templates\4.7.2.stable\`, `outils\jdk-17`, `outils\android-sdk`.
 
+## État du projet (2026-11-07) : version 0.3 « tout en pixel »
+- Fusionnés dans `main` (7a98012) : lot 01 (technique), PX0/PX1/PX2 (rue de briques pixel art sur grille 960×540, rue large avec caméra qui défile, interface pixel, téléphone de référence 2400×1080 à 400 dpi), lot 02-L (flux du mois, saut « jusqu'au prochain courrier », non-lus, cadence V3, sauvegarde format 3), F1-L. Tests : 495 vérifications au vert (`godot/outils/tests.ps1`).
+- Exports 0.3 faits le 2026-11-07 : `export\windows\JeuClaude.exe` (110 Mo) et `export\android\JeuClaude.apk` (58 Mo, debug, jamais essayé sur un vrai téléphone).
+- Suite : lot 02-I/02-V (bouton COURRIER, badge non-lus, pièces ; docs/17), puis 03 à 07 selon `docs/lots/feuille_de_route.md`. Sauvegarde manuelle à 3 emplacements : planifiée, NON lancée (`docs/lots/lot_sauvegarde.md`, vagues 6-7). Contenus banquier/boursier V3 : `docs/18`, `docs/19`.
+
 ## À faire plus tard
 - APK de publication (keystore de release) et version iOS.
 - Questionnaire de profil de risque au démarrage (idée de l'utilisateur mise de côté le 2026-10-27). D'ici là, le banquier adapte ses propositions à la seule situation de vie.
