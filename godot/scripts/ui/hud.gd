@@ -774,18 +774,28 @@ func _duree_mois() -> float:
 	return Partie.duree_mois_s()
 
 
+## Boutons du temps, badge et cadre de gel. Pendant un saut « jusqu'au prochain courrier » (lot 02, vitesse
+## effective) : aucun bouton de vitesse enfoncé, pas de cadre de gel, le badge affiche « » ×6 » en ambre ;
+## à la fin du saut, retour à l'affichage de v (Partie.vitesse, inchangée pendant le saut).
 func maj_vitesse(v: int) -> void:
+	var saut := Partie.saut_actif
 	for i in 4:
 		var g: String = ["pause", "x1", "x2", "x3"][i]
-		boutons[g].set_pressed_no_signal(i == v)
+		boutons[g].set_pressed_no_signal(i == v and not saut)
 		boutons[g].queue_redraw()
 	if v > 0:
 		b_cycle.vitesse_cycle = v
 	b_lecture.queue_redraw()
 	b_cycle.queue_redraw()
-	badge_pause.visible = v == 0 and not badge_pause.get_meta("replie", false)
+	var texte := "» ×6" if saut else "EN PAUSE"
+	if badge_pause.text != texte:
+		badge_pause.text = texte
+		badge_pause.add_theme_font_override("font", Style.police_pour(Style.neon(), 28, texte))   # chiffre : Atkinson
+		badge_pause.add_theme_color_override("font_color", Style.ACCENT if saut else Style.GEL)
+		badge_pause.add_theme_color_override("font_shadow_color", Color(Style.ACCENT if saut else Style.GEL, 0.6))
+	badge_pause.visible = (v == 0 or saut) and not badge_pause.get_meta("replie", false)
 	var t := create_tween()
-	t.tween_property(self, "_gel", 1.0 if v == 0 else 0.0, 0.3)
+	t.tween_property(self, "_gel", 1.0 if v == 0 and not saut else 0.0, 0.3)
 	t.parallel().tween_method(func(_x: float) -> void: cadre_gel.queue_redraw(), 0.0, 1.0, 0.3)
 
 
@@ -872,7 +882,8 @@ func notifier(n: Dictionary, a: int, depart := Vector2(-1, -1)) -> void:
 	if persistant:
 		point_banque(true)
 		return
-	# Une notification ordinaire reste un mois à ×1 (13 §5.2), moins en accéléré
+	# Une notification ordinaire reste un mois à ×1 (13 §5.2), moins en accéléré. Pendant un saut,
+	# duree_mois_s() renvoie la durée du saut (rythme.json > saut, ≈ 1,3 s) : la notification reste 3 s (borne).
 	var vie := clampf(Partie.duree_mois_s(maxi(1, Partie.vitesse)), 3.0, 8.0)
 	await get_tree().create_timer(vie + 0.4).timeout
 	_retirer(p)

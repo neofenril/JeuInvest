@@ -32,6 +32,7 @@ func _ready() -> void:
 	Partie.modale_ouverte.connect(_on_modale)
 	Partie.partie_finie.connect(_on_fin)
 	Partie.vitesse_changee.connect(func(v: int) -> void: hud.maj_vitesse(v))
+	Partie.saut_change.connect(func(_actif: bool) -> void: hud.maj_vitesse(Partie.vitesse))
 	Partie.argent_change.connect(func() -> void: hud.maj(Partie.etat, true, 0.4))
 	hud.vitesse_demandee.connect(_on_vitesse_demandee)
 	hud.marche_demande.connect(func() -> void: ouvrir_banque("", -1.0))
@@ -265,8 +266,10 @@ func _recadrer(duree := 0.0) -> void:
 
 func _process(delta: float) -> void:
 	var e := Partie.etat
-	ville.set("anime", en_titre or Partie.vitesse > 0 or sequences.occupe)
-	var gel_cible := 1.0 if (not en_titre and Partie.vitesse == 0 and not modales.ouverte() and not sequences.occupe) else 0.0
+	# Vitesse effective (lot 02, §3.1) : un saut lancé depuis la pause garde Partie.vitesse == 0, la rue vit quand même
+	var tourne := Partie.saut_actif or Partie.vitesse > 0
+	ville.set("anime", en_titre or tourne or sequences.occupe)
+	var gel_cible := 1.0 if (not en_titre and not tourne and not modales.ouverte() and not sequences.occupe) else 0.0
 	ville.set("gel", move_toward(float(ville.get("gel")), gel_cible, delta / 0.3))
 	if e != null:
 		ville.get("banque").set("aiguille", Partie.progression_mois())
@@ -297,6 +300,8 @@ func _on_vitesse_demandee(v: int) -> void:
 		return
 	if v == -1:
 		Partie.basculer_pause()
+	elif v == -2 and Partie.saut_actif:
+		Partie.arreter_saut()   # D4 : pendant un saut, le cycle de vitesse arrête seulement le saut
 	elif v == -2:
 		Partie.changer_vitesse(1 + (Partie.vitesse % 3) if Partie.vitesse > 0 else 1)
 	else:
