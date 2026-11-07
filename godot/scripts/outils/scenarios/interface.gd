@@ -72,14 +72,29 @@ func _courrier(etape: String, jeu: Node) -> void:
 			print("UI saut depart=%s vitesse=%d saut=%s" % [Dates.texte(e.ab_courant()), Partie.vitesse, "oui" if Partie.saut_actif else "non"])
 			await sc.delai(1.6)
 			if etape == "notifs_saut":
-				# En 1986, les vraies notifications sont rares : on en ajoute 4 (titres repris de l'historique, marquées
-				# « pendant le saut ») pour montrer la pile de 3 et la 4e qui pousse la plus ancienne vers HISTORIQUE.
-				var modeles := e.historique_recent("").slice(0, 4)
+				# En 1986, les notifications sont rares : 4 notifications de plus, rangées dans le vrai historique
+				# pendant le saut (donc non lues) et diffusées comme par Partie (notif_recue puis mois_passe), pour
+				# montrer la pile de 3, la 4e qui pousse la plus ancienne vers HISTORIQUE et le badge qui compte la
+				# fiche à son arrivée. Image « _vol » pendant le vol, image finale après.
+				var modeles := e.historique_recent("").filter(func(h: Dictionary) -> bool: return h["genre"] == "notif").slice(0, 4)
 				for h: Dictionary in modeles:
-					hud.notifier({"source": h["source"], "titre": h["titre"], "texte": "", "pendant_saut": true}, e.ab_courant())
+					var n: Dictionary = (h["contenu"] as Dictionary).duplicate(true)
+					n["pendant_saut"] = true
+					e.historiser_evenement(n)
+					hud.notifier(n, e.ab_courant())
 					await sc.delai(0.12)
-				await sc.delai(0.1)
-				print("UI notifs fabriquees=%d (fiche volante en vol : %s)" % [modeles.size(), "oui" if hud.find_child("FicheVolante", true, false) != null else "non"])
+				hud.maj_badge(e.non_lues())   # comme principal._on_mois après les notifications du mois
+				var avant := hud.texte_badge_affiche()
+				await sc.delai(0.05)
+				var en_vol := hud.find_child("FicheVolante", true, false) != null
+				await RenderingServer.frame_post_draw
+				var chemin := ScenariosCapture.option("capture").replace(".png", "_vol.png")
+				if chemin.is_relative_path():
+					chemin = ProjectSettings.globalize_path("res://").path_join(chemin)
+				sc.get_viewport().get_texture().get_image().save_png(chemin)
+				await sc.delai(0.6)
+				print("UI notifs historisees=%d fiche_en_vol=%s badge_pendant_vol=« %s » badge_apres=« %s »" % [modeles.size(), "oui" if en_vol else "non", avant, hud.texte_badge_affiche()])
+				print("UI badge n=%s = non_lues=%d (notifs_saut, après l'arrivée de la fiche)" % [hud.texte_badge_affiche(), e.non_lues()])
 			print("UI saut anime=%s gel=%.2f badge_pause=%s vitesse=%d saut=%s trafic=%.2f bouton=%s mois=%s" % ["oui" if ville.get("anime") else "non", float(ville.get("gel")),
 				"oui" if hud.badge_pause.visible and hud.badge_pause.text == "EN PAUSE" else "non", Partie.vitesse, "oui" if Partie.saut_actif else "non",
 				float(ville.get("facteur_trafic")), hud.etat_courrier(), Dates.texte(e.ab_courant())])

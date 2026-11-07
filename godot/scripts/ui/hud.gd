@@ -49,6 +49,7 @@ var _bulle: Control = null
 var _bulle_faite := false
 var badge_non_lus: Control
 var _n_non_lus := 0
+var _fiches_en_vol := 0                   # fiches non lues en route vers HISTORIQUE (comptées à l'arrivée)
 var replis_barre := PackedStringArray()   # replis de la barre haute en vigueur (contrôle « UI barre »)
 var manque_cc := 0.0                      # px qui manquaient pour garder « COMPTE COURANT » (0 s'il tient)
 var carte_cc: PanelContainer
@@ -617,11 +618,23 @@ func etat_barre() -> String:
 # =====================================================================
 
 ## Nombre affiché (0 : badge absent ; au-delà de 9 : « 9+ »).
+## Une fiche encore en vol n'est comptée qu'à son arrivée (le chiffre change quand elle touche HISTORIQUE).
 func maj_badge(n: int) -> void:
 	_n_non_lus = maxi(0, n)
-	badge_non_lus.visible = _n_non_lus > 0
-	badge_non_lus.set_meta("texte", texte_badge(_n_non_lus))
+	_afficher_badge()
+
+
+func _afficher_badge() -> void:
+	var montre := maxi(0, _n_non_lus - _fiches_en_vol)
+	badge_non_lus.visible = montre > 0
+	badge_non_lus.set_meta("texte", texte_badge(montre))
 	badge_non_lus.queue_redraw()
+
+
+func _fiche_arrivee() -> void:
+	_fiches_en_vol = maxi(0, _fiches_en_vol - 1)
+	_afficher_badge()
+	sauter_badge()
 
 
 static func texte_badge(n: int) -> String:
@@ -1487,11 +1500,13 @@ func _envoler_fiche(depart: Vector2, source: String) -> void:
 	fiche.size = Vector2(24, 24)
 	fiche.draw.connect(_dessiner_fiche.bind(fiche, Style.SOURCES.get(source, Style.ACCENT)))
 	add_child(fiche)
+	_fiches_en_vol += 1
+	_afficher_badge()
 	var arrivee := b_historique.get_global_rect().get_center() - Vector2(12, 12)
 	_vol_fiche(0.0, fiche, depart, arrivee)
 	var t := fiche.create_tween()
 	t.tween_method(_vol_fiche.bind(fiche, depart, arrivee), 0.0, 1.0, 0.4)
-	t.tween_callback(sauter_badge)
+	t.tween_callback(_fiche_arrivee)
 	t.tween_callback(fiche.queue_free)
 
 
