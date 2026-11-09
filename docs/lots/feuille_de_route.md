@@ -79,6 +79,19 @@ const SOURCES_HISTORIQUE := [...]                      # + "rue"
   - **PX2 (dev-interface, en cours)** : `ui/ecran_titre.gd` l. 98 lit `r["ab"]` et `r["patrimoine"]` sans garde → `r.get("ab", 0)` / `r.get("patrimoine", 0.0)` et ligne de reprise masquée si `ab` absent (migration douce : un champ peut manquer). Une ligne, fichier déjà à dev-interface en PX2. Si PX2 est déjà en recette : reporté en 02-I.
   - **PX1 (dev-ville, en cours)** : aucun code nouveau ne doit décider du gel ou de l'animation de la rue d'après `Partie.vitesse` seul ; passer par `facteur_trafic` (7 pendant le saut, quelle que soit la vitesse) ou par `anime` / `figer()` réglés par `principal.gd`. En **02-V** : `juice.gd` l. 21 (`match Partie.vitesse`) et les pièces du mois tiennent compte de `Partie.saut_actif` (pas de pièces pendant le saut), lu par `Partie.get("saut_actif")` tant que la branche peut partir d'un `main` sans 02-L.
 
+### 2.6 Suivi du lot 02 (02-V, 02-I) et reports pour 03-V (2026-11-09)
+- **02-V** : recette OK (07/11, 586385e), fusionné dans `main` (5ce7a84).
+- **02-I** : passage 1 KO (A1 test aléatoire, A2 étiquettes chevauchées) ; passage 2 **OK** (41932b3, branche = fusion avec 02-V) : `tests.ps1 -Recette` 580 OK / 0 KO, deux séries de captures vertes, `integrale` 160 749 F / 805,93 F / 11 interruptions, export Windows réussi. CA-C1 à C9 (donc CA-I, CA-V revus sur la fusion, CA-F1 à F5) remplis. **Validé par le chef de projet le 09/11**, fusion `--no-ff` dans `main` par le coordinateur.
+- **Reports en 03-V (dev-ville)** :
+  - m1 de 02-V : pièces d'or (et cuivre) confondues avec l'enseigne ÉPICERIE en haut de l'arc (arc plus haut ou plus bas, contour plus épais ou éclat) ;
+  - m2 de 02-V : montants flottants longs posés sur le décor (« + 312 F gagnés ce mois-ci (versés en décembre) » ≈ 650 px ; cuivre peu contrasté sur la brique ; panneau INDICE recouvert en hors champ) : texte plus court ou cartouche ;
+  - m4 de 02-V : saut possible d'une pièce en plein vol quand le départ passe de la porte à la flèche de bord (`Juice._piece_suit`) : figer le point de départ au lancement ou lisser ; à vérifier en mouvement ;
+  - seuil de durée de `test_rue` fragile (1,3 s machine libre, 2,0-2,2 s sous charge, seuil 2 s) : temps processeur, ou relance unique avant de conclure, ou seuil relevé avec raison écrite ;
+  - accesseur public pour `ville._cx_pour` (ex. `centrer_sur(cx)`), puis dev-interface remplace l'appel privé dans `test_interface` et l'étape `etiquettes_balayage` (lot suivant de dev-interface, après la fusion de 03-V) ;
+  - erreurs `GrillePixel` dans le journal de l'exe (1re ligne de commentaire de `data/pixel/ui/cadres.txt` et `icones.txt` non reconnue dans le paquet exporté ; préexistant, toléré en E6) : `scripts/pixel/grille_pixel.gd`.
+- **À montrer à l'UX (sans développeur pour l'instant)** : repli du téléphone 1280 × 720 (ni libellé COURRIER ni « EN PAUSE » / « » ×6 » : pendant un saut, seuls le bouton ambre et les fantômes de la frise le disent) ; « MA MAISON » montée au-dessus de « ‹ LA GAZETTE » quand la maison est au bord gauche (1080, permis par E2). Selon l'avis : reprise dans le prochain lot de dev-interface.
+- Divers : ligne fausse sur `notifs_saut` dans la base de dev-interface (à corriger par lui) ; m5 de 02-V (capture `camera_retour` sans l'instant du retour) en 03-V si le temps le permet.
+
 ## 3. Carte de propriété des fichiers en vague 1 (PX1 ∥ PX2 ∥ 02-L)
 
 Chemins relatifs à `godot/`. Un fichier = un propriétaire pendant toute la vague ; un fichier absent = interdit à tous.
