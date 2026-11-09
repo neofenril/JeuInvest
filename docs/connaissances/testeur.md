@@ -1,7 +1,7 @@
 # Base de connaissances du testeur
 
 > À lire au début de chaque mission (après `CLAUDE.md` et le socle `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-11-07 (02-I : `lot/02-interface` baf2664 KO + fusion simulée avec 02-V ; avant : PX2 passage 2 : 5d23c3b OK). Avant : 2026-11-03 (PX2 : `lot/px2-interface` c890d61 KO ; PX1 : `lot/px1-ville` 48ecd10 KO, A1 titre, puis 7733938 OK). Avant : 2026-10-30 (02-L : `lot/02-logique` 252f8b0 OK ; PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
+> Dernière mise à jour : 2026-11-09 (02-I passage 2 : 41932b3 OK, fusion comprise). Avant : 2026-11-07 (02-I : `lot/02-interface` baf2664 KO + fusion simulée avec 02-V ; avant : PX2 passage 2 : 5d23c3b OK). Avant : 2026-11-03 (PX2 : `lot/px2-interface` c890d61 KO ; PX1 : `lot/px1-ville` 48ecd10 KO, A1 titre, puis 7733938 OK). Avant : 2026-10-30 (02-L : `lot/02-logique` 252f8b0 OK ; PX0 : `lot/px0-ville` 45f5120 OK, `lot/px0-interface` 0ad6db7 OK, fusion simulée sans conflit). Avant : lot 01 (logique KO puis OK sur 00c4821 ; interface OK sur 261d373).
 
 ## 1. Règles de travail
 - Je ne modifie jamais un fichier suivi par Git dans le worktree d'un développeur ; pour les mutations, worktree jetable :
@@ -115,6 +115,13 @@
 - Exe exporté depuis une copie isolée : il hérite du `custom_user_dir_name` (aucun risque pour le joueur). **2 ERROR `GrillePixel` (cadres.txt / icones.txt l. 1) préexistantes dans tout exe depuis 0.3** : ne pas les imputer au lot, mais les citer à CA-F5.
 - Zones fragiles : `Hud.placer_etiquettes` (étiquette « MA MAISON » sous la flèche « ‹ LA GAZETTE » quand la maison est au bord gauche ; flèche de bord affichée pour un bâtiment pourtant à l'écran, seuil différent de celui des pièces) ; replis de la barre haute (variation, « COURANT », « EN PAUSE », libellé COURRIER : comparer chaque format à `main`) ; pastille VS LIVRET A dont couleur et chiffre roulant divergent ; captures de carnet prises pendant le retournement des tuiles (`scale.x`).
 - Ajout des deux côtés d'un même rapport : copier l'autre version **à l'octet** (`cmd /c git show <branche>:<f> > f`, vérifier `git hash-object`) puis ajouter mes sections : conflit trivial à la fusion.
+
+## 4 decies. 02-I passage 2 (recette 2026-11-09, `lot/02-interface` 41932b3 = fusion main + 02-V : OK, 3 mineures)
+- Références : 580 vérifications avec `-Recette` ; `test_interface` 33, graine fixe 7, 10/10 vert ; `capture_interface.ps1 -Serie` = **136** lancements, 1 661 s ; `capture_ville.ps1 -Serie` 856 s ; `integrale` = `integrale_saut` = 160 749 F / 805,93 F / 11 ; `pieces_jeu` 2, 2, 3 puis 0 ; exe 110 239 912 octets.
+- Lignes à lire : `UI barre format=… etat=pause|saut … replis=… manque_cc=`, `UI etiquettes balayage positions=… chevauchements=0 hors_libre=0 incoherences=0`, `UI pastille signe images=… incoherences=0`, `UI notifs historisees=… badge_pendant_vol=… badge_apres=…`, `UI timbre taille=`. Journaux complets : `godot/captures/px2_serie.log` et `px1_serie.log` (la sortie console de `capture_interface.ps1` ne garde que les lignes `[n/N] OK`).
+- `test_rue` génération : 1,31-1,38 s machine libre, 2,0-2,2 s sous charge → seuil 2 s fragile ; ne jamais lancer `tests.ps1` pendant une série.
+- Une recette interrompue (limite d'usage) : `partie_en_cours.sav` est apparu entre-temps (le joueur a joué) : noter date de création + journaux `user://logs` pour se disculper, puis empreinte avant / après chaque lancement.
+- Les commandes > 180 s passent en tâche de fond : attendre par `Start-Sleep 170` + lecture du journal.
 
 ## 5. Anomalies récurrentes / à surveiller
 - Fichiers « recopiés de main » dans une branche (tests.ps1, trouver_godot.ps1 sur px0-ville) : vérifier `git diff main <branche> -- <fichier>` vide → sans conflit, mineur.
