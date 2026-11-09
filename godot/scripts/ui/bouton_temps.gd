@@ -33,7 +33,8 @@ func _draw() -> void:
 		"x3":
 			nom = "x3"
 		"lecture":
-			nom = "lecture" if Partie.vitesse == 0 else "pause"
+			# Vitesse effective (lot 02) : pendant un saut lancé depuis la pause, le temps tourne
+			nom = "lecture" if Partie.vitesse == 0 and not Partie.saut_actif else "pause"
 		"cycle":
 			var t := "×%d" % vitesse_cycle
 			var police := Style.chiffres()

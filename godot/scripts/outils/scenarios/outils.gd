@@ -1,7 +1,7 @@
 extends RefCounted
 ## Étapes de capture : vérifications techniques (polices, F10, partie intégrale, raccourcis de test).
 
-const ETAPES := ["polices", "f10", "integrale", "raccourcis"]
+const ETAPES := ["polices", "f10", "integrale", "raccourcis", "integrale_saut"]
 
 var sc: ScenariosCapture
 
@@ -15,6 +15,8 @@ func jouer(etape: String) -> void:
 			_verifier_polices()
 		"integrale":
 			await _integrale(jeu)
+		"integrale_saut":
+			await _integrale(jeu, true)
 		"f10":
 			var fen := sc.get_window()
 			print("F10 avant : fenêtre %s, zone logique %s, compact %s" % [fen.size, Ecran.taille(), Ecran.compact()])
@@ -32,9 +34,15 @@ func jouer(etape: String) -> void:
 
 ## Toute la démo à ×3, réponses automatiques par l'interface : présentations (une sur deux ouverte, avec un
 ## achat), banque, journal, courrier, jusqu'à la fin. Vérifie l'enchaînement complet sans erreur.
-func _integrale(jeu: Node) -> void:
+## integrale_saut (lot 02, CA-I4) : même partie, mais le temps passe par le bouton COURRIER (son signal) après
+## chaque interruption, lancé tour à tour depuis ×1 et depuis la pause ; chaque arrêt est imprimé, avec la
+## vitesse rétablie après la modale (celle d'avant l'appui ; pause après un journal de marché).
+func _integrale(jeu: Node, saut := false) -> void:
 	var modales: Modales = jeu.modales
-	Partie.changer_vitesse(3)
+	if saut:
+		Partie.saut_change.connect(_on_saut_change)
+	else:
+		Partie.changer_vitesse(3)
 	var vus := {}
 	var n_appels := 0
 	var t0 := Time.get_ticks_msec()
@@ -42,8 +50,11 @@ func _integrale(jeu: Node) -> void:
 		await sc.delai(0.3)
 		var g := modales.genre_courant
 		if g == "" or not modales.ouverte():
-			if not jeu.sequences.occupe and Partie.vitesse != 3 and Partie.etat.fin == "" and Partie.etat.modale.is_empty():
-				Partie.changer_vitesse(3)
+			if not jeu.sequences.occupe and Partie.etat.fin == "" and Partie.etat.modale.is_empty():
+				if saut and Partie.saut_possible():
+					_lancer_saut(jeu)
+				elif Partie.vitesse != 3 and not Partie.saut_actif:
+					Partie.changer_vitesse(3)
 			continue
 		vus[g] = int(vus.get(g, 0)) + 1
 		await sc.delai(1.0)
@@ -68,8 +79,52 @@ func _integrale(jeu: Node) -> void:
 			"info", "confirmer", "menu":
 				modales.fermer("fermer")
 	var e := Partie.etat
+	if saut:
+		print("UI saut bilan arrets=%d sans_modale=%d fin=%d vitesses_ok=%d/%d vitesses_ecarts=%d" % [_arrets, _sans_modale, _arret_fin, _vitesses_ok, _vitesses_vues, _vitesses_vues - _vitesses_ok])
 	print("Intégrale : modales vues %s, fin = %s, mois = %s, patrimoine = %s, interruptions = %d, frais = %s, durée %.0f s à ×3" % [vus, e.fin, Dates.texte(e.ab_courant()),
 		Format.montant(e.patrimoine(e.joueur), e.ab_courant()), int(e.banque.get("interruptions", 0)), Format.montant(e.frais_payes(), e.ab_courant()), (Time.get_ticks_msec() - t0) / 1000.0])
+
+
+var _arrets := 0
+var _sans_modale := 0
+var _arret_fin := 0
+var _vitesses_ok := 0
+var _vitesses_vues := 0
+var _v_lancement := -1        # vitesse au moment de l'appui sur COURRIER (-1 : aucun saut encore)
+var _kind_arret := ""         # genre de la modale qui a arrêté le dernier saut
+
+
+func _on_saut_change(actif: bool) -> void:
+	if actif:
+		return
+	var e := Partie.etat
+	var md := e.modale
+	var nom := "aucune"
+	if not md.is_empty():
+		nom = "%s/%s" % [md.get("kind", ""), StrategieTest.id_modale(e)]
+		_arrets += 1
+		_kind_arret = str(md.get("kind", ""))
+	elif e.fin != "":
+		nom = "fin"
+		_arret_fin += 1
+	else:
+		_sans_modale += 1
+	print("UI saut arret mois=%s modale=%s" % [Dates.texte_court(e.ab_courant()), nom])
+
+
+## Avant chaque appui : contrôle de la vitesse rétablie après la modale précédente, puis nouvel appui depuis ×1
+## (sauts impairs) ou depuis la pause (sauts pairs), par le signal du bouton COURRIER.
+func _lancer_saut(jeu: Node) -> void:
+	if _v_lancement >= 0:
+		var attendue := 0 if _kind_arret == "marche" else _v_lancement
+		_vitesses_vues += 1
+		if Partie.vitesse == attendue:
+			_vitesses_ok += 1
+		print("UI saut vitesse avant=%d apres=%d attendue=%d apres_modale=%s" % [_v_lancement, Partie.vitesse, attendue, _kind_arret])
+	_v_lancement = 1 if _vitesses_vues % 2 == 0 else 0
+	Partie.changer_vitesse(_v_lancement)
+	_kind_arret = ""
+	(jeu.hud as Hud).courrier_demande.emit()
 
 
 ## Raccourcis de test (lot 01) : en mars 1984, de vrais événements d'entrée (clavier, clic sur la date du HUD).

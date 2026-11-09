@@ -10,6 +10,7 @@ var m_fin := 179
 var ab_debut := 0                 # mois absolu du mois 0 de la période
 var position_mois := 0.0          # m + progression du mois
 var marqueurs: Array = []         # { m, type: "marche" | "nouveau", passe: bool }
+var fantomes := false             # saut « jusqu'au prochain courrier » : 3 curseurs fantômes derrière le curseur (docs/17 §1.3)
 
 const MARGE := 36.0
 
@@ -65,6 +66,11 @@ func _draw() -> void:
 	draw_texture(drapeau, Vector2(x1 + 3, y + 9 - drapeau.get_height()))
 	# Curseur : petit calendrier pixel
 	var curseur := CadresPixel.texture("curseur")
+	if fantomes:
+		# La vitesse se voit sans couleur : curseurs à 60, 40 et 20 % d'opacité, 4 texels d'écart
+		for k in 3:
+			var xf := _t(xc - 12.0 * (k + 1) - curseur.get_width() / 2.0)
+			draw_texture(curseur, Vector2(xf, _t(y - curseur.get_height() / 2.0 + 1.5)), Color(1, 1, 1, 0.6 - 0.2 * k))
 	draw_texture(curseur, Vector2(_t(xc - curseur.get_width() / 2.0), _t(y - curseur.get_height() / 2.0 + 1.5)))
 
 

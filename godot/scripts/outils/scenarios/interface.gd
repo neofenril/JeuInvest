@@ -6,7 +6,10 @@ extends RefCounted
 ## - hud : bouton HISTORIQUE (taille en px physiques, jamais recouvert, panneau ouvert et fermé) ;
 ## - polices_jeu : planche des polices du jeu (accents français, tnum d'Atkinson).
 
-const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette"]
+const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette",
+	"courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau",
+	"etiquettes_balayage", "pastille_signe"]
+const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
 var sc: ScenariosCapture
@@ -29,6 +32,122 @@ func jouer(etape: String) -> void:
 			await _polices_jeu()
 		"etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette":
 			await _etiquettes(etape, jeu)
+		"etiquettes_balayage":
+			await _balayage(jeu)
+		"pastille_signe":
+			await _pastille_signe(jeu)
+		_:
+			await _courrier(etape, jeu)
+
+
+# =====================================================================
+# Bouton COURRIER, notifications du saut, badge des non-lus (lot 02, CA-I2, CA-I3, CA-I5, CA-I6)
+# =====================================================================
+
+func _courrier(etape: String, jeu: Node) -> void:
+	sc.partir_de_la_rue(etape)
+	var hud: Hud = jeu.hud
+	var ville: Node2D = jeu.ville
+	var modales: Modales = jeu.modales
+	var e := Partie.etat
+	sc.aller_a(Dates.lire(MOIS_COURRIER), true)
+	StrategieTest.jouer_mois(e, true)   # la modale du mois d'arrivée, s'il y en a une, est résolue : saut possible
+	if not e.modale.is_empty():
+		e.resolution_auto()
+	sc.rafraichir_apres_saut()
+	Partie.changer_vitesse(0 if etape == "courrier_saut_pause" else 1)
+	await sc.delai(1.0)
+	match etape:
+		"courrier_repos":
+			var p: Control = hud.etiquettes["banque"]
+			var y0 := p.position.y
+			hud.sauter_etiquette("banque")
+			var decale := p.position.y == y0 - 3.0
+			await sc.delai(0.3)
+			print("UI sauter_etiquette decale=%s retour=%s" % ["oui" if decale else "non", "oui" if p.position.y == y0 else "non"])
+			Partie.changer_vitesse(0)
+			await sc.delai(0.6)
+		"courrier_saut", "courrier_saut_pause", "notifs_saut", "badge_non_lus", "historique_nouveau":
+			jeu.demander_saut()
+			print("UI saut depart=%s vitesse=%d saut=%s" % [Dates.texte(e.ab_courant()), Partie.vitesse, "oui" if Partie.saut_actif else "non"])
+			await sc.delai(1.6)
+			if etape == "notifs_saut":
+				# En 1986, les notifications sont rares : 4 notifications de plus, rangées dans le vrai historique
+				# pendant le saut (donc non lues) et diffusées comme par Partie (notif_recue puis mois_passe), pour
+				# montrer la pile de 3, la 4e qui pousse la plus ancienne vers HISTORIQUE et le badge qui compte la
+				# fiche à son arrivée. Image « _vol » pendant le vol, image finale après.
+				var modeles := e.historique_recent("").filter(func(h: Dictionary) -> bool: return h["genre"] == "notif").slice(0, 4)
+				for h: Dictionary in modeles:
+					var n: Dictionary = (h["contenu"] as Dictionary).duplicate(true)
+					n["pendant_saut"] = true
+					e.historiser_evenement(n)
+					hud.notifier(n, e.ab_courant())
+					await sc.delai(0.12)
+				hud.maj_badge(e.non_lues())   # comme principal._on_mois après les notifications du mois
+				var avant := hud.texte_badge_affiche()
+				await sc.delai(0.05)
+				var en_vol := hud.find_child("FicheVolante", true, false) != null
+				await RenderingServer.frame_post_draw
+				var chemin := ScenariosCapture.option("capture").replace(".png", "_vol.png")
+				if chemin.is_relative_path():
+					chemin = ProjectSettings.globalize_path("res://").path_join(chemin)
+				sc.get_viewport().get_texture().get_image().save_png(chemin)
+				await sc.delai(0.6)
+				print("UI notifs historisees=%d fiche_en_vol=%s badge_pendant_vol=« %s » badge_apres=« %s »" % [modeles.size(), "oui" if en_vol else "non", avant, hud.texte_badge_affiche()])
+				print("UI badge n=%s = non_lues=%d (notifs_saut, après l'arrivée de la fiche)" % [hud.texte_badge_affiche(), e.non_lues()])
+			print("UI saut anime=%s gel=%.2f badge_pause=%s vitesse=%d saut=%s trafic=%.2f bouton=%s mois=%s" % ["oui" if ville.get("anime") else "non", float(ville.get("gel")),
+				"oui" if hud.badge_pause.visible and hud.badge_pause.text == "EN PAUSE" else "non", Partie.vitesse, "oui" if Partie.saut_actif else "non",
+				float(ville.get("facteur_trafic")), hud.etat_courrier(), Dates.texte(e.ab_courant())])
+			if etape == "notifs_saut":
+				_notifs_compactes(hud)
+			elif etape in ["badge_non_lus", "historique_nouveau"]:
+				await sc.attendre_que(func() -> bool: return e.non_lues() >= 3 or not Partie.saut_actif, 6.0)
+				jeu.demander_saut()   # nouvel appui : le saut s'arrête, la vitesse d'avant revient
+				Partie.changer_vitesse(0)
+				await sc.delai(0.6)
+				print("UI badge n=%s = non_lues=%d (saut arrêté : %s, vitesse %d)" % [hud.texte_badge_affiche(), e.non_lues(), "oui" if not Partie.saut_actif else "non", Partie.vitesse])
+				if etape == "historique_nouveau":
+					jeu.ouvrir_historique("")
+					await sc.delai(1.2)
+					var nouveaux := modales.courant.find_children("Nouveau", "Label", true, false).size() if modales.ouverte() else 0
+					var pastilles := modales.courant.find_children("Nouveautes", "Control", true, false).size() if modales.ouverte() else 0
+					print("UI historique_nouveau etiquettes=%d pastilles=%d non_lues=%d" % [nouveaux, pastilles, e.non_lues()])
+		"courrier_inactif":
+			jeu.ouvrir_banque("", -2.0)
+			await sc.delai(1.2)
+			print("UI courrier inactif bouton=%s modale=%s" % [hud.etat_courrier(), modales.genre_courant])
+		"courrier_bulle":
+			Partie.changer_vitesse(0)
+			await sc.delai(0.3)
+			hud.montrer_bulle_courrier()   # forcée (comme --bulle-courrier) : jamais lue ni écrite en capture
+			await sc.delai(0.8)
+			var b := hud.find_child("BulleCourrier", true, false) as Control
+			print("UI bulle visible=%s dans_libre=%s" % ["oui" if b != null and b.is_visible_in_tree() else "non",
+				"oui" if b != null and hud.rect_libre().grow(1.0).encloses(b.get_global_rect()) else "non"])
+	var r := hud.b_courrier.get_global_rect()
+	var echelle := sc.get_viewport().get_final_transform().get_scale().x
+	print("UI courrier etat=%s taille=%dx%d px libelle=%s dans_barre=%s" % [hud.etat_courrier(), roundi(r.size.x * echelle), roundi(r.size.y * echelle),
+		"oui" if (hud.b_courrier.get_node("Contenu").get_child(1) as Control).visible else "non",
+		"oui" if hud.barre.get_global_rect().grow(1.0).encloses(r) else "non"])
+	_mesurer(etape, hud)
+
+
+## Notifications compactes du saut : une ligne chacune, dans le rectangle libre (CA-I5).
+func _notifs_compactes(hud: Hud) -> void:
+	var libre := hud.rect_libre()
+	var n := 0
+	var une_ligne := true
+	var dedans := true
+	for c in hud.notifs.get_children():
+		if not c.has_meta("compacte") or (c as Control).is_queued_for_deletion():
+			continue
+		n += 1
+		var p := c as Control
+		if p.size.y > 78.0:
+			une_ligne = false
+		if not libre.grow(1.0).encloses(p.get_global_rect()):
+			dedans = false
+	print("UI notifs compactes=%d une_ligne=%s dans_libre=%s badge=%s non_lues=%d" % [n, "oui" if une_ligne else "non", "oui" if dedans else "non", hud.texte_badge_affiche(), Partie.etat.non_lues()])
 
 
 # =====================================================================
@@ -61,6 +180,101 @@ func _etiquettes(etape: String, jeu: Node) -> void:
 		var mode := "fleche" if str(p.get_meta("fleche", "")) != "" else "sous"
 		print("UI etiquette %s mode=%s dans_libre=%s rect=%s libre=%s" % [id, mode, "oui" if libre.encloses(p.get_global_rect()) else "non", str(p.get_global_rect()), str(libre)])
 	await sc.delai(1.5)   # glissement de la caméra terminé avant la capture et la sortie
+
+
+## C3 (passage 2) : toute la rue balayée par pas de 30 px d'art, panneau ouvert (PC) : aucune étiquette ni
+## flèche chevauchée, toutes dans le rectangle libre, et pour maison / banque flèche ⇔ porte invisible.
+## Captures : cadrage de pieces_glisse (maison presque entière au bord gauche, image « _glisse »), puis
+## celui de pieces_or (entre les deux portes ; au téléphone, banque entière), image finale.
+func _balayage(jeu: Node) -> void:
+	sc.partir_de_la_rue("etiquettes_balayage")
+	var hud: Hud = jeu.hud
+	var ville: Node2D = jeu.ville
+	await sc.delai(1.0)
+	hud.basculer_panneau(not Ecran.compact())
+	await sc.delai(0.4)
+	var b: Vector2 = ville.call("bornes_rue")
+	var decalage: float = ville.call("_cx_pour", 0.0)
+	var n := 0
+	var chev := 0
+	var hors := 0
+	var incoh := 0
+	var cx := b.x
+	while cx <= b.y + 29.0:
+		ville.call("centrer_sur", minf(cx, b.y) - decalage, 0.0)
+		hud.placer_etiquettes()
+		n += 1
+		var m := _mesure_etiquettes(hud, ville)
+		chev += m[0]
+		hors += m[1]
+		incoh += m[2]
+		if m[0] + m[1] + m[2] > 0 and chev + hors + incoh <= 6:
+			print("UI etiquettes ecart cx=%.0f chevauchements=%d hors_libre=%d incoherences=%d" % [ville.call("position_camera"), m[0], m[1], m[2]])
+		cx += 30.0
+	print("UI etiquettes balayage positions=%d chevauchements=%d hors_libre=%d incoherences=%d" % [n, chev, hors, incoh])
+	var maison: Node2D = ville.get("maison")
+	var banque: Node2D = ville.get("banque")
+	var milieu: float = (maison.position.x + maison.call("porte").get_center().x + banque.position.x + banque.call("porte").get_center().x) / 2.0
+	for cadrage: Array in [["glisse", milieu - 150.0], ["milieu", milieu]]:
+		ville.call("centrer_sur", float(cadrage[1]), 0.0)
+		hud.placer_etiquettes()
+		await sc.delai(0.6)
+		var m2 := _mesure_etiquettes(hud, ville)
+		print("UI etiquettes cadrage=%s chevauchements=%d hors_libre=%d incoherences=%d fleches=%s" % [cadrage[0], m2[0], m2[1], m2[2],
+			str(["maison", "media", "banque"].map(func(id: String) -> String: return "%s:%s" % [id, str(hud.etiquettes[id].get_meta("fleche", "")) if str(hud.etiquettes[id].get_meta("fleche", "")) != "" else "non"]))])
+		if cadrage[0] == "glisse":
+			await RenderingServer.frame_post_draw
+			var chemin := ScenariosCapture.option("capture").replace(".png", "_glisse.png")
+			if chemin.is_relative_path():
+				chemin = ProjectSettings.globalize_path("res://").path_join(chemin)
+			sc.get_viewport().get_texture().get_image().save_png(chemin)
+
+
+## C7 (passage 2) : écart forcé de + 198 F à − 4 F (roulement de 0,6 s), vérifié à chaque image : le signe du
+## chiffre affiché, la couleur et la flèche de la pastille vont ensemble. La capture montre l'état final (− 4 F).
+func _pastille_signe(jeu: Node) -> void:
+	sc.partir_de_la_rue("pastille_signe")
+	var hud: Hud = jeu.hud
+	var a := Partie.etat.ab_courant()
+	await sc.delai(1.0)
+	hud.rouler_ecart(Produits.f(-4.0), Produits.f(198.0), a, 0.0, false)
+	await sc.get_tree().process_frame
+	var images := 0
+	var incoherences := 0
+	var signes := {}
+	hud.rouler_ecart(Produits.f(198.0), Produits.f(-4.0), a, 0.6)
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 900:
+		await sc.get_tree().process_frame
+		images += 1
+		signes[hud.l_ecart.text.left(1)] = true
+		if not hud.pastille_coherente():
+			incoherences += 1
+	print("UI pastille signe images=%d incoherences=%d textes_vus=%s final=« %s »" % [images, incoherences, str(signes.keys()), hud.l_ecart.text])
+
+
+## [chevauchements, hors du rectangle libre, incohérences flèche / porte] des étiquettes à l'instant.
+func _mesure_etiquettes(hud: Hud, ville: Node2D) -> Array:
+	var libre := hud.rect_libre()
+	var rects: Array = []
+	var chev := 0
+	var hors := 0
+	var incoh := 0
+	for id: String in ["maison", "media", "banque"]:
+		var p: Control = hud.etiquettes[id]
+		var r := Rect2(p.position, p.size)
+		if not libre.grow(1.0).encloses(r):
+			hors += 1
+		for q: Rect2 in rects:
+			if r.grow(4.0).intersects(q):
+				chev += 1
+		rects.append(r)
+		if id != "media":
+			var fleche := str(p.get_meta("fleche", "")) != ""
+			var porte_cachee: bool = ville.call("porte_ecran", id) == Vector2(-1, -1)
+			if fleche != porte_cachee:
+				incoh += 1
+	return [chev, hors, incoh]
 
 
 # =====================================================================
@@ -186,6 +400,8 @@ func _cibles(jeu: Node) -> void:
 	jeu.ouvrir_banque("sicav", -2.0)
 	await sc.delai(1.5)
 	_mesurer("banque_carnet_fiche", modales.courant)
+	var tailles := modales.courant.find_children("*", "Control", true, false).filter(func(c: Node) -> bool: return c is CarteProduit).map(func(c: Node) -> int: return int(c.get("taille_min_dessinee")))
+	print("UI tuiles taille_min=%d (cartes %d ; m10 : aucun texte de tuile sous 20 px)" % [tailles.min() if not tailles.is_empty() else 0, tailles.size()])
 	modales.banque.call("_afficher_ordre", "sicav", "a", -1.0)
 	await sc.delai(0.6)
 	_mesurer("banque_ordre", modales.courant)
@@ -411,6 +627,22 @@ func _hud(jeu: Node) -> void:
 	hud.point_banque(false)
 	await sc.delai(0.6)
 	_mesurer("hud", hud)
+	# C4 : barre haute en pause puis pendant un saut (le saut est arrêté avant la capture)
+	var e := Partie.etat
+	var format := "%dx%d%s" % [sc.get_window().size.x, sc.get_window().size.y, " tel" if Ecran.telephone_simule else ""]
+	Partie.changer_vitesse(0)
+	await sc.delai(0.3)
+	print("UI barre format=%s etat=pause %s" % [format, hud.etat_barre()])
+	StrategieTest.jouer_mois(e, true)
+	if not e.modale.is_empty():
+		e.resolution_auto()
+	jeu.demander_saut()
+	await sc.delai(0.4)
+	print("UI barre format=%s etat=%s %s" % [format, "saut" if Partie.saut_actif else "SAUT_IMPOSSIBLE", hud.etat_barre()])
+	if Partie.saut_actif:
+		jeu.demander_saut()
+	Partie.changer_vitesse(0)
+	await sc.delai(0.4)
 
 
 ## « UI panneau … » : bas du panneau ≤ haut de la frise − 6, aucun enfant visible hors du cadre (CA-C2).

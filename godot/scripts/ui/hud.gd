@@ -15,6 +15,7 @@ signal comparaison_demandee
 signal frais_demandes
 signal notif_touchee(n: Dictionary)
 signal historique_demande
+signal courrier_demande          # bouton COURRIER (lot 02) : lancer ou arrêter le saut « jusqu'au prochain courrier »
 
 const HAUT := 102.0             # 34 texels : boutons de 84 px (28 texels) et marges du cadre
 const BAS := 96.0               # 32 texels (lot_px2 §9.1) : bouton HISTORIQUE de 90 px à l'intérieur
@@ -33,8 +34,24 @@ var boutons: Dictionary = {}
 var b_lecture: BoutonTemps
 var b_cycle: BoutonTemps
 var badge_pause: Label
-var boite_baguette: VBoxContainer
-var l_baguette: Label
+# Bouton COURRIER (lot 02, D1-D3) et badge des non-lus (D5)
+var filet_courrier: Control
+var b_courrier: Button
+var _contenu_courrier: BoxContainer
+var _icone_courrier: TextureRect
+var _l_courrier: Label
+var _etat_courrier := "cache"
+var _image_saut := -1                 # image du saut affichée (fond × 2 + chevrons)
+var _debloque_e: EtatPartie = null    # partie pour laquelle le déblocage a été calculé
+var _debloque_n := -1                 # taille de l'historique au dernier calcul
+var _debloque := false
+var _bulle: Control = null
+var _bulle_faite := false
+var badge_non_lus: Control
+var _n_non_lus := 0
+var _fiches_en_vol := 0                   # fiches non lues en route vers HISTORIQUE (comptées à l'arrivée)
+var replis_barre := PackedStringArray()   # replis de la barre haute en vigueur (contrôle « UI barre »)
+var manque_cc := 0.0                      # px qui manquaient pour garder « COMPTE COURANT » (0 s'il tient)
 var carte_cc: PanelContainer
 var boite_cc: VBoxContainer
 var l_titre_cc: Label
@@ -128,10 +145,7 @@ func _creer_barre() -> void:
 	date.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	date.triple_touche.connect(func() -> void: raccourci_demo.emit())
 	h.add_child(date)
-	boite_baguette = _bloc("BAGUETTE", 20)
-	l_baguette = Style.label("", 30, Style.chiffres())
-	boite_baguette.add_child(l_baguette)
-	h.add_child(boite_baguette)
+	# Lot 02 (D1) : le bloc BAGUETTE a quitté la barre (prix dans « Mon foyer », « = N baguettes » dans « Mon argent »)
 	h.add_child(_ressort())
 	var temps := HBoxContainer.new()
 	temps.add_theme_constant_override("separation", 10)
@@ -149,6 +163,15 @@ func _creer_barre() -> void:
 	b_cycle.pressed.connect(func() -> void: vitesse_demandee.emit(-2))
 	temps.add_child(b_cycle)
 	h.add_child(temps)
+	# Bouton COURRIER (lot 02, D1) : contrôle du temps, à droite des vitesses après un filet vertical d'1 texel
+	filet_courrier = Control.new()
+	filet_courrier.custom_minimum_size = Vector2(9, 66)
+	filet_courrier.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	filet_courrier.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	filet_courrier.draw.connect(func() -> void: filet_courrier.draw_rect(Rect2(3, 0, 3, filet_courrier.size.y), Style.PANNEAU_SURVOL))
+	h.add_child(filet_courrier)
+	_creer_courrier()
+	h.add_child(b_courrier)
 	badge_pause = Style.label("EN PAUSE", 28, Style.neon(), Style.GEL)
 	badge_pause.add_theme_color_override("font_shadow_color", Color(Style.GEL, 0.6))
 	badge_pause.add_theme_constant_override("shadow_outline_size", 12)
@@ -247,6 +270,36 @@ func _styler_pastille(sens: int) -> void:
 	fleche_ecart.queue_redraw()
 
 
+## Pastille « VS LIVRET A » : le chiffre roule de « de » à « vers » (euros) ; signe, couleur et flèche suivent.
+func rouler_ecart(de: float, vers: float, a: int, duree := 0.6, anime := true) -> void:
+	Juice.rouler(l_ecart, de, vers, func(v: float) -> String: return _texte_ecart(v, a, anime), duree)
+	_ecart_affiche = vers
+
+
+## Vrai si la pastille montre le signe de son chiffre (contrôle C7) : « + » vert ▲, « − » rouge ▼, sinon neutre.
+func pastille_coherente() -> bool:
+	var t := l_ecart.text
+	var sens := 1 if t.begins_with("+") else (-1 if (t.begins_with("−") or t.begins_with("-")) and not t.begins_with("−0") and not t.begins_with("-0") else 0)
+	return sens == _sens_ecart and l_ecart.get_theme_color("font_color") == (_couleur_sens(sens) if sens != 0 else Style.TEXTE)
+
+
+## Texte de l'écart affiché (valeur roulante v) ; la pastille prend le signe de ce texte au même moment.
+func _texte_ecart(v: float, a: int, anime: bool) -> String:
+	var sens := signe_ecart(v, a)
+	if sens != _sens_ecart:
+		_sens_ecart = sens
+		_styler_pastille(sens)
+		if anime:
+			Juice.pop(pastille_livret)
+	return Format.ecart(v, a)
+
+
+## Signe d'un écart tel qu'il s'affiche (arrondi à l'unité de la devise : « = 0 F » à moins de 0,5).
+static func signe_ecart(v: float, a: int) -> int:
+	var x := Format.en_devise(v, Format.devise(a))
+	return 1 if x >= 0.5 else (-1 if x <= -0.5 else 0)
+
+
 static func _couleur_sens(sens: int) -> Color:
 	return Style.GAIN if sens > 0 else (Style.PERTE if sens < 0 else Style.TEXTE_2)
 
@@ -291,6 +344,349 @@ func _ressort() -> Control:
 	return c
 
 
+# =====================================================================
+# Bouton COURRIER (lot 02, docs/17 §1) : « jusqu'au prochain appel, courrier ou journal »
+# =====================================================================
+
+## Bouton secondaire de la barre ; son contenu (icône 16 × 16 et libellé) est posé par-dessus, en ligne sur PC,
+## en colonne sur téléphone (libellé Atkinson gras 20 sous l'icône) ; il descend d'1 texel à l'appui.
+func _creer_courrier() -> void:
+	b_courrier = Button.new()
+	b_courrier.name = "Courrier"
+	b_courrier.focus_mode = Control.FOCUS_NONE
+	b_courrier.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b_courrier.tooltip_text = "Avancer jusqu'au prochain appel, courrier ou journal (N)"
+	b_courrier.visible = false
+	CadresPixel.habiller_bouton(b_courrier, "secondaire")
+	b_courrier.pressed.connect(func() -> void: courrier_demande.emit())
+	_contenu_courrier = BoxContainer.new()
+	_contenu_courrier.name = "Contenu"
+	_contenu_courrier.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_contenu_courrier.alignment = BoxContainer.ALIGNMENT_CENTER
+	b_courrier.add_child(_contenu_courrier)
+	_icone_courrier = CadresPixel.icone("courrier")
+	_icone_courrier.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_icone_courrier.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_contenu_courrier.add_child(_icone_courrier)
+	_l_courrier = Style.label("COURRIER", 28, Style.capitales())
+	_l_courrier.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_l_courrier.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_contenu_courrier.add_child(_l_courrier)
+	b_courrier.button_down.connect(_poser_contenu_courrier.bind(true))
+	b_courrier.button_up.connect(_poser_contenu_courrier.bind(false))
+
+
+## Libellé, disposition et taille du bouton selon le format (appelé par _disposer et les replis de la barre).
+func _disposer_courrier(avec_libelle: bool) -> void:
+	_contenu_courrier.vertical = compact
+	_contenu_courrier.add_theme_constant_override("separation", -9 if compact else 9)
+	var police := Style.ui_gras() if compact else Style.capitales()
+	_l_courrier.add_theme_font_override("font", police)
+	_l_courrier.add_theme_font_size_override("font_size", 20 if compact else 28)
+	_l_courrier.visible = avec_libelle
+	var lib := _l_courrier.get_minimum_size() if avec_libelle else Vector2.ZERO
+	var largeur := 84.0
+	if avec_libelle:
+		largeur = (maxf(48.0, lib.x) + 30.0) if compact else (48.0 + 9.0 + lib.x + 33.0)
+	b_courrier.custom_minimum_size = Vector2(maxf(largeur, Style.cible_min()), maxf(84.0, Style.cible_min()))
+	_poser_contenu_courrier(false)
+
+
+## Contenu dans la face du bouton (marges du cadre 9-patch) ; enfoncé : 1 texel plus bas.
+func _poser_contenu_courrier(enfonce: bool) -> void:
+	var haut := 3.0 if compact and _l_courrier.visible else 6.0
+	_contenu_courrier.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_contenu_courrier.offset_left = 12.0
+	_contenu_courrier.offset_right = -12.0
+	_contenu_courrier.offset_top = haut + (3.0 if enfonce else 0.0)
+	_contenu_courrier.offset_bottom = -18.0 + (3.0 if enfonce else 0.0)
+
+
+## État du bouton COURRIER (D2) pour la partie e ; occupe : écran titre, fenêtre ou modale ouverte, séquence.
+## Caché tant qu'aucune modale n'a été résolue (une entrée d'historique appel, journal ou courrier existe) ;
+## saut en cours ; inactif si le saut est impossible (Partie.saut_possible : modale en attente, temps bloqué,
+## décembre 1988) ; repos sinon.
+func etat_courrier_pour(e: EtatPartie, occupe: bool) -> String:
+	if e == null:
+		return "cache"
+	if e != _debloque_e or e.historique.size() != _debloque_n:
+		if e != _debloque_e:
+			_debloque = false
+		_debloque_e = e
+		_debloque_n = e.historique.size()
+		if not _debloque:
+			for h: Dictionary in e.historique:
+				if str(h.get("genre", "")) in ["appel", "journal", "courrier"]:
+					_debloque = true
+					break
+	if not _debloque:
+		return "cache"
+	if Partie.saut_actif:
+		return "saut"
+	if occupe or not Partie.saut_possible():
+		return "inactif"
+	return "repos"
+
+
+func etat_courrier() -> String:
+	return _etat_courrier
+
+
+## Applique l'état du bouton : "cache", "repos", "saut" (fond ambre qui pulse, chevrons qui avancent),
+## "inactif" (icône et libellé à 40 %, aucun effet au toucher). Première apparition en jeu : glissement 0,3 s.
+func maj_courrier(etat: String) -> void:
+	if etat == _etat_courrier:
+		return
+	var apparait := _etat_courrier == "cache" and etat != "cache"
+	_etat_courrier = etat
+	b_courrier.visible = etat != "cache"
+	filet_courrier.visible = b_courrier.visible
+	b_courrier.disabled = etat == "inactif"
+	b_courrier.mouse_default_cursor_shape = Control.CURSOR_ARROW if etat == "inactif" else Control.CURSOR_POINTING_HAND
+	_contenu_courrier.modulate.a = 0.4 if etat == "inactif" else 1.0
+	_image_saut = -1
+	if etat != "saut":
+		CadresPixel.habiller_bouton(b_courrier, "secondaire")
+		_icone_courrier.texture = CadresPixel.texture("courrier")
+		_l_courrier.add_theme_color_override("font_color", Style.TEXTE)
+	else:
+		_animer_saut()
+	if apparait and is_visible_in_tree() and not Juice.animations_reduites:
+		_contenu_courrier.position.x += 60.0
+		b_courrier.modulate.a = 0.0
+		var t := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		t.tween_property(b_courrier, "modulate:a", 1.0, 0.3)
+		t.tween_property(_contenu_courrier, "position:x", _contenu_courrier.position.x - 60.0, 0.3)
+	_replier_barre.call_deferred()
+
+
+## Saut actif : 2 images de fond (ambre, lumière) à 2 im/s et 2 images de chevrons à 4 im/s, sans alpha.
+func _animer_saut() -> void:
+	var ms := Time.get_ticks_msec()
+	var image := (int(ms / 500) % 2) * 2 + int(ms / 250) % 2
+	if image == _image_saut:
+		return
+	var fond_change := _image_saut < 0 or (image / 2) != (_image_saut / 2)
+	_image_saut = image
+	if fond_change:
+		var remplacer := {"ambre": "lumiere"} if image >= 2 else {}
+		for etat: String in ["normal", "hover", "disabled"]:
+			b_courrier.add_theme_stylebox_override(etat, CadresPixel.style("bouton_principal", remplacer))
+		for etat: String in ["pressed", "hover_pressed"]:
+			b_courrier.add_theme_stylebox_override(etat, CadresPixel.style("bouton_principal_enfonce", remplacer))
+		_l_courrier.add_theme_color_override("font_color", Style.ENCRE_ACCENT)
+	_icone_courrier.texture = CadresPixel.texture("courrier_b" if image % 2 == 1 else "courrier", CadresPixel.ECHELLE, {"blanc_chaud": "nuit"})
+
+
+## Bulle unique de la première apparition (D3), non bloquante : [COMPRIS] ou le premier appui sur COURRIER.
+func montrer_bulle_courrier() -> void:
+	if _bulle != null or not b_courrier.is_visible_in_tree():
+		return
+	_bulle_faite = true
+	var p := PanelContainer.new()
+	p.name = "BulleCourrier"
+	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	p.add_theme_stylebox_override("panel", Style.papier("banque", 24.0, 18.0))
+	p.mouse_filter = Control.MOUSE_FILTER_STOP
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	p.add_child(v)
+	var l := Style.label("Rien à faire ce mois-ci ? COURRIER fait filer le temps jusqu'au prochain appel, courrier ou journal.", 22, Style.ui(), Style.ENCRE)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(minf(480.0, rect_libre().size.x - 120.0), 0)
+	v.add_child(l)
+	var ok := Style.bouton("COMPRIS")
+	ok.theme_type_variation = "BoutonPapier"
+	ok.focus_mode = Control.FOCUS_NONE
+	ok.size_flags_horizontal = Control.SIZE_SHRINK_END
+	ok.pressed.connect(fermer_bulle_courrier)
+	v.add_child(ok)
+	var pointe := Control.new()
+	pointe.name = "Pointe"
+	pointe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pointe.draw.connect(_dessiner_pointe.bind(pointe))
+	p.add_child(pointe)
+	add_child(p)
+	_bulle = p
+	_placer_bulle.call_deferred()
+
+
+func _placer_bulle() -> void:
+	if _bulle == null or not is_instance_valid(_bulle):
+		return
+	_bulle.reset_size()
+	var r := b_courrier.get_global_rect()
+	var libre := rect_libre()
+	var x := clampf(r.get_center().x - 90.0, libre.position.x + 12.0, libre.end.x - _bulle.size.x - 12.0)
+	_bulle.position = Vector2(roundf(x / 3.0) * 3.0, roundf((HAUT + 27.0) / 3.0) * 3.0)
+	var pointe := _bulle.get_node("Pointe") as Control
+	pointe.set_meta("x", roundf((r.get_center().x - _bulle.position.x) / 3.0) * 3.0)
+	pointe.queue_redraw()
+
+
+## Pointe en escalier (encre puis crème) au-dessus de la bulle, vers le bouton.
+func _dessiner_pointe(pointe: Control) -> void:
+	var x: float = pointe.get_meta("x", 90.0) - pointe.position.x
+	for k in 4:
+		var w := 6.0 + 6.0 * k
+		pointe.draw_rect(Rect2(x - w / 2.0 - 3.0, -15.0 + 3.0 * k, w + 6.0, 3.0), Style.ENCRE)
+		pointe.draw_rect(Rect2(x - w / 2.0, -12.0 + 3.0 * k, w, 3.0), Style.JOURNAL)
+
+
+## Ferme la bulle (COMPRIS, appui sur COURRIER ou N) ; elle ne revient plus (préférence locale, D3).
+func fermer_bulle_courrier() -> void:
+	if _bulle == null:
+		return
+	if is_instance_valid(_bulle):
+		_bulle.queue_free()
+	_bulle = null
+	Reglages.marquer_bulle_vue("courrier")
+
+
+## La bulle s'affiche au premier passage au repos du bouton dans la partie, si le joueur ne l'a jamais vue.
+func _verifier_bulle() -> void:
+	if _bulle_faite or _etat_courrier != "repos" or not is_visible_in_tree():
+		return
+	_bulle_faite = true
+	if Reglages.bulle_a_montrer("courrier"):
+		montrer_bulle_courrier()
+
+
+## Replis de la barre quand elle manque de largeur (passage 2, E3 / E4), chacun seulement si elle déborde encore.
+## PC : « VS LIVRET A », « COMPTE », variation, libellé COURRIER ; « EN PAUSE » / « » ×6 » jamais replié.
+## Téléphone (titres courts d'office) : libellé COURRIER, puis seulement « EN PAUSE » / « » ×6 ».
+## Mesuré avec le badge visible (pire cas) ; jamais le bouton lui-même. replis_barre et manque_cc : contrôles.
+func _replier_barre() -> void:
+	if barre == null:
+		return
+	var h := barre.get_child(0) as HBoxContainer
+	var dispo := Ecran.taille().x - 30.0
+	var trop := func() -> bool: return h.get_combined_minimum_size().x > dispo
+	replis_barre = PackedStringArray()
+	manque_cc = 0.0
+	# Largeur du badge : la plus large de ses deux chaînes (rien ne bouge quand le saut commence)
+	var lp := Style.neon().get_string_size("EN PAUSE", HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x
+	var ls := Style.police_pour(Style.neon(), 28, "» ×6").get_string_size("» ×6", HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x
+	badge_pause.custom_minimum_size.x = ceilf(maxf(lp, ls) / 3.0) * 3.0
+	l_titre_cc.text = "COMPTE" if compact else "COMPTE COURANT"
+	l_titre_livret.text = "VS LIVRET A" if compact else "VS TOUT AU LIVRET A"
+	l_var.visible = not compact
+	badge_pause.set_meta("replie", false)
+	badge_pause.visible = true
+	_disposer_courrier(true)
+	if not compact:
+		if trop.call():
+			l_titre_livret.text = "VS LIVRET A"
+			replis_barre.append("titre_livret")
+		if trop.call():
+			l_titre_cc.text = "COMPTE"
+			replis_barre.append("titre_cc")
+			l_titre_cc.text = "COMPTE COURANT"
+			manque_cc = h.get_combined_minimum_size().x - dispo   # ce qu'il manquait pour « COMPTE COURANT »
+			l_titre_cc.text = "COMPTE"
+		if trop.call():
+			l_var.visible = false
+			replis_barre.append("variation")
+		if trop.call():
+			_disposer_courrier(false)
+			replis_barre.append("libelle_courrier")
+	else:
+		if trop.call():
+			_disposer_courrier(false)
+			replis_barre.append("libelle_courrier")
+		if trop.call():
+			badge_pause.set_meta("replie", true)
+			replis_barre.append("pause")
+	badge_pause.visible = (Partie.vitesse == 0 or Partie.saut_actif) and not badge_pause.get_meta("replie", false)
+
+
+## Ligne de contrôle de la barre (C4) : badge du temps, libellé COURRIER, variation, titres, replis.
+func etat_barre() -> String:
+	var h := barre.get_child(0) as HBoxContainer
+	var marge := Ecran.taille().x - 30.0 - h.get_combined_minimum_size().x
+	var avant := badge_pause.visible
+	badge_pause.visible = true   # place qu'il faudrait au badge du temps (« EN PAUSE » ou « » ×6 »)
+	var marge_badge := Ecran.taille().x - 30.0 - h.get_combined_minimum_size().x
+	badge_pause.visible = avant
+	return "marge=%d marge_avec_badge=%d pause_visible=%s libelle_courrier=%s var=%s titre_cc=« %s » titre_livret=« %s » replis=%s manque_cc=%d" % [roundi(marge), roundi(marge_badge),
+		"oui" if badge_pause.is_visible_in_tree() else "non", "oui" if _l_courrier.visible else "non", "oui" if l_var.visible else "non",
+		l_titre_cc.text, l_titre_livret.text, ",".join(replis_barre) if not replis_barre.is_empty() else "aucun", roundi(manque_cc)]
+
+
+# =====================================================================
+# Badge des non-lus sur HISTORIQUE (lot 02, D5, docs/17 §2.2)
+# =====================================================================
+
+## Nombre affiché (0 : badge absent ; au-delà de 9 : « 9+ »).
+## Une fiche encore en vol n'est comptée qu'à son arrivée (le chiffre change quand elle touche HISTORIQUE).
+func maj_badge(n: int) -> void:
+	_n_non_lus = maxi(0, n)
+	_afficher_badge()
+
+
+func _afficher_badge() -> void:
+	var montre := maxi(0, _n_non_lus - _fiches_en_vol)
+	badge_non_lus.visible = montre > 0
+	badge_non_lus.set_meta("texte", texte_badge(montre))
+	badge_non_lus.queue_redraw()
+
+
+func _fiche_arrivee() -> void:
+	_fiches_en_vol = maxi(0, _fiches_en_vol - 1)
+	_afficher_badge()
+	sauter_badge()
+
+
+static func texte_badge(n: int) -> String:
+	return "9+" if n > 9 else str(n)
+
+
+func texte_badge_affiche() -> String:
+	return str(badge_non_lus.get_meta("texte", "")) if badge_non_lus.visible else ""
+
+
+## Le badge saute d'1 texel (2 images, 0,12 s) : arrivée d'une fiche non lue.
+func sauter_badge() -> void:
+	var y0 := float(badge_non_lus.get_meta("y0", badge_non_lus.position.y))
+	badge_non_lus.set_meta("y0", y0)
+	badge_non_lus.position.y = y0 - 3.0
+	var t := create_tween()
+	t.tween_interval(0.12)
+	t.tween_callback(func() -> void: badge_non_lus.position.y = y0)
+
+
+## Pastille ambre en escalier, contour encre d'1 texel, chiffre Atkinson gras encre (badge, onglets du classeur).
+static func dessiner_pastille(c: Control, texte: String, taille_police := 22) -> void:
+	var r := Rect2(Vector2.ZERO, (c.size / 3.0).floor() * 3.0)
+	var encre := Style.ENCRE
+	c.draw_rect(Rect2(r.position.x + 3, r.position.y, r.size.x - 6, r.size.y), encre)
+	c.draw_rect(Rect2(r.position.x, r.position.y + 3, r.size.x, r.size.y - 6), encre)
+	c.draw_rect(Rect2(r.position.x + 6, r.position.y + 3, r.size.x - 12, r.size.y - 6), Style.ACCENT)
+	c.draw_rect(Rect2(r.position.x + 3, r.position.y + 6, r.size.x - 6, r.size.y - 12), Style.ACCENT)
+	var police := Style.ui_gras()
+	var w := police.get_string_size(texte, HORIZONTAL_ALIGNMENT_LEFT, -1, taille_police)
+	var base := (r.size.y + police.get_ascent(taille_police) - police.get_descent(taille_police)) / 2.0
+	c.draw_string(police, Vector2(roundf((r.size.x - w.x) / 2.0), roundf(base)), texte, HORIZONTAL_ALIGNMENT_LEFT, -1, taille_police, encre)
+
+
+## Étiquette (ou flèche de bord) d'un bâtiment qui saute d'1 texel (3 px) puis revient : 2 images, 0,12 s
+## (§3.3 : appelé par Sequences.pieces_du_mois quand une pièce passe par la flèche de bord).
+func sauter_etiquette(id: String) -> void:
+	var p: Control = etiquettes.get(id)
+	if p == null:
+		return
+	var y0 := p.position.y
+	p.position.y = y0 - 3.0
+	var t := p.create_tween()
+	t.tween_interval(0.12)
+	t.tween_callback(_retour_etiquette.bind(p, y0))
+
+
+func _retour_etiquette(p: Control, y0: float) -> void:
+	if is_instance_valid(p) and p.position.y == y0 - 3.0:
+		p.position.y = y0
+
+
 func _creer_bas() -> void:
 	bas = PanelContainer.new()
 	bas.name = "Frise"
@@ -330,6 +726,23 @@ func _creer_bas() -> void:
 	b_historique.pressed.connect(func() -> void: historique_demande.emit())
 	hb.add_child(b_historique)
 	hb.move_child(b_historique, 0)   # à gauche : à droite, le panneau « Mon argent » le couvrirait
+	# Badge des non-lus (D5) : 12 × 12 texels sur le coin haut droit du bouton (moitié dehors à droite), dans
+	# les bornes de la frise ; il fait partie du bouton (pas une cible à part)
+	badge_non_lus = Control.new()
+	badge_non_lus.name = "BadgeNonLus"
+	badge_non_lus.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge_non_lus.size = Vector2(36, 36)
+	badge_non_lus.visible = false
+	badge_non_lus.draw.connect(func() -> void: Hud.dessiner_pastille(badge_non_lus, str(badge_non_lus.get_meta("texte", ""))))
+	b_historique.add_child(badge_non_lus)
+	b_historique.resized.connect(_placer_badge)
+
+
+func _placer_badge() -> void:
+	var dy := bas.get_global_rect().position.y - b_historique.get_global_rect().position.y
+	var y0 := roundf(maxf(-18.0, dy) / 3.0) * 3.0
+	badge_non_lus.position = Vector2(roundf((b_historique.size.x - 18.0) / 3.0) * 3.0, y0)
+	badge_non_lus.set_meta("y0", y0)
 
 
 func _creer_panneau() -> void:
@@ -520,11 +933,18 @@ func _on_etiquette(event: InputEvent, id: String) -> void:
 ## mot. Bâtiment visible : étiquette au point, ramenée entièrement dans rect_libre() (8 px de marge).
 ## Bâtiment caché : flèche de bord à 16 px du bord du rectangle libre (donc à gauche du panneau ouvert),
 ## à la hauteur de l'étiquette, bornée elle aussi ; deux flèches du même côté s'empilent.
+## Lot 02, passage 2 (E1, E2) : maison et banque sont « vues » si leur porte l'est (ville.porte_ecran, même
+## règle que les pièces du mois) ; la Gazette (sans porte) si elle est entière (est_visible). Les flèches de bord
+## sont posées d'abord (empilées), puis les étiquettes en place ; une étiquette qui en touche une autre est
+## poussée à côté (8 px, vers le centre d'abord), faute de place au-dessus. Jamais de chevauchement, jamais masquée.
 func placer_etiquettes() -> void:
 	if ville == null:
 		return
 	var libre := rect_libre()
 	var occupes := {"gauche": [], "droite": []}
+	var poses: Array = []   # Rect2 déjà posés (flèches puis étiquettes)
+	var en_place: Array = []
+	var points := {}
 	for id in etiquettes:
 		var p: PanelContainer = etiquettes[id]
 		var point: Vector2
@@ -533,31 +953,103 @@ func placer_etiquettes() -> void:
 		else:
 			var b: Node2D = ville.call("batiment", id)
 			point = ville.call("position_ecran", b.position + Vector2(0, 56))
+		points[id] = point
 		var cote := ""
-		if ville.has_method("est_visible") and not bool(ville.call("est_visible", id)):
+		if not batiment_vu(id):
 			cote = "gauche" if point.x < libre.get_center().x else "droite"
 		if cote != str(p.get_meta("fleche", "")):
 			p.set_meta("fleche", cote)
 			p.find_child("ChevronGauche", true, false).visible = cote == "gauche"
 			p.find_child("ChevronDroite", true, false).visible = cote == "droite"
 			p.reset_size()
+		if cote == "":
+			en_place.append(id)
+			continue
 		var s := p.size
-		var x := point.x - s.x / 2.0
-		if cote == "gauche":
-			x = libre.position.x + 16.0
-		elif cote == "droite":
-			x = libre.end.x - s.x - 16.0
-		var y_max := libre.end.y - s.y - 8.0
-		var y := clampf(point.y, libre.position.y + 8.0, y_max)
-		x = clampf(x, libre.position.x + 8.0, maxf(libre.position.x + 8.0, libre.end.x - s.x - 8.0))
-		if cote != "":
-			# Empilement : on remonte au-dessus d'une flèche déjà posée du même côté
-			for r: Rect2 in occupes[cote]:
-				if Rect2(x, y, s.x, s.y).intersects(r.grow(4.0)):
-					y = r.position.y - s.y - 8.0
-			y = maxf(y, libre.position.y + 8.0)
-			occupes[cote].append(Rect2(x, y, s.x, s.y))
-		p.position = Vector2(roundf(x / 3.0) * 3.0, floorf(y / 3.0) * 3.0)
+		var x := libre.position.x + 16.0 if cote == "gauche" else libre.end.x - s.x - 16.0
+		var y := clampf(point.y, libre.position.y + 8.0, libre.end.y - s.y - 8.0)
+		# Empilement : on remonte au-dessus d'une flèche déjà posée du même côté
+		for r: Rect2 in occupes[cote]:
+			if Rect2(x, y, s.x, s.y).intersects(r.grow(4.0)):
+				y = r.position.y - s.y - 8.0
+		y = maxf(y, libre.position.y + 8.0)
+		occupes[cote].append(Rect2(x, y, s.x, s.y))
+		p.position = _au_texel(Vector2(x, y))
+		poses.append(Rect2(p.position, s))
+	en_place.sort_custom(func(a: String, b: String) -> bool: return points[a].x < points[b].x)
+	for id: String in en_place:
+		var p: PanelContainer = etiquettes[id]
+		var s := p.size
+		var base := Vector2(points[id].x - s.x / 2.0, points[id].y)
+		p.position = _place_libre(base, s, libre, poses)
+		poses.append(Rect2(p.position, s))
+
+
+## Vrai si le bâtiment est vu (pas de flèche de bord) : porte visible pour maison et banque (repli : est_visible).
+func batiment_vu(id: String) -> bool:
+	if ville == null:
+		return true
+	if id != "media" and ville.has_method("porte_ecran"):
+		return ville.call("porte_ecran", id) != Vector2(-1, -1)
+	return not ville.has_method("est_visible") or bool(ville.call("est_visible", id))
+
+
+static func _au_texel(v: Vector2) -> Vector2:
+	return Vector2(roundf(v.x / 3.0) * 3.0, floorf(v.y / 3.0) * 3.0)
+
+
+## Position la plus proche de « base » (taille s) dans le rectangle libre, sans toucher les rectangles posés
+## (marge 8 px) : à côté d'un obstacle (vers le centre d'abord), puis au-dessus, puis plus haut encore.
+func _place_libre(base: Vector2, s: Vector2, libre: Rect2, poses: Array) -> Vector2:
+	var bornes := Rect2(libre.position + Vector2(8, 8), libre.size - s - Vector2(16, 16))
+	var depart := base.clamp(bornes.position, bornes.end)
+	var candidats: Array = [depart]
+	var ys: Array = [depart.y]
+	for r: Rect2 in poses:
+		ys.append(r.position.y - s.y - 8.0)
+	for y: float in ys:
+		candidats.append(Vector2(depart.x, y))
+		for r: Rect2 in poses:
+			candidats.append(Vector2(r.end.x + 8.0, y))
+			candidats.append(Vector2(r.position.x - s.x - 8.0, y))
+	var centre := libre.get_center().x
+	candidats.sort_custom(func(a: Vector2, b: Vector2) -> bool: return Hud._cout(a, depart, centre) < Hud._cout(b, depart, centre))
+	for c: Vector2 in candidats:
+		var q := _au_texel(c)
+		if not libre.grow(-4.0).encloses(Rect2(q, s)):
+			continue
+		var libre_ici := true
+		for r: Rect2 in poses:
+			if Rect2(q, s).grow(4.0).intersects(r):
+				libre_ici = false
+				break
+		if libre_ici:
+			return q
+	return _au_texel(depart)   # aucune place (ne doit pas arriver) : la position naturelle
+
+
+## Coût d'un candidat : distance à la position naturelle ; monter coûte plus cher que glisser (E2).
+static func _cout(c: Vector2, depart: Vector2, centre: float) -> float:
+	var vers_centre := 0.0 if absf(c.x - centre) <= absf(depart.x - centre) else 30.0
+	return absf(c.x - depart.x) + 3.0 * absf(c.y - depart.y) + vers_centre
+
+
+## Contrôle (C2) : paires d'étiquettes ou flèches qui se recouvrent (l'une agrandie de 4 px : il faut au moins
+## 4 px d'écart) + étiquettes hors du rectangle libre.
+func chevauchements_etiquettes() -> int:
+	var libre := rect_libre()
+	var rects: Array = []
+	var n := 0
+	for id in etiquettes:
+		var p: Control = etiquettes[id]
+		var r := Rect2(p.position, p.size)
+		if not libre.grow(1.0).encloses(r):
+			n += 1
+		for q: Rect2 in rects:
+			if r.grow(4.0).intersects(q):
+				n += 1
+		rects.append(r)
+	return n
 
 
 # =====================================================================
@@ -567,11 +1059,9 @@ func placer_etiquettes() -> void:
 func _disposer() -> void:
 	compact = Ecran.compact()
 	# Barre haute : elle tient dans la largeur (1728 px virtuels pour une fenêtre PC de 1152 × 648,
-	# 1280 au téléphone 16:9) : baguette puis badge « EN PAUSE » repliés quand la place manque.
+	# 1280 au téléphone 16:9) : badge « EN PAUSE » replié, puis variation et libellé COURRIER (_replier_barre).
 	var largeur := Ecran.taille().x
-	boite_baguette.visible = not compact and largeur >= 1900.0
 	(barre.get_child(0) as HBoxContainer).add_theme_constant_override("separation", 9 if largeur < 2000.0 else 15)
-	badge_pause.set_meta("replie", compact and largeur < 1400.0)
 	# Téléphone : mêmes blocs, libellés courts et chiffres un peu plus petits
 	l_titre_cc.text = "COMPTE" if compact or largeur < 1900.0 else "COMPTE COURANT"
 	l_cc.add_theme_font_size_override("font_size", 28 if compact else 32)
@@ -592,6 +1082,9 @@ func _disposer() -> void:
 	panneau_ouvert = not compact
 	_placer_panneau()
 	placer_etiquettes.call_deferred()
+	_replier_barre()
+	_placer_badge.call_deferred()
+	_placer_bulle.call_deferred()
 
 
 func _trouver_replier() -> Button:
@@ -689,19 +1182,8 @@ func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 	_patr_affiche = patr
 	# Écart avec « tout au Livret A » (même vie, tout sur compte + Livret A : témoin Tata Livret)
 	var ecart := e.ecart_livret()
-	var sens := 0
-	if Format.en_devise(ecart, Format.devise(a)) >= 0.5:
-		sens = 1
-	elif Format.en_devise(ecart, Format.devise(a)) <= -0.5:
-		sens = -1
-	Juice.rouler(l_ecart, _ecart_affiche, ecart, func(v: float) -> String: return Format.ecart(v, a), d)
-	_ecart_affiche = ecart
-	if sens != _sens_ecart:
-		_sens_ecart = sens
-		_styler_pastille(sens)
-		if anime:
-			Juice.pop(pastille_livret)
-	l_baguette.text = Format.montant(Marche.baguette(a), a, true)
+	# m5 (passage 2) : couleur et flèche suivent le signe du chiffre affiché, à chaque image du roulement
+	rouler_ecart(_ecart_affiche, ecart, a, d, anime)
 	# Variation sur 12 mois (ou depuis le début de la tranche)
 	var m0 := maxi(e.m_depart, e.m - 12)
 	var ref: float = e.hist["j"][m0]
@@ -752,7 +1234,7 @@ func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 	_coussin = (maxf(0.0, cc) + e.joueur.livret) / float(dep["total"])
 	l_coussin.text = Format.nombre(_coussin, 1) + " mois"
 	jauge.queue_redraw()
-	languette.text = "MON\nARGENT\n\n%s k\n%s" % [Format.nombre(Format.en_devise(patr, Format.devise(a)) / 1000.0, 0), Format.devise(a)]
+	languette.text = texte_languette(Format.nombre(Format.en_devise(patr, Format.devise(a)) / 1000.0, 0), Format.devise(a))
 	# Frise
 	frise.m_debut = e.m_depart
 	frise.m_fin = e.m_fin
@@ -770,22 +1252,43 @@ func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 	_alleger_panneau.call_deferred()
 
 
+## Languette repliée (téléphone) : « MON / ARGENT / 82 k F » ; le montant et son unité restent sur la même
+## ligne (espaces insécables) si elle tient dans la languette, sinon « 1 234 / k F » (jamais un « F » seul, m11).
+func texte_languette(milliers: String, devise: String) -> String:
+	var ligne := milliers + Format.ESPACE + "k" + Format.ESPACE + devise
+	var police := languette.get_theme_font("font")
+	var place := LARGEUR_LANGUETTE - 12.0
+	if police == null or police.get_string_size(ligne, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x <= place:
+		return "MON\nARGENT\n\n" + ligne
+	return "MON\nARGENT\n\n%s\nk%s%s" % [milliers, Format.ESPACE, devise]
+
+
 func _duree_mois() -> float:
 	return Partie.duree_mois_s()
 
 
+## Boutons du temps, badge et cadre de gel. Pendant un saut « jusqu'au prochain courrier » (lot 02, vitesse
+## effective) : aucun bouton de vitesse enfoncé, pas de cadre de gel, le badge affiche « » ×6 » en ambre ;
+## à la fin du saut, retour à l'affichage de v (Partie.vitesse, inchangée pendant le saut).
 func maj_vitesse(v: int) -> void:
+	var saut := Partie.saut_actif
 	for i in 4:
 		var g: String = ["pause", "x1", "x2", "x3"][i]
-		boutons[g].set_pressed_no_signal(i == v)
+		boutons[g].set_pressed_no_signal(i == v and not saut)
 		boutons[g].queue_redraw()
 	if v > 0:
 		b_cycle.vitesse_cycle = v
 	b_lecture.queue_redraw()
 	b_cycle.queue_redraw()
-	badge_pause.visible = v == 0 and not badge_pause.get_meta("replie", false)
+	var texte := "» ×6" if saut else "EN PAUSE"
+	if badge_pause.text != texte:
+		badge_pause.text = texte
+		badge_pause.add_theme_font_override("font", Style.police_pour(Style.neon(), 28, texte))   # chiffre : Atkinson
+		badge_pause.add_theme_color_override("font_color", Style.ACCENT if saut else Style.GEL)
+		badge_pause.add_theme_color_override("font_shadow_color", Color(Style.ACCENT if saut else Style.GEL, 0.6))
+	badge_pause.visible = (v == 0 or saut) and not badge_pause.get_meta("replie", false)
 	var t := create_tween()
-	t.tween_property(self, "_gel", 1.0 if v == 0 else 0.0, 0.3)
+	t.tween_property(self, "_gel", 1.0 if v == 0 and not saut else 0.0, 0.3)
 	t.parallel().tween_method(func(_x: float) -> void: cadre_gel.queue_redraw(), 0.0, 1.0, 0.3)
 
 
@@ -794,6 +1297,10 @@ func _process(_delta: float) -> void:
 	if ville != null and not ville.has_signal("camera_bougee"):
 		placer_etiquettes()
 	badge_pause.modulate.a = 0.75 + 0.25 * sin(Time.get_ticks_msec() / 300.0)
+	if _etat_courrier == "saut":
+		_animer_saut()
+	_verifier_bulle()
+	frise.fantomes = Partie.saut_actif
 
 
 func _dessiner_gel() -> void:
@@ -823,6 +1330,9 @@ func _dessiner_jauge() -> void:
 
 ## depart : position d'écran d'où la notification s'envole (bâtiment source), ou (-1, -1).
 func notifier(n: Dictionary, a: int, depart := Vector2(-1, -1)) -> void:
+	if n.get("pendant_saut", false):
+		_notifier_compacte(n)
+		return
 	var source: String = n.get("source", "banque")
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", Style.boite_notification(source))
@@ -862,8 +1372,7 @@ func notifier(n: Dictionary, a: int, depart := Vector2(-1, -1)) -> void:
 	notifs.add_child(p)
 	_liste_notifs.push_front(p)
 	while _liste_notifs.size() > 3:
-		var vieille: Control = _liste_notifs.pop_back()
-		vieille.queue_free()
+		_evacuer(_liste_notifs.pop_back())
 	p.gui_input.connect(_clic_notif.bind(p, n))
 	await get_tree().process_frame
 	if not is_instance_valid(p):
@@ -872,7 +1381,8 @@ func notifier(n: Dictionary, a: int, depart := Vector2(-1, -1)) -> void:
 	if persistant:
 		point_banque(true)
 		return
-	# Une notification ordinaire reste un mois à ×1 (13 §5.2), moins en accéléré
+	# Une notification ordinaire reste un mois à ×1 (13 §5.2), moins en accéléré. Pendant un saut,
+	# duree_mois_s() renvoie la durée du saut (rythme.json > saut, ≈ 1,3 s) : la notification reste 3 s (borne).
 	var vie := clampf(Partie.duree_mois_s(maxi(1, Partie.vitesse)), 3.0, 8.0)
 	await get_tree().create_timer(vie + 0.4).timeout
 	_retirer(p)
@@ -910,7 +1420,7 @@ func _empiler(nouvelle: Control, depart: Vector2) -> void:
 		var vieille: Control = _liste_notifs.pop_back()
 		if is_instance_valid(vieille):
 			total -= vieille.size.y + 10.0
-			vieille.queue_free()
+			_evacuer(vieille)
 	var y := 0.0
 	for c: Control in _liste_notifs:
 		if not is_instance_valid(c):
@@ -932,6 +1442,83 @@ func _empiler(nouvelle: Control, depart: Vector2) -> void:
 		else:
 			c.create_tween().tween_property(c, "position", cible, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		y += c.size.y + 10.0
+
+
+## Notification reçue pendant un saut (D6, docs/17 §2.2) : une ligne, pastille de la source et titre de
+## 40 caractères au plus ; 3 au plus, la 4e pousse la plus ancienne vers HISTORIQUE (fiche volante).
+func _notifier_compacte(n: Dictionary) -> void:
+	var source: String = n.get("source", "banque")
+	var nom_coul: String = Style.NOMS_PALETTE_SOURCES.get(source, "or")
+	var p := PanelContainer.new()
+	p.name = "NotifCompacte"
+	p.set_meta("compacte", source)
+	p.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	p.add_theme_stylebox_override("panel", CadresPixel.style_marges("notification", 18, 9, 21, 15, {} if nom_coul == "or" else {"or": nom_coul}))
+	p.mouse_filter = Control.MOUSE_FILTER_STOP
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	p.add_child(h)
+	var pic := CadresPixel.icone("source_" + source if source in Style.NOMS_PALETTE_SOURCES else "source_banque", {"creme": nom_coul}, 2)
+	pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(pic)
+	h.add_child(Style.label(titre_court(str(n.get("titre", ""))), 22, Style.ui_gras()))
+	notifs.add_child(p)
+	_liste_notifs.push_front(p)
+	while _liste_notifs.size() > 3:
+		_evacuer(_liste_notifs.pop_back())
+	p.gui_input.connect(_clic_notif.bind(p, n))
+	await get_tree().process_frame
+	if not is_instance_valid(p):
+		return
+	_empiler(p, Vector2(-1, -1))
+	await get_tree().create_timer(clampf(Partie.duree_mois_s(maxi(1, Partie.vitesse)), 3.0, 8.0) + 0.4).timeout
+	_retirer(p)
+
+
+## Titre d'une notification compacte : 40 caractères au plus, coupé par « … ».
+static func titre_court(t: String) -> String:
+	return t if t.length() <= 40 else t.left(39).strip_edges() + "…"
+
+
+## Notification poussée hors de la pile : une compacte se réduit en fiche qui vole vers HISTORIQUE.
+func _evacuer(vieille: Control) -> void:
+	if not is_instance_valid(vieille):
+		return
+	if vieille.has_meta("compacte"):
+		_envoler_fiche(vieille.get_global_rect().position + Vector2(9, vieille.size.y / 2.0 - 12.0), str(vieille.get_meta("compacte")))
+	vieille.queue_free()
+
+
+## Fiche 8 × 8 texels de la couleur de la source, en arc (0,4 s) jusqu'au bouton HISTORIQUE ; puis le badge saute.
+func _envoler_fiche(depart: Vector2, source: String) -> void:
+	if Juice.animations_reduites or not b_historique.is_visible_in_tree():
+		sauter_badge()
+		return
+	var fiche := Control.new()
+	fiche.name = "FicheVolante"
+	fiche.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fiche.size = Vector2(24, 24)
+	fiche.draw.connect(_dessiner_fiche.bind(fiche, Style.SOURCES.get(source, Style.ACCENT)))
+	add_child(fiche)
+	_fiches_en_vol += 1
+	_afficher_badge()
+	var arrivee := b_historique.get_global_rect().get_center() - Vector2(12, 12)
+	_vol_fiche(0.0, fiche, depart, arrivee)
+	var t := fiche.create_tween()
+	t.tween_method(_vol_fiche.bind(fiche, depart, arrivee), 0.0, 1.0, 0.4)
+	t.tween_callback(_fiche_arrivee)
+	t.tween_callback(fiche.queue_free)
+
+
+func _vol_fiche(k: float, fiche: Control, depart: Vector2, arrivee: Vector2) -> void:
+	var p := depart.lerp(arrivee, k) - Vector2(0, 120.0 * 4.0 * k * (1.0 - k))
+	fiche.position = (p / 3.0).round() * 3.0
+
+
+func _dessiner_fiche(fiche: Control, couleur: Color) -> void:
+	fiche.draw_rect(Rect2(0, 0, 24, 24), Style.ENCRE)
+	fiche.draw_rect(Rect2(3, 3, 18, 18), couleur)
+	fiche.draw_rect(Rect2(6, 9, 12, 3), Style.JOURNAL)
 
 
 func _retirer(p: Control) -> void:

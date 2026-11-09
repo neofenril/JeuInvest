@@ -107,8 +107,16 @@ func _test() -> void:
 		"fin « %s », m %d → %d" % [Partie.etat.fin, m_avant, Partie.etat.m])
 	await _attendre(func() -> bool: return modales.genre_courant == "appel", 8.0)
 	verifier("rejouer : la carte du Livret A revient", modales.genre_courant == "appel", modales.genre_courant)
+	# Fermer la carte avant de libérer la scène : une modale ouverte laisse des coroutines en attente
+	# (modale_banquier.gd), comptées comme « resources still in use at exit » par Godot (lot 02)
+	await _pause(0.8)
+	if modales.ouverte():
+		modales.fermer("plus_tard")
+	await _attendre(func() -> bool: return not scene.sequences.occupe and not modales.ouverte(), 5.0)
 	Partie.changer_vitesse(0)
+	await _pause(0.5)
 	scene.queue_free()
+	await get_tree().process_frame
 	await get_tree().process_frame
 	Juice.camera = null
 	Juice.hud = null

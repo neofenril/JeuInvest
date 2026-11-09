@@ -3,6 +3,8 @@ extends RefCounted
 ## Morceau de Modales (T9) : le courrier d'un événement de vie (04 §3.6) et le faire-part de naissance,
 ## avec l'enveloppe qui vole de la maison ; relecture depuis l'historique.
 
+const TAILLE_VALEUR_TIMBRE := 20   # m2 (recette 02-I) : Atkinson, jamais sous 20 px
+
 var m: Modales
 
 
@@ -41,7 +43,9 @@ func ouvrir(c: Dictionary, depart: Vector2, e: EtatPartie, lecture_choix := "", 
 	lt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tete.add_child(lt)
 	var timbre := Control.new()
-	timbre.custom_minimum_size = Vector2(96, 104)
+	timbre.name = "Timbre"
+	timbre.custom_minimum_size = Vector2(108, 126)   # valeur « 2,20 F » en 20 px dans une bande sous l'image (C5)
+	timbre.set_meta("taille_valeur", TAILLE_VALEUR_TIMBRE)
 	timbre.draw.connect(_dessiner_timbre.bind(timbre, str(c.get("picto", ""))))
 	tete.add_child(timbre)
 	v.add_child(tete)
@@ -190,6 +194,7 @@ func _dessiner_timbre(t: Control, picto: String) -> void:
 		t.draw_circle(Vector2(r.end.x, r.position.y + k), 3.5, Style.COURRIER)
 		k += 10.0
 	var interieur := r.grow(-8)
+	interieur.size.y -= 24.0   # bande blanche du bas : la valeur faciale
 	t.draw_rect(interieur, PalettePixel.couleur("ciel_clair"))
 	var c := interieur.get_center()
 	match picto:
@@ -212,4 +217,4 @@ func _dessiner_timbre(t: Control, picto: String) -> void:
 		_:
 			t.draw_rect(Rect2(c.x - 24, c.y - 12, 48, 26), PalettePixel.couleur("vert"))
 			t.draw_circle(c + Vector2(0, 1), 8, PalettePixel.couleur("vert_clair"))
-	t.draw_string(Style.chiffres(), Vector2(r.position.x + 8, r.end.y - 8), "2,20 F", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, PalettePixel.couleur("pierre_ombre"))
+	t.draw_string(Style.chiffres(), Vector2(r.position.x + 8, r.end.y - 9), "2,20 F", HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 16, TAILLE_VALEUR_TIMBRE, PalettePixel.couleur("pierre_ombre"))

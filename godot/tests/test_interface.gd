@@ -2,6 +2,8 @@ extends Node
 ## Test de fumée de l'interface (lot 01), sans écran : vérifie le contrat logique ↔ affichage.
 ## Lancer : Godot_console.exe --headless --path godot res://tests/test_interface.tscn  (ou godot\outils\tests.ps1)
 ## a) La scène principale s'instancie et affiche l'écran titre, sans toucher à la sauvegarde du joueur.
+## a bis) Lot 02 : bouton COURRIER (caché, repos, saut, inactif), touche N, arrêt du saut à l'ouverture d'une
+##    fenêtre, badge des non-lus (= non_lues(), « 9+ », remis à zéro à la fermeture de l'historique).
 ## b) Hud, Modales et la fenêtre Banque affichent toute la démo (graine fixe), joueur actif puis passif
 ##    (StrategieTest) : chaque modale par la fonction que principal.gd utilise pour son genre, fermée par le choix
 ##    de la stratégie ; fenêtre Banque sur chaque produit détenu en décembre 1986 et juin 1988 ; historique avec
@@ -26,6 +28,7 @@ func _ready() -> void:
 	Partie.chemin_sauvegarde = _chemin_test   # avant toute instanciation : jamais la sauvegarde du joueur
 	var empreinte_avant := FileAccess.get_sha256(Sauvegarde.CHEMIN)
 	await _test_scene_principale(empreinte_avant)
+	await _test_courrier()
 	await _test_demo_complete(true)
 	await _test_demo_complete(false)
 	_verifier("sauvegarde du joueur (partie_en_cours.sav) intacte à la fin du test", FileAccess.get_sha256(Sauvegarde.CHEMIN) == empreinte_avant)
@@ -62,6 +65,161 @@ func _test_scene_principale(empreinte_avant: String) -> void:
 	Juice.hud = null
 	Juice.calque_effets = null
 	_verifier("scène principale libérée proprement", not is_instance_valid(scene))
+
+
+# ---------------------------------------------------------------------
+# a bis) Bouton COURRIER, arrêts du saut, badge des non-lus (lot 02, CA-I1), dans la vraie scène
+# ---------------------------------------------------------------------
+
+func _test_courrier() -> void:
+	var scene: Node = load("res://scenes/principal.tscn").instantiate()
+	add_child(scene)
+	await _images(5)
+	scene.call("nouvelle_partie", Donnees.config_demo(GRAINE))   # A1 : jamais la graine aléatoire de principal._config()
+	await _images(2)
+	var h: Hud = scene.get("hud")
+	var md: Modales = scene.get("modales")
+	var e := Partie.etat
+	_verifier("COURRIER : caché tant qu'aucune modale n'est résolue (carte du Livret A en attente)", h.etat_courrier() == "cache" and not h.b_courrier.visible, h.etat_courrier())
+	e.resolution_auto()
+	scene.call("demarrer_direct", 0)
+	await _images(3)
+	_verifier("COURRIER : visible au repos après la 1re modale résolue", h.etat_courrier() == "repos" and h.b_courrier.is_visible_in_tree(), h.etat_courrier())
+	await _balayer_etiquettes(scene, h)
+	await _touche(KEY_N)
+	var par_n := Partie.saut_actif
+	await _images(2)
+	var etat_saut := h.etat_courrier()
+	h.courrier_demande.emit()
+	await _images(2)
+	_verifier("COURRIER : la touche N lance le saut (état « saut »), un 2e appui (signal du bouton) l'arrête",
+		par_n and etat_saut == "saut" and not Partie.saut_actif and h.etat_courrier() == "repos", "N %s, état %s, après %s" % [par_n, etat_saut, Partie.saut_actif])
+	h.courrier_demande.emit()
+	var lance := Partie.saut_actif
+	scene.call("ouvrir_banque", "", -2.0)
+	await _images(3)
+	_verifier("COURRIER : ouvrir la Banque pendant un saut l'arrête ; bouton inactif fenêtre ouverte",
+		lance and not Partie.saut_actif and h.etat_courrier() == "inactif" and md.genre_courant == "banque", "lancé %s, saut %s, état %s" % [lance, Partie.saut_actif, h.etat_courrier()])
+	md.banque.fermer_demande.emit()
+	await get_tree().create_timer(0.5).timeout
+	md.confirmer("ESSAI", "Modale de contrôle.", "OUI", "NON")
+	await _images(3)
+	var inactif_modale := h.etat_courrier() == "inactif"
+	h.courrier_demande.emit()
+	_verifier("COURRIER : inactif avec une modale ouverte, sans effet au toucher", inactif_modale and not Partie.saut_actif)
+	md.fermer("non")
+	await get_tree().create_timer(0.4).timeout
+	# Saut qui franchit des notifications connues, indépendantes de la vie : départ en janvier 1986 (joueur actif),
+	# le saut franchit « Le Livret A baisse » (mai 1986) avant D07 (novembre 1986). Mois avancés à la main.
+	StrategieTest.aller_a(e, Dates.lire("1986-01"), true)
+	StrategieTest.jouer_mois(e, true)
+	if not e.modale.is_empty():
+		e.resolution_auto()
+	h.maj(e, false)
+	await _images(2)
+	scene.call("demander_saut")
+	var lance_1986 := Partie.saut_actif
+	var franchis := []
+	var garde := 0
+	while Partie.saut_actif and garde < 12:
+		Partie.avancer_un_mois()
+		garde += 1
+		for hh: Dictionary in e.historique_recent(""):
+			if not bool(hh.get("lu", true)) and not (str(hh["titre"]) in franchis):
+				franchis.append(str(hh["titre"]))
+		if franchis.has("Le Livret A baisse"):
+			break
+	if Partie.saut_actif:
+		scene.call("demander_saut")
+	await _images(2)
+	var n := e.non_lues()
+	_verifier("badge : égal à non_lues() après un saut depuis janvier 1986 qui franchit « Le Livret A baisse » (%d non lue(s) : %s)" % [n, ", ".join(franchis)],
+		lance_1986 and franchis.has("Le Livret A baisse") and n > 0 and h.texte_badge_affiche() == Hud.texte_badge(n), "« %s », %s" % [h.texte_badge_affiche(), Dates.texte(e.ab_courant())])
+	await _vider_modale(e, md, scene)
+	h.maj_badge(10)
+	var neuf_plus := h.texte_badge_affiche()
+	h.maj_badge(0)
+	var absent := not h.badge_non_lus.visible
+	h.maj_badge(e.non_lues())
+	_verifier("badge : « 9+ » à 10, absent à 0", neuf_plus == "9+" and absent, neuf_plus)
+	var avant_historique := e.non_lues()
+	_verifier("précondition : non_lues() > 0 avant d'ouvrir l'historique (%d), badge affiché" % avant_historique,
+		avant_historique > 0 and h.badge_non_lus.visible)
+	scene.call("ouvrir_historique", "")
+	await get_tree().create_timer(0.8).timeout
+	var ouvert := md.genre_courant == "historique"
+	md.fermer("fermer")
+	await get_tree().create_timer(0.4).timeout
+	_verifier("historique fermé : non_lues() == 0 et badge absent", ouvert and e.non_lues() == 0 and not h.badge_non_lus.visible, "ouvert %s, non lues %d" % [ouvert, e.non_lues()])
+	StrategieTest.aller_a(e, Dates.lire("1988-12"), false)
+	await _images(3)
+	_verifier("COURRIER : inactif en décembre 1988 (%s)" % Dates.texte(e.ab_courant()), h.etat_courrier() == "inactif" and not Partie.saut_possible(), h.etat_courrier())
+	Partie.sauvegarde_auto = false
+	scene.queue_free()
+	await _images(2)
+	Juice.camera = null
+	Juice.hud = null
+	Juice.calque_effets = null
+
+
+## C3 (passage 2) : toute la rue balayée (pas de 30 px d'art), panneau ouvert : aucune étiquette ni flèche
+## chevauchée ou hors du rectangle libre, et pour maison / banque, flèche de bord ⇔ porte invisible (E1).
+func _balayer_etiquettes(scene: Node, h: Hud) -> void:
+	var ville: Node2D = scene.get("ville")
+	h.basculer_panneau(true)
+	await _images(2)
+	var b: Vector2 = ville.call("bornes_rue")
+	var decalage: float = ville.call("_cx_pour", 0.0)
+	var n := 0
+	var chev := 0
+	var incoh := []
+	var cx := b.x
+	while cx <= b.y + 29.0:
+		ville.call("centrer_sur", minf(cx, b.y) - decalage, 0.0)
+		h.placer_etiquettes()
+		n += 1
+		chev += h.chevauchements_etiquettes()
+		for id: String in ["maison", "banque"]:
+			var fleche := str(h.etiquettes[id].get_meta("fleche", "")) != ""
+			if fleche != (ville.call("porte_ecran", id) == Vector2(-1, -1)):
+				incoh.append("%s à cx=%.0f" % [id, ville.call("position_camera")])
+		cx += 30.0
+	_verifier("étiquettes : rue balayée (%d positions, panneau ouvert) sans chevauchement ni sortie du rectangle libre" % n, n >= 10 and chev == 0, "%d" % chev)
+	_verifier("étiquettes : flèche de bord de la maison et de la banque si et seulement si leur porte est invisible", incoh.is_empty(), str(incoh.slice(0, 4)))
+	ville.call("revenir", 0.0)
+	await _images(2)
+
+
+## Modale arrivée pendant le saut (séquence de la ville puis carte) : fermée par le choix par défaut.
+func _vider_modale(e: EtatPartie, md: Modales, scene: Node) -> void:
+	var t0 := Time.get_ticks_msec()
+	while not e.modale.is_empty() and Time.get_ticks_msec() - t0 < 15000:
+		if md.ouverte() and md.genre_courant in ["appel", "journal", "courrier"] and md.courant.visible:
+			await get_tree().create_timer(0.3).timeout
+			var c := StrategieTest.choix_modale(e, false)
+			if md.genre_courant == "journal":
+				md.call("_on_choix_journal", c)
+			else:
+				md.fermer(c)
+		await get_tree().process_frame
+	t0 = Time.get_ticks_msec()
+	while (bool(scene.get("sequences").get("occupe")) or md.ouverte()) and Time.get_ticks_msec() - t0 < 8000:
+		await get_tree().process_frame
+	Partie.changer_vitesse(0)
+
+
+func _images(n: int) -> void:
+	for i in n:
+		await get_tree().process_frame
+
+
+func _touche(code: Key) -> void:
+	for appui in [true, false]:
+		var ev := InputEventKey.new()
+		ev.keycode = code
+		ev.pressed = appui
+		Input.parse_input_event(ev)
+		await get_tree().process_frame
 
 
 # ---------------------------------------------------------------------
@@ -242,7 +400,7 @@ func _visiter_banque(e: EtatPartie) -> Dictionary:
 	return {"mois": Dates.texte_court(e.ab_courant()), "produits": vus.filter(func(x: String) -> bool: return not x.contains(" ")).size(), "ok": ok, "detail": vus}
 
 
-## Historique : chaque filtre, puis 5 entrées relues comme principal._relire_historique.
+## Historique : chaque filtre, puis 5 entrées relues comme Modales.relire_historique.
 func _verifier_historique(e: EtatPartie, nom: String) -> void:
 	var filtres_ok := true
 	var detail := ""

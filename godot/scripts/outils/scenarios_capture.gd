@@ -42,7 +42,7 @@ func preparer(etape: String) -> void:
 
 ## Départ commun des étapes hors écran titre : la rue, sans la carte du Livret A (sauf si l'étape la veut).
 func partir_de_la_rue(etape: String) -> void:
-	if etape not in ["presentation_livret", "presentation_livret_plus", "integrale"]:
+	if etape not in ["presentation_livret", "presentation_livret_plus", "integrale", "integrale_saut"]:
 		Partie.etat.resolution_auto()
 	jeu.demarrer_direct(0)
 
@@ -59,78 +59,18 @@ func attendre_que(condition: Callable, delai_max: float) -> void:
 
 
 # =====================================================================
-# Avance rapide (copie temporaire de StrategieTest, voir lot 01 §2.2 ; passage prévu au lot 02)
+# Avance rapide : joueurs automatiques de StrategieTest (lot 02, T13), puis rafraîchissement de l'écran
 # =====================================================================
-
-## Joueur « actif » des captures : il ouvre chaque produit présenté et y place une partie de son argent,
-## et range l'excédent du compte sur le Livret A (comme le joueur actif des tests).
-func strategie_active(e: EtatPartie) -> void:
-	if not e.modale.is_empty():
-		var c := e.contenu_modale()
-		if c["kind"] == "banquier" and not c.get("heritage", false):
-			var r := e.resoudre_modale("ouvrir")
-			var f := Produits.f
-			match str(r.get("ouvrir", "")):
-				"livret":
-					e.deposer_livret(e.joueur, e.joueur.cc * 0.8)
-				"pel":
-					e.ouvrir_pel(f.call(2000.0), f.call(500.0))
-				"emprunt":
-					e.acheter_emprunt(minf(f.call(10000.0), e.joueur.cc * 0.8))
-				"av":
-					e.verser_av(minf(f.call(10000.0), e.joueur.cc * 0.8))
-				"sicav":
-					e.acheter(e.joueur, "sicav", minf(f.call(5000.0), e.joueur.cc * 0.8))
-				"elf":
-					e.acheter(e.joueur, "elf", minf(f.call(3000.0), e.joueur.cc * 0.8))
-				"saintgobain":
-					e.acheter(e.joueur, "saintgobain", f.call(3100.0))
-		elif c["kind"] == "vie" and c["choix"].size() > 1 and c["choix"][0]["id"] == "vendre" and not c["choix"][0].get("desactive", false):
-			e.resoudre_modale("vendre")   # un coup dur plus gros que le compte : on puise dans le Livret A
-		else:
-			e.resolution_auto()
-	if e.joueur.cc < 0.0 and e.joueur.livret > 0.0:
-		e.retirer_livret(e.joueur, minf(e.joueur.livret, -e.joueur.cc + e.salaire_base))
-	if e.joueur.cc > e.salaire_base and Banquier.presente(e, "livret"):
-		e.deposer_livret(e.joueur, minf(e.joueur.cc - e.salaire_base, e.place_livret(e.joueur)))
-
 
 ## Avance (sans animation) jusqu'au mois absolu « ab », en jouant de façon active ou passive.
 func aller_a(ab: int, actif: bool) -> void:
-	var e := Partie.etat
-	var garde := 0
-	while e.fin == "" and e.ab_courant() < ab and garde < 100:
-		if actif:
-			strategie_active(e)
-		elif not e.modale.is_empty():
-			e.resolution_auto()
-		if not e.modale.is_empty():
-			e.resolution_auto()
-		e.avancer()
-		garde += 1
+	StrategieTest.aller_a(Partie.etat, ab, actif)
 	rafraichir_apres_saut()
 
 
-## Avance jusqu'à ce que la modale « id » (présentation, krach p1e6, voiture, naissance) soit ouverte.
+## Avance jusqu'à ce que la modale « id » (présentation, krach p1e6, voiture, naissance) soit ouverte, puis la rouvre.
 func aller_a_modale(id: String, actif: bool) -> void:
-	var e := Partie.etat
-	var garde := 0
-	while e.fin == "" and garde < 100:
-		if not e.modale.is_empty():
-			var c := e.contenu_modale()
-			var ident := str(e.modale.get("id", ""))
-			if e.modale.get("kind", "") == "vie":
-				ident = str(e.calendrier[int(e.modale["idx"])]["type"])
-			if ident == id:
-				break
-			if actif:
-				strategie_active(e)
-			if not e.modale.is_empty():
-				e.resolution_auto()
-		elif actif:
-			strategie_active(e)
-		e.avancer()
-		garde += 1
+	StrategieTest.aller_a_modale(Partie.etat, id, actif)
 	rafraichir_apres_saut()
 	Partie.rouvrir_modale()
 

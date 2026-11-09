@@ -16,7 +16,15 @@
 #   carnet_pel (fiche du PEL), automatique (versement automatique sur la SICAV), automatique_pel,
 #   courrier_relu_echap (T16 : fermeture d'un courrier pendant le vol de l'enveloppe, Échap sur un courrier relu),
 #   PX2 (lignes « UI ») : planche_cadres (texels nets), cibles (cibles tactiles, débordements, Pixelify),
-#   hud (bouton HISTORIQUE), polices_jeu (accents). Série complète : capture_interface.ps1 -Serie.
+#   hud (bouton HISTORIQUE), polices_jeu (accents), etiquettes_bord / etiquettes_aller / etiquettes_banque / etiquettes_gazette,
+#   raccourcis (F6-F10, triple toucher ; avec -Joueur : version du joueur, aucun raccourci de test),
+#   lot 02 (bouton COURRIER) : courrier_repos, courrier_saut, courrier_saut_pause (saut lancé depuis la pause),
+#   courrier_inactif (fenêtre ouverte), courrier_bulle (bulle de la 1re apparition), notifs_saut, badge_non_lus,
+#   historique_nouveau, integrale_saut (toute la partie par le bouton COURRIER, environ 3 min).
+#   Série complète : capture_interface.ps1 -Serie.
+# -Joueur : ajoute « --joueur » (Reglages.raccourcis_test() faux, comme l'exe et l'APK).
+# La partie des captures est sauvegardée dans user://capture_<pid>.sav (effacé à la sortie) ; sauver_fermer et
+# reprise : user://capture_reprise_<empreinte du dossier du projet>.sav (un par worktree). Le nom est imprimé.
 # Godot : voir trouver_godot.ps1 (variable JEUCLAUDE_GODOT, dépôt, ou dépôt principal depuis un worktree Git).
 # Si l'exécution de scripts est bloquée, lancer Godot directement :
 #   & $godot --path godot --resolution 1280x720 -- --capture=captures/x.png --frames=10 --etape=crash_anim
@@ -28,7 +36,8 @@ param(
     [int]$Frames = 10,
     [double]$Attente = 0,
     [switch]$Telephone,
-    [switch]$Telephone169
+    [switch]$Telephone169,
+    [switch]$Joueur
 )
 . (Join-Path $PSScriptRoot "trouver_godot.ps1")   # $godot, $projet (variable JEUCLAUDE_GODOT, dépôt ou worktree)
 if (-not $godot) { exit 3 }
@@ -39,5 +48,6 @@ $argsGodot += @("--", "--capture=captures/$Nom.png", "--frames=$Frames", "--atte
 if ($Etape -ne "") { $argsGodot += "--etape=$Etape" }
 if ($Telephone) { $argsGodot += "--telephone" }
 if ($Telephone169) { $argsGodot += "--telephone=169" }
+if ($Joueur) { $argsGodot += "--joueur" }
 & $godot @argsGodot
 exit $LASTEXITCODE
