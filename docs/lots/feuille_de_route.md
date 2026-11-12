@@ -92,6 +92,11 @@ const SOURCES_HISTORIQUE := [...]                      # + "rue"
 - **À montrer à l'UX (sans développeur pour l'instant)** : repli du téléphone 1280 × 720 (ni libellé COURRIER ni « EN PAUSE » / « » ×6 » : pendant un saut, seuls le bouton ambre et les fantômes de la frise le disent) ; « MA MAISON » montée au-dessus de « ‹ LA GAZETTE » quand la maison est au bord gauche (1080, permis par E2). Selon l'avis : reprise dans le prochain lot de dev-interface.
 - Divers : ligne fausse sur `notifs_saut` dans la base de dev-interface (à corriger par lui) ; m5 de 02-V (capture `camera_retour` sans l'instant du retour) en 03-V si le temps le permet.
 
+### 2.7 Lot 03 (plan du 2026-11-12, `lot_03.md`)
+- 0.4 validée par le joueur. 03-L n'avait pas été lancé pendant la vague 2 : le lot 03 termine la vague 2 et prépare la vague 3. Quatre branches : **03-L** (dividendes, D-02L-1 et D-02L-4) ∥ **03-V** (reports §2.6) ∥ **03-I** (étape 1 : m9, nettoyage PX0, composant `Bulle` et pictos d'humeur ; étape 2 après fusion de 03-L et 03-V : `cx_pour`, « Dividendes reçus ») ; puis **03-foyer** (dev-logique, moteur de P2 **éteint par défaut**, contrat figé pour la vague 3).
+- Conséquence sur le tableau du §1 : la vague 3 devient **04-L ∥ « 03-I2 » (carte de dilemme, « Mon foyer », drapeau des cartes allumé) ∥ « 03-V2 » (Sylvie sur l'humeur, objets des cartes)**, plan `lot_04.md` à écrire quand 03-foyer est sur `main`.
+- Contenu des experts sur les dividendes : aucun dans docs/18 et docs/19 ; la règle de docs/03 §7.4 et les données existantes suffisent (certitude C). Questions B1-B3, K1-K2, G1 de `lot_03.md` §8 : **non bloquantes**.
+
 ## 3. Carte de propriété des fichiers en vague 1 (PX1 ∥ PX2 ∥ 02-L)
 
 Chemins relatifs à `godot/`. Un fichier = un propriétaire pendant toute la vague ; un fichier absent = interdit à tous.
