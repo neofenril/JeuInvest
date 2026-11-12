@@ -196,7 +196,7 @@ func _balayage(jeu: Node) -> void:
 	hud.basculer_panneau(not Ecran.compact())
 	await sc.delai(0.4)
 	var b: Vector2 = ville.call("bornes_rue")
-	var decalage: float = ville.call("_cx_pour", 0.0)
+	var decalage: float = ville.call("cx_pour", 0.0)
 	var n := 0
 	var chev := 0
 	var hors := 0
