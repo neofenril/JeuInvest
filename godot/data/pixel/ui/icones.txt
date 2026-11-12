@@ -329,7 +329,8 @@ image courrier_b 16x16
 # --- Lot 03 : pictos d'humeur 16 × 16 (docs/17 §4.1) : tête de Sylvie, seules les lignes 4 à 10 changent ---
 # Lisibles sans couleur : yeux en ^ et grand sourire (contente), yeux ouverts et bouche droite (neutre),
 # sourcils en V, paupières et bouche tombante (fâchée). Sourcils de la fâchée en V symétrique (colonnes 4-5
-# et 10-11) plutôt que les deux traits verticaux du tableau de docs/17.
+# et 10-11) plutôt que les deux traits verticaux du tableau de docs/17. Lot 04 (D12, docs/23) : V doux, extrémité
+# intérieure 1 px plus bas que l'extérieure ; pupilles décalées d'1 px vers la droite (elle regarde ailleurs).
 : h bois
 : p peau_claire
 : o peau_ombre
@@ -375,10 +376,10 @@ image humeur_fachee 16x16
 ..hhhhhhhhhhhh..
 .hhhhhhhhhhhhhh.
 .hhhpppppppphhh.
-hhhpkppppppkphhh
+hhhkkppppppkkhhh
 hhpppkppppkppphh
-hhppooppppoopphh
-hhppkkppppkkpphh
+hhpppooppppoophh
+hhpppkkppppkkphh
 hhppppppoppppphh
 hhppppkkkkpppphh
 hhpppkppppkppphh
@@ -387,3 +388,18 @@ hhpppkppppkppphh
 hhhh.poooop.hhhh
 .hhjjjjjjjjjjhh.
 jjjjjjjjjjjjjjjj
+
+# --- Lot 04 : aimant rouge du pense-bête (carte de dilemme, « Mon foyer »), 8 × 8 (docs/17 §4.1) ---
+: e encre
+: t tuile
+: l terre_cuite_claire
+: b brique
+image aimant 8x8
+..eeee..
+.etttte.
+etllttte
+etltttte
+etttttte
+ebbbbbbe
+.ebbbbe.
+..eeee..
