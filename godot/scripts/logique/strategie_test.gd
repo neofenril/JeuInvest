@@ -11,6 +11,10 @@ extends RefCounted
 const GARDE := 100   # mois au plus par saut (la démo en compte 60)
 const PLANCHER_F := 2500.0   # francs gardés sur le compte pour pouvoir acheter un produit qu'on vient d'ouvrir
 
+## Cartes de dilemme (P2, lot 03-foyer) : politique des deux joueurs, actif comme passif. epargner (défaut, = resolution_auto :
+## le choix le moins cher payable), depenser (le plus cher payable), alterner (dépenser puis épargner, tour à tour).
+static var politique_cartes := "epargner"
+
 
 ## Choix que prend la stratégie pour la modale en attente ("" s'il n'y en a pas). Le choix par défaut est
 ## celui d'EtatPartie.resolution_auto (test_demo vérifie qu'ils coïncident).
@@ -19,6 +23,8 @@ static func choix_modale(e: EtatPartie, actif: bool) -> String:
 		return ""
 	var c := e.contenu_modale()
 	var choix: Array = c.get("choix", [])
+	if c["kind"] == "carte":
+		return Foyer.choix_politique(e, politique_cartes)
 	if actif:
 		if c["kind"] == "banquier" and not c.get("heritage", false):
 			return "ouvrir"
@@ -46,7 +52,9 @@ static func id_modale(e: EtatPartie) -> String:
 ## passif : resolution_auto), puis, pour le joueur actif, rééquilibre compte courant et Livret A.
 static func jouer_mois(e: EtatPartie, actif: bool) -> void:
 	if not e.modale.is_empty():
-		if not actif:
+		if e.modale.get("kind", "") == "carte":
+			e.resoudre_modale(choix_modale(e, actif))
+		elif not actif:
 			e.resolution_auto()
 		else:
 			match choix_modale(e, true):
