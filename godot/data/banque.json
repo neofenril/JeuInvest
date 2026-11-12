@@ -209,6 +209,7 @@
     "dividendes_et_autres": " et {n} autres",
     "dividendes_nul_titre": "Pas de dividende cette année",
     "dividendes_nul": "{nom} n'a pas versé de dividende cette année : l'entreprise gardait ses bénéfices pour se redresser.",
+    "dividendes_nul_ajout": " {noms} : rien cette année.",
     "releve_dividendes": " Vos actions vous ont versé {dividendes} de dividendes cette année, après impôt.",
     "releve_avoir_fiscal": " Simplifié : le jeu applique {taux} %. En réalité, l'avoir fiscal, un crédit d'impôt de 50 % du dividende, réduisait l'impôt des actionnaires."
   },

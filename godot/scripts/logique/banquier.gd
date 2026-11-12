@@ -587,7 +587,9 @@ static func messages_du_mois(e: EtatPartie, notifs: Array) -> void:
 ## Notification des dividendes du mois (lot 03, D4) : lignes = [{id, nom, net}] du joueur ; le détail nomme
 ## les 2 plus gros titres (« Elf 840 F, L'Oréal 120 F et 1 autre »). Quand tous les titres sont nommés, le
 ## total écrit est la somme des montants écrits (arrondis au franc, D6).
-static func notif_dividendes(e: EtatPartie, lignes: Array, brut: float, impot: float, premier: bool) -> Dictionary:
+## nuls (03-R, D1) : titres détenus sans dividende cette année (ids) ; le texte se termine alors par
+## dividendes_nul_ajout (« Peugeot : rien cette année. ») et le champ « nuls » les liste (toujours présent).
+static func notif_dividendes(e: EtatPartie, lignes: Array, brut: float, impot: float, premier: bool, nuls: Array = []) -> Dictionary:
 	var a := e.ab_courant()
 	var d: Dictionary = donnees()["messages"]
 	var tri := lignes.duplicate(true)
@@ -609,18 +611,32 @@ static func notif_dividendes(e: EtatPartie, lignes: Array, brut: float, impot: f
 	var vals := {"montant": montant_ecrit, "detail": detail, "taux": taux_txt(float(Marche.impot(a)["cto"])),
 		"mois": Dates.MOIS[Dates.mois(a) - 1]}
 	var texte := Format.gabarit(str(d["dividendes_premier" if premier else "dividendes"]), vals)
+	var liste_nuls := []
+	for id in nuls:
+		liste_nuls.append({"id": str(id), "nom": e.nom_ligne(str(id))})
+	if not liste_nuls.is_empty():
+		texte += Format.gabarit(str(d["dividendes_nul_ajout"]), {"noms": _noms_joints(e, nuls)})
 	var sortie := []
 	for l: Dictionary in lignes:
 		sortie.append({"id": l["id"], "nom": l["nom"], "net": float(l["net"])})
 	return {"type": "dividende", "source": "banque", "cls": "gain", "montant": net, "brut": brut, "impot": impot,
-		"premier": premier, "lignes": sortie, "titre": str(d["dividendes_titre"]), "texte": texte}
+		"premier": premier, "lignes": sortie, "titre": str(d["dividendes_titre"]), "texte": texte, "nuls": liste_nuls}
 
 
-## Titre détenu qui ne verse rien cette année (divNul) : notification neutre, sans montant.
-static func notif_dividende_nul(e: EtatPartie, id: String) -> Dictionary:
+## Noms courts joints par « et » (« Peugeot », « Peugeot et Elf »).
+static func _noms_joints(e: EtatPartie, ids: Array) -> String:
+	var noms := []
+	for id in ids:
+		noms.append(e.nom_ligne(str(id)))
+	return " et ".join(PackedStringArray(noms))
+
+
+## Titre détenu qui ne verse rien cette année (divNul), quand aucun autre titre ne verse : notification neutre,
+## sans montant. autres (03-R, D1) : autres titres sans dividende le même mois, nommés avec le premier.
+static func notif_dividende_nul(e: EtatPartie, id: String, autres: Array = []) -> Dictionary:
 	var d: Dictionary = donnees()["messages"]
 	return {"type": "dividende_nul", "source": "banque", "cls": "neutre", "id": id, "titre": str(d["dividendes_nul_titre"]),
-		"texte": Format.gabarit(str(d["dividendes_nul"]), {"nom": e.nom_ligne(id)})}
+		"texte": Format.gabarit(str(d["dividendes_nul"]), {"nom": _noms_joints(e, [id] + autres)})}
 
 
 ## Relevé de décembre (L21 et F02 fusionnés, 13 §3.4) : intérêts de l'année, frais de l'année, et depuis

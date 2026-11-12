@@ -16,6 +16,7 @@ func _initialize() -> void:
 	_tests_regle()
 	_tests_cas_particuliers()
 	_tests_notifications()
+	_tests_une_notification()
 	_tests_releve()
 	_tests_sauvegarde()
 	_mesure_aller_retour()
@@ -185,18 +186,19 @@ func _tests_cas_particuliers() -> void:
 	verifier("docs/20 : action achetée au mois de détachement : rien avant le mois de détachement suivant", e2.dividendes_recus() == 0.0)
 	var r2 := _mois(e2)
 	verifier("docs/20 : … puis versement en mai 1988", _lignes_div(r2).size() == 1 and e2.dividendes_recus("elf") > 0.0)
-	# divNul fabriqué : Elf ne verse rien en 1987 ; notification neutre « pas de dividende »
+	# divNul fabriqué : Elf ne verse rien en 1987, L'Oréal verse : une seule notification (03-R, D1) qui nomme Elf
 	var info: Dictionary = e.mk.infos["elf"]
 	var e3 := _partie("1987-04")
 	_acheter(e3, ["elf", "loreal"], 5000.0)
 	info["divNul"] = [1987.0]
 	var r3 := _mois(e3)
 	info.erase("divNul")
-	var nul := _notifs(r3, "dividende_nul")
+	var div3 := _notifs(r3, "dividende")
 	verifier("CA-L2 : année listée dans divNul (fabriquée pour Elf en 1987) : 0 pour Elf, L'Oréal verse quand même",
 		_lignes_div(r3).size() == 1 and _lignes_div(r3)[0]["id"] == "loreal" and e3.dividendes_recus("elf") == 0.0)
-	verifier("divNul : notification neutre « Pas de dividende cette année » pour le titre détenu, sans montant",
-		nul.size() == 1 and nul[0]["id"] == "elf" and not nul[0].has("montant") and str(nul[0]["texte"]).begins_with("Elf ") and nul[0]["source"] == "banque", str(nul))
+	verifier("divNul + un titre versant (03-R, D1) : pas de notification « dividende_nul » à part ; la notification du dividende nomme Elf (nuls)",
+		_notifs(r3, "dividende_nul").is_empty() and div3.size() == 1 and div3[0]["nuls"] == [{"id": "elf", "nom": "Elf"}]
+		and str(div3[0]["texte"]).ends_with(" Elf : rien cette année."), str(div3[0]["texte"]) if div3.size() == 1 else "")
 	verifier("Peugeot dans les données : divNul = [1984, 1985, 1986] (docs/20 B2), taux_dividende nul ces années-là, 3,6 % en 1987",
 		e3.taux_dividende("peugeot", 1985) == 0.0 and e3.taux_dividende("peugeot", 1986) == 0.0 and is_equal_approx(e3.taux_dividende("peugeot", 1987), 3.6)
 		and is_equal_approx(e3.taux_dividende("elf", 1987), 5.1) and is_equal_approx(e3.taux_dividende("loreal", 1987), 2.1))
@@ -274,6 +276,56 @@ func _tests_notifications() -> void:
 	verifier("CA-L4 : textes des dividendes ≤ 60 mots, aucun « → », espaces insécables de Format avant % et F", ok_txt, det)
 	verifier("Historique : la notification est rangée (source banque, type dividende, montant)",
 		a.historique.any(func(h: Dictionary) -> bool: return h["type"] == "dividende" and h["source"] == "banque" and h["a_montant"]))
+
+
+# ---------------------------------------------------------------------
+# 03-R, CA-R2 : une seule notification de dividende par mois (D1)
+# ---------------------------------------------------------------------
+
+func _notifs_div(r: Dictionary) -> Array:
+	return (r["notifs"] as Array).filter(func(n: Dictionary) -> bool: return n.get("type", "") in ["dividende", "dividende_nul"])
+
+
+func _tests_une_notification() -> void:
+	# (a) Elf et Peugeot détenues en avril 1986 : Peugeot est en divNul en 1986
+	var a := _partie("1986-04")
+	_acheter(a, ["elf", "peugeot"], 5000.0)
+	var ra := _mois(a)
+	var na := _notifs_div(ra)
+	var ta := str(na[0]["texte"]) if na.size() == 1 else ""
+	print("    CA-R2 (a) mai 1986, Elf + Peugeot : « %s » (%d mots)" % [ta, Banquier.nb_mots(ta)])
+	verifier("CA-R2 (a) : Elf et Peugeot en mai 1986 : une seule notification, « dividende », premier, explication et « Peugeot : rien cette année », nuls = [Peugeot]",
+		na.size() == 1 and na[0]["type"] == "dividende" and na[0]["premier"] and ta.contains("Un dividende, c'est") and ta.contains("Peugeot : rien cette année")
+		and na[0]["nuls"] == [{"id": "peugeot", "nom": "Peugeot"}] and Banquier.nb_mots(ta) <= 60, ta)
+	var entrees := a.historique.filter(func(h: Dictionary) -> bool: return int(h["m"]) == a.m and h["source"] == "banque" and str(h["type"]) in ["dividende", "dividende_nul"])
+	verifier("CA-R2 (d) : une seule entrée d'historique (banque) pour les dividendes de mai 1986", entrees.size() == 1)
+	# (b) Peugeot seule : une seule notification « dividende_nul »
+	var b := _partie("1986-04")
+	_acheter(b, ["peugeot"], 5000.0)
+	var nb := _notifs_div(_mois(b))
+	var tb := str(nb[0]["texte"]) if nb.size() == 1 else ""
+	print("    CA-R2 (b) mai 1986, Peugeot seule : « %s » (%d mots)" % [tb, Banquier.nb_mots(tb)])
+	verifier("CA-R2 (b) : Peugeot seule en mai 1986 : une seule notification, « dividende_nul »",
+		nb.size() == 1 and nb[0]["type"] == "dividende_nul" and nb[0]["id"] == "peugeot" and tb.begins_with("Peugeot ") and Banquier.nb_mots(tb) <= 60, tb)
+	# (c) Elf seule : nuls vide, pas de « rien cette année »
+	var c := _partie("1986-04")
+	_acheter(c, ["elf"], 5000.0)
+	var nc := _notifs_div(_mois(c))
+	var tc := str(nc[0]["texte"]) if nc.size() == 1 else ""
+	print("    CA-R2 (c) mai 1986, Elf seule : « %s » (%d mots)" % [tc, Banquier.nb_mots(tc)])
+	verifier("CA-R2 (c) : Elf seule : une notification, nuls == [], texte sans « rien cette année »",
+		nc.size() == 1 and nc[0]["type"] == "dividende" and nc[0]["nuls"] == [] and not tc.contains("rien cette année") and Banquier.nb_mots(tc) <= 60, tc)
+	# Pire cas fabriqué : 3 titres versants + 1 nul, texte « premier » (L'Oréal en divNul en 1987)
+	var p := _partie("1987-04")
+	_acheter(p, TITRES, 5000.0)
+	var info: Dictionary = p.mk.infos["loreal"]
+	info["divNul"] = [1987.0]
+	var np := _notifs_div(_mois(p))
+	info.erase("divNul")
+	var tp := str(np[0]["texte"]) if np.size() == 1 else ""
+	print("    CA-R2 pire cas (3 versants + 1 nul, premier) : « %s » (%d mots)" % [tp, Banquier.nb_mots(tp)])
+	verifier("CA-R2 : pire cas fabriqué (3 titres versants + 1 nul, 1re notification) : une notification, ≤ 60 mots",
+		np.size() == 1 and np[0]["premier"] and (np[0]["lignes"] as Array).size() == 3 and tp.contains("L'Oréal : rien cette année") and Banquier.nb_mots(tp) <= 60, "%d mots" % Banquier.nb_mots(tp))
 
 
 # ---------------------------------------------------------------------
