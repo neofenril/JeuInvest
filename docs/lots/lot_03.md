@@ -159,12 +159,14 @@ func cartes_jouees() -> Array           # [{id, creneau, titre, choix, libelle, 
 #  "type": "conso"|"placement"|"revenu", "disponible": float (compte + Livret A),
 #  "choix": [{"id": "a"|"b", "titre": String, "montant": float (signé : −9000 dépense, +1200 revenu), "humeur": -1|0|1|"zero",
 #             "picto": "contente"|"neutre"|"fachee", "desactive": bool, "manque": float, "sous": String}]}   # toujours 2 choix
-# resoudre_modale("a"|"b") -> {"choix", "kind": "carte", "montant": float, "consequence": String, "humeur_avant": int, "humeur_apres": int}
+# resoudre_modale("a"|"b") -> {"choix", "kind": "carte", "montant": float, "consequence": String, "humeur_avant": int, "humeur_apres": int,
+#   "notifs": Array}   # notifs ajouté (§12, C-FO4) : notifications nées du choix (humeur), à émettre par l'appelant
 #   (humeur_* = humeur_visible() avant / après) ; refusé sans effet si le choix est désactivé (renvoie {} ; la modale reste ouverte)
 # resolution_auto() sur une carte : le choix le moins cher payable.
 # notif_recue(n), changement d'état visible de l'humeur : {"type": "humeur", "source": "maison", "cls": "neutre", "humeur": int,
-#   "titre": "Sylvie est ravie" | "Sylvie va mieux" | "Sylvie fait la tête", "texte": String, "bulle": true}
-# notif escargots : {"type": "escargots", "source": "maison", "cls": "perte", "persistante": true, "montant": 800 F en euros, "titre", "texte"}
+#   "titre": "Sylvie est ravie" | "Sylvie va mieux" | "Sylvie va bien" (neutre en redescendant de contente, §12) | "Sylvie fait la tête", "texte": String, "bulle": true}
+# notif escargots : {"type": "escargots", "source": "maison", "cls": "perte", "persistant": true, "montant": 800 F en euros, "titre", "texte"}
+#   (clé "persistant", celle que lit hud.gd ; "persistante" retirée, §12)
 # Historique : genre "carte", source "maison" : titre, libellé du choix, montant, ligne de conséquence.
 ```
 
@@ -261,3 +263,29 @@ Fichiers modifiés (comparés au §3), décisions prises à l'intérieur des rè
 
 ## 11. Validation (rempli par le chef de projet)
 - [ ] 03-L : CA-L1 à L8 · [ ] 03-V : CA-V1 à V9 · [ ] 03-I : CA-I1 à I9 · [ ] 03-foyer : CA-FO1 à FO8 · [ ] captures relues · [ ] bases à jour
+
+## 12. Corrections 03-foyer (2026-11-12, après le 1er compte rendu de dev-logique)
+
+**Constat** : CA-FO3 à 25 graines `epargner` sur 40 (C00 déclenchée), au lieu de 100 %. Cause : l'usure du 1er janvier (1 pas vers 0, docs/15 §2.1) et le +1 de la naissance effacent la bouderie de 12/1984 avant le créneau suivant ; avec usure nulle : 40/40.
+
+**D15 (décision, arbitrage game design à confirmer par le game designer, question G2)** : **l'usure du 1er janvier ne s'applique qu'à une humeur positive** (« le bonheur s'use, la rancune attend une réconciliation »). Une humeur négative ne remonte que par un choix +1, la naissance, un projet réalisé (vague 3) ou le week-end de Deauville (C00, humeur → 0).
+- Pourquoi : C00 est la **seule** conséquence en argent de l'humeur (docs/15 §2.1) et la leçon de la fourmi (fin n° 4 « blindée mais seule », docs/15 §6) : si l'épargnant intégral y échappe une fois sur trois, la mécanique est invisible pour le joueur qui en a le plus besoin. Le joueur garde la main (chaque carte montre l'effet d'humeur avant le choix, choix à +1 toujours possible), et un moral bas n'est jamais une fin de partie.
+- Rejeté : (b) rendre des choix plus « fâchants » = réécrire le contenu de docs/15 §2.5 (rôle du game designer, effet de bord sur toutes les politiques) ; (c) assouplir CA-FO3 = accepter qu'un tiers des fourmis ne voient jamais C00, contraire à docs/15 CA-2.2.
+- Réglage en données, sans valeur en dur : `foyer.json > humeur` : `"erosion"` remplacé par `"erosion_positive": 1, "erosion_negative": 0`. Si le game designer préfère une usure symétrique lente (ex. négatif tous les 2 ans), c'est un changement de données et de test, pas de code.
+- **CA-FO3 inchangé (100 % des graines, 40/40)**, et désormais **vérifié** (plus seulement imprimé).
+
+**Choix de dev-logique validés** :
+- C-FO1 : algorithme des créneaux (affinement de D14, autorisé) : validé tant que CA-FO2 tient ; décrit dans sa base.
+- C-FO2 : C14 (type `revenu`) recopiée chez les témoins : conforme à R-MIROIR (docs/15 : conso **et** revenu recopiés, seul le placement C06 ne l'est pas). CA-FO4 couvre aussi C14 (même rentrée, même mois).
+- C-FO3 : titre « Sylvie va bien » (neutre en redescendant de contente) : validé, contrat §5.3 mis à jour ; à relire par le game designer (G1).
+- C-FO4 : `notifs` ajouté au retour de `resoudre_modale` : validé (ajout, rien de retiré), contrat §5.3 mis à jour ; la vague 3 (03-I2) émet ces notifications.
+- C-FO5 : clé de persistance : **une seule clé, `persistant`** (celle de `hud.gd` et de `banquier.gd`) ; `persistante` retirée du code et du contrat (§5.3 corrigé).
+
+**Corrections demandées à dev-logique (`lot/03-foyer`)** :
+1. `godot/data/foyer.json > humeur` : `"erosion": 1` → `"erosion_positive": 1, "erosion_negative": 0` (+ une clé `_erosion` d'une ligne citant D15).
+2. `godot/scripts/logique/foyer.gd > debut_mois` : pas = `erosion_positive` si h > 0, `erosion_negative` si h < 0 (même formule vers 0) ; commentaire de la fonction à jour.
+3. `foyer.gd` (notif escargots) : retirer `"persistante": true`, garder `"persistant": true` ; tests qui lisent `persistante` à adapter.
+4. `godot/tests/test_foyer.gd` : CA-FO3 **vérifié** : 40/40 graines `epargner` avec au moins un état fâché et au moins une C00 (règles de C00 toujours vérifiées) ; ligne `MESURE C00` gardée et étendue aux 3 politiques (`depenser`, `epargner`, `alterner` : graines avec C00, nombre total) ; test unitaire de l'usure : +3 → +2 et −2 → −2 au 1er janvier.
+5. CA-FO1, FO2 et FO6 relancés (l'humeur n'a aucun effet en argent cartes éteintes ; C00 remplace sans ajouter) ; `tests.ps1` vert ; base de dev-logique (mesures C00 par politique) ; un commit « 03-foyer : usure de l'humeur sur le positif seulement (D15), clé persistant ».
+
+**Question au game designer (G2, non bloquante)** : confirmer D15 (usure asymétrique) ou donner une autre règle d'usure ; répartition de C00 sur `alterner` à l'appui (ligne `MESURE C00`).
