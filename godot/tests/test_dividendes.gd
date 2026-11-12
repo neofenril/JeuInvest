@@ -18,6 +18,7 @@ func _initialize() -> void:
 	_tests_notifications()
 	_tests_une_notification()
 	_tests_releve()
+	_tests_fiche()
 	_tests_sauvegarde()
 	_mesure_aller_retour()
 	_reference_integrale()
@@ -403,6 +404,38 @@ func _tests_releve_4_cas() -> void:
 		ok, detail)
 	verifier("CA-R3 : champs dividendes, interets et cls du relevé inchangés dans les 4 cas", ok_champs)
 	verifier("CA-R3 : textes du relevé ≤ 60 mots une fois assemblés (cas 4, le plus long)", Banquier.nb_mots(attendus[3]) <= 60, "%d mots" % Banquier.nb_mots(attendus[3]))
+
+
+# ---------------------------------------------------------------------
+# 03-R, CA-R4 : phrase de la fiche d'une action (D4)
+# ---------------------------------------------------------------------
+
+func _tests_fiche() -> void:
+	var regle := "Dividende : versé en mai, si l'entreprise en distribue cette année-là."
+	var e := _partie("1986-04")
+	_acheter(e, ["elf", "peugeot"], 5000.0)
+	var avant := Banquier.texte_fiche_dividende(e, "elf")
+	_mois(e)
+	var apres := Banquier.texte_fiche_dividende(e, "elf")
+	var peugeot := Banquier.texte_fiche_dividende(e, "peugeot")
+	print("    CA-R4 fiche Elf avant : « %s » ; après mai 1986 : « %s » ; Peugeot 1986 : « %s »" % [avant, apres, peugeot])
+	verifier("CA-R4 : fiche d'Elf avant tout versement et de Peugeot en 1986 (année sans dividende) : « %s »" % regle, avant == regle and peugeot == regle)
+	verifier("CA-R4 : fiche d'Elf après versement : « Dividendes reçus : » + Format.entier(dividendes_recus)",
+		apres == "Dividendes reçus : " + Format.entier(e.dividendes_recus("elf"), e.ab_courant()) and e.dividendes_recus("elf") > 0.0, apres)
+	var vides := true
+	for id in ["livret", "sicav", "pel", "emprunt", "av", "cc"]:
+		if Banquier.texte_fiche_dividende(e, id) != "":
+			vides = false
+	verifier("CA-R4 : texte vide pour le Livret A, la SICAV, le PEL, l'emprunt d'État, l'assurance-vie", vides)
+	var msg: Dictionary = Banquier.donnees()["messages"]
+	var ok_mots := true
+	for k: String in msg:
+		if k.begins_with("fiche_") or k.begins_with("dividendes"):
+			var t := str(msg[k]).to_lower()
+			for mot in ["chaque année", "régulier", "toujours"]:
+				if t.contains(mot):
+					ok_mots = false
+	verifier("CA-R4 : aucune clé fiche_* ni dividendes* ne contient « chaque année », « régulier » ou « toujours » (docs/22 §1)", ok_mots)
 
 
 # ---------------------------------------------------------------------

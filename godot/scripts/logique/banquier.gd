@@ -623,6 +623,20 @@ static func notif_dividendes(e: EtatPartie, lignes: Array, brut: float, impot: f
 		"premier": premier, "lignes": sortie, "titre": str(d["dividendes_titre"]), "texte": texte, "nuls": liste_nuls}
 
 
+## Ligne « dividende » de la fiche d'une action (03-R, D4, docs/22 §1 ; affichée en 03-I2) : "" si ce n'est pas
+## une action ; « Dividendes reçus : 1 240 F » s'il en a déjà versé au joueur ; sinon la règle (mois de
+## détachement, « si l'entreprise en distribue »), sans variante par titre (ne pas révéler l'avenir d'un titre).
+static func texte_fiche_dividende(e: EtatPartie, id: String) -> String:
+	var mo := e.mois_dividende(id)
+	if mo <= 0:
+		return ""
+	var d: Dictionary = donnees()["messages"]
+	var recus := e.dividendes_recus(id)
+	if recus > 0.0:
+		return Format.gabarit(str(d["fiche_dividendes_recus"]), {"montant": Format.entier(recus, e.ab_courant())})
+	return Format.gabarit(str(d["fiche_dividende"]), {"mois": Dates.MOIS[mo - 1]})
+
+
 ## Noms courts joints par « et » (« Peugeot », « Peugeot et Elf »).
 static func _noms_joints(e: EtatPartie, ids: Array) -> String:
 	var noms := []
