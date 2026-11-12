@@ -200,7 +200,17 @@
     "releve_interets": "Votre épargne vous a rapporté {interets} d'intérêts cette année.",
     "releve_sans_interets": "Aucun intérêt cette année : votre argent est resté sur le compte courant.",
     "releve_frais": " Frais de l'année : {frais_annee}. Depuis le début : {frais_total} payés + {manque} de gains qui n'ont jamais existé.",
-    "releve_sans_frais": " Aucun frais payé cette année."
+    "releve_sans_frais": " Aucun frais payé cette année.",
+    "_dividendes": "Lot 03 (D4), textes du banquier (docs/21 K2) : {montant} net total, {detail} « Elf 840 F, L'Oréal 120 F et 1 autre » (2 titres nommés au plus), {taux} = impôt du compte-titres (regles.json), {mois} = mois du versement, {dividendes} = net de l'année. releve_avoir_fiscal : ajoutée au relevé la première année avec dividendes (docs/21 K1, 22 mots ; trop longue pour la notification du 1er dividende). dividendes_nul : année listée dans divNul d'un titre détenu (Peugeot 1984-1986, docs/20 B2).",
+    "dividendes_titre": "Vos actions vous versent un dividende",
+    "dividendes_premier": "Un dividende, c'est la part des bénéfices que l'entreprise reverse à ses actionnaires, en général une fois par an. Vous touchez {montant} ({detail}), après {taux} % d'impôt. Il n'est pas garanti d'une année sur l'autre, et le cours de l'action continue de bouger.",
+    "dividendes": "Dividendes de {mois} : {montant} versés ({detail}), après {taux} % d'impôt.",
+    "dividendes_et_autre": " et 1 autre",
+    "dividendes_et_autres": " et {n} autres",
+    "dividendes_nul_titre": "Pas de dividende cette année",
+    "dividendes_nul": "{nom} n'a pas versé de dividende cette année : l'entreprise gardait ses bénéfices pour se redresser.",
+    "releve_dividendes": " Vos actions vous ont versé {dividendes} de dividendes cette année, après impôt.",
+    "releve_avoir_fiscal": " Simplifié : le jeu applique {taux} %. En réalité, l'avoir fiscal, un crédit d'impôt de 50 % du dividende, réduisait l'impôt des actionnaires."
   },
 
   "_frais_pedagogie": "Encart F01 (13 §3.3) : 3 piles sur 20 ans, V = C × (1 − e) × (1 + r − f)^20, r = 7 % (une hypothèse, pas une promesse). Pile 3 « plus chargé » : SICAV « maison » de 11 §5.3 C (4,5 % + 2,5 %/an) ; pour l'assurance-vie et les actions, 11 §5 ne donne pas de produit plus chargé : frais du produit + 1,5 point par an (arbitrage du coordinateur). Courtage des actions payé à l'achat et à la revente.",

@@ -80,7 +80,8 @@ func demarrer(config: Dictionary = {}) -> Dictionary:
 		serie.fill(0.0)
 		hist[k] = serie
 	stats = {"ordres": 0, "frais": 0.0, "impots": 0.0, "agios": 0.0, "paniques": [], "ventes_forcees": [],
-		"somme_part_cc": 0.0, "somme_part_livret": 0.0, "nb_mois": 0, "faillite_m": -1, "utilises": []}
+		"somme_part_cc": 0.0, "somme_part_livret": 0.0, "nb_mois": 0, "faillite_m": -1, "utilises": [],
+		"dividendes": {}, "dividende_vu": false}
 	banque = Banquier.etat_initial() if bool(config.get("banquier", false)) else {"actif": false}
 	calendrier = _tirer_calendrier()
 	# État de départ garni (démonstration) : le joueur a un compte et un livret ; les témoins reçoivent
@@ -647,8 +648,8 @@ func avancer() -> Dictionary:
 # nouveau (coupons, versements automatiques). Les variations de cours n'en font pas partie. Joueur seulement.
 # { revenus, frais (euros, ≥ 0), lignes: [{ id, nom, genre (interets | coupon | dividende | frais |
 #   frais_versement), montant (≥ 0), verse_en_decembre }] }. verse_en_decembre : intérêts acquis ce mois-ci
-# mais crédités au 31/12 (Livret A, PEL, assurance-vie, hors décembre). Le moteur ne verse pas de dividende
-# (les cours des actions sont des cours de bourse) : aucune ligne « dividende » pour l'instant.
+# mais crédités au 31/12 (Livret A, PEL, assurance-vie, hors décembre).
+# Lot 03 : une ligne « dividende » par titre au mois de détachement (montant net d'impôt, voir _verser_dividendes).
 
 const GENRES_REVENUS := ["interets", "coupon", "dividende"]
 
@@ -783,6 +784,9 @@ func _entrer_mois(initial: bool) -> Dictionary:
 				notifs.append({"type": "nouveau", "source": "banque", "cls": "neutre", "produit": pr["id"],
 					"titre": "Nouveau · %d" % y, "texte": pr.get("texteNouveau", pr["nom"] + " est disponible.")})
 
+	# 5 (docs/03 §3.3). Dividendes des actions, après salaire, dépenses et versements (lot 03)
+	_verser_dividendes(notifs)
+
 	# 8. Événements de marché, de contexte, puis de vie
 	for ev in per.get("evenements", []):
 		if Dates.lire(ev["d"]) != a:
@@ -835,6 +839,99 @@ static func _avant_dans_file(x: Dictionary, z: Dictionary) -> bool:
 	if x["prio"] != z["prio"]:
 		return x["prio"] < z["prio"]
 	return x["m"] < z["m"]
+
+
+# =====================================================================
+# Dividendes des actions (lot 03 : docs/03 §7.4, docs/20, docs/21)
+# =====================================================================
+# Une fois par an, au mois de détachement du titre (mois_dividende), pour les actions détenues au début de ce
+# mois (le versement a lieu à l'entrée dans le mois, avant tout ordre du joueur) : brut = valeur de la ligne
+# au cours du mois × taux_dividende / 100 ; impôt au taux du compte-titres ; net crédité sur le compte
+# courant ; aucun ajustement du cours (docs/20 B3). La SICAV a déjà ses dividendes dans sa valeur liquidative.
+# Jumeau sans frais : il touche le dividende de ses parts « sans frais » (qte_ombre), l'écart va dans
+# ombre_realise (sinon le manque à gagner oublierait les dividendes des sommes parties en frais).
+
+## Mois de détachement du dividende d'un titre (1-12) ; 0 si ce n'est pas une action.
+func mois_dividende(id: String) -> int:
+	var p := produit(id)
+	if p.get("type", "") != "action":
+		return 0
+	return int(p.get("moisDiv", regles.get("dividendes", {}).get("mois", 5)))
+
+
+## Le titre ne verse rien l'année (de paiement) donnée (periode > divNul).
+func dividende_nul(id: String, annee: int) -> bool:
+	for x in produit(id).get("divNul", []):
+		if int(x) == annee:
+			return true
+	return false
+
+
+## Rendement brut du dividende (%) d'un titre l'année donnée : rendement de marché + écart du titre, plancher 0 ;
+## 0 pour une année de divNul ou pour un produit qui n'est pas une action.
+func taux_dividende(id: String, annee: int) -> float:
+	var p := produit(id)
+	if p.get("type", "") != "action" or dividende_nul(id, annee):
+		return 0.0
+	return maxf(0.0, Marche.rdt_dividende(annee) + float(p.get("ecartDiv", 0.0)))
+
+
+## Cumul net des dividendes reçus par le joueur depuis le début, pour un titre ("" = tous), euros internes.
+func dividendes_recus(id := "") -> float:
+	var d: Dictionary = stats.get("dividendes", {})
+	if id != "":
+		return float(d.get(id, 0.0))
+	var s := 0.0
+	for k in d:
+		s += float(d[k])
+	return s
+
+
+## Verse les dividendes du mois à tous les portefeuilles ; notification du joueur (Banquier.notif_dividendes).
+func _verser_dividendes(notifs: Array) -> void:
+	var a := ab_courant()
+	var annee := Dates.annee(a)
+	var mo := Dates.mois(a)
+	var taux_impot := float(Marche.impot(a)["cto"]) / 100.0
+	var lignes_j := []
+	var nuls := []
+	var brut_j := 0.0
+	var impot_j := 0.0
+	for w: Portefeuille in tous():
+		for id: String in w.lignes.keys():
+			if mois_dividende(id) != mo or w.qte(id) <= 0.0:
+				continue
+			var t := taux_dividende(id, annee)
+			var p := cours(id)
+			if t <= 0.0 or is_nan(p):
+				if w == joueur and dividende_nul(id, annee):
+					nuls.append(id)
+				continue
+			var brut := w.qte(id) * p * t / 100.0
+			var impot := brut * taux_impot
+			var net := brut - impot
+			w.cc += net
+			w.impots += impot
+			var qte_ombre := float(w.lignes[id].get("qte_ombre", w.qte(id)))
+			w.ombre_realise += (qte_ombre - w.qte(id)) * cours_sans_frais(id) * t / 100.0 * (1.0 - taux_impot)
+			if w == joueur:
+				stats["impots"] += impot
+				var cumul: Dictionary = stats.get("dividendes", {})
+				cumul[id] = float(cumul.get(id, 0.0)) + net
+				stats["dividendes"] = cumul
+				noter_flux("dividende", id, net)
+				lignes_j.append({"id": id, "nom": nom_ligne(id), "net": net})
+				brut_j += brut
+				impot_j += impot
+	if not lignes_j.is_empty():
+		var premier := not bool(stats.get("dividende_vu", false))
+		stats["dividende_vu"] = true
+		if banquier_actif():
+			banque["dividendes_annee"] = float(banque.get("dividendes_annee", 0.0)) + brut_j - impot_j
+		notifs.append(Banquier.notif_dividendes(self, lignes_j, brut_j, impot_j, premier))
+		_enregistrer_hist()
+	for id: String in nuls:
+		notifs.append(Banquier.notif_dividende_nul(self, id))
 
 
 # =====================================================================
