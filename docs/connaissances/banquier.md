@@ -272,6 +272,8 @@ Priorité si le client demande une fiabilisation : d'abord les données **utilis
 
 | 2026-10-30 | Contenu V3 : prix d'époque des 16 cartes et 6 projets, vente automatique, Jean-Mi crédit provisoire | `docs/18_contenu_banquier_v3.md` |
 
+| 2026-11-12 | Lot 03 : dividendes (avoir fiscal 50 %, 16 % = convention de jeu, docs/21) ; textes bis : fiche action sans « chaque année », relevé sans contradiction intérêts/dividendes, C03/C10/C02 sans montant en dur (docs/22) | `docs/21_...`, `docs/22_...` |
+
 ### Prix d'époque 1984-1988 (V3, détail dans docs/18)
 - Canal+ : lancé le 04/11/1984 (A) ; abonnement 120 F/mois (B, Larousse 1985 ; une source en dit 140) ; caution décodeur ≈ 420 F (B).
 - Tous les autres prix de détail (magnétoscope, Club Med, Super 5, caméscope, T3...) : C, introuvables en ligne ; recoupement par ordres de grandeur. À corriger si le joueur ou une archive (L'Argus 1986, catalogues) les contredit.
