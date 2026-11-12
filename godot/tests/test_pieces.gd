@@ -16,6 +16,7 @@ func _init() -> void:
 	_tests_vitesse()
 	_tests_textes()
 	_tests_lignes()
+	_tests_traces()
 	print("test_pieces : %d OK, %d KO (%d ms)" % [_ok, _ko, Time.get_ticks_msec() - debut])
 	quit(1 if _ko > 0 else 0)
 
@@ -85,7 +86,14 @@ func _tests_textes() -> void:
 	_verifier(pd["or"].get("texte", "") == "+" + nbsp + "312" + nbsp + "F", "texte : en décembre, « + 312 F » seul", pd["or"].get("texte", ""))
 	var mixte := [_ligne("livret", "Livret A", "interets", 100.0, true), _ligne("emprunt", "Emprunt d'État", "coupon", 212.0, false)]
 	var pm := PiecesMois.plan(_flux(312.0, 0.0, mixte), 1, false, _avril)
-	_verifier(pm["or"].get("texte", "") == "+" + nbsp + "312" + nbsp + "F", "texte : une ligne versée tout de suite (coupon) → « + 312 F » seul", pm["or"].get("texte", ""))
+	_verifier(pm["or"].get("texte", "") == "+" + nbsp + "100" + nbsp + "F ce mois-ci\nversés en décembre" and pm["lignes"].size() == 1 and pm["or"].get("n", 0) == 2,
+		"texte (D13, lot 04) : intérêts et coupon jamais mêlés : « + 100 F ce mois-ci / versés en décembre » et un cartouche pour le coupon ; pièces sur le total", str(pm))
+	var mai := [_ligne("livret", "Livret A", "interets", 285.0, true), _ligne("elf", "Elf", "dividende", 120.0), _ligne("sg", "Saint-Gobain", "dividende", 102.0)]
+	var pmai := PiecesMois.plan(_flux(507.0, 0.0, mai), 1, false, Dates.lire("1987-05"))
+	_verifier(pmai["or"].get("texte", "") == "+" + nbsp + "285" + nbsp + "F ce mois-ci\nversés en décembre" and pmai["lignes"] == ["Elf" + nbsp + ":" + nbsp + "+" + nbsp + "120" + nbsp + "F", "Saint-Gobain" + nbsp + ":\n+" + nbsp + "102" + nbsp + "F"],
+		"texte (D13) : mai 1987, « + 285 F ce mois-ci / versés en décembre », « Elf : + 120 F », « Saint-Gobain : » / « + 102 F » (plus de « + 507 F »)", str(pmai))
+	var seuls := PiecesMois.plan(_flux(222.0, 0.0, [_ligne("elf", "Elf", "dividende", 120.0), _ligne("sg", "Saint-Gobain", "dividende", 102.0)]), 1, false, Dates.lire("1987-05"))
+	_verifier(seuls["or"].get("texte", "x") == "" and seuls["lignes"].size() == 2 and seuls["or"].get("n", 0) == 2, "texte (D13) : dividendes seuls : pas de cartouche total, un par titre", str(seuls))
 	var pc := PiecesMois.plan(_flux(0.0, 45.0), 1, false, _avril)
 	_verifier(pc["cuivre"].get("texte", "") == Format.MOINS + nbsp + "45" + nbsp + "F de frais", "texte : « − 45 F de frais » (vrai signe moins)", pc["cuivre"].get("texte", ""))
 	var gros := PiecesMois.plan(_flux(12345.0, 0.0), 1, false, _avril)
@@ -113,7 +121,8 @@ func _tests_lignes() -> void:
 	var trois := [_ligne("elf", "Elf", "dividende", 840.0), _ligne("sg", "Saint-Gobain", "dividende", 300.0), _ligne("emprunt", "Emprunt d'État", "coupon", 600.0),
 		_ligne("livret", "Livret A", "interets", 312.0, true)]
 	var p3 := PiecesMois.plan(_flux(2052.0, 0.0, trois), 1, false, _avril)
-	_verifier(p3["lignes"].size() == 2 and str(p3["lignes"][0]).begins_with("Elf") and str(p3["lignes"][1]).begins_with("Emprunt"), "lignes : 2 au plus, les plus grosses (intérêts exclus)", str(p3["lignes"]))
+	_verifier(p3["lignes"].size() == 3 and str(p3["lignes"][0]).begins_with("Elf") and str(p3["lignes"][1]).begins_with("Emprunt") and str(p3["lignes"][2]).begins_with("Saint-Gobain"),
+		"lignes (D13, lot 04) : un cartouche par titre versant, les plus gros d'abord (intérêts exclus)", str(p3["lignes"]))
 	var interets := [_ligne("livret", "Livret A", "interets", 312.0, true)]
 	_verifier(PiecesMois.plan(_flux(312.0, 0.0, interets), 1, false, _avril)["lignes"].is_empty(), "lignes : aucune pour des intérêts seuls")
 	var petit := [_ligne("elf", "Elf", "dividende", 8.0)]
@@ -144,3 +153,55 @@ func _tests_lignes() -> void:
 						trop.append(m)
 	_verifier(trop.is_empty(), "cartouches (D7) : 2 lignes au plus, 20 caractères au plus, de 10 F à 1,2 MF", ", ".join(trop))
 	_verifier(PiecesMois.plan(_flux(0.0, 45.0), 1, false, _avril)["cuivre"]["texte"].length() <= PiecesMois.MAX_CAR, "cartouche cuivre « − 45 F de frais » sur une ligne")
+
+
+# --- Traces des cartes du foyer (lot 04, 03-V2, D11) : fonction pure et partie réelle --------------------------
+
+const TRACES := preload("res://scripts/ville/traces_foyer.gd")
+
+
+func _carte(id: String, choix: String) -> Dictionary:
+	return {"id": id, "choix": choix}
+
+
+func _tests_traces() -> void:
+	var a85 := Dates.lire("1985-06")
+	var a87 := Dates.lire("1987-05")
+	var a88 := Dates.lire("1988-03")
+	var cas := [
+		["cartes éteintes : aucune trace", false, [_carte("C02", "a"), _carte("C10", "a")], a88, false, true, []],
+		["C02 « a » : télévision", true, [_carte("C02", "a")], a85, false, false, ["tele"]],
+		["C02 « b » : rien", true, [_carte("C02", "b")], a85, false, false, []],
+		["C03 « a » : télévision et antenne", true, [_carte("C03", "a")], a85, false, false, ["tele", "antenne"]],
+		["C03 « b » : rien", true, [_carte("C03", "b")], a85, false, false, []],
+		["C04 (« b ») jusqu'à 12/1986 : poussette", true, [_carte("C04", "b")], a85, false, false, ["poussette"]],
+		["C04 jumeaux : poussette double", true, [_carte("C04", "a")], Dates.lire("1986-12"), true, false, ["poussette_double"]],
+		["C04 en 1987 : ni poussette ni tricycle", true, [_carte("C04", "a")], a87, false, false, []],
+		["C04 dès 01/1988 : tricycle", true, [_carte("C04", "a")], Dates.lire("1988-01"), false, false, ["tricycle"]],
+		["C04 jumeaux en 1988 : tricycles", true, [_carte("C04", "b")], a88, true, false, ["tricycles"]],
+		["C10 « a » : chien", true, [_carte("C10", "a")], a87, false, false, ["chien"]],
+		["C10 « b » : chien aussi", true, [_carte("C10", "b")], a87, false, false, ["chien"]],
+		["C07 « a » avant 1988 : pas encore de diplôme", true, [_carte("C07", "a")], Dates.lire("1987-12"), false, false, []],
+		["C07 « a » dès 01/1988 : diplôme", true, [_carte("C07", "a")], Dates.lire("1988-01"), false, false, ["diplome"]],
+		["C07 « b » : pas de diplôme", true, [_carte("C07", "b")], a88, false, false, []],
+		["notification « escargots » : escargot", true, [], a88, false, true, ["escargot"]],
+		["tout ensemble, dans l'ordre", true, [_carte("C10", "a"), _carte("C03", "a"), _carte("C07", "a"), _carte("C04", "a")], a88, false, true,
+			["tele", "antenne", "tricycle", "chien", "diplome", "escargot"]],
+	]
+	for c in cas:
+		var r: PackedStringArray = TRACES.calculer(c[1], c[2], c[3], c[4], c[5])
+		_verifier(Array(r) == c[6], "traces (D11) : " + str(c[0]), str(r))
+	# Partie réelle : cartes éteintes (défaut) = aucune trace ; cartes allumées, C03 « a » jouée (fabriquée) = télé + antenne
+	var e := EtatPartie.new()
+	e.demarrer(Donnees.config_demo(7))
+	_verifier(TRACES.de_partie(e).is_empty() and not e.cartes_actives(), "traces (D11) : partie par défaut (cartes éteintes) : aucune trace")
+	(e.foyer["jouees"] as Array).append({"id": "C03", "choix": "a"})
+	_verifier(TRACES.de_partie(e).is_empty(), "traces (D11) : cartes éteintes, même avec une carte inscrite : aucune trace")
+	var c2 := Donnees.config_demo(7)
+	c2["cartes"] = true
+	var e2 := EtatPartie.new()
+	e2.demarrer(c2)
+	(e2.foyer["jouees"] as Array).append({"id": "C03", "choix": "a"})
+	e2.historique.append({"m": e2.m, "source": "maison", "genre": "notif", "type": "escargots"})
+	_verifier(e2.cartes_actives() and Array(TRACES.de_partie(e2)) == ["tele", "antenne", "escargot"], "traces (D11) : partie cartes allumées, C03 « a » et escargots", str(TRACES.de_partie(e2)))
+	_verifier(TRACES.de_partie(null).is_empty(), "traces (D11) : partie absente : rien")
