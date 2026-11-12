@@ -243,7 +243,12 @@ func resoudre_modale(choix_id: String) -> Dictionary:
 		return {}
 	var kind: String = etat.modale["kind"]
 	var r := etat.resoudre_modale(choix_id)
+	if r.is_empty() and not etat.modale.is_empty():
+		return {}   # choix refusé (carte : choix désactivé) : la modale reste ouverte
 	modale_fermee.emit(r)
+	for n: Dictionary in r.get("notifs", []):   # carte : bulle d'humeur de Sylvie
+		n["pendant_saut"] = false
+		notif_recue.emit(n)
 	argent_change.emit()
 	sauvegarder()
 	if kind != "marche":

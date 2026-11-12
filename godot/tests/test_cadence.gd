@@ -15,6 +15,7 @@ func _initialize() -> void:
 	_tests_cadence()
 	_tests_anticipation()
 	_tests_miroir()
+	_tests_cadence_cartes()
 	print("")
 	print("=== test_cadence : %d OK, %d KO (%d ms) ===" % [_ok, _ko, Time.get_ticks_msec() - t0])
 	quit(1 if _ko > 0 else 0)
@@ -124,6 +125,83 @@ func _tests_cadence() -> void:
 	verifier("Cadence : dates imposées (PEL ≤ 07/1984, naissance 04/1985, Saint-Gobain 11/1986, krach 10/1987, panne 11/1987, héritage 04/1988)", ok_dates)
 	verifier("Cadence : classiques ≤ %d ; compteurs des cartes, projets et Gazette prêts et vides" % budget_cl, ok_budget, resume)
 	verifier("Cadence : aucune interruption flexible au mois qui précède une interruption datée", ok_anticip)
+
+
+# ---------------------------------------------------------------------
+# CA-FO2 (lot 03-foyer) : cartes de dilemme allumées, 40 graines × 3 politiques
+# ---------------------------------------------------------------------
+
+func _tests_cadence_cartes() -> void:
+	var ok_nb := true
+	var ok_un := true
+	var ok_suite := true
+	var ok_anticip := true
+	var ok_dates := true
+	var ok_budget := true
+	var detail := ""
+	var par_partie := {}
+	var abandons := {}
+	var cartes_total := 0
+	var nb := 0
+	for politique in ["depenser", "epargner", "alterner"]:
+		StrategieTest.politique_cartes = politique
+		for g in range(1, 41):
+			var e := EtatPartie.new()
+			var config := Donnees.config_demo(g)
+			config["cartes"] = true
+			e.demarrer(config)
+			StrategieTest.aller_a(e, Dates.lire("1989-01"), true)
+			nb += 1
+			var liste: Array = e.banque["interruptions_liste"]
+			var cartes := liste.filter(func(x: Dictionary) -> bool: return x["kind"] == "carte")
+			cartes_total += cartes.size()
+			par_partie[cartes.size()] = int(par_partie.get(cartes.size(), 0)) + 1
+			if cartes.size() < 8 or cartes.size() > 10 or e.fin != "fin":
+				ok_nb = false
+				detail += "%s g%d : %d cartes ; " % [politique, g, cartes.size()]
+			var cr := Foyer.creneaux(e)
+			for sid in cr:
+				if cr[sid]["etat"] == "abandonne":
+					var k := "%s (%s)" % [sid, cr[sid]["abandon"]]
+					abandons[k] = int(abandons.get(k, 0)) + 1
+			for i in range(1, liste.size()):
+				var p: Dictionary = liste[i - 1]
+				var x: Dictionary = liste[i]
+				var dm := int(x["m"]) - int(p["m"])
+				if dm == 0:
+					ok_un = false
+				if dm == 1 and not (p["kind"] == "marche" and x["kind"] == "vie" and x["motif"] == "scripte"):
+					ok_suite = false
+					detail += "%s g%d %s : %s puis %s ; " % [politique, g, Dates.texte_court(e.ab_de(int(x["m"]))), p["id"], x["id"]]
+			var datees := {}
+			for x: Dictionary in liste:
+				if x["datee"]:
+					datees[int(x["m"])] = true
+			for x: Dictionary in liste:
+				if not x["datee"] and datees.has(int(x["m"]) + 1):
+					ok_anticip = false
+					detail += "%s g%d : %s la veille d'une datée ; " % [politique, g, x["id"]]
+			var at := {}
+			for x: Dictionary in liste:
+				at[str(x["id"])] = int(x["m"])
+			if int(e.banque["presentes"].get("D02", 999)) > _m(e, "1984-07") or int(at.get("naissance", -1)) != _m(e, "1985-04") \
+					or int(at.get("D07", -1)) != _m(e, "1986-11") or int(at.get("p1e6", -1)) != _m(e, "1987-10") \
+					or not _panne_forcee(liste, _m(e, "1987-11")) or int(at.get("D08", -1)) != _m(e, "1988-04"):
+				ok_dates = false
+				detail += "%s g%d : date imposée manquée ; " % [politique, g]
+			var c: Dictionary = e.banque["compteurs"]
+			if int(c["classiques"]) > Cadence.budget("classiques") or int(c["cartes"]) != cartes.size() or int(c["cartes"]) > Cadence.budget("cartes"):
+				ok_budget = false
+	StrategieTest.politique_cartes = "epargner"
+	var resume := "%d parties, %.2f cartes en moyenne, cartes par partie %s, abandons par créneau %s" % [nb, float(cartes_total) / nb, str(par_partie), str(abandons)]
+	print("    Cartes allumées : ", resume)
+	if detail != "":
+		print("    ", detail.left(2000))
+	verifier("CA-FO2 : cartes allumées, 40 graines × 3 politiques (depenser, epargner, alterner) : 8 à 10 cartes par partie (C00 comprise), parties finies", ok_nb, resume)
+	verifier("CA-FO2 : une interruption par mois au plus ; jamais deux mois de suite (hors krach → panne)", ok_un and ok_suite)
+	verifier("CA-FO2 : jamais de carte (ni d'autre flexible) au mois qui précède une interruption datée", ok_anticip)
+	verifier("CA-FO2 : dates imposées inchangées (PEL ≤ 07/1984, naissance, Saint-Gobain, krach, panne, héritage)", ok_dates)
+	verifier("CA-FO2 : classiques ≤ %d, cartes ≤ %d et comptées dans leur catégorie" % [Cadence.budget("classiques"), Cadence.budget("cartes")], ok_budget)
 
 
 func _panne_forcee(liste: Array, mm: int) -> bool:

@@ -60,6 +60,8 @@ var flux_mois: Dictionary = {}
 ## Vrai pendant le saut « jusqu'au prochain courrier » (réglé par l'autoload Partie, jamais sauvegardé) :
 ## les entrées d'historique créées pendant ce temps sont « non lues ».
 var saut_en_cours := false
+## P2 « Les dilemmes du foyer » (lot 03-foyer) : humeur de Sylvie, créneaux, cartes jouées. Règles : Foyer (foyer.gd).
+var foyer: Dictionary = {}
 
 
 # =====================================================================
@@ -84,6 +86,7 @@ func demarrer(config: Dictionary = {}) -> Dictionary:
 		"dividendes": {}, "dividende_vu": false}
 	banque = Banquier.etat_initial() if bool(config.get("banquier", false)) else {"actif": false}
 	calendrier = _tirer_calendrier()
+	foyer = Foyer.etat_initial(self, config)
 	# État de départ garni (démonstration) : le joueur a un compte et un livret ; les témoins reçoivent
 	# le même capital en argent (03 §7.8) et le placent selon leur règle. Compté comme épargne.
 	var cc0 := float(config.get("cc_depart", 0.0))
@@ -740,6 +743,7 @@ func _entrer_mois(initial: bool) -> Dictionary:
 	# 2-3. Salaire (indexé en janvier) et dépenses, pour le joueur et les 3 témoins
 	if not initial and Dates.mois(a) == 1:
 		salaire_base *= smn(y) / smn(y - 1)
+	Foyer.ajuster_salaire(self)
 	var flux := epargne_du_mois()
 	for w in tous():
 		w.cc += flux
@@ -750,6 +754,10 @@ func _entrer_mois(initial: bool) -> Dictionary:
 		for w in tous():
 			w.cc += capital
 		_compter_epargne(capital, a)
+
+	# P2 : érosion de l'humeur en janvier, issue des escargots
+	if not initial:
+		Foyer.debut_mois(self, notifs)
 
 	# 6. Agios et faillite (joueur seulement : les témoins n'en ont pas, A23)
 	if joueur.cc < -EPS:
@@ -823,6 +831,10 @@ func _entrer_mois(initial: bool) -> Dictionary:
 
 	_stats_mois()
 	_enregistrer_hist()
+
+	# P2 : cartes de dilemme des créneaux ouverts mises en file (rien si les cartes sont éteintes)
+	if modale.is_empty():
+		Foyer.preparer(self)
 
 	# Au plus une modale par mois (démo : Cadence, R-CADENCE de docs/15 §0.1)
 	if modale.is_empty() and not file.is_empty():
@@ -1163,6 +1175,7 @@ func _declencher_vie(idx: int, notifs: Array) -> void:
 		if banquier_actif() and int(banque.get("naissance_m", -1)) < 0:
 			banque["naissance_m"] = m
 		file.append({"kind": "vie", "idx": idx, "m": m, "prio": 1, "source": t.get("source", "maison"), "force": true})
+		Foyer.apres_naissance(self, notifs)
 		return
 	var montant: float = float(e["M"]) * salaire_base
 	e["montant"] = montant
@@ -1293,6 +1306,8 @@ func contenu_modale() -> Dictionary:
 	var a := ab_courant()
 	if modale["kind"] == "banquier":
 		return Banquier.contenu(self, str(modale["id"]))
+	if modale["kind"] == "carte":
+		return Foyer.contenu(self)
 	if modale["kind"] == "marche":
 		var ev := evenement(modale["id"])
 		var m_avant := maxi(m_depart, m - int(ev.get("fenetre", 1)))
@@ -1330,10 +1345,14 @@ func resoudre_modale(choix_id: String) -> Dictionary:
 	if modale.is_empty():
 		return {}
 	var item := modale
+	if item["kind"] == "carte" and not Foyer.choix_valide(self, choix_id):
+		return {}   # choix désactivé (non payable) : refusé, la carte reste ouverte
 	var vu := contenu_modale()   # tel que le joueur l'a vu, pour l'historique
 	var r := {"choix": choix_id, "kind": item["kind"]}
 	if item["kind"] == "banquier":
 		r = Banquier.resoudre(self, str(item["id"]), choix_id)
+	elif item["kind"] == "carte":
+		r = Foyer.resoudre(self, choix_id, vu)
 	elif item["kind"] == "marche":
 		var ev := evenement(item["id"])
 		choix.append({"id": ev["id"], "m": item["m"], "choix": choix_id, "indice": indice(int(item["m"])),
@@ -1365,6 +1384,7 @@ func resoudre_modale(choix_id: String) -> Dictionary:
 		_enregistrer_hist()
 	modale = {}
 	_historiser_modale(vu, choix_id)
+	_historiser_notifs(r.get("notifs", []), m)   # carte : bulle d'humeur éventuelle, après la carte
 	return r
 
 
@@ -1377,6 +1397,8 @@ func resolution_auto() -> Dictionary:
 		return resoudre_modale("compris" if c.get("heritage", false) else "plus_tard")
 	if c["kind"] == "marche":
 		return resoudre_modale("rien" if c["detient"] else "ecart")
+	if c["kind"] == "carte":
+		return resoudre_modale(Foyer.choix_auto(self))
 	var premier: String = c["choix"][0]["id"]
 	return resoudre_modale("decouvert" if premier == "vendre" else premier)
 
@@ -1482,7 +1504,7 @@ func _journaliser(texte: String) -> void:
 # titre, resume (une ligne), choix (libellé du choix fait, "" sinon), montant, a_montant, suffixe,
 # contenu (de quoi rouvrir la pop-up en lecture seule : contenu de modale ou notification) }.
 
-const GENRES_MODALE := {"banquier": "appel", "marche": "journal", "vie": "courrier"}
+const GENRES_MODALE := {"banquier": "appel", "marche": "journal", "vie": "courrier", "carte": "carte"}
 ## Genres et sources possibles d'une entrée (V3, docs/15 §8) : « carte », « projet », « voisin », « gazette » et la
 ## source « rue » n'ont encore aucune entrée (lots 03 à 05).
 const GENRES_HISTORIQUE := ["appel", "journal", "courrier", "notif", "carte", "projet", "voisin", "gazette"]
@@ -1524,6 +1546,8 @@ func _historiser_modale(c: Dictionary, choix_id: String) -> void:
 				e["montant"] = float(c.get("impact", {}).get("diff", 0.0))
 				e["a_montant"] = true
 				e["suffixe"] = "en Bourse"
+		"carte":
+			Foyer.completer_historique(e, c)
 		"vie":
 			if c.get("effet", "") == "naissance":
 				e["montant"] = -float(c.get("cout_mensuel", 0.0))
@@ -1627,12 +1651,41 @@ func historiser_evenement(n: Dictionary) -> void:
 
 
 # =====================================================================
+# P2 « Les dilemmes du foyer » : lecture pour l'interface (contrat du lot 03 §5.3 bis ; règles dans Foyer)
+# =====================================================================
+
+## Les cartes de dilemme s'ouvrent-elles dans cette partie ? (éteintes par défaut, D11)
+func cartes_actives() -> bool:
+	return Foyer.actif(self)
+
+
+## 0 contente, 1 neutre, 2 fâchée (même codage que ville.regler_humeur_sylvie).
+func humeur_visible() -> int:
+	return Foyer.humeur_visible(self)
+
+
+## « Sylvie est contente » | « Sylvie va bien » | « Sylvie fait la tête ».
+func humeur_phrase() -> String:
+	return Foyer.humeur_phrase(self)
+
+
+## Dernière cause d'un changement d'humeur (≤ 10 mots), "" si aucune.
+func derniere_cause_humeur() -> String:
+	return str(foyer.get("derniere_cause", ""))
+
+
+## [{id, creneau, titre, choix, libelle, montant (signé, euros), humeur_effet, picto, m, ab}], ancien → récent.
+func cartes_jouees() -> Array:
+	return Foyer.cartes_jouees(self)
+
+
+# =====================================================================
 # Sauvegarde : tout l'état, sans les données (rechargées depuis data/) ni le marché (déterministe)
 # =====================================================================
 
 const CHAMPS_ETAT := ["m", "m_depart", "m_fin", "salaire_base", "calendrier", "file", "modale", "choix", "panique",
 	"epargne_nette", "bag_mis", "decouvert_mois", "enfants", "fin", "hist", "stats", "journal", "banque", "historique",
-	"flux_mois"]
+	"flux_mois", "foyer"]
 
 
 func vers_dict() -> Dictionary:
@@ -1661,7 +1714,7 @@ static func defauts_etat(config: Dictionary) -> Dictionary:
 
 
 ## Dictionnaires d'état complétés clé par clé lors d'une migration (les autres sont pris tels quels).
-const CHAMPS_COMPLETES := ["banque", "stats", "hist"]
+const CHAMPS_COMPLETES := ["banque", "stats", "hist", "foyer"]
 
 
 ## Recrée une partie à partir d'une sauvegarde. Renvoie null si le contenu est inutilisable (autre version
@@ -1693,6 +1746,7 @@ static func depuis_dict(d: Dictionary) -> EtatPartie:
 				complet.merge(defaut[k], false)
 				v = complet
 		e.set(k, v.duplicate(true) if (v is Dictionary or v is Array) else v)
+	Foyer.apres_chargement(e, d.get("foyer", null) is Dictionary)
 	e._reparer()
 	return e
 
