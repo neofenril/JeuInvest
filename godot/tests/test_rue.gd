@@ -35,6 +35,12 @@ func _images(n: int) -> void:
 		await process_frame
 
 
+## Courbe des pièces (copie de Juice.point_arc : ce script ne nomme pas les autoloads).
+func _point_arc(d: Vector2, a: Vector2, arc: float, u: float) -> Vector2:
+	var c := (d + a) / 2.0 + Vector2(0, -arc)
+	return d.lerp(c, u).lerp(c.lerp(a, u), u)
+
+
 ## Seconde mesure de D9 : la génération est refaite pour de bon (le catalogue ne garde que ce qui est généré une
 ## fois par lancement : « rue/maison », le ciel et la skyline sont oubliés), dans une seconde ville, puis celle-ci
 ## est libérée (elle attend ses tâches de fond à la sortie). Renvoie la durée en ms.
@@ -273,6 +279,39 @@ func _initialize() -> void:
 	_verifier(GrillePixel.existe("rue/arbre_m0_0_ete") and GrillePixel.existe("rue/arbre_m3_1_ete") and GrillePixel.existe("rue/premier_plan_1_ete"), "arbres : 4 modèles × 2 images et premier plan enregistrés")
 	_verifier(GrillePixel.existe("neige/rue/maison") and GrillePixel.existe("neige/rue/banque") and GrillePixel.existe("neige/rue/fond_0"), "hiver : neige sur les toits générée")
 	_verifier(GrillePixel.existe("rue/arbre_m0_0_automne") and GrillePixel.existe("rue/premier_plan_1_hiver"), "automne, hiver : feuillages recolorés")
+	# m1 (lot 03) : enseignes dorées connues de la rue, pièces qui passent au-dessus
+	var ens: Array = RUE.enseignes()
+	_verifier(ens.size() == 6, "enseignes : 5 boutiques et la BANQUE", str(ens.size()))
+	var epicerie: Rect2 = ens[2]
+	var img_ep: Image = GrillePixel.image("rue/batiment_7")
+	var h_ep := img_ep.get_height()
+	var dorees := 0
+	for y in range(int(epicerie.position.y), int(epicerie.end.y)):
+		for x in range(int(epicerie.position.x), int(epicerie.end.x)):
+			if PalettePixel.nom_de(img_ep.get_pixel(x - 354, y - (RUE.SOL - h_ep))) == "or":
+				dorees += 1
+	_verifier(dorees >= 100, "enseignes : le rectangle d'ÉPICERIE couvre ses lettres dorées (%d px or)" % dorees)
+	var seq: Node = load("res://scripts/ville/sequences.gd").new()
+	seq.set("ville", ville)
+	var mb: Node2D = ville.call("batiment", "maison")
+	var bq: Node2D = ville.call("batiment", "banque")
+	var milieu_p: float = (mb.position.x + mb.call("porte").get_center().x + bq.position.x + bq.call("porte").get_center().x) / 2.0
+	ville.call("centrer_sur", milieu_p, 0.0)
+	await _images(2)
+	var d_p: Vector2 = ville.call("porte_ecran", "banque")
+	var a_p: Vector2 = ville.call("porte_ecran", "maison")
+	var arc: float = seq.call("arc_pieces", d_p, a_p)
+	var touches_arc := 0
+	var touches_120 := 0
+	for k in 65:
+		for r: Rect2 in seq.call("enseignes_ecran", float(seq.get_script().get_script_constant_map()["PIECE_COTE"]) / 2.0):
+			if r.has_point(_point_arc(d_p, a_p, arc, k / 64.0)):
+				touches_arc += 1
+			if r.has_point(_point_arc(d_p, a_p, 120.0, k / 64.0)):
+				touches_120 += 1
+	print("RUE pieces arc=%d portes=%s,%s touches_arc=%d touches_arc_120=%d" % [roundi(arc), str(d_p), str(a_p), touches_arc, touches_120])
+	_verifier(d_p.x >= 0.0 and a_p.x >= 0.0 and touches_arc == 0, "m1 : de la banque à la maison, l'arc choisi (%d px) ne touche aucune enseigne (l'ancien arc de 120 px : %d points)" % [roundi(arc), touches_120])
+	seq.free()
 	# D9 (lot 03) : durée de génération, meilleure de 2 mesures (relance seulement si la 1re dépasse le seuil ;
 	# --rue-relance la force pour l'éprouver)
 	var ms_retenue := ms

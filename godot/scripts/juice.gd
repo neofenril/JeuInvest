@@ -6,9 +6,12 @@ const ARC_PIECE := 120.0       # pièces du mois (lot 02, D8) : hauteur de l'arc
 const DUREE_PIECE := 0.9
 const DECALAGE_PIECE := 0.08
 const TEXEL := 3.0             # un texel de l'interface = 3 px virtuels (CadresPixel)
+const TAILLE_FLOTTANT := 30    # montants flottants (cartouche, lot 03 D7) : Atkinson ≥ 20 px virtuels
+const MONTEE_FLOTTANT := 60.0
 
 var pieces_creees := 0                   # nœuds Piece créés depuis le lancement (contrôles des captures)
 var derniere_arrivee := Vector2(-1, -1)  # position de la dernière pièce arrivée (contrôles)
+var derniers_flottants: Array = []       # 20 derniers cartouches : {texte, rect balayé (départ + montée)} (contrôles)
 var animations_reduites := false   # option câblée en constante dans la tranche (09 §5.1)
 var trauma := 0.0
 var camera: Camera2D = null
@@ -86,20 +89,65 @@ func pop(c: Control, couleur := Color.TRANSPARENT) -> void:
 		t2.tween_property(c, "modulate", Color.WHITE, 0.6)
 
 
-## Montant flottant qui monte de 60 px et s'efface (position en coordonnées d'écran logiques).
+## Montant flottant dans un cartouche (lot 03, D7) qui monte de MONTEE_FLOTTANT px et s'efface ; pos en
+## coordonnées d'écran logiques : le haut du cartouche part de pos.y − 20, centré sur pos.x. Le texte peut tenir
+## sur 2 lignes (« \n »). Cartouche : fond encre, contour d'1 texel de la couleur du texte, marge d'1 texel,
+## Atkinson (chiffres) TAILLE_FLOTTANT px ; positions entières (texels nets).
 func flottant(texte: String, pos: Vector2, couleur: Color) -> void:
 	if calque_effets == null:
 		return
-	var l := Style.label(texte, 30, Style.chiffres(), couleur)
-	# Contour épais et presque opaque : lisible sur la brique, les arbres et le ciel (cuivre sur brique, lot 02)
-	l.add_theme_constant_override("outline_size", 10)
-	l.add_theme_color_override("font_outline_color", Color(Style.ENCRE, 0.9))
-	calque_effets.add_child(l)
-	l.position = pos - Vector2(l.get_minimum_size().x / 2.0, 20)
-	var t := l.create_tween().set_parallel(true)
-	t.tween_property(l, "position:y", l.position.y - 60.0, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	t.tween_property(l, "modulate:a", 0.0, 0.3).set_delay(0.6)
-	t.chain().tween_callback(l.queue_free)
+	var c := _cartouche(texte, couleur)
+	calque_effets.add_child(c)
+	var taille := c.get_combined_minimum_size().ceil()
+	c.size = taille
+	var depart := (pos - Vector2(taille.x / 2.0, 20.0)).round()
+	c.position = depart
+	derniers_flottants.append({"texte": texte, "rect": Rect2(depart - Vector2(0, MONTEE_FLOTTANT), taille + Vector2(0, MONTEE_FLOTTANT))})
+	if derniers_flottants.size() > 20:
+		derniers_flottants.pop_front()
+	var t := c.create_tween().set_parallel(true)
+	t.tween_method(_monter.bind(c, depart), 0.0, MONTEE_FLOTTANT, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_property(c, "modulate:a", 0.0, 0.3).set_delay(0.6)
+	t.chain().tween_callback(c.queue_free)
+
+
+func _monter(dy: float, c: Control, depart: Vector2) -> void:
+	c.position = depart - Vector2(0, roundf(dy))
+
+
+## Taille (px virtuels) du cartouche d'un texte flottant (1 ou 2 lignes) : pour empiler et borner les montants.
+func taille_flottant(texte: String) -> Vector2:
+	# Mesuré dans l'arbre (hors de l'arbre, le Label ne connaît pas encore sa taille)
+	var c := _cartouche(texte, Style.GAIN)
+	c.visible = false
+	if calque_effets != null:
+		calque_effets.add_child(c)
+	var taille := c.get_combined_minimum_size().ceil()
+	c.free()
+	return taille
+
+
+func _cartouche(texte: String, couleur: Color) -> PanelContainer:
+	var c := PanelContainer.new()
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Style.ENCRE
+	sb.border_color = couleur
+	sb.set_border_width_all(int(TEXEL))
+	# Marges comptées depuis le bord extérieur (contour compris) : contour + 1 texel en haut et en bas, + 2 sur les
+	# côtés (les capitales et les chiffres touchaient le contour)
+	sb.content_margin_top = 2.0 * TEXEL
+	sb.content_margin_bottom = 2.0 * TEXEL
+	sb.content_margin_left = 3.0 * TEXEL
+	sb.content_margin_right = 3.0 * TEXEL
+	sb.anti_aliasing = false
+	c.add_theme_stylebox_override("panel", sb)
+	var l := Style.label(texte, TAILLE_FLOTTANT, Style.chiffres(), couleur)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.add_child(l)
+	return c
 
 
 ## Pièces qui volent de « depart » à « arrivee » (écran logique) le long d'une courbe (effet 6).
@@ -118,12 +166,15 @@ func pieces(depart: Vector2, arrivee: Vector2, n: int, a_chaque_arrivee := Calla
 		p.voler(depart, arrivee, 0.55, 0.05 * i, a_chaque_arrivee)
 
 
-## Pièces du mois (lot 02, D8) : depart et arrivee sont des Callable -> Vector2 (écran logique) relus à chaque
-## image (la rue peut glisser pendant le vol : la pièce arrive quand même au bon endroit). Arc de ARC_PIECE px
-## au-dessus du milieu, DUREE_PIECE s, pièces décalées de DECALAGE_PIECE s, positions arrondies au texel (3 px).
-## a_chaque_depart / a_chaque_arrivee : appelés pour chaque pièce (saut d'une flèche de bord, montant flottant).
-## Rien pendant un saut ni en animations réduites (les rappels d'arrivée sont alors appelés tout de suite).
-func pieces_suivies(depart: Callable, arrivee: Callable, n: int, cuivre := false, a_chaque_arrivee := Callable(), a_chaque_depart := Callable()) -> void:
+## Pièces du mois (lot 02, D8 ; lot 03, D8) : depart et arrivee sont des Callable -> Vector2 (écran logique).
+## Le départ est lu une seule fois, au lancement de chaque pièce, puis figé (sinon la pièce sautait quand le départ
+## passait de la porte à la flèche de bord) ; l'arrivée est relue à chaque image (la rue peut glisser pendant le
+## vol : la pièce arrive quand même au bon endroit). Arc de « arc » px au-dessus du milieu (ARC_PIECE par défaut ;
+## Sequences le relève pour passer au-dessus des enseignes), DUREE_PIECE s, pièces décalées de DECALAGE_PIECE s,
+## positions arrondies au texel (3 px). a_chaque_depart / a_chaque_arrivee : appelés pour chaque pièce (saut d'une
+## flèche de bord, montant flottant). Rien pendant un saut ni en animations réduites (les rappels d'arrivée sont
+## alors appelés tout de suite).
+func pieces_suivies(depart: Callable, arrivee: Callable, n: int, cuivre := false, a_chaque_arrivee := Callable(), a_chaque_depart := Callable(), arc := ARC_PIECE) -> void:
 	if calque_effets == null or animations_reduites or Partie.saut_actif:
 		for i in n:
 			if a_chaque_arrivee.is_valid():
@@ -135,25 +186,32 @@ func pieces_suivies(depart: Callable, arrivee: Callable, n: int, cuivre := false
 		p.visible = false
 		calque_effets.add_child(p)
 		pieces_creees += 1
+		var vol := {"depart": Vector2.ZERO, "arc": arc}
 		var t := p.create_tween()
 		t.tween_interval(DECALAGE_PIECE * i)
-		t.tween_callback(_piece_part.bind(p, depart, arrivee, a_chaque_depart))
-		t.tween_method(_piece_suit.bind(p, depart, arrivee), 0.0, 1.0, DUREE_PIECE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		t.tween_callback(_piece_part.bind(p, vol, depart, arrivee, a_chaque_depart))
+		t.tween_method(_piece_suit.bind(p, vol, arrivee), 0.0, 1.0, DUREE_PIECE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		t.tween_callback(_piece_arrive.bind(p, arrivee, a_chaque_arrivee))
 
 
-func _piece_part(p: Piece, depart: Callable, arrivee: Callable, a_chaque_depart: Callable) -> void:
-	_piece_suit(0.0, p, depart, arrivee)
+## Point de la courbe des pièces (Bézier quadratique, contrôle « arc » px au-dessus du milieu) ; Sequences s'en
+## sert pour choisir l'arc qui évite les enseignes.
+static func point_arc(d: Vector2, a: Vector2, arc: float, u: float) -> Vector2:
+	var c := (d + a) / 2.0 + Vector2(0, -arc)
+	return d.lerp(c, u).lerp(c.lerp(a, u), u)
+
+
+func _piece_part(p: Piece, vol: Dictionary, depart: Callable, arrivee: Callable, a_chaque_depart: Callable) -> void:
+	vol["depart"] = depart.call()
+	_piece_suit(0.0, p, vol, arrivee)
 	p.visible = true
 	if a_chaque_depart.is_valid():
 		a_chaque_depart.call()
 
 
-func _piece_suit(u: float, p: Piece, depart: Callable, arrivee: Callable) -> void:
-	var d: Vector2 = depart.call()
+func _piece_suit(u: float, p: Piece, vol: Dictionary, arrivee: Callable) -> void:
 	var a: Vector2 = arrivee.call()
-	var c := (d + a) / 2.0 + Vector2(0, -ARC_PIECE)
-	var pos := d.lerp(c, u).lerp(c.lerp(a, u), u)
+	var pos := point_arc(vol["depart"], a, float(vol["arc"]), u)
 	p.position = (pos / TEXEL).round() * TEXEL
 
 

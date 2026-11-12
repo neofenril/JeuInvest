@@ -483,6 +483,21 @@ static func fenetres(nom: String) -> Array:
 	return _fenetres.get(nom, [])
 
 
+## Enseignes dorées de la rue (boutiques et « BANQUE »), rectangles du monde en px d'art : les pièces du mois
+## volent au-dessus sans les toucher (lot 03, m1 : on les confondait avec les lettres d'ÉPICERIE).
+## Repères : Facades._boutique (enseigne à y + 4 du rez-de-chaussée de 90, 17 de haut, 7 px des bords),
+## Edifices.banque (cartouche bleu nuit à y 154, 19 de haut).
+static func enseignes() -> Array:
+	var r: Array = []
+	for b in BATIMENTS:
+		var cfg: Dictionary = b[1]
+		if String(cfg.get("rdc", "")) == "boutique" and String(cfg.get("enseigne", "")) != "":
+			r.append(Rect2(int(b[0]) + 7, SOL - Facades.H_RDC + 4, int(cfg.get("l", 180)) - 14, 18))
+	var tw := MatieresPixel.largeur_texte("BANQUE", 3)
+	r.append(Rect2(BANQUE_X + (Edifices.BANQUE.x - tw) / 2 - 8, SOL - (Edifices.BANQUE.y - 1) + 154, tw + 16, 19))
+	return r
+
+
 static func voiture_info(modele: String) -> Dictionary:
 	return _voitures.get(modele, {})
 

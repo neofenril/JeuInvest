@@ -12,12 +12,18 @@ extends RefCounted
 ## CA-F2), jouer_rapide (M1 : « Jouer » dès le lancement, alpha de l'arbre de premier plan image par image).
 ## L'avance rapide passe par StrategieTest (lot 02, T13), sans la copie de scenarios_capture.gd.
 
+## Lot 03 (03-V) : pendant le vol des pièces, suivi image par image (« RUE pieces enseigne=… » : images où une
+## pièce touche une enseigne dorée ; « RUE pieces pas_max=… pas_moyen=… » par pièce, en px par 1/60 s) et
+## cartouches (« RUE flottant hors_libre=… ») ; pieces_bascule (la banque sort du champ pendant le vol) ;
+## pieces_dividende_jeu (vraie partie, ligne Elf, mai 1987 à ×1 ; « RUE pieces dividende=absent|present ») ;
+## camera_retour enregistre <nom>_glissement.png et <nom>_retour.png.
+
 const ETAPES := ["rue", "rue_nuit", "trafic", "crash_anim", "crash_fin", "crash_courrier", "naissance_anim", "naissance_pose", "naissance",
 	"jumeaux_anim", "jumeaux_pose", "jumeaux", "news", "krach_anim", "fps",
 	"rue_banque", "rue_gazette", "rue_libre", "defilement", "saison_hiver", "saison_automne", "saison_printemps", "pluie",
 	"banquier_anim", "banquier_signal", "journal_anim", "courrier_anim", "jouer_repos", "sylvie_0", "sylvie_1", "sylvie_2", "planche_personnages", "voisins",
 	"pieces_or", "pieces_fleche", "pieces_cuivre", "pieces_dividende", "pieces_glisse", "pieces_x3", "pieces_saut", "pieces_hors_champ",
-	"pieces_sous_seuil", "camera_retour", "pieces_jeu", "jouer_rapide"]
+	"pieces_sous_seuil", "camera_retour", "pieces_jeu", "jouer_rapide", "pieces_bascule", "pieces_dividende_jeu"]
 const RUE := preload("res://scripts/ville/rue.gd")
 const VILLE := preload("res://scripts/ville/ville.gd")
 
@@ -189,12 +195,14 @@ func jouer(etape: String) -> void:
 			if _controle:
 				await sc.attendre_que(func() -> bool: return float(ville.get("krach")) >= 1.0, 3.0)
 				await _controle_palette(ville, "krach_anim")
-		"pieces_or", "pieces_fleche", "pieces_cuivre", "pieces_dividende", "pieces_glisse", "pieces_x3", "pieces_saut", "pieces_hors_champ", "pieces_sous_seuil":
+		"pieces_or", "pieces_fleche", "pieces_cuivre", "pieces_dividende", "pieces_glisse", "pieces_x3", "pieces_saut", "pieces_hors_champ", "pieces_sous_seuil", "pieces_bascule":
 			await _pieces(ville, etape)
 		"camera_retour":
 			await _camera_retour(ville)
 		"pieces_jeu":
 			await _pieces_jeu(ville)
+		"pieces_dividende_jeu":
+			await _pieces_dividende_jeu(ville)
 		"fps":
 			_aller_a(Dates.lire("1987-11"), true)
 			ville.set("pluie", true)
@@ -443,7 +451,7 @@ func _pieces(ville: Node2D, etape: String) -> void:
 	var banque: Node2D = ville.get("banque")
 	var milieu: float = (maison.position.x + maison.call("porte").get_center().x + banque.position.x + banque.call("porte").get_center().x) / 2.0
 	match etape:
-		"pieces_or", "pieces_cuivre", "pieces_dividende", "pieces_glisse", "pieces_x3", "pieces_sous_seuil":
+		"pieces_or", "pieces_cuivre", "pieces_dividende", "pieces_glisse", "pieces_x3", "pieces_sous_seuil", "pieces_bascule":
 			ville.call("centrer_sur", milieu, 0.0)
 		"pieces_hors_champ":
 			var t: Tween = ville.call("aller_vers", "media", 0.0)
@@ -478,6 +486,8 @@ func _pieces(ville: Node2D, etape: String) -> void:
 			print("RUE juice duree(1.0)=%.2f saut=non vitesse=%d" % [Juice.duree(1.0), Partie.vitesse])
 		_noeuds(n0)
 		return
+	var f0 := Juice.derniers_flottants.size()
+	_suivi_debut()
 	seq.call("pieces_du_mois", res)
 	if etape == "pieces_glisse":
 		await sc.delai(0.25)
@@ -485,14 +495,38 @@ func _pieces(ville: Node2D, etape: String) -> void:
 		await sc.delai(0.3)
 		await _capture_vol()
 		await sc.delai(1.0)
+	elif etape == "pieces_bascule":
+		# m4 (lot 03, D8) : la rue glisse vers la Gazette pendant le vol, la porte de la banque (départ) sort du champ.
+		# Pas d'image pendant le vol ici : l'enregistrement fige une image et fausserait le suivi du pas.
+		await sc.delai(0.1)
+		var porte_b: Rect2 = banque.call("porte")
+		var glisse: float = (ville.call("libre_monde") as Rect2).end.x - (banque.position.x + porte_b.position.x) + 16.0
+		if _controle:
+			print("RUE pieces bascule glissement=%d px_art" % roundi(glisse))
+		# Glissement régulier (comme un doigt qui fait défiler la rue) pendant presque tout le vol
+		var tg := sc.create_tween()
+		tg.tween_method(func(x: float) -> void: ville.call("centrer_sur", x, 0.0), milieu, milieu - glisse, 0.7)
+		await sc.delai(0.75)
+		if _controle:
+			print("RUE pieces bascule pendant_vol banque=%s en_vol=%d" % [_lieu_txt(ville, "banque"), Juice.calque_effets.get_children().filter(func(n: Node) -> bool: return n is Piece and n.visible).size()])
+		await sc.delai(0.6)
+		if _controle:
+			print("RUE pieces bascule fin banque=%s maison=%s" % [_lieu_txt(ville, "banque"), _lieu_txt(ville, "maison")])
 	elif etape in ["pieces_or", "pieces_fleche", "pieces_cuivre", "pieces_dividende"]:
 		await sc.delai(0.5)
 		await _capture_vol()
 		await sc.delai(0.75 if etape != "pieces_cuivre" else 0.2)
+		if etape != "pieces_cuivre":
+			# Image à l'arrivée : les cartouches de la maison (le dernier part 0,3 s après le précédent)
+			await sc.delai(0.15)
+			await _capture_supp("_arrivee")
+			await sc.delai(0.6)
 	elif etape == "pieces_hors_champ":
 		await sc.delai(0.35)    # le montant flottant près de COMPTE vit 0,9 s
 	else:
 		await sc.delai(1.0)
+	_suivi_fin()
+	_flottants_controle(f0)
 	_noeuds(n0)
 
 
@@ -506,8 +540,8 @@ func _noeuds(n0: int) -> void:
 		print("RUE pieces noeuds_crees=%d" % (Juice.pieces_creees - n0))
 
 
-## Image supplémentaire pendant le vol : <capture>_vol.png (pièces en texels entiers, à relire).
-func _capture_vol() -> void:
+## Image supplémentaire : <capture><suffixe>.png (enregistrée tout de suite, à l'instant voulu par l'étape).
+func _capture_supp(suffixe: String) -> void:
 	var chemin := ScenariosCapture.option("capture")
 	if chemin == "":
 		return
@@ -515,9 +549,109 @@ func _capture_vol() -> void:
 	var img := sc.get_viewport().get_texture().get_image()
 	if chemin.is_relative_path():
 		chemin = ProjectSettings.globalize_path("res://").path_join(chemin)
-	chemin = chemin.get_basename() + "_vol.png"
+	chemin = chemin.get_basename() + suffixe + ".png"
 	if img.save_png(chemin) == OK:
-		print("Capture enregistrée : %s (pendant le vol)" % chemin)
+		print("Capture enregistrée : %s (%s)" % [chemin, suffixe.trim_prefix("_")])
+	_suivi_reprendre = true     # l'intervalle de l'enregistrement (image figée puis rattrapée) n'est pas mesuré
+
+
+## Suivi des pièces image par image (lot 03, m1 et m4) : contact avec les enseignes dorées, régularité du pas.
+## Relevé juste avant le dessin (frame_pre_draw : après les Tween de l'image), pas ramené à 1/60 s du temps du jeu
+## (une image retardée par l'enregistrement d'une capture ne compte pas comme un saut).
+var _suivi := {}             # identifiant de la pièce -> {prec, t, pas: [px par 1/60 s]}
+var _contacts := 0           # images × pièces en contact avec une enseigne
+var _images_vol := 0
+var _temps_jeu := 0.0
+var _suivi_reprendre := false
+const PAS_ECHANTILLON_S := 1.0 / 60.0
+
+
+func _suivi_debut() -> void:
+	_suivi = {}
+	_contacts = 0
+	_images_vol = 0
+	if not RenderingServer.frame_pre_draw.is_connected(_suivre_pieces):
+		RenderingServer.frame_pre_draw.connect(_suivre_pieces)
+
+
+func _suivre_pieces() -> void:
+	if Juice.calque_effets == null:
+		return
+	var rects: Array = sc.jeu.sequences.call("enseignes_ecran", 0.0)
+	# Temps du jeu (le delta que reçoivent les Tween, lissé par Godot) : une image retardée par une capture avance
+	# les pièces d'autant, sans fausser le pas
+	_temps_jeu += sc.get_process_delta_time()
+	var maintenant := _temps_jeu
+	var reprendre := _suivi_reprendre
+	_suivi_reprendre = false
+	var vu := false
+	for p in Juice.calque_effets.get_children():
+		if not (p is Piece) or not p.visible or p.is_queued_for_deletion():
+			continue
+		vu = true
+		var cote: float = sc.jeu.sequences.PIECE_COTE
+		var r := Rect2(p.position - Vector2.ONE * cote / 2.0, Vector2.ONE * cote)
+		for e: Rect2 in rects:
+			if e.intersects(r):
+				_contacts += 1
+		var id := p.get_instance_id()
+		if not _suivi.has(id):
+			_suivi[id] = {"prec": p.position, "t": maintenant, "pas": []}
+			continue
+		var s: Dictionary = _suivi[id]
+		if reprendre:
+			s["prec"] = p.position
+			s["t"] = maintenant
+			continue
+		var dt: float = maintenant - float(s["t"])
+		if dt >= PAS_ECHANTILLON_S:
+			s["pas"].append(p.position.distance_to(s["prec"]) * PAS_ECHANTILLON_S / dt)
+			s["prec"] = p.position
+			s["t"] = maintenant
+	if vu:
+		_images_vol += 1
+
+
+func _suivi_fin() -> void:
+	if RenderingServer.frame_pre_draw.is_connected(_suivre_pieces):
+		RenderingServer.frame_pre_draw.disconnect(_suivre_pieces)
+	if not _controle:
+		return
+	print("RUE pieces enseigne=%d images_vol=%d pieces=%d" % [_contacts, _images_vol, _suivi.size()])
+	var k := 0
+	for id in _suivi:
+		var pas: Array = _suivi[id]["pas"]
+		if pas.is_empty():
+			continue
+		var somme := 0.0
+		var pire := 0.0
+		for x: float in pas:
+			somme += x
+			pire = maxf(pire, x)
+		var moyen := somme / pas.size()
+		print("RUE pieces piece=%d pas_max=%.1f pas_moyen=%.1f echantillons=%d regulier=%s" % [k, pire, moyen, pas.size(), "oui" if pire <= 2.0 * moyen else "non"])
+		k += 1
+
+
+## Cartouches lancés depuis f0 (Juice.derniers_flottants) : tous dans le rectangle libre, montée comprise.
+func _flottants_controle(f0: int) -> void:
+	if not _controle:
+		return
+	var libre: Rect2 = sc.jeu.hud.rect_libre()
+	var hors := 0
+	var n := 0
+	for f in Juice.derniers_flottants.slice(f0):
+		n += 1
+		var r: Rect2 = f["rect"]
+		if not libre.grow(0.5).encloses(r):
+			hors += 1
+			print("RUE flottant hors texte=%s rect=%s libre=%s" % [str(f["texte"]).replace("\n", " / "), str(r), str(libre)])
+	print("RUE flottant n=%d hors_libre=%d" % [n, hors])
+
+
+## Image supplémentaire pendant le vol : <capture>_vol.png (pièces en texels entiers, à relire).
+func _capture_vol() -> void:
+	await _capture_supp("_vol")
 	if _controle:
 		var n := 0
 		var hors_texel := 0
@@ -544,6 +678,19 @@ func _camera_retour(ville: Node2D) -> void:
 	var duree := (Time.get_ticks_msec() - t0) / 1000.0
 	if _controle:
 		print("RUE camera x1 retour=%s apres_s=%.1f modale=%s" % ["oui" if ville.call("a_la_maison") else "non", duree, "oui" if not Partie.etat.modale.is_empty() else "non"])
+	# m5 (lot 03) : une image pendant le glissement (0,8 s), une juste après
+	var maison_x: float = ville.get("maison").position.x
+	var b: Vector2 = ville.call("bornes_rue")
+	var cible: float = clampf(float(ville.call("cx_pour", maison_x)), b.x, b.y)
+	await sc.delai(0.35)
+	await _capture_supp("_glissement")
+	if _controle:
+		print("RUE camera glissement camera=%d cible=%d" % [int(ville.call("position_camera")), int(cible)])
+	await sc.attendre_que(func() -> bool: return absf(float(ville.call("position_camera")) - cible) < 1.0, 3.0)
+	await _capture_supp("_retour")
+	if _controle:
+		print("RUE camera retour fini_s=%.2f camera=%d maison_centre=%s" % [(Time.get_ticks_msec() - t0) / 1000.0, int(ville.call("position_camera")),
+			"oui" if absf(float(ville.call("position_camera")) - cible) < 1.0 else "non"])
 	await sc.delai(1.0)
 	if _controle:
 		print("RUE camera maison_visible=%s" % ("oui" if ville.call("est_visible", "maison") else "non"))
@@ -607,6 +754,52 @@ func _pieces_jeu(ville: Node2D) -> void:
 	Partie.mois_passe.disconnect(cb)
 	if _controle:
 		print("RUE pieces_jeu fin mois=%d noeuds_derniers=%d" % [mois[0], Juice.pieces_creees - n_mois[0]])
+
+
+## V9 (lot 03) : vraie partie, joueur actif, une ligne Elf détenue avant mai 1987 (achetée par la stratégie, ou
+## ici si elle ne l'a pas fait), avancée à ×1 d'avril à juin 1987, maison et banque à l'écran. Les lignes
+## « RUE pieces … » du mois de mai viennent de Sequences.pieces_du_mois (appelé par principal.gd) ; puis
+## « RUE pieces dividende=present|absent » selon le flux de mai (03-L : dividendes dans le moteur).
+func _pieces_dividende_jeu(ville: Node2D) -> void:
+	_aller_a(Dates.lire("1987-04"), true)
+	var e := Partie.etat
+	if not e.joueur.lignes.has("elf"):
+		e.acheter(e.joueur, "elf", minf(Produits.f(3000.0), e.joueur.cc * 0.8))
+		sc.jeu.hud.maj(e, false)
+	ville.set("phase", 0.18)
+	var maison: Node2D = ville.get("maison")
+	var banque: Node2D = ville.get("banque")
+	var milieu: float = (maison.position.x + maison.call("porte").get_center().x + banque.position.x + banque.call("porte").get_center().x) / 2.0
+	ville.call("centrer_sur", milieu, 0.0)
+	if _controle:
+		print("RUE pieces_dividende_jeu mois=%s elf=%s" % [Dates.texte(e.ab_courant()), "oui" if e.joueur.lignes.has("elf") else "non"])
+	var mai := Dates.lire("1987-05")
+	var vu := {"mai": false, "dividende": ""}
+	var cb := func(res: Dictionary) -> void:
+		if Partie.etat.ab_courant() - 1 != mai:
+			return
+		vu["mai"] = true
+		var f: Dictionary = res.get("flux", {})
+		for l: Dictionary in f.get("lignes", []):
+			if str(l.get("genre", "")) == "dividende":
+				vu["dividende"] += "%s %s ; " % [str(l.get("nom", l.get("id", ""))), Format.montant(float(l.get("montant", 0.0)), mai)]
+		if _controle:
+			print("RUE pieces_dividende_jeu mai revenus=%s frais=%s vitesse=%d saut=%s" % [Format.montant(float(f.get("revenus", 0.0)), mai),
+				Format.montant(float(f.get("frais", 0.0)), mai), Partie.vitesse, "oui" if Partie.saut_actif or res.get("pendant_saut", false) else "non"])
+	Partie.mois_passe.connect(cb)
+	Partie.changer_vitesse(1)
+	var t := 0.0
+	while Partie.etat.ab_courant() < Dates.lire("1987-06") and t < 40.0:
+		ville.set("_calme", 0.0)        # la caméra reste entre la maison et la banque (pas de retour automatique, D7)
+		await sc.delai(0.25)
+		t += 0.25
+		await _repondre_modale()
+	await sc.delai(1.6)
+	Partie.changer_vitesse(0)
+	Partie.mois_passe.disconnect(cb)
+	if _controle:
+		print("RUE pieces dividende=%s%s" % ["present" if vu["dividende"] != "" else "absent", (" lignes=" + str(vu["dividende"])) if vu["dividende"] != "" else ""])
+		print("RUE pieces_dividende_jeu mai_vu=%s fin=%s" % ["oui" if vu["mai"] else "non", Dates.texte(Partie.etat.ab_courant())])
 
 
 ## Attend que n mois soient passés, en répondant aux modales comme le joueur passif (fermeture par l'interface).
