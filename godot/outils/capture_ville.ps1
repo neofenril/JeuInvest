@@ -10,7 +10,10 @@
 #   journal_anim, krach_anim, crash_anim, crash_fin, naissance_anim, jumeaux_anim, news, sylvie_0..2,
 #   planche_personnages, voisins, trafic, fps ; lot 02 : pieces_or, pieces_fleche, pieces_cuivre, pieces_dividende,
 #   pieces_glisse (+ image <nom>_vol.png pendant le vol), pieces_x3, pieces_saut, pieces_hors_champ, pieces_sous_seuil,
-#   camera_retour, pieces_jeu, jouer_rapide.
+#   camera_retour (+ <nom>_glissement.png, <nom>_retour.png), pieces_jeu, jouer_rapide ; lot 03 : pieces_bascule,
+#   pieces_dividende_jeu (+ <nom>_arrivee.png pour pieces_or, pieces_fleche, pieces_dividende).
+# Contrôles en échec aussi : « pieces enseigne=N » (N ≠ 0), « hors_libre=N » (N ≠ 0), « regulier=non », et pour
+# pieces_dividende_jeu l'absence de « RUE pieces dividende=present » (en échec tant que 03-L n'est pas fusionné).
 # 1920 x 1080 : plein écran (taille exacte). Journal de Godot hors de user:// (--log-file).
 # Code de sortie 0 seulement si chaque lancement rend 0, sans erreur de script, et si tous les contrôles sont à
 # zéro (hors_palette=0, irreguliers=0, hors_texel=0). 3 : Godot introuvable.
@@ -71,8 +74,11 @@ function Capturer([hashtable]$o) {
     $r = Lancer $a
     $rue = @($r.sortie | Where-Object { $_ -like "RUE *" -or $_ -like "Images par seconde*" -or $_ -like "Capture enregistr*" })
     $erreurs = @($r.sortie | Where-Object { $l = $_; $motifsErreur | Where-Object { $l -like "*$_*" } })
-    $ko = @($rue | Where-Object { ($_ -match 'hors_palette=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'irreguliers=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'hors_texel=(\d+)' -and [int]$matches[1] -ne 0) })
+    $ko = @($rue | Where-Object { ($_ -match 'hors_palette=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'irreguliers=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'hors_texel=(\d+)' -and [int]$matches[1] -ne 0) -or
+        ($_ -match 'pieces enseigne=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'hors_libre=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'regulier=non') })
     $ok = ($r.code -eq 0) -and ($erreurs.Count -eq 0) -and ($ko.Count -eq 0)
+    # pieces_dividende_jeu (lot 03) : le dividende de mai 1987 doit être vu (branche contenant 03-L)
+    if ($o.Etape -eq "pieces_dividende_jeu" -and -not ($rue | Where-Object { $_ -like "RUE pieces dividende=present*" })) { $ok = $false }
     Ecrire ("--- {0} ({1}, {2}{3}) : code {4}{5}" -f $o.Nom, $o.Etape, $(if ($o.Telephone) { "téléphone" } else { $taille }), $(if ($o.Facteur) { " x$($o.Facteur)" } else { "" }), $r.code, $(if ($ok) { "" } else { "  ** ECHEC **" }))
     foreach ($l in $r.sortie) {
         if ($l -like "RUE *" -or $l -like "Images par seconde*" -or $l -like "Trafic*" -or ($motifsErreur | Where-Object { $l -like "*$_*" }) -or $l -like "ERROR*" -or $l -like "*at: *") { Ecrire "    $l" }
@@ -199,7 +205,11 @@ if ($Serie) {
         @{ Nom = "${p}pieces_sous_seuil"; Etape = "pieces_sous_seuil"; Controle = $true },
         @{ Nom = "${p}camera_retour"; Etape = "camera_retour"; Controle = $true },
         @{ Nom = "${p}jouer_rapide"; Etape = "jouer_rapide"; Controle = $true },
-        @{ Nom = "${p}pieces_jeu"; Etape = "pieces_jeu"; Controle = $true }
+        @{ Nom = "${p}pieces_jeu"; Etape = "pieces_jeu"; Controle = $true },
+        # Lot 03 (03-V) : pièces au-dessus des enseignes, cartouches, départ figé, dividende réel (après 03-L)
+        @{ Nom = "${p}pieces_bascule"; Etape = "pieces_bascule"; Controle = $true },
+        @{ Nom = "${p}pieces_bascule_tel"; Etape = "pieces_bascule"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}pieces_dividende_jeu"; Etape = "pieces_dividende_jeu"; Controle = $true }
     )
     foreach ($o in $liste) {
         if (-not $o.ContainsKey("Attente")) { $o.Attente = 0 }

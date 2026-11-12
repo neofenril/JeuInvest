@@ -163,6 +163,18 @@ func _tests_saut() -> void:
 	Partie.changer_vitesse(1)
 	Partie.sauter_jusqu_au_prochain_arret()
 	Partie._process(1.4)   # un mois traversé pendant le saut : sauvegarde automatique
+	# D-02L-4 (lot 03) : continuer le saut jusqu'à ce qu'au moins une notification ait été franchie (non lue) ;
+	# une modale qui arrête le saut est résolue (joueur passif) et le saut relancé.
+	var garde := 0
+	while garde < 80 and Partie.etat.fin == "" and not (Partie.saut_actif and Partie.etat.non_lues() > 0):
+		garde += 1
+		if not Partie.saut_actif:
+			if not Partie.etat.modale.is_empty():
+				Partie.resoudre_modale(StrategieTest.choix_modale(Partie.etat, false))
+			Partie.changer_vitesse(1)
+			Partie.sauter_jusqu_au_prochain_arret()
+		Partie._process(1.4)
+	print("    Précondition D-02L-4 : saut actif %s, %d non lue(s) en %s" % [str(Partie.saut_actif), Partie.etat.non_lues(), Dates.texte_court(Partie.etat.ab_courant())])
 	var m_sauve := Partie.etat.m
 	var en_saut := Partie.saut_actif
 	var non_lues := Partie.etat.non_lues()
@@ -171,8 +183,8 @@ func _tests_saut() -> void:
 	Partie.sauvegarde_auto = false
 	Partie.nouvelle_partie(Donnees.config_demo(3))   # une autre partie entre-temps
 	var repris := Partie.reprendre(d)
-	verifier("Sauvegarde pendant un saut : reprise sans saut, au même mois, non lues conservées",
-		en_saut and repris and not Partie.saut_actif and not Partie.etat.saut_en_cours and Partie.etat.m == m_sauve and m_sauve > Partie.etat.m_depart
+	verifier("Sauvegarde pendant un saut (après au moins une notification franchie) : reprise sans saut, au même mois, non lues conservées",
+		en_saut and repris and non_lues > 0 and not Partie.saut_actif and not Partie.etat.saut_en_cours and Partie.etat.m == m_sauve and m_sauve > Partie.etat.m_depart
 		and Partie.vitesse == 0 and Partie.etat.non_lues() == non_lues,
 		"mois %s, %d non lue(s)" % [Dates.texte_court(Partie.etat.ab_courant()), non_lues])
 	Partie.chemin_sauvegarde = chemin_avant

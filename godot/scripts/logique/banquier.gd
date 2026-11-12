@@ -16,7 +16,7 @@ static func etat_initial() -> Dictionary:
 	return {"actif": true, "presentes": {}, "en_file": {}, "nouveaux": [], "messages": [], "interruptions": 0,
 		"derniere_interruption": -99, "f01_vu": false, "naissance_m": -1, "frais_annee": 0.0, "interets_annee": 0.0,
 		"interruptions_liste": [], "versements_annee": {}, "vpa_vu": false, "premier_eligible_m": -1,
-		"derniere_kind": "", "compteurs": Cadence.compteurs_vides()}
+		"derniere_kind": "", "compteurs": Cadence.compteurs_vides(), "dividendes_annee": 0.0, "avoir_fiscal_vu": false}
 
 
 static func info_produit(pid: String) -> Dictionary:
@@ -584,6 +584,45 @@ static func messages_du_mois(e: EtatPartie, notifs: Array) -> void:
 	Versements.messages_du_mois(e, notifs, v)
 
 
+## Notification des dividendes du mois (lot 03, D4) : lignes = [{id, nom, net}] du joueur ; le détail nomme
+## les 2 plus gros titres (« Elf 840 F, L'Oréal 120 F et 1 autre »). Quand tous les titres sont nommés, le
+## total écrit est la somme des montants écrits (arrondis au franc, D6).
+static func notif_dividendes(e: EtatPartie, lignes: Array, brut: float, impot: float, premier: bool) -> Dictionary:
+	var a := e.ab_courant()
+	var d: Dictionary = donnees()["messages"]
+	var tri := lignes.duplicate(true)
+	tri.sort_custom(func(x: Dictionary, z: Dictionary) -> bool: return float(x["net"]) > float(z["net"]))
+	var noms := []
+	var total_ecrit := 0.0
+	for i in mini(2, tri.size()):
+		noms.append("%s %s" % [tri[i]["nom"], Format.entier(float(tri[i]["net"]), a)])
+		total_ecrit += roundf(Format.en_devise(float(tri[i]["net"]), Format.devise(a)))
+	var detail := " et ".join(PackedStringArray(noms)) if tri.size() <= 2 else ", ".join(PackedStringArray(noms))
+	if tri.size() == 3:
+		detail += str(d["dividendes_et_autre"])
+	elif tri.size() > 3:
+		detail += Format.gabarit(str(d["dividendes_et_autres"]), {"n": str(tri.size() - 2)})
+	var net := brut - impot
+	var montant_ecrit := Format.entier(net, a)
+	if tri.size() <= 2:
+		montant_ecrit = Format.entier(Format.vers_euros(total_ecrit, Format.devise(a)), a)
+	var vals := {"montant": montant_ecrit, "detail": detail, "taux": taux_txt(float(Marche.impot(a)["cto"])),
+		"mois": Dates.MOIS[Dates.mois(a) - 1]}
+	var texte := Format.gabarit(str(d["dividendes_premier" if premier else "dividendes"]), vals)
+	var sortie := []
+	for l: Dictionary in lignes:
+		sortie.append({"id": l["id"], "nom": l["nom"], "net": float(l["net"])})
+	return {"type": "dividende", "source": "banque", "cls": "gain", "montant": net, "brut": brut, "impot": impot,
+		"premier": premier, "lignes": sortie, "titre": str(d["dividendes_titre"]), "texte": texte}
+
+
+## Titre détenu qui ne verse rien cette année (divNul) : notification neutre, sans montant.
+static func notif_dividende_nul(e: EtatPartie, id: String) -> Dictionary:
+	var d: Dictionary = donnees()["messages"]
+	return {"type": "dividende_nul", "source": "banque", "cls": "neutre", "id": id, "titre": str(d["dividendes_nul_titre"]),
+		"texte": Format.gabarit(str(d["dividendes_nul"]), {"nom": e.nom_ligne(id)})}
+
+
 ## Relevé de décembre (L21 et F02 fusionnés, 13 §3.4) : intérêts de l'année, frais de l'année, et depuis
 ## le début les frais payés plus les gains qu'ils auraient produits (jumeau sans frais, 11 §5.2 formule 7).
 static func releve(e: EtatPartie) -> Dictionary:
@@ -597,6 +636,13 @@ static func releve(e: EtatPartie) -> Dictionary:
 		t = Format.gabarit(d["releve_interets"], {"interets": Format.entier(interets, a)})
 	else:
 		t = d["releve_sans_interets"]
+	# Lot 03 : dividendes nets de l'année ; la 1re année, la phrase sur l'avoir fiscal (docs/21 K1)
+	var dividendes := float(b.get("dividendes_annee", 0.0))
+	if dividendes > Produits.EPS:
+		t += Format.gabarit(d["releve_dividendes"], {"dividendes": Format.entier(dividendes, a)})
+		if not bool(b.get("avoir_fiscal_vu", false)):
+			b["avoir_fiscal_vu"] = true
+			t += Format.gabarit(d["releve_avoir_fiscal"], {"taux": taux_txt(float(Marche.impot(a)["cto"]))})
 	if frais_annee > Produits.EPS:
 		t += Format.gabarit(d["releve_frais"], {"frais_annee": Format.entier(frais_annee, a),
 			"frais_total": Format.entier(e.frais_payes(), a), "manque": Format.entier(e.manque_a_gagner(), a)})
@@ -604,13 +650,14 @@ static func releve(e: EtatPartie) -> Dictionary:
 		t += d["releve_sans_frais"]
 	var vers: Dictionary = b.get("versements_annee", {})
 	t += Versements.texte_releve(e, vers)
-	var n := {"type": "releve", "source": "banque", "cls": "gain" if interets > Produits.EPS else "neutre",
+	var n := {"type": "releve", "source": "banque", "cls": "gain" if interets > Produits.EPS or dividendes > Produits.EPS else "neutre",
 		"titre": Format.gabarit(d["releve_titre"], {"annee": str(Dates.annee(a))}), "texte": t,
 		"interets": interets, "frais_annee": frais_annee, "frais_total": e.frais_payes(), "manque": e.manque_a_gagner(),
-		"versements_annee": vers.duplicate(true)}
+		"versements_annee": vers.duplicate(true), "dividendes": dividendes}
 	if interets > Produits.EPS:
 		n["montant"] = interets
 	b["interets_annee"] = 0.0
+	b["dividendes_annee"] = 0.0
 	b["frais_annee"] = 0.0
 	b["versements_annee"] = {}
 	return n

@@ -173,6 +173,14 @@ func _tests_analyse() -> void:
 				trouve = true
 		_verifier(trouve, "grille : erreur détectée (%s)" % k, ", ".join(rr["erreurs"]))
 	_verifier(GrillePixel.erreurs().size() == nb_erreurs, "grille : analyser() est pur (aucune erreur enregistrée)")
+	# E6 (lot 03) : BOM retiré, commentaire de 1re ligne gardé ; aucun caractère invisible U+FEFF dans grille.gd
+	# (le littéral devenait une chaîne vide dans le script exporté en jetons binaires et mangeait le « # »)
+	var avec_bom := GrillePixel.analyser(char(0xFEFF) + "# Cadres\n: e encre\nimage a 1x1\ne\n", "test", "bom")
+	var sans_bom := GrillePixel.analyser("# Cadres\n: e encre\nimage a 1x1\ne\n", "test", "sans_bom")
+	_verifier(avec_bom["erreurs"].is_empty() and sans_bom["erreurs"].is_empty() and avec_bom["images"].has("test/a"),
+		"grille : 1re ligne de commentaire lue, avec ou sans BOM (E6)", ", ".join(avec_bom["erreurs"] + sans_bom["erreurs"]))
+	_verifier(not FileAccess.get_file_as_string("res://scripts/pixel/grille.gd").contains(char(0xFEFF)),
+		"grille : aucun BOM littéral dans grille.gd (E6 : chaîne vide une fois exporté)")
 
 
 # --- Catalogue : grilles des dossiers et contrôle de palette ---------------------------------------
