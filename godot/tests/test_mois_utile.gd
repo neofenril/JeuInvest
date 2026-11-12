@@ -65,6 +65,9 @@ func _tests_flux() -> void:
 	var nb_releves := 0
 	var genres := {}
 	var detail_ko := ""
+	var ok_div := true
+	var nb_lignes_div := 0
+	var div_graine := {}
 	for g in [7, 11, 23]:
 		var e := EtatPartie.new()
 		var res := e.demarrer(Donnees.config_demo(g))
@@ -95,16 +98,44 @@ func _tests_flux() -> void:
 				var age := e.m + 1 - int(t["m"])
 				if age > 0 and age % 12 == 0:
 					att_coupon += float(t["nominal"]) * float(t["taux"]) / 100.0 * (1.0 - float(Produits.params()["emprunt"]["impot_coupons"]) / 100.0)
+			# Lot 03 : dividendes nets du mois suivant (actions détenues avant son début), recalculés depuis les données
+			var a1 := a + 1
+			var att_div := {}
+			for id in w.lignes:
+				var pr := e.produit(id)
+				if pr.get("type", "") != "action":
+					continue
+				var mois_div := int(pr.get("moisDiv", e.regles["dividendes"]["mois"]))
+				if Dates.mois(a1) != mois_div or (pr.get("divNul", []) as Array).has(float(Dates.annee(a1))):
+					continue
+				var t_div := maxf(0.0, Marche.rdt_dividende(Dates.annee(a1)) + float(pr.get("ecartDiv", 0.0))) / 100.0
+				att_div[id] = w.qte(id) * e.cours(id, e.m + 1) * t_div * (1.0 - float(Marche.impot(a1)["cto"]) / 100.0)
 			var frais_avant := e.frais_payes()
 			var r := e.avancer()
 			nb_mois += 1
 			if r.get("fin", "") != "":
 				att_coupon = 0.0   # fin de partie (ou faillite) : pas de coupon dans un mois suivant
+				att_div = {}
+			for id in att_div:
+				att_coupon += float(att_div[id])
 			var fl: Dictionary = r["flux"]
+			var lignes_div := 0
 			for l: Dictionary in fl["lignes"]:
 				genres[l["genre"]] = true
+				if l["genre"] == "dividende":
+					lignes_div += 1
+					nb_lignes_div += 1
+					if not att_div.has(l["id"]) or absf(float(l["montant"]) - float(att_div[l["id"]])) > tol \
+							or l["nom"] != str(e.produit(l["id"]).get("court", "")) or bool(l["verse_en_decembre"]):
+						ok_div = false
+						detail_ko += "g%d %s ligne %s ; " % [g, Dates.texte_court(a1), str(l)]
 				if l["genre"] == "interets" and bool(l["verse_en_decembre"]) != (Dates.mois(a) != 12):
 					ok_decembre = false
+			if lignes_div != att_div.size():
+				ok_div = false
+				detail_ko += "g%d %s : %d lignes de dividende au lieu de %d ; " % [g, Dates.texte_court(a1), lignes_div, att_div.size()]
+			for id in att_div:
+				div_graine[g] = int(div_graine.get(g, 0)) + 1
 			var d_rev := absf(float(fl["revenus"]) - (att_int + att_coupon))
 			var d_frais := absf(float(fl["frais"]) - (e.frais_payes() - frais_avant))
 			ecart_rev = maxf(ecart_rev, d_rev)
@@ -136,13 +167,15 @@ func _tests_flux() -> void:
 	print("    Flux : ", resume)
 	if detail_ko != "":
 		print("    ", detail_ko.left(1500))
-	verifier("Flux : 3 graines × 60 mois, revenus = intérêts acquis (Livret A, PEL, assurance-vie) + coupons nets, au franc près", ok_revenus and nb_mois >= 180, resume)
+	verifier("Flux : 3 graines × 60 mois, revenus = intérêts acquis (Livret A, PEL, assurance-vie) + coupons nets + dividendes nets, au franc près", ok_revenus and nb_mois >= 180, resume)
+	verifier("Flux (lot 03, CA-L3) : une ligne « dividende » par titre versant (montant net au franc près, nom court, pas « versé en décembre »), dans chacune des 3 graines",
+		ok_div and nb_lignes_div > 0 and div_graine.size() == 3, "%d lignes, par graine %s" % [nb_lignes_div, str(div_graine)])
 	verifier("Flux : frais = frais payés du mois dans le moteur (gestion de la SICAV + frais des versements automatiques), au franc près", ok_frais)
 	verifier("Flux : lignes « frais » = frais de gestion de la SICAV du mois", ok_gestion)
 	verifier("Flux : revenus et frais = somme de leurs lignes", ok_lignes)
 	verifier("Flux : intérêts « versés en décembre » sauf en décembre", ok_decembre)
 	verifier("Flux : relevé de décembre = somme des revenus de l'année (intérêts acquis et coupons)", ok_releve and nb_releves == 15)
-	verifier("Flux : les 4 genres présents (intérêts, coupon, frais, frais de versement)", genres.has("interets") and genres.has("coupon") and genres.has("frais") and genres.has("frais_versement"), str(genres.keys()))
+	verifier("Flux : les 5 genres présents (intérêts, coupon, dividende, frais, frais de versement)", genres.has("interets") and genres.has("coupon") and genres.has("dividende") and genres.has("frais") and genres.has("frais_versement"), str(genres.keys()))
 	verifier("Flux : flux_du_mois() = res[\"flux\"] du dernier mois", ok_copie)
 	var e2 := EtatPartie.new()
 	var r0 := e2.demarrer(Donnees.config_demo(7))

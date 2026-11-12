@@ -9,6 +9,8 @@
     { "de": 2013, "cto": 35, "pea5": 15.5 },
     { "de": 2018, "cto": 30, "pea5": 17.2 }
   ],
+  "_dividendes": "Mois de détachement par défaut des dividendes des actions (docs/03 §7.4, docs/20 B1 : paiements réels en mai-juillet, mai retenu), surchargeable par titre (periode_*.json > moisDiv). Impôt : taux du compte-titres ci-dessus (16 % = convention de jeu, l'avoir fiscal n'est pas modélisé à part : docs/21 K1).",
+  "dividendes": { "mois": 5, "_certitude": "C", "_source": "docs/03 §7.4, docs/20 B1" },
   "_frais": "Courtage des actions et ETF = max(minimum, taux × montant) (03 §7.5). Minimum en euros (50 F = 7,62245 €).",
   "frais": [
     { "de": "1978-01", "taux": 1.3, "min": 7.62245 },
