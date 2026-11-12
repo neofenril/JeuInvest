@@ -99,3 +99,34 @@ Le jeu lui-même est bon : enseignes, cartouches, départ figé, `cx_pour`, `poi
 - `partie_en_cours.sav` : **absent avant et après** la recette (rien écrit dans `user://JeuClaude` hors journaux ; `capture_reprise*.sav` non touchés). Copies isolées : `user://` à part, dossiers `%APPDATA%\JeuClaude_recette_v03*` supprimés à la fin ; worktree de fusion supprimé (`worktree remove` + `prune`).
 - Dépôt principal : `git status` inchangé (seule ma base `docs/connaissances/testeur.md`, modifiée avant cette recette). Aucun Godot d'autrui fermé ; les deux processus de l'incident de 03-L ne sont plus là.
 - Rapport : ce fichier est la copie à l'octet de celui de `lot/03-logique` (blob cbffcff), plus ces sections : à la fusion, conflit trivial (ajout des deux côtés), garder ce contenu.
+
+## 03-V, passage 2 : 2026-11-12, `lot/03-ville` de8fbf8 (correction de A1 ; base 87f2d6f) et fusion simulée avec `lot/03-logique` 6e4fe9c
+
+### Verdict : **OK** (0 bloquante, 0 majeure ; A1 corrigée ; m1, m2, m3 du passage 1 inchangées)
+`pieces_dividende_jeu` voit maintenant le dividende réel de mai 1987 sur la fusion, au PC comme au téléphone, et l'image le montre. Sur la branche seule, l'étape échoue comme prévu. Rien d'autre n'a bougé.
+
+### Ce qui a été fait
+- Périmètre de de8fbf8 : `git show --stat` = **2 fichiers**, `godot/outils/capture_ville.ps1` (+3/−1 : commentaire et contrôle « `dividende=present` exigé pour `pieces_dividende_jeu` ») et `godot/scripts/outils/scenarios/ville.gd` (+12/−8 : condition `ab_courant() == mai`, boucle jusqu'à `vu["mai"]`, image prise 1,8 s après l'entrée en mai). Rien hors du scénario de capture ; aucun fichier du jeu. `main` n'a pas bougé depuis le passage 1 (8930fc3).
+- Copies isolées (`git archive`, `user://` à part) : branche de8fbf8 ; **fusion** (worktree jetable : `main` + `merge --no-ff lot/03-logique` + `merge --no-ff lot/03-ville`). Import des deux copies : aucune `SCRIPT ERROR` ni `Parse Error`.
+- Preuves dans `godot/captures/recette_v03_p2/` du worktree (ignoré par Git) : `p2_div.png`, `p2_div_tel.png` (fusion), `p2_div_b.png` (branche seule), captures `p2_pieces_*`, `p2_camera_retour*`, journaux des tests, de l'intégrale et des étapes.
+
+### Points vérifiés
+- [x] **A1 corrigée sur la fusion, PC (1920 × 1080) et téléphone (1440 × 648)** : code 0, `RUE pieces_dividende_jeu mai revenus=507,35 F frais=11,33 F vitesse=1 saut=non`, `RUE pieces ligne texte=Elf : + 120 F`, `RUE pieces ligne texte=Saint-Gobain : / + 102 F`, **`RUE pieces dividende=present lignes=Elf 119,99 F ; Saint-Gobain 101,70 F`**, `mai_vu=oui fin=mai 1987`, `enseigne=0`, `hors_libre=0`, arcs 240 (PC) / 180 (téléphone). Image relue : **MAI 1987**, cartouches « Elf : + 120 F » et « Saint-Gobain : / + 102 F » à la maison (texte entier, dans le rectangle libre, sans recouvrir MA MAISON ni la frise), notification « Vos actions vous versent un dividende +221,69 F … après 16 % d'impôt ». Chiffres cohérents : 119,99 + 101,70 = 221,69 ; compte courant 9 819 F et patrimoine 80 515 F identiques au PC et au téléphone, et égaux à ceux de mon instrumentation du passage 1 ; compte courant de la fusion − branche seule = 9 819 − 9 598 = 221 F, le dividende.
+- [x] **Branche seule : échec voulu** : `capture_ville.ps1 -Etape pieces_dividende_jeu -Controle` → Godot code 0, `RUE pieces dividende=absent`, ligne `** ECHEC **`, script code 1 ; image de mai 1987 sans cartouche de dividende (« + 285 F ce mois-ci / versés en décembre » déjà effacé). Conforme au commentaire du script ; ce n'est pas un défaut (voir point pour le chef de projet).
+- [x] **Tests** : branche `tests.ps1 -Recette` **596** vérifications (comme au passage 1), 0 KO, 0 erreur de script ; fusion **641**, 0 KO, 0 erreur de script.
+- [x] **Intégrale (fusion)** : `integrale` = `integrale_saut` = **161 419 F**, 805,93 F de frais, 11 interruptions (appel 8, banque 4, courrier 2, journal 1, fin 1), code 0 : inchangée.
+- [x] **Non-régression (fusion)** : `pieces_or`, `pieces_fleche` (PC et téléphone), `pieces_cuivre`, `pieces_dividende` (PC et téléphone), `pieces_glisse`, `pieces_hors_champ`, `pieces_x3`, `pieces_saut`, `pieces_sous_seuil`, `camera_retour`, `pieces_jeu`, `pieces_bascule` (PC et téléphone) : 18 lancements, **tous code 0** ; `enseigne=0`, `hors_texel=0`, `hors_libre=0` partout ; `regulier=oui` partout (rapport pas_max / pas_moyen ≤ 1,7) ; `camera retour apres=10.0 glissement=0.8`, `glissement camera=734 cible=245`, `fini_s=10.79 camera=245 maison_centre=oui` ; `pieces_jeu fin mois=7 noeuds_derniers=0` ; `bascule fin banque=hors_champ maison=porte`. Images relues (`p2_camera_retour_retour`, `p2_pieces_bascule`, `p2_pieces_dividende_tel`) : identiques au passage 1.
+
+### Point pour le chef de projet
+- Depuis de8fbf8, **`capture_ville.ps1 -Serie` est rouge (code 1) sur toute branche qui n'a pas 03-L** (dont `lot/03-ville` seule, et `main` si 03-V y est fusionné avant 03-L). C'est voulu par le développeur et sans effet sur `tests.ps1`. Conseil : fusionner `lot/03-logique` dans `main` **avant ou avec** `lot/03-ville`, puis relancer la série sur `main`.
+- Fusion : seul conflit, `docs/lots/lot_03_recette.md` (ajout des deux côtés, attendu) ; garder la version de `lot/03-ville`, qui contient celle de `lot/03-logique` plus les sections 03-V. Aucun conflit dans `godot/`.
+
+### Anomalies
+- Aucune nouvelle. m1 (cartouche sur le panneau INDICE au téléphone), m2 (« + 507 F » = intérêts du Livret A + dividendes, sans « versés en décembre ») et m3 (cuivre et or superposés ≈ 0,2 s) restent ouvertes, mineures, comme au passage 1.
+
+### Non vérifié
+- Série complète `capture_ville.ps1 -Serie` non relancée (passage court ; seules les étapes de pièces et `camera_retour` l'ont été, sur la fusion).
+- Vrai téléphone, ressenti en mouvement, avis UX : comme au passage 1.
+
+### Sauvegarde du joueur et environnement
+- `partie_en_cours.sav` **absent avant et après**. Copies isolées et dossiers `%APPDATA%\JeuClaude_recette_v03p2_*` supprimés ; worktree de fusion supprimé (`worktree remove` + `prune`). Dépôt principal : `git status` inchangé (seule ma base `docs/connaissances/testeur.md`).
