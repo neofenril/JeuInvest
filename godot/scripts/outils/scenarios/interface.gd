@@ -8,7 +8,7 @@ extends RefCounted
 
 const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette",
 	"courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau",
-	"etiquettes_balayage", "pastille_signe"]
+	"etiquettes_balayage", "pastille_signe", "bulle"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -36,6 +36,8 @@ func jouer(etape: String) -> void:
 			await _balayage(jeu)
 		"pastille_signe":
 			await _pastille_signe(jeu)
+		"bulle":
+			await _bulle(jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -194,7 +196,7 @@ func _balayage(jeu: Node) -> void:
 	hud.basculer_panneau(not Ecran.compact())
 	await sc.delai(0.4)
 	var b: Vector2 = ville.call("bornes_rue")
-	var decalage: float = ville.call("_cx_pour", 0.0)
+	var decalage: float = ville.call("cx_pour", 0.0)
 	var n := 0
 	var chev := 0
 	var hors := 0
@@ -278,6 +280,72 @@ func _mesure_etiquettes(hud: Hud, ville: Node2D) -> Array:
 
 
 # =====================================================================
+# Bulle et pictos d'humeur (lot 03, I4, CA-I4)
+# =====================================================================
+
+## Une bulle « Sylvie est ravie » ancrée sur Sylvie (ville.point_sylvie, 03-V) ou à défaut sur la porte de la
+## maison ; une bulle ancrée hors champ (cachée) ; une bulle trop haute pour tenir au-dessus de son ancre
+## (pointe vers le haut, texte coupé en 2 lignes) ; les 3 pictos d'humeur à ×3 et agrandis à ×6.
+func _bulle(jeu: Node) -> void:
+	sc.partir_de_la_rue("bulle")
+	var ville: Node2D = jeu.ville
+	var hud: Hud = jeu.hud
+	Partie.changer_vitesse(0)
+	await sc.delai(1.5)
+	var sylvie := ville.has_method("point_sylvie")
+	var ancre := func() -> Vector2: return ville.call("point_sylvie") if ville.has_method("point_sylvie") else ville.call("porte_ecran", "maison")
+	var calque: Node = Juice.calque_effets
+	var b1 := Bulle.montrer(calque, "Sylvie est ravie", ancre, 60.0, "humeur_contente")
+	var b2 := Bulle.montrer(calque, "Ancre hors champ : cachée", func() -> Vector2: return Vector2(-1, -1), 60.0)
+	var libre := hud.rect_libre()
+	var a3 := (libre.position + Vector2(libre.size.x * 0.75, 30.0)).round()
+	var b3 := Bulle.montrer(calque, "Une bulle trop près du haut passe sous son ancre, et un texte trop long tient sur deux lignes au plus, coupé proprement à la fin.", func() -> Vector2: return a3, 60.0)
+	# Pictos d'humeur : ×3 (taille du jeu) et ×6 (pour les relire)
+	var planche := CadresPixel.panneau("panneau")
+	planche.name = "Pictos"
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 18)
+	planche.add_child(hb)
+	for nom: String in ["humeur_contente", "humeur_neutre", "humeur_fachee"]:
+		var v := VBoxContainer.new()
+		v.alignment = BoxContainer.ALIGNMENT_CENTER
+		var ligne := HBoxContainer.new()
+		ligne.add_theme_constant_override("separation", 12)
+		var i3 := CadresPixel.icone(nom)
+		i3.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		ligne.add_child(i3)
+		ligne.add_child(CadresPixel.icone(nom, {}, 6))
+		v.add_child(ligne)
+		var l := Style.label(nom.trim_prefix("humeur_").replace("fachee", "fâchée"), 20, Style.ui(), Style.TEXTE)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(l)
+		hb.add_child(v)
+	calque.add_child(planche)
+	await sc.get_tree().process_frame
+	planche.position = ((Vector2(libre.position.x + 24.0, libre.end.y - planche.get_combined_minimum_size().y - 24.0)) / 3.0).round() * 3.0
+	await sc.delai(0.8)
+	# Contrôles
+	var bornes := libre.grow(1.0)
+	var a1: Vector2 = ancre.call()
+	var bout1 := b1.bout_pointe()
+	var bout3 := b3.bout_pointe()
+	var dans := bornes.encloses(b1.rect_total()) and bornes.encloses(b3.rect_total())
+	var vise1 := absf(bout1.x - a1.x) <= 12.0 and (a1.y - bout1.y) >= 0.0 and (a1.y - bout1.y) <= 9.0
+	var vise3 := absf(bout3.x - a3.x) <= 12.0 and (bout3.y - a3.y) >= 0.0 and (bout3.y - a3.y) <= 9.0
+	var lignes3 := b3.texte_label.text.count("\n") + 1
+	print("UI bulle ancre=%s a=%s bout=%s pointe=%s vise=%s dans_libre=%s" % ["point_sylvie" if sylvie else "porte_maison", a1, bout1, "bas" if b1.pointe_vers_bas else "haut", "oui" if vise1 else "non", "oui" if dans else "non"])
+	print("UI bulle_haute a=%s bout=%s pointe=%s vise=%s lignes=%d texte=« %s »" % [a3, bout3, "bas" if b3.pointe_vers_bas else "haut", "oui" if vise3 else "non", lignes3, b3.texte_label.text.replace("\n", " / ")])
+	print("UI bulle_cachee cachee_hors_champ=%s" % ("oui" if not b2.visible else "non"))
+	print("UI bulle souris=%s (mouse_filter IGNORE partout)" % ("ignore" if [b1, b3].all(func(b: Bulle) -> bool: return b.find_children("*", "Control", true, false).all(func(c: Control) -> bool: return c.mouse_filter == Control.MOUSE_FILTER_IGNORE) and b.mouse_filter == Control.MOUSE_FILTER_IGNORE) else "non"))
+	if not vise1 or not vise3 or not dans or b2.visible or b3.pointe_vers_bas or lignes3 > 2:
+		print("UI bulle incoherences=1")
+	_mesurer("bulle", b1)
+	_mesurer("bulle_haute", b3)
+	_mesurer("pictos", planche)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+
+
+# =====================================================================
 # Planche des cadres (CA-I5)
 # =====================================================================
 
@@ -310,7 +378,8 @@ func _planche_cadres() -> void:
 	y += 135.0
 	x = 30.0
 	for nom: String in ["pause", "lecture", "x2", "x3", "menu", "historique", "fleche_haut", "fleche_bas", "curseur", "drapeau", "croix",
-			"source_maison", "source_banque", "source_media", "piece", "calendrier", "chevron_gauche", "chevron_droite"]:
+			"source_maison", "source_banque", "source_media", "piece", "calendrier", "chevron_gauche", "chevron_droite",
+			"bulle_pointe", "humeur_contente", "humeur_neutre", "humeur_fachee"]:
 		var t := CadresPixel.texture(nom)
 		var r := TextureRect.new()
 		r.texture = t

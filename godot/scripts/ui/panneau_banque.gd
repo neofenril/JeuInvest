@@ -299,6 +299,11 @@ func _afficher_fiche(pid: String) -> void:
 	if int(notes.get("risque", 1)) >= 2:
 		_droite.add_child(_texte("* espéré, jamais garanti ; le passé ne prédit rien.", 16, Style.ui(), Style.TEXTE_2))
 	_droite.add_child(_texte(_vous_avez(pid), 22 if compact else 24, Style.chiffres()))
+	var div := texte_dividendes(e, pid)
+	if div != "":
+		var ld := _texte(div, 20 if compact else 22, Style.chiffres(), Style.GAIN)
+		ld.name = "Dividendes"
+		_droite.add_child(ld)
 	var auto := _ligne_automatique(pid)
 	if auto != "":
 		_droite.add_child(_texte(auto, 18 if compact else 20, Style.ui_gras(), Style.GEL))
@@ -321,6 +326,18 @@ func _afficher_fiche(pid: String) -> void:
 	bc.name = "BoutonChaqueMois"
 	boutons.add_child(bc)
 	_droite.add_child(boutons)
+
+
+## Lot 03 (I6) : ligne des dividendes de la fiche d'une action détenue ; "" pour les autres produits ou une
+## action non détenue. Jamais de rendement prévisionnel.
+static func texte_dividendes(e: EtatPartie, pid: String) -> String:
+	var mois := e.mois_dividende(pid)
+	if mois <= 0 or not Banquier.detenu(e, pid):
+		return ""
+	var recus := e.dividendes_recus(pid)
+	if recus > 0.0:
+		return "Dividendes reçus : " + Format.entier(recus, e.ab_courant())
+	return "Dividende versé chaque année en " + Dates.MOIS[mois - 1]
 
 
 func _vous_avez(pid: String) -> String:

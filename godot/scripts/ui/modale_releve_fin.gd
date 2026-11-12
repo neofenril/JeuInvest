@@ -33,12 +33,15 @@ func releve(n: Dictionary, a: int) -> void:
 		var manque := float(n.get("manque", 0.0))
 		v.add_child(Style.label("CE QUE LES FRAIS ONT COÛTÉ DEPUIS LE DÉBUT", 18, Style.capitales(), Style.TEXTE_2))
 		var g := GridContainer.new()
+		g.name = "GrilleFrais"
 		g.columns = 2
-		for ligne in [["Frais payés (entrée, courtage, gestion)", Format.entier(frais, a)], ["Gains que cet argent aurait produits", Format.entier(manque, a)], ["Total", Format.entier(frais + manque, a)]]:
+		for ligne in lignes_frais(frais, manque, a):
 			var t := Style.label(str(ligne[0]), 22, Style.ui(), Style.TEXTE_2)
 			t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			g.add_child(t)
-			g.add_child(Style.label(str(ligne[1]), 22, Style.chiffres(), Style.CUIVRE))
+			var lv := Style.label(str(ligne[1]), 22, Style.chiffres(), Style.CUIVRE)
+			lv.name = str(ligne[2])
+			g.add_child(lv)
 		v.add_child(g)
 		v.add_child(Style.label("Les frais paient un service (le gérant, l'agent de change, l'assureur) : c'est un prix, pas une faute.", 18, Style.ui(), Style.TEXTE_2))
 	var ok := Style.bouton("FERMER")
@@ -47,6 +50,25 @@ func releve(n: Dictionary, a: int) -> void:
 	m.poser(p)
 	m.fixer_largeurs(p)
 	await m.centrer(p)
+
+
+## Lignes de la grille des frais : [libellé, montant affiché, nom du nœud]. D6 (m9) : le total est la
+## somme des valeurs affichées (chaque terme arrondi à l'unité comme `Format.entier`), pour que
+## « 417 F + 42 F » donne « 459 F » à l'écran, même si le total exact (458,2 F) s'arrondit à 458.
+static func lignes_frais(frais: float, manque: float, a: int) -> Array:
+	var dev := Format.devise(a)
+	var total := Format.vers_euros(arrondi_affiche(frais, a) + arrondi_affiche(manque, a), dev)
+	return [["Frais payés (entrée, courtage, gestion)", Format.entier(frais, a), "Frais"],
+		["Gains que cet argent aurait produits", Format.entier(manque, a), "Manque"],
+		["Total", Format.entier(total, a), "Total"]]
+
+
+## Valeur (dans la devise de la date a) que `Format.entier` affiche pour ce montant : même arrondi
+## (« %.0f » sur la valeur absolue, signe remis), pour additionner exactement ce que le joueur lit.
+static func arrondi_affiche(eur: float, a: int) -> float:
+	var v := Format.en_devise(eur, Format.devise(a))
+	var r := float("%.0f" % absf(v))
+	return -r if v < 0.0 else r
 
 
 func fin_demo(e: EtatPartie) -> void:

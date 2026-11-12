@@ -20,6 +20,7 @@ var _chemin_test := ""
 var hud: Hud
 var modales: Modales
 var _recu: Array = []
+var _div_vus := {}        # lot 03 (I6) : « reçus » / « versé » -> nombre de fiches d'action vérifiées
 
 
 func _ready() -> void:
@@ -169,7 +170,7 @@ func _balayer_etiquettes(scene: Node, h: Hud) -> void:
 	h.basculer_panneau(true)
 	await _images(2)
 	var b: Vector2 = ville.call("bornes_rue")
-	var decalage: float = ville.call("_cx_pour", 0.0)
+	var decalage: float = ville.call("cx_pour", 0.0)
 	var n := 0
 	var chev := 0
 	var incoh := []
@@ -297,6 +298,15 @@ func _test_demo_complete(actif: bool) -> void:
 	_verifier("%s : fenêtre Banque (fiche, « chaque mois », formulaire d'ordre) sur chaque produit détenu en déc. 1986 et juin 1988" % nom,
 		banque_ok and (n_produits >= 8 if actif else n_produits >= 0), str(banques))
 	if actif:
+		_verifier("%s : fiche d'une action : « Dividende versé chaque année en mai » avant le 1er versement, « Dividendes reçus » après (%s)" % [nom, str(_div_vus)],
+			int(_div_vus.get("versé", 0)) >= 1 and int(_div_vus.get("reçus", 0)) >= 1, str(_div_vus))
+		# Notifications de dividendes (dont dividende_nul, cls « neutre ») : notifications ordinaires de la banque
+		var nul := Banquier.notif_dividende_nul(e, "peugeot")
+		hud.notifier(nul, e.ab_courant())
+		await get_tree().process_frame
+		var textes_nul := hud.notifs.find_children("*", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+		_verifier("%s : notification « dividende_nul » (cls %s) affichée comme une notification de la banque (« %s »)" % [nom, str(nul["cls"]), str(nul["titre"])],
+			str(nul["titre"]) != "" and textes_nul.has(str(nul["titre"])) and textes_nul.has(str(nul["texte"])), str(textes_nul))
 		var frais := float(releve.get("frais_total", 0.0))
 		var releve_ok := false
 		if frais > 0.0:
@@ -304,6 +314,15 @@ func _test_demo_complete(actif: bool) -> void:
 			releve_ok = await _attendre_genre("info")
 			_fermer("fermer")
 		_verifier("%s : relevé de décembre affiché (frais payés depuis le début (cumul) : %s)" % [nom, Format.montant(frais, e.ab_courant())], releve_ok)
+		# Lot 03, D6 (m9) : total = somme des valeurs affichées ; cas fabriqués dont les arrondis tombent mal
+		for cas: Array in [[416.6, 41.6, 417, 42, 459], [100.0, 200.0, 100, 200, 300], [1234.4, 0.4, 1234, 0, 1234], [999.6, 0.6, 1000, 1, 1001]]:
+			var nf := {"titre": "Relevé", "texte": "Relevé fabriqué (arrondis).", "frais_total": Produits.f(cas[0]), "manque": Produits.f(cas[1])}
+			modales.releve(nf, e.ab_courant())
+			var vu := await _attendre_genre("info")
+			var lus := [_chiffres_case("Frais"), _chiffres_case("Manque"), _chiffres_case("Total")]
+			_fermer("fermer")
+			_verifier("%s : relevé %s F + %s F affiché %s (attendu %d + %d = %d, somme des affichés)" % [nom, cas[0], cas[1], lus, cas[2], cas[3], cas[4]],
+				vu and lus == [cas[2], cas[3], cas[4]])
 	var bilan := Bilan.calculer(e)
 	modales.fin_demo(e)
 	var fin_ok := await _attendre_genre("fin")
@@ -374,6 +393,18 @@ func _visiter_banque(e: EtatPartie) -> Dictionary:
 			pb.fermer_demande.emit()
 			break
 		fiche_ok = fiche_ok and droite.get_child_count() > 0 and _textes(droite).size() >= 3
+		# Lot 03 (I6) : ligne des dividendes, seulement pour une action, d'après la logique
+		var ld := droite.find_child("Dividendes", true, false) as Label
+		var attendu := ""
+		if e.mois_dividende(pid) > 0:
+			attendu = ("Dividendes reçus : " + Format.entier(e.dividendes_recus(pid), e.ab_courant())) if e.dividendes_recus(pid) > 0.0 \
+				else "Dividende versé chaque année en " + Dates.MOIS[e.mois_dividende(pid) - 1]
+		var lu := ld.text if ld != null else ""
+		if lu != attendu:
+			ok = false
+			vus.append("%s KO (dividendes « %s » au lieu de « %s »)" % [pid, lu, attendu])
+		elif attendu != "":
+			_div_vus[attendu.get_slice(" ", 1)] = int(_div_vus.get(attendu.get_slice(" ", 1), 0)) + 1
 		pb.call("_afficher_automatique", pid)
 		await get_tree().process_frame
 		var auto_ok := droite.get_child_count() > 0 and _textes(droite).size() >= 2
@@ -461,6 +492,20 @@ func _attendre_genre(genre: String) -> bool:
 
 
 ## Ferme la modale ouverte avec le choix id ; renvoie [genre, id] reçu par choix_fait (signal synchrone).
+## Chiffres affichés dans la case « nom » de la fenêtre ouverte (grille des frais du relevé), -1 si absente.
+func _chiffres_case(nom: String) -> int:
+	if not is_instance_valid(modales.courant):
+		return -1
+	var l := modales.courant.find_child(nom, true, false) as Label
+	if l == null:
+		return -1
+	var s := ""
+	for ch in l.text:
+		if ch >= "0" and ch <= "9":
+			s += ch
+	return int(s) if s != "" else -1
+
+
 func _fermer(id: String) -> Array:
 	_recu.clear()
 	modales.fermer(id)
