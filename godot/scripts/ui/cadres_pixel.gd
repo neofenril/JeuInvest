@@ -29,6 +29,7 @@ const MARGES := {
 	"cadre_portrait": [2, 2, 2, 2],
 	"tampon": [4, 4, 4, 4],
 	"ticket": [6, 6, 6, 6],
+	"bulle": [5, 5, 5, 5],
 }
 ## Cadres dont le bord varie le long de l'axe horizontal : motif répété, jamais étiré.
 const REPETES := ["ticket", "journal"]

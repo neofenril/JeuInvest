@@ -325,3 +325,65 @@ image courrier_b 16x16
 ...kcccccccccck.
 ...kkkkkkkkkkkk.
 ................
+
+# --- Lot 03 : pictos d'humeur 16 × 16 (docs/17 §4.1) : tête de Sylvie, seules les lignes 4 à 10 changent ---
+# Lisibles sans couleur : yeux en ^ et grand sourire (contente), yeux ouverts et bouche droite (neutre),
+# sourcils en V, paupières et bouche tombante (fâchée). Sourcils de la fâchée en V symétrique (colonnes 4-5
+# et 10-11) plutôt que les deux traits verticaux du tableau de docs/17.
+: h bois
+: p peau_claire
+: o peau_ombre
+: k encre
+: r tuile
+: j or
+image humeur_contente 16x16
+....hhhhhhhh....
+..hhhhhhhhhhhh..
+.hhhhhhhhhhhhhh.
+.hhhpppppppphhh.
+hhhpppppppppphhh
+hhpppppppppppphh
+hhppkkppppkkpphh
+hhpkppkppkppkphh
+hhppppppoppppphh
+hhrpkppppppkprhh
+hhpppkkkkkkppphh
+.hhpppppppppphh.
+.hhhpppppppphhh.
+hhhh.poooop.hhhh
+.hhjjjjjjjjjjhh.
+jjjjjjjjjjjjjjjj
+image humeur_neutre 16x16
+....hhhhhhhh....
+..hhhhhhhhhhhh..
+.hhhhhhhhhhhhhh.
+.hhhpppppppphhh.
+hhhpppppppppphhh
+hhppkkppppkkpphh
+hhppkkppppkkpphh
+hhppkkppppkkpphh
+hhppppppoppppphh
+hhpppppppppppphh
+hhppppkkkkpppphh
+.hhpppppppppphh.
+.hhhpppppppphhh.
+hhhh.poooop.hhhh
+.hhjjjjjjjjjjhh.
+jjjjjjjjjjjjjjjj
+image humeur_fachee 16x16
+....hhhhhhhh....
+..hhhhhhhhhhhh..
+.hhhhhhhhhhhhhh.
+.hhhpppppppphhh.
+hhhpkppppppkphhh
+hhpppkppppkppphh
+hhppooppppoopphh
+hhppkkppppkkpphh
+hhppppppoppppphh
+hhppppkkkkpppphh
+hhpppkppppkppphh
+.hhpppppppppphh.
+.hhhpppppppphhh.
+hhhh.poooop.hhhh
+.hhjjjjjjjjjjhh.
+jjjjjjjjjjjjjjjj

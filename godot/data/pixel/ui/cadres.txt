@@ -467,3 +467,31 @@ ggwwwwwwwwwwwwwwwwwwwwww
 ggwwwwwwwwwwwwwwwwwwwwww
 ggwwwwwwwwwwwwwwwwwwwwww
 ggrrrrrrrrrrrrrrrrrrrrrr
+
+# --- Lot 03 : bulle de BD (docs/16 §3.3 : 16 × 16 + pointe 6 × 4) : blanche, contour encre : marges 5 ---
+# La pointe (dessinée vers le bas) recouvre la rangée du bord : sa 1re rangée remplace le contour encre
+# par du blanc sur 4 texels ; la pointe vers le haut est la même image retournée (Bulle).
+: e encre
+: w blanc_chaud
+image bulle 16x16
+..eeeeeeeeeeee..
+.ewwwwwwwwwwwwe.
+ewwwwwwwwwwwwwwe
+ewwwwwwwwwwwwwwe
+ewwwwwwwwwwwwwwe
+ewwwwwwwwwwwwwwe
+ewwwwwwwwwwwwwwe
+ewwwwwwwwwwwwwwe
+ewwwwwwwwwwwwwwe
+ewwwwwwwwwwwwwwe
+ewwwwwwwwwwwwwwe
+ewwwwwwwwwwwwwwe
+ewwwwwwwwwwwwwwe
+ewwwwwwwwwwwwwwe
+.ewwwwwwwwwwwwe.
+..eeeeeeeeeeee..
+image bulle_pointe 6x4
+ewwwwe
+ewwwwe
+.ewwe.
+..ee..
