@@ -73,10 +73,13 @@ func _tests_textes() -> void:
 	var nbsp := Format.ESPACE
 	var livret := [_ligne("livret", "Livret A", "interets", 312.0, true)]
 	var p := PiecesMois.plan(_flux(312.0, 0.0, livret), 1, false, _avril)
-	var attendu := "+" + nbsp + "312" + nbsp + "F gagnés ce mois-ci (versés en décembre)"
-	_verifier(p["or"].get("texte", "") == attendu, "texte : intérêts du Livret A en avril « + 312 F gagnés ce mois-ci (versés en décembre) »", p["or"].get("texte", ""))
+	var attendu := "+" + nbsp + "312" + nbsp + "F ce mois-ci\nversés en décembre"
+	_verifier(p["or"].get("texte", "") == attendu, "texte (D7) : intérêts du Livret A en avril « + 312 F ce mois-ci » / « versés en décembre »", p["or"].get("texte", ""))
 	var pn := PiecesMois.plan(_flux(312.0, 0.0, livret), 1, false, _novembre)
-	_verifier(pn["or"].get("texte", "").ends_with("(versés en décembre)"), "texte : en novembre aussi (crédités au 31/12)", pn["or"].get("texte", ""))
+	_verifier(pn["or"].get("texte", "").ends_with("\nversés en décembre"), "texte : en novembre aussi (crédités au 31/12)", pn["or"].get("texte", ""))
+	var livret_gros := [_ligne("livret", "Livret A", "interets", 12345.0, true)]
+	var pg := PiecesMois.plan(_flux(12345.0, 0.0, livret_gros), 1, false, _avril)
+	_verifier(pg["or"].get("texte", "") == "+" + nbsp + "12" + nbsp + "345" + nbsp + "F\nversés en décembre", "texte (D7) : montant long, « ce mois-ci » retiré plutôt que dépasser 20 caractères", pg["or"].get("texte", ""))
 	var livret_dec := [_ligne("livret", "Livret A", "interets", 312.0, true)]
 	var pd := PiecesMois.plan(_flux(312.0, 0.0, livret_dec), 1, false, _decembre)
 	_verifier(pd["or"].get("texte", "") == "+" + nbsp + "312" + nbsp + "F", "texte : en décembre, « + 312 F » seul", pd["or"].get("texte", ""))
@@ -117,3 +120,27 @@ func _tests_lignes() -> void:
 	_verifier(PiecesMois.plan(_flux(312.0, 0.0, petit), 1, false, _avril)["lignes"].is_empty(), "lignes : dividende de 8 F (sous le seuil) non montré")
 	var euros := PiecesMois.plan({"revenus": 50.0, "frais": 0.0, "lignes": []}, 1, false, Dates.lire("2003-04"))
 	_verifier(euros["or"].get("n", 0) == 3 and str(euros["or"].get("texte", "")).ends_with("€"), "après 2002 : montant en euros, seuil et nombre comptés en francs (50 € ≈ 328 F → 3)", str(euros))
+	# D7 (lot 03) : nom long sur sa ligne ; jamais plus de 2 lignes de 20 caractères dans un cartouche
+	var long := [_ligne("emprunt", "Emprunt d'État", "coupon", 600.0), _ligne("sg", "Saint-Gobain", "dividende", 1234.0)]
+	var pl := PiecesMois.plan(_flux(1834.0, 0.0, long), 1, false, _avril)
+	_verifier(pl["lignes"] == ["Saint-Gobain" + nbsp + ":\n+" + nbsp + "1" + nbsp + "234" + nbsp + "F", "Emprunt d'État" + nbsp + ":\n+" + nbsp + "600" + nbsp + "F"],
+		"lignes (D7) : « Saint-Gobain : » / « + 1 234 F » et « Emprunt d'État : » / « + 600 F » (plus de 20 caractères sur une ligne)", str(pl["lignes"]))
+	var tres_long := [_ligne("x", "Fonds commun de placement", "coupon", 600.0)]
+	var pt := PiecesMois.plan(_flux(600.0, 0.0, tres_long), 1, false, _avril)
+	_verifier(pt["lignes"].size() == 1 and str(pt["lignes"][0]).begins_with("Fonds commun de p…"), "lignes (D7) : nom de plus de 18 caractères raccourci par « … »", str(pt["lignes"]))
+	var trop := []
+	for f: float in [10.0, 312.0, 9999.0, 12345.0, 123456.0, 1234567.0]:
+		for decembre in [true, false]:
+			var fl := [_ligne("livret", "Livret A", "interets", f, decembre), _ligne("elf", "Elf", "dividende", f), _ligne("sg", "Saint-Gobain", "dividende", f),
+				_ligne("x", "Fonds commun de placement", "coupon", f)]
+			var pp := PiecesMois.plan(_flux(f * 4.0, f, fl), 1, false, _avril)
+			var cartouches: Array = [pp["or"].get("texte", ""), pp["cuivre"].get("texte", "")] + pp["lignes"]
+			for c: String in cartouches:
+				var morceaux := c.split("\n")
+				if morceaux.size() > 2:
+					trop.append(c)
+				for m in morceaux:
+					if m.length() > PiecesMois.MAX_CAR:
+						trop.append(m)
+	_verifier(trop.is_empty(), "cartouches (D7) : 2 lignes au plus, 20 caractères au plus, de 10 F à 1,2 MF", ", ".join(trop))
+	_verifier(PiecesMois.plan(_flux(0.0, 45.0), 1, false, _avril)["cuivre"]["texte"].length() <= PiecesMois.MAX_CAR, "cartouche cuivre « − 45 F de frais » sur une ligne")
