@@ -347,9 +347,10 @@ func _tests_releve() -> void:
 		for n: Dictionary in _notifs(r, "dividende"):
 			nets += float(n["montant"])
 		rel = _releve(r)
-	var phrase := "Vos actions vous ont versé "
+	# Joueur passif sans Livret A avec des actions : 0 intérêt, des dividendes (cas 2 de 03-R, D2)
+	var phrase := "Pas d'intérêts cette année, mais "
 	verifier("CA-L4 : relevé de décembre 1987 : n[\"dividendes\"] = somme des nets de l'année, phrase présente, avec l'avoir fiscal (1re année)",
-		absf(float(rel.get("dividendes", -1.0)) - nets) < 1e-9 and nets > 0.0 and str(rel["texte"]).contains(phrase + Format.entier(nets, a.ab_courant()))
+		absf(float(rel.get("dividendes", -1.0)) - nets) < 1e-9 and nets > 0.0 and str(rel["texte"]).begins_with(phrase + Format.entier(nets, a.ab_courant()) + " de dividendes")
 		and str(rel["texte"]).contains("avoir fiscal") and rel["cls"] == "gain", str(rel.get("texte", "")))
 	var rel2 := {}
 	while a.fin == "" and rel2.is_empty():
@@ -357,14 +358,51 @@ func _tests_releve() -> void:
 	if rel2.is_empty():
 		rel2 = {"texte": "", "dividendes": -1.0}
 	verifier("Relevé de décembre 1988 : phrase des dividendes, sans répéter l'avoir fiscal",
-		float(rel2["dividendes"]) > 0.0 and str(rel2["texte"]).contains(phrase) and not str(rel2["texte"]).contains("avoir fiscal"), str(rel2["texte"]))
+		float(rel2["dividendes"]) > 0.0 and str(rel2["texte"]).begins_with(phrase) and not str(rel2["texte"]).contains("avoir fiscal"), str(rel2["texte"]))
 	# Une année sans dividende : joueur passif, décembre 1987
 	var p := _partie("1987-11")
 	var rel3 := {}
 	while p.fin == "" and rel3.is_empty():
 		rel3 = _releve(_mois(p))
 	verifier("CA-L4 : relevé d'une année sans dividende : n[\"dividendes\"] = 0, phrase absente",
-		float(rel3.get("dividendes", -1.0)) == 0.0 and not str(rel3["texte"]).contains(phrase))
+		float(rel3.get("dividendes", -1.0)) == 0.0 and not str(rel3["texte"]).contains("dividendes"))
+	_tests_releve_4_cas()
+
+
+## 03-R, CA-R3 : relevé fabriqué dans les 4 cas (intérêts 0 / > 0, dividendes 0 / > 0), décembre 1987.
+func _tests_releve_4_cas() -> void:
+	var base := _partie("1987-12")
+	var msg: Dictionary = Banquier.donnees()["messages"]
+	var a := base.ab_courant()
+	var i_eur := Produits.f(1234.4)
+	var d_eur := Produits.f(345.6)
+	var vals_i := {"interets": Format.entier(i_eur, a)}
+	var vals_d := {"dividendes": Format.entier(d_eur, a)}
+	var avoir := Format.gabarit(str(msg["releve_avoir_fiscal"]), {"taux": "16"})
+	var cas := [[0.0, 0.0], [0.0, d_eur], [i_eur, 0.0], [i_eur, d_eur]]
+	var attendus := [str(msg["releve_sans_interets"]),
+		Format.gabarit(str(msg["releve_dividendes_sans_interets"]), vals_d) + avoir,
+		Format.gabarit(str(msg["releve_interets"]), vals_i),
+		Format.gabarit(str(msg["releve_interets"]), vals_i) + Format.gabarit(str(msg["releve_dividendes"]), vals_d) + avoir]
+	var ok := true
+	var ok_champs := true
+	var detail := ""
+	for k in 4:
+		var e := _copie(base)
+		e.banque["interets_annee"] = cas[k][0]
+		e.banque["dividendes_annee"] = cas[k][1]
+		var n := Banquier.releve(e)
+		var t := str(n["texte"])
+		print("    CA-R3 cas %d : « %s »" % [k + 1, t])
+		if not t.begins_with(attendus[k]) or (k == 1 and (t.contains("Aucun intérêt") or t.contains("Vos actions vous ont versé"))):
+			ok = false
+			detail += "cas %d : %s ; " % [k + 1, t]
+		if float(n["dividendes"]) != cas[k][1] or float(n["interets"]) != cas[k][0] or n["cls"] != ("neutre" if k == 0 else "gain"):
+			ok_champs = false
+	verifier("CA-R3 : relevé en 4 cas : (1) nouveau texte sans intérêt ni dividende ; (2) une seule phrase « Pas d'intérêts cette année, mais … » + avoir fiscal, jamais « Aucun intérêt » ni la phrase des dividendes en plus ; (3) et (4) inchangés",
+		ok, detail)
+	verifier("CA-R3 : champs dividendes, interets et cls du relevé inchangés dans les 4 cas", ok_champs)
+	verifier("CA-R3 : textes du relevé ≤ 60 mots une fois assemblés (cas 4, le plus long)", Banquier.nb_mots(attendus[3]) <= 60, "%d mots" % Banquier.nb_mots(attendus[3]))
 
 
 # ---------------------------------------------------------------------

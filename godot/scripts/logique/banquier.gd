@@ -648,14 +648,19 @@ static func releve(e: EtatPartie) -> Dictionary:
 	var interets := float(b.get("interets_annee", 0.0))
 	var frais_annee := float(b.get("frais_annee", 0.0))
 	var t := ""
+	# 03-R (D2) : quatre cas, une phrase par cas (docs/22 §2) ; dividendes nets de l'année (lot 03)
+	var dividendes := float(b.get("dividendes_annee", 0.0))
+	var vals_div := {"dividendes": Format.entier(dividendes, a)}
 	if interets > Produits.EPS:
 		t = Format.gabarit(d["releve_interets"], {"interets": Format.entier(interets, a)})
+		if dividendes > Produits.EPS:
+			t += Format.gabarit(d["releve_dividendes"], vals_div)
+	elif dividendes > Produits.EPS:
+		t = Format.gabarit(d["releve_dividendes_sans_interets"], vals_div)
 	else:
 		t = d["releve_sans_interets"]
-	# Lot 03 : dividendes nets de l'année ; la 1re année, la phrase sur l'avoir fiscal (docs/21 K1)
-	var dividendes := float(b.get("dividendes_annee", 0.0))
+	# La 1re année avec dividendes, la phrase sur l'avoir fiscal (docs/21 K1)
 	if dividendes > Produits.EPS:
-		t += Format.gabarit(d["releve_dividendes"], {"dividendes": Format.entier(dividendes, a)})
 		if not bool(b.get("avoir_fiscal_vu", false)):
 			b["avoir_fiscal_vu"] = true
 			t += Format.gabarit(d["releve_avoir_fiscal"], {"taux": taux_txt(float(Marche.impot(a)["cto"]))})
