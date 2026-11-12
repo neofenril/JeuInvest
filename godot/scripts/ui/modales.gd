@@ -11,6 +11,7 @@ extends Control
 ## outils communs (boutons papier, filets, flèches, croix, pictogrammes) : ModaleOutils.
 
 signal choix_fait(genre: String, id: String)
+signal carte_rangee                 # carte de dilemme : rangement terminé (bulle d'humeur différée, lot 04)
 
 var fond: ColorRect
 var courant: Control = null
@@ -26,6 +27,7 @@ var choix_journal: Array = []       # journal : ids des choix (touches 1, 2, 3)
 var choix_exterieur := "plus_tard"  # carte du banquier : id d'un clic à côté ou d'Échap
 var parler := 0.0                   # carte du banquier : temps de parole restant (bouche du portrait)
 var portrait: Portrait = null
+var carte_en_cours := false         # carte de dilemme affichée (de carte() à la fin du rangement)
 
 var _journal: ModaleJournal
 var _courrier: ModaleCourrier
@@ -33,6 +35,7 @@ var _banquier: ModaleBanquier
 var _releve_fin: ModaleReleveFin
 var _simples: ModaleSimples
 var _historique: ModaleHistorique
+var _carte: ModaleCarte
 
 
 func _init() -> void:
@@ -42,6 +45,7 @@ func _init() -> void:
 	_releve_fin = ModaleReleveFin.new(self)
 	_simples = ModaleSimples.new(self)
 	_historique = ModaleHistorique.new(self)
+	_carte = ModaleCarte.new(self)
 
 
 func _ready() -> void:
@@ -134,6 +138,27 @@ func _recentrer_banque() -> void:
 
 func confirmer(titre: String, texte: String, oui: String, non: String) -> void:
 	await _simples.confirmer(titre, texte, oui, non)
+
+
+## Carte de dilemme du foyer (lot 04, contrat §4.3) : vole de depart ((-1, -1) : sur place) et se déplie ;
+## émet choix_fait("carte", id) au toucher d'un choix non désactivé (ou touche 1 / 2), et RESTE affichée.
+func carte(c: Dictionary, depart: Vector2) -> void:
+	await _carte.ouvrir(c, depart)
+
+
+## Coroutine : tampon « CHOISI », conséquence 3 s (un toucher passe), rangement vers arrivee ((-1, -1) : fondu).
+func conclure_carte(r: Dictionary, arrivee: Vector2) -> void:
+	await _carte.conclure(r, arrivee)
+
+
+## Relecture d'une carte depuis l'historique (lecture seule).
+func carte_lecture(h: Dictionary, a: int) -> void:
+	await _carte.lecture(h, a)
+
+
+## État de la carte affichée (tests et captures) : phase, refus, boutons.
+func etat_carte() -> ModaleCarte:
+	return _carte
 
 
 ## Relevé de décembre ouvert depuis sa notification (13 §3.4) : les 3 piles avec les vrais chiffres du joueur.
@@ -301,6 +326,11 @@ func _on_fond(event: InputEvent) -> void:
 			fermer("non")
 		"banque":
 			banque.fermer_demande.emit()
+		"carte":
+			if _carte.phase == "conclusion":
+				_carte.passer()
+			else:
+				_fremir(courant)
 		_:
 			_fremir(courant)
 
@@ -328,7 +358,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
 	if k == null or not k.pressed or k.echo or courant == null:
 		return
-	if genre_courant == "journal" and boutons_actifs:
+	if genre_courant == "carte":
+		var nc := k.keycode - KEY_1
+		if nc >= 0 and nc < 2:
+			_carte.choisir_rang(nc)
+			get_viewport().set_input_as_handled()
+	elif genre_courant == "journal" and boutons_actifs:
 		var n := k.keycode - KEY_1
 		if n >= 0 and n < choix_journal.size():
 			_on_choix_journal(choix_journal[n])

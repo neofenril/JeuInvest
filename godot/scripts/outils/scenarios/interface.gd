@@ -8,7 +8,8 @@ extends RefCounted
 
 const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette",
 	"courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau",
-	"etiquettes_balayage", "pastille_signe", "bulle"]
+	"etiquettes_balayage", "pastille_signe", "bulle",
+	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -38,6 +39,8 @@ func jouer(etape: String) -> void:
 			await _pastille_signe(jeu)
 		"bulle":
 			await _bulle(jeu)
+		"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue":
+			await _carte(etape, jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -280,6 +283,126 @@ func _mesure_etiquettes(hud: Hud, ville: Node2D) -> Array:
 
 
 # =====================================================================
+# Carte de dilemme (lot 04, 03-I2 : I1, CA-I2)
+# =====================================================================
+
+## Nouvelle partie de capture (graine fixe) avec les cartes allumées, dans la rue, temps arrêté.
+func partie_cartes(jeu: Node) -> void:
+	var cfg := Donnees.config_demo(-1)
+	cfg["cartes"] = true
+	jeu.nouvelle_partie(cfg)
+	Partie.etat.resolution_auto()   # carte du Livret A
+	jeu.demarrer_direct(0)
+
+
+## Avance (joueur actif, sans animation) jusqu'à la carte « id » ("" : la première) ; false si elle n'arrive pas.
+func jusqu_a_carte(id := "", politique := "epargner") -> bool:
+	var e := Partie.etat
+	StrategieTest.politique_cartes = politique
+	var garde := 0
+	var ok := false
+	while e.fin == "" and garde < 200:
+		garde += 1
+		if e.modale.get("kind", "") == "carte" and (id == "" or str(e.modale.get("id", "")) == id):
+			ok = true
+			break
+		StrategieTest.jouer_mois(e, true)
+		while not e.modale.is_empty():
+			e.resolution_auto()
+		e.avancer()
+	sc.rafraichir_apres_saut()
+	return ok
+
+
+## Ce que fait la séquence de la ville (contrat §4.3) : carte, choix, résolution, conclusion.
+func jouer_carte(jeu: Node, choix_id: String) -> Dictionary:
+	var modales: Modales = jeu.modales
+	var porte: Vector2 = jeu.ville.call("porte_ecran", "maison")
+	modales.carte(Partie.etat.contenu_modale(), porte)
+	await sc.attendre_que(func() -> bool: return modales.etat_carte().phase == "attente", 5.0)
+	var r := {}
+	var attente := func(_g: String, id: String) -> void:
+		r.merge(Partie.resoudre_modale(id))
+	modales.choix_fait.connect(attente, CONNECT_ONE_SHOT)
+	modales.etat_carte().choisir(choix_id)
+	if not r.is_empty():
+		await modales.conclure_carte(r, porte)
+	return r
+
+
+func _carte(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	partie_cartes(jeu)
+	var e := Partie.etat
+	if etape == "carte_jumeaux":
+		e.forcer_naissance(true)   # moteur seul (sans le courrier animé du faire-part)
+		e.resolution_auto()
+	var voulue := "C04" if etape == "carte_jumeaux" else "C01"
+	var ok := jusqu_a_carte(voulue)
+	print("UI carte_etape %s carte=%s ok=%s mois=%s" % [etape, str(e.modale.get("id", "")), "oui" if ok else "non", Dates.texte(e.ab_courant())])
+	if not ok:
+		return
+	if etape == "carte_refus":
+		# Disponible ramené à 5 000 F : le Club Med (9 000 F) n'est plus payable, le camping l'est
+		e.joueur.livret = 0.0
+		e.joueur.cc = Produits.f(5000.0)
+		jeu.hud.maj(e, false)
+	var porte: Vector2 = jeu.ville.call("porte_ecran", "maison")
+	var c := e.contenu_modale()
+	match etape:
+		"carte", "carte_refus", "carte_jumeaux":
+			modales.carte(c, porte)
+			await sc.attendre_que(func() -> bool: return modales.etat_carte().phase == "attente", 5.0)
+			await sc.delai(0.4)
+			var mc := modales.etat_carte()
+			if etape == "carte_refus":
+				var b: Button = mc.boutons.get("a")
+				var ouverte_avant: bool = e.modale.get("kind", "") == "carte"
+				# Toucher (clic simulé) puis touche 1 sur le choix désactivé : sans effet
+				await sc.clic_dehors(sc.position_fenetre(b))
+				await sc.touche(KEY_1)
+				await sc.delai(0.2)
+				print("UI carte refus=%s (touchers comptés %d, modale %s, phase %s, desactive=%s)" % ["ignore" if ouverte_avant and e.modale.get("kind", "") == "carte" and mc.phase == "attente" else "ACCEPTE",
+					mc.refus, str(e.modale.get("id", "")), mc.phase, str(c["choix"][0].get("desactive", false))])
+			# Échap et clic extérieur : sans effet
+			await sc.touche(KEY_ESCAPE)
+			await sc.clic_dehors()
+			await sc.delai(0.4)
+			print("UI carte echap_clic=%s (Échap et clic extérieur sans effet)" % ("ignores" if modales.genre_courant == "carte" else "FERMENT incoherences=1"))
+			print("UI carte titre=« %s » choix=%s disponible=« %s »" % [str(c.get("titre", "")), ", ".join(PackedStringArray(mc.ordre)), (modales.courant.find_child("Disponible", true, false) as Label).text])
+			_mesurer(etape, modales.courant)
+			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+		"carte_conclusion":
+			modales.carte(c, porte)
+			await sc.attendre_que(func() -> bool: return modales.etat_carte().phase == "attente", 5.0)
+			var r := {}
+			var attente := func(_g: String, id: String) -> void:
+				r.merge(Partie.resoudre_modale(id))
+			modales.choix_fait.connect(attente, CONNECT_ONE_SHOT)
+			await sc.touche(KEY_2)
+			if r.is_empty():
+				print("UI carte conclusion=absente (choix refusé)")
+				return
+			modales.conclure_carte(r, porte)
+			await sc.delai(1.0)
+			var lq := modales.courant.find_child("Consequence", true, false) as Label if modales.courant != null else null
+			print("UI carte consequence=« %s » = r=« %s » egal=%s" % [lq.text if lq != null else "?", str(r.get("consequence", "")), "oui" if lq != null and lq.text == str(r.get("consequence", "")) else "non"])
+			_mesurer(etape, modales.courant)
+			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+		"carte_relue":
+			await jouer_carte(jeu, "a")
+			await sc.delai(0.3)
+			var i := e.historique.size() - 1
+			while i >= 0 and str(e.historique[i]["genre"]) != "carte":
+				i -= 1
+			modales.relire_historique(e, i)
+			await sc.delai(0.8)
+			var lc := modales.courant.find_child("ChoixPris", true, false) as Label if modales.courant != null else null
+			print("UI carte_relue choix=« %s »" % (lc.text if lc != null else "?"))
+			_mesurer(etape, modales.courant)
+
+
+# =====================================================================
 # Bulle et pictos d'humeur (lot 03, I4, CA-I4)
 # =====================================================================
 
@@ -379,7 +502,8 @@ func _planche_cadres() -> void:
 	x = 30.0
 	for nom: String in ["pause", "lecture", "x2", "x3", "menu", "historique", "fleche_haut", "fleche_bas", "curseur", "drapeau", "croix",
 			"source_maison", "source_banque", "source_media", "piece", "calendrier", "chevron_gauche", "chevron_droite",
-			"bulle_pointe", "humeur_contente", "humeur_neutre", "humeur_fachee"]:
+			"bulle_pointe", "humeur_contente", "humeur_neutre", "humeur_fachee", "aimant",
+			"portrait_sylvie_contente", "portrait_sylvie_neutre", "portrait_sylvie_fachee"]:
 		var t := CadresPixel.texture(nom)
 		var r := TextureRect.new()
 		r.texture = t

@@ -168,6 +168,12 @@ foreach ($e in @("fiche_dividendes", "fiche_dividendes_avant")) {
         $plan.Add(@($e, ("l3_" + $e + "_" + $t[0]), $t[1], $t[2]))
     }
 }
+# Lot 04 (03-I2) : carte de dilemme, préfixe l4_ (4 formats)
+foreach ($e in @("carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue")) {
+    foreach ($t in @(@("1080", "1920x1080", ""), @("1152", "1152x648", ""), @("tel", "1440x648", "1"), @("tel169", "1280x720", "169"))) {
+        $plan.Add(@($e, ("l4_" + $e + "_" + $t[0]), $t[1], $t[2]))
+    }
+}
 $echecs = 0
 $script:sorties_bloquees = 0
 $i = 0
