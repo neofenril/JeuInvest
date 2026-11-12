@@ -12,7 +12,8 @@
 #   pieces_glisse (+ image <nom>_vol.png pendant le vol), pieces_x3, pieces_saut, pieces_hors_champ, pieces_sous_seuil,
 #   camera_retour (+ <nom>_glissement.png, <nom>_retour.png), pieces_jeu, jouer_rapide ; lot 03 : pieces_bascule,
 #   pieces_dividende_jeu (+ <nom>_arrivee.png pour pieces_or, pieces_fleche, pieces_dividende).
-# Contrôles en échec aussi : « pieces enseigne=N » (N ≠ 0), « hors_libre=N » (N ≠ 0), « regulier=non ».
+# Contrôles en échec aussi : « pieces enseigne=N » (N ≠ 0), « hors_libre=N » (N ≠ 0), « regulier=non », et pour
+# pieces_dividende_jeu l'absence de « RUE pieces dividende=present » (en échec tant que 03-L n'est pas fusionné).
 # 1920 x 1080 : plein écran (taille exacte). Journal de Godot hors de user:// (--log-file).
 # Code de sortie 0 seulement si chaque lancement rend 0, sans erreur de script, et si tous les contrôles sont à
 # zéro (hors_palette=0, irreguliers=0, hors_texel=0). 3 : Godot introuvable.
@@ -76,6 +77,8 @@ function Capturer([hashtable]$o) {
     $ko = @($rue | Where-Object { ($_ -match 'hors_palette=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'irreguliers=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'hors_texel=(\d+)' -and [int]$matches[1] -ne 0) -or
         ($_ -match 'pieces enseigne=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'hors_libre=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'regulier=non') })
     $ok = ($r.code -eq 0) -and ($erreurs.Count -eq 0) -and ($ko.Count -eq 0)
+    # pieces_dividende_jeu (lot 03) : le dividende de mai 1987 doit être vu (branche contenant 03-L)
+    if ($o.Etape -eq "pieces_dividende_jeu" -and -not ($rue | Where-Object { $_ -like "RUE pieces dividende=present*" })) { $ok = $false }
     Ecrire ("--- {0} ({1}, {2}{3}) : code {4}{5}" -f $o.Nom, $o.Etape, $(if ($o.Telephone) { "téléphone" } else { $taille }), $(if ($o.Facteur) { " x$($o.Facteur)" } else { "" }), $r.code, $(if ($ok) { "" } else { "  ** ECHEC **" }))
     foreach ($l in $r.sortie) {
         if ($l -like "RUE *" -or $l -like "Images par seconde*" -or $l -like "Trafic*" -or ($motifsErreur | Where-Object { $l -like "*$_*" }) -or $l -like "ERROR*" -or $l -like "*at: *") { Ecrire "    $l" }

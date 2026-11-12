@@ -757,9 +757,10 @@ func _pieces_jeu(ville: Node2D) -> void:
 
 
 ## V9 (lot 03) : vraie partie, joueur actif, une ligne Elf détenue avant mai 1987 (achetée par la stratégie, ou
-## ici si elle ne l'a pas fait), avancée à ×1 d'avril à juin 1987, maison et banque à l'écran. Les lignes
+## ici si elle ne l'a pas fait), avancée à ×1 d'avril à mai 1987, maison et banque à l'écran. Les lignes
 ## « RUE pieces … » du mois de mai viennent de Sequences.pieces_du_mois (appelé par principal.gd) ; puis
-## « RUE pieces dividende=present|absent » selon le flux de mai (03-L : dividendes dans le moteur).
+## « RUE pieces dividende=present|absent » selon le flux de mai (03-L : dividendes versés à l'entrée de mai) ;
+## l'image est prise 1,8 s après l'entrée en mai (≈ 0,75 s après l'arrivée des pièces), pendant les cartouches.
 func _pieces_dividende_jeu(ville: Node2D) -> void:
 	_aller_a(Dates.lire("1987-04"), true)
 	var e := Partie.etat
@@ -776,7 +777,8 @@ func _pieces_dividende_jeu(ville: Node2D) -> void:
 	var mai := Dates.lire("1987-05")
 	var vu := {"mai": false, "dividende": ""}
 	var cb := func(res: Dictionary) -> void:
-		if Partie.etat.ab_courant() - 1 != mai:
+		# Le moteur verse les dividendes à l'entrée du mois de détachement (avril → mai) : flux de mai
+		if Partie.etat.ab_courant() != mai:
 			return
 		vu["mai"] = true
 		var f: Dictionary = res.get("flux", {})
@@ -789,13 +791,15 @@ func _pieces_dividende_jeu(ville: Node2D) -> void:
 	Partie.mois_passe.connect(cb)
 	Partie.changer_vitesse(1)
 	var t := 0.0
-	while Partie.etat.ab_courant() < Dates.lire("1987-06") and t < 40.0:
+	while not vu["mai"] and t < 40.0:
 		ville.set("_calme", 0.0)        # la caméra reste entre la maison et la banque (pas de retour automatique, D7)
-		await sc.delai(0.25)
-		t += 0.25
+		await sc.delai(0.1)
+		t += 0.1
 		await _repondre_modale()
-	await sc.delai(1.6)
-	Partie.changer_vitesse(0)
+	# Image de l'étape (prise au retour de jouer) pendant les cartouches de mai : vol ≈ 1,05 s, puis un cartouche
+	# toutes les 0,3 s (montant, Elf, Saint-Gobain) : vers 1,8 s, les trois sont à l'écran
+	ville.set("_calme", 0.0)
+	await sc.delai(1.8)
 	Partie.mois_passe.disconnect(cb)
 	if _controle:
 		print("RUE pieces dividende=%s%s" % ["present" if vu["dividende"] != "" else "absent", (" lignes=" + str(vu["dividende"])) if vu["dividende"] != "" else ""])
