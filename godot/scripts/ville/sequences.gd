@@ -9,6 +9,9 @@ extends Node
 ## Ajouter une séquence : une fonction _sequence_x(c) ici, lancée par vedette() depuis jouer_modale().
 
 const RUE := preload("res://scripts/ville/rue.gd")
+const PIECE_COTE := 24.0                 # pièce 8 × 8 texels de 3 px virtuels
+const ARCS_PIECES := [120.0, 180.0, 240.0, 300.0, 360.0, 420.0, 480.0, 60.0, 0.0]   # essayés dans cet ordre (arc_pieces)
+const ECART_FLOTTANTS := 6.0             # entre deux cartouches empilés (px virtuels)
 
 var jeu: Node          # scène principale (principal.gd) : en_titre, pluie_jusqua, demo, ouvrir_banque, nouvelle_partie, demarrer_direct
 var ville: Node2D
@@ -161,7 +164,7 @@ func _camera() -> String:
 	var cx: float = ville.call("position_camera")
 	for id in ["maison", "banque", "media"]:
 		var b: Node2D = ville.call("batiment", id)
-		var d: float = absf(float(ville.call("_cx_pour", b.position.x)) - cx)
+		var d: float = absf(float(ville.call("cx_pour", b.position.x)) - cx)
 		if d < ecart:
 			ecart = d
 			meilleur = id
@@ -576,14 +579,52 @@ func _lancer_pieces(regle: Dictionary, lignes: Array, cuivre: bool) -> void:
 	var de := "maison" if cuivre else "banque"
 	var vers := "banque" if cuivre else "maison"
 	var n: int = regle["n"]
-	_trace("RUE pieces genre=%s n=%d depart=%s arrivee=%s montant=%s" % ["cuivre" if cuivre else "or", n, _lieu_pieces(de), _lieu_pieces(vers), regle["texte"]])
+	_trace("RUE pieces genre=%s n=%d depart=%s arrivee=%s montant=%s" % ["cuivre" if cuivre else "or", n, _lieu_pieces(de), _lieu_pieces(vers), str(regle["texte"]).replace("\n", " / ")])
 	var couleur := Style.CUIVRE if cuivre else Style.GAIN
 	var etat := {"arrivees": 0}
 	if cuivre:
 		# Les frais partent de la maison : le montant s'affiche au départ
-		_flottant_pres(str(regle["texte"]), _point_pieces(de), couleur)
+		_flottants_pile([[str(regle["texte"]), couleur]], _point_pieces(de))
+	var arc := arc_pieces(_point_pieces(de), _point_pieces(vers))
+	_trace("RUE pieces arc=%d" % roundi(arc))
 	Juice.pieces_suivies(_point_pieces.bind(de), _point_pieces.bind(vers), n, cuivre,
-		_piece_arrivee.bind(vers, regle, lignes, couleur, cuivre, etat, n), _piece_depart.bind(de))
+		_piece_arrivee.bind(vers, regle, lignes, couleur, cuivre, etat, n), _piece_depart.bind(de), arc)
+
+
+## Hauteur d'arc des pièces (lot 03, m1) : la plus proche de Juice.ARC_PIECE dont la courbe ne touche aucune
+## enseigne dorée (pièce de PIECE_COTE px, marge d'une pièce : la rue peut glisser un peu pendant le vol) et dont
+## le sommet reste dans le rectangle libre ; arcs plus hauts d'abord, puis plus bas. Aucun ne convient : l'arc
+## qui touche le moins d'enseignes.
+func arc_pieces(d: Vector2, a: Vector2) -> float:
+	var rects := enseignes_ecran(PIECE_COTE)
+	var haut := (hud.rect_libre() if hud != null else ville.get_viewport_rect()).position.y + PIECE_COTE / 2.0
+	var meilleur := Juice.ARC_PIECE
+	var moins := 1 << 30
+	for arc: float in ARCS_PIECES:
+		var touche := 0
+		for k in 33:
+			var p := Juice.point_arc(d, a, arc, k / 32.0)
+			if p.y < haut:
+				touche += 1
+			for r: Rect2 in rects:
+				if r.has_point(p):
+					touche += 1
+		if touche == 0:
+			return arc
+		if touche < moins:
+			moins = touche
+			meilleur = arc
+	return meilleur
+
+
+## Enseignes dorées de la rue en px d'écran logiques, agrandies de « marge » px de chaque côté.
+func enseignes_ecran(marge := 0.0) -> Array:
+	var r: Array = []
+	for e: Rect2 in RUE.enseignes():
+		var p0: Vector2 = ville.call("position_ecran", e.position)
+		var p1: Vector2 = ville.call("position_ecran", e.end)
+		r.append(Rect2(p0, p1 - p0).grow(marge))
+	return r
 
 
 func _piece_depart(id: String) -> void:
@@ -594,12 +635,12 @@ func _piece_arrivee(id: String, regle: Dictionary, lignes: Array, couleur: Color
 	etat["arrivees"] = int(etat["arrivees"]) + 1
 	_sauter_si_fleche(id)
 	if etat["arrivees"] == 1 and not cuivre:
-		# L'argent qui a travaillé arrive à la maison : le montant, puis une ligne par coupon ou dividende
-		var pos := _point_pieces(id)
-		_flottant_pres(str(regle["texte"]), pos, couleur)
+		# L'argent qui a travaillé arrive à la maison : le montant, puis un cartouche par coupon ou dividende
+		var textes: Array = [[str(regle["texte"]), couleur]]
 		for k in lignes.size():
-			_trace("RUE pieces ligne texte=%s" % lignes[k])
-			get_tree().create_timer(0.3 * (k + 1)).timeout.connect(_flottant_pres.bind(str(lignes[k]), pos + Vector2(0, 40 * (k + 1)), couleur))
+			_trace("RUE pieces ligne texte=%s" % str(lignes[k]).replace("\n", " / "))
+			textes.append([str(lignes[k]), couleur])
+		_flottants_pile(textes, _point_pieces(id))
 	if etat["arrivees"] == n and _controle:
 		var cible := _point_pieces(id)
 		print("RUE pieces arrivee genre=%s lieu=%s ecart=%d" % ["cuivre" if cuivre else "or", _lieu_pieces(id), roundi(Juice.derniere_arrivee.distance_to(cible))])
@@ -634,14 +675,34 @@ func _sauter_si_fleche(id: String) -> void:
 		hud.call("sauter_etiquette", id)
 
 
-## Montant flottant au-dessus d'un point, gardé dans le rectangle libre du HUD.
-func _flottant_pres(texte: String, pos: Vector2, couleur: Color) -> void:
-	var libre: Rect2 = hud.rect_libre() if hud != null else ville.get_viewport_rect()
-	var p := pos + Vector2(0, -36)
-	var demi := Style.chiffres().get_string_size(texte, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x / 2.0 + 16.0
-	p.x = clampf(p.x, libre.position.x + demi, maxf(libre.position.x + demi, libre.end.x - demi))
-	p.y = clampf(p.y, libre.position.y + 90.0, maxf(libre.position.y + 90.0, libre.end.y - 20.0))
-	Juice.flottant(texte, p, couleur)
+## Cartouches empilés au-dessus d'un point (textes : [[texte, couleur]], le premier en haut, les suivants 0,3 s
+## après l'un l'autre), la pile entière (montée comprise) gardée dans le rectangle libre du HUD (lot 03, D7).
+func _flottants_pile(textes: Array, pos: Vector2, au_dessus := 36.0) -> void:
+	if textes.is_empty():
+		return
+	var libre: Rect2 = (hud.rect_libre() if hud != null else ville.get_viewport_rect()).grow(-6.0)
+	var tailles: Array = []
+	var largeur := 0.0
+	var hauteur := -ECART_FLOTTANTS
+	for t in textes:
+		var s: Vector2 = Juice.taille_flottant(str(t[0]))
+		tailles.append(s)
+		largeur = maxf(largeur, s.x)
+		hauteur += s.y + ECART_FLOTTANTS
+	# Juice.flottant : haut du cartouche à p.y − 20, puis montée de MONTEE_FLOTTANT
+	var p := pos + Vector2(0, -au_dessus)
+	var haut_min := libre.position.y + Juice.MONTEE_FLOTTANT + 20.0
+	var haut_max := libre.end.y - hauteur + 20.0
+	p.x = clampf(p.x, libre.position.x + largeur / 2.0, maxf(libre.position.x + largeur / 2.0, libre.end.x - largeur / 2.0))
+	p.y = clampf(p.y, haut_min, maxf(haut_min, haut_max))
+	var y := p.y
+	for k in textes.size():
+		var ici := Vector2(p.x, y)
+		if k == 0:
+			Juice.flottant(str(textes[k][0]), ici, textes[k][1])
+		else:
+			get_tree().create_timer(0.3 * k).timeout.connect(Juice.flottant.bind(str(textes[k][0]), ici, textes[k][1]))
+		y += (tailles[k] as Vector2).y + ECART_FLOTTANTS
 
 
 ## Ni maison ni banque à l'écran : seulement les montants, près du compteur COMPTE (D8).
@@ -649,12 +710,10 @@ func _flottants_compte(p: Dictionary) -> void:
 	if hud == null:
 		return
 	var l: Label = hud.l_cc if hud.l_cc != null and hud.l_cc.is_visible_in_tree() else hud.l_patr
-	# Sous le compteur, dans la rue : le montant monte de 60 px et s'efface sans recouvrir le chiffre
+	# Sous le compteur, dans la rue : les cartouches montent et s'effacent sans recouvrir le chiffre
 	var r := l.get_global_rect()
 	var libre: Rect2 = hud.rect_libre()
 	var pos := Vector2(r.get_center().x, maxf(r.end.y, libre.position.y) + 100.0)
-	var demi := Style.chiffres().get_string_size(str(p["or"]["texte"]) if not p.get("or", {}).is_empty() else "", HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x / 2.0 + 16.0
-	pos.x = clampf(pos.x, libre.position.x + demi, maxf(libre.position.x + demi, libre.end.x - demi))
 	var textes: Array = []
 	if not p.get("or", {}).is_empty():
 		textes.append([str(p["or"]["texte"]), Style.GAIN])
@@ -662,12 +721,9 @@ func _flottants_compte(p: Dictionary) -> void:
 			textes.append([str(t), Style.GAIN])
 	if not p.get("cuivre", {}).is_empty():
 		textes.append([str(p["cuivre"]["texte"]), Style.CUIVRE])
-	for k in textes.size():
-		if k == 0:
-			Juice.flottant(textes[k][0], pos, textes[k][1])
-		else:
-			get_tree().create_timer(0.3 * k).timeout.connect(Juice.flottant.bind(textes[k][0], pos + Vector2(0, 40 * k), textes[k][1]))
-		_trace("RUE pieces flottant compte texte=%s" % textes[k][0])
+	for t in textes:
+		_trace("RUE pieces flottant compte texte=%s" % str(t[0]).replace("\n", " / "))
+	_flottants_pile(textes, pos, 0.0)
 
 
 func _trace(t: String) -> void:

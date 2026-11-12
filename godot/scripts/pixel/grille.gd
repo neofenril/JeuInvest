@@ -22,7 +22,10 @@ static func analyser(texte: String, dossier: String, source := "") -> Dictionary
 	var legende := {}            # lettre -> Color (alpha compris)
 	var src := source if source != "" else "texte"
 	var lignes := texte.replace("\r", "").split("\n")
-	if lignes.size() > 0 and lignes[0].begins_with("﻿"):
+	# BOM éventuel : écrit char(0xFEFF), jamais en littéral invisible. Le littéral « "<BOM>" » devenait une chaîne
+	# vide dans le script exporté (jetons binaires, script_export_mode=2) : begins_with("") est toujours vrai et le
+	# « # » de la 1re ligne de commentaire était mangé (E6, lot 03).
+	if lignes.size() > 0 and lignes[0].begins_with(char(0xFEFF)):
 		lignes[0] = lignes[0].substr(1)
 	# Image en cours de lecture
 	var nom := ""

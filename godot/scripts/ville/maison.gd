@@ -72,6 +72,12 @@ func point_sylvie() -> Vector2:
 	return Vector2(coin_image() + Vector2i(fs.position.x + fs.size.x / 2, fs.position.y))
 
 
+## Fenêtre de Sylvie, rectangle local (ville.point_sylvie).
+func fenetre_sylvie() -> Rect2:
+	var fs: Rect2i = F.FENETRE_SYLVIE
+	return Rect2(Vector2(coin_image() + fs.position), Vector2(fs.size))
+
+
 func _dessiner_dessus(d: Vector2i) -> void:
 	var c := coin_image() + d
 	var fs: Rect2i = F.FENETRE_SYLVIE

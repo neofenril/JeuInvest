@@ -1,7 +1,7 @@
 # Base de connaissances de dev-ville
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-11-07 (lot 02-V : pièces du mois, retour de la caméra, PX0 retiré, §2 octies).
+> Dernière mise à jour : 2026-11-12 (lot 03-V : enseignes, cartouches, départ figé, E6, §2 nonies).
 > Téléphone de référence (PX2) : 1440 × 648 → N = 2, R = 0,600, Gérard 76 px ; les mesures 1600 × 720 de §2 sont historiques.
 
 ## 1. Atelier pixel (`godot/scripts/pixel/`, conservé après PX0)
@@ -96,6 +96,20 @@
 - Piège : `git rm` met les suppressions dans l'index ; un `commit` suivant de quelques fichiers les emporte aussi.
 - Vu en capture, côté HUD (dev-interface) : au téléphone, flèches « ‹ LA GAZETTE » et « ‹ MA MAISON » qui se chevauchent quand la maison est à moitié visible.
 
+## 2 nonies. Lot 03-V (reprises de 02-V, E6)
+
+- **E6 (cause trouvée)** : `grille.gd` retirait le BOM avec un littéral invisible `"<U+FEFF>"`. Exporté en jetons binaires (`script_export_mode=2`), ce littéral devient `""` → `begins_with("")` toujours vrai → le « # » de la 1re ligne mangé → « ligne inattendue ». Correction : `char(0xFEFF)`. **Jamais de caractère invisible dans une chaîne littérale.** test_pixel le contrôle.
+- **Vérifier le jeu exporté** : l'exe du worktree (`$env:JEUCLAUDE_GODOT` puis `cmd /c Exporter_Windows.bat x`) se lance (`--log-file`, `--capture` absolu) ; l'exe 0.4 du dépôt principal, lui, a été bloqué par la stratégie de contrôle d'applications (Start-Process refusé). Plus rapide et jamais bloqué : `--headless --path godot --export-pack Windows x.pck` puis `Godot_console --main-pack x.pck --resolution 1280x720 --log-file … -- --capture=<absolu> --etape=titre` (même chargement : scripts en jetons, filtres d'export).
+- **m1** : `rue.enseignes()` (rectangles du monde des 5 enseignes de boutique + BANQUE) ; `Sequences.arc_pieces(d, a)` essaie `ARCS_PIECES` (120, 180… 480, 60, 0) et garde le premier dont 33 points de la courbe évitent les enseignes agrandies de `PIECE_COTE` (24) et restent sous le haut du libre. Mesuré : 240 à 1080 (maison ↔ banque), 180 au téléphone, 120 vers une flèche.
+- **D7 cartouche** : `Juice.flottant` = PanelContainer + StyleBoxFlat (fond `Style.ENCRE`, contour 3 px de la couleur du texte). **Les content_margin d'un StyleBoxFlat se comptent depuis le bord extérieur** (contour compris) : 3 = texte collé au contour ; mis 6 / 9. `Juice.taille_flottant` mesure un vrai cartouche **dans l'arbre** (hors de l'arbre, la taille minimale du Label est fausse). `Sequences._flottants_pile` empile et borne la pile entière (+ 60 px de montée) dans `rect_libre().grow(-6)`.
+- **D8** : `Juice.pieces_suivies(…, arc)` : départ lu au lancement de chaque pièce (dictionnaire `vol` lié aux rappels), arrivée relue ; `Juice.point_arc` statique.
+- **Suivi du vol (scénario)** : relevé sur `RenderingServer.frame_pre_draw` (après les Tween) ; pas ramené à 1/60 s du **temps du jeu** (Σ `get_process_delta_time`). Une image enregistrée en plein vol (`get_image` + `save_png`) fausse quand même le pas quand la caméra glisse (saut de 95 px d'art de la caméra) : pas d'image pendant le vol dans `pieces_bascule`. Glissement de la caméra à vitesse régulière (Tween de `centrer_sur(x, 0)`) : un glissement CUBIC rapide donne pas_max ≈ 2,4 × pas_moyen sans aucun saut.
+- **D9** : `test_rue` vérifie la durée de génération à la fin ; relance = vraie régénération (oublier `rue/maison`, `matiere/ciel`, `matiere/skyline` dans `GrillePixel._images`, seconde ville, puis la libérer) ; `-- --rue-relance` la force. Mesuré : 1 366 puis 1 274 ms.
+- `ville.cx_pour` public, `ville.point_sylvie()` (`maison.fenetre_sylvie()`), `ciel_mat` et `shaders/ciel.gdshader` retirés ensemble.
+- Captures : `camera_retour` → `_glissement.png` / `_retour.png` ; `pieces_or|fleche|dividende` → `_arrivee.png` ; `pieces_bascule` ; `pieces_dividende_jeu` (« RUE pieces dividende=absent » tant que 03-L n'est pas fusionné). `capture_ville.ps1` échoue aussi sur `pieces enseigne≠0`, `hors_libre≠0`, `regulier=non`.
+- Pièges : `Object.get("CONST")` ne lit pas une constante (`get_script().get_script_constant_map()`) ; `--script` : ne pas nommer `Sequences` (sa compilation tire les autoloads) → `load(...).new()` ; `git add` avec un chemin inexistant annule **tout** l'ajout (le commit part sans les fichiers).
+- Vu, non corrigé (hors périmètre ou à arbitrer) : au téléphone, en hors champ, le cartouche près de COMPTE recouvre encore une partie du panneau INDICE de la Gazette pendant 0,9 s (lisible, passager).
+
 ## 3. Décisions (étape A)
 
 - Ciel : bandes crème 12, ciel clair 46, ciel 110, bleu ardoise 112, puis bleu nuit ; horizon posé au bas du trottoir. **À régler à l'étape B** avec les bâtiments (la partie claire est surtout cachée ; le haut bleu nuit est sous la barre).
@@ -109,4 +123,5 @@
 - Commiter un bouchon d'interface ou un `.ttf.import` (propriété de dev-interface PX0).
 - Nommer `R` une fonction PowerShell (alias Invoke-History) : refait en PX1, tout le remplacement est perdu.
 - Le gel de la rue ne se décide jamais sur `Partie.vitesse` seul (saut lancé depuis la pause, lot 02) : passer par `anime` / `facteur_trafic`.
+- Écrire un BOM (U+FEFF) en littéral dans un `.gd` : il disparaît à l'export (E6). Utiliser `char(0xFEFF)`. (L'espace insécable littéral de `Format.ESPACE` survit : vérifié sur le paquet exporté.)
 - Remplacer un bloc de script par `IndexOf('} else {')` : la première occurrence peut être dans une sous-expression (ligne cassée).
