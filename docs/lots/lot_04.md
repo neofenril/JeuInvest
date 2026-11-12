@@ -247,3 +247,7 @@ Fichiers modifiés (comparés au §3), décisions prises à l'intérieur des rè
 
 ## 11. Validation (rempli par le chef de projet)
 - [ ] 04-L : CA-L1 à L9 · [ ] 03-V2 : CA-V1 à V7 · [ ] 03-I2 : CA-I1 à I8 et CA-F · [ ] captures relues · [ ] bases à jour · [ ] partie réelle chronométrée (F3)
+
+## Décision du joueur (2026-11-13) : ordre de vente automatique (C1, réponse partielle)
+Ordre de vente automatique des projets (D7) : **compte courant d'abord, puis Livret bleu, puis le reste par ordre de rentabilité** (verbatim : « l'ordre est compte courant, puis livret bleu, puis le reste par ordre de rentabilité »). Si le Livret bleu n'existe pas encore à la date jouée, il est sauté. L'accélération du développement des features programmées est demandée : 04-L et 03-I2 étape 1 démarrent en parallèle de 03-R.
+
