@@ -19,7 +19,6 @@ func _initialize() -> void:
 	_tests_donnees()
 	_tests_humeur()
 	_tests_parties()
-	_mesure_c00_sans_erosion()
 	_tests_contrat()
 	_tests_salaire()
 	_tests_escargots()
@@ -180,12 +179,15 @@ func _tests_humeur() -> void:
 		str([n2, n4, n5]))
 	verifier("CA-FO7 : humeur_phrase et derniere_cause_humeur (≤ 10 mots)",
 		e.humeur_phrase() == "Sylvie fait la tête" and e.derniere_cause_humeur() == "Encore Palavas…")
-	# Érosion d'un pas vers 0 le 1er janvier
-	var f := _nouvelle(7)
-	f.foyer["humeur"] = -3
+	# Usure du 1er janvier sur le positif seulement (D15) ; parties sans cartes : rien d'autre ne bouge l'humeur en 1984
+	var f := _nouvelle(7, false)
+	f.foyer["humeur"] = 3
 	StrategieTest.aller_a(f, Dates.lire("1985-01"), false)
-	var h85 := int(f.foyer["humeur"])
-	verifier("Humeur : un pas vers 0 chaque 1er janvier (−3 en 1984 → −2 en janvier 1985)", h85 == -2, str(h85))
+	var g := _nouvelle(7, false)
+	g.foyer["humeur"] = -2
+	StrategieTest.aller_a(g, Dates.lire("1985-01"), false)
+	verifier("Humeur (D15) : usure d'un pas vers 0 le 1er janvier pour une humeur positive (+3 → +2), aucune pour une négative (−2 reste −2)",
+		int(f.foyer["humeur"]) == 2 and int(g.foyer["humeur"]) == -2, "%d, %d" % [int(f.foyer["humeur"]), int(g.foyer["humeur"])])
 
 
 # ---------------------------------------------------------------------
@@ -205,10 +207,12 @@ func _tests_parties() -> void:
 	var detail := ""
 	var detail_c00 := ""
 	var detail_miroir := ""
-	var graines_c00 := 0
-	var sans_c00 := []
+	var graines_c00 := {}
+	var sans_c00 := {}
 	var jeux := {}
-	for politique in ["epargner", "depenser"]:
+	for politique in ["epargner", "depenser", "alterner"]:
+		graines_c00[politique] = 0
+		sans_c00[politique] = []
 		for g in range(1, 41):
 			StrategieTest.politique_cartes = politique
 			var e := _nouvelle(g)
@@ -267,22 +271,21 @@ func _tests_parties() -> void:
 			var jouees := e.cartes_jouees()
 			var ids := jouees.map(func(x: Dictionary) -> String: return str(x["id"]))
 			jeux["%s %d" % [politique, g]] = ids
-			if politique == "epargner":
-				if not fachee:
-					ok_fachee = false
-				var c00 := ids.count("C00")
-				var cr := jouees.filter(func(x: Dictionary) -> bool: return x["id"] == "C00").map(func(x: Dictionary) -> String: return str(x["creneau"]))
-				var suite := false
-				for i in range(1, jouees.size()):
-					if jouees[i]["id"] == "C00" and jouees[i - 1]["id"] == "C00":
-						suite = true
-				if c00 > 0:
-					graines_c00 += 1
-				else:
-					sans_c00.append(g)
-				if c00 > 2 or cr.has("S4") or suite:
-					ok_c00 = false
-					detail_c00 += "g%d : C00 %d fois %s %s ; " % [g, c00, str(cr), str(ids)]
+			var c00 := ids.count("C00")
+			var cr := jouees.filter(func(x: Dictionary) -> bool: return x["id"] == "C00").map(func(x: Dictionary) -> String: return str(x["creneau"]))
+			var suite := false
+			for i in range(1, jouees.size()):
+				if jouees[i]["id"] == "C00" and jouees[i - 1]["id"] == "C00":
+					suite = true
+			if c00 > 0:
+				graines_c00[politique] = int(graines_c00[politique]) + 1
+			else:
+				(sans_c00[politique] as Array).append(g)
+			if c00 > 2 or cr.has("S4") or suite:
+				ok_c00 = false
+				detail_c00 += "%s g%d : C00 %d fois %s %s ; " % [politique, g, c00, str(cr), str(ids)]
+			if politique == "epargner" and (not fachee or c00 == 0):
+				ok_fachee = false
 			if ids.has("C06"):
 				var c06 := jouees.filter(func(x: Dictionary) -> bool: return x["id"] == "C06")[0] as Dictionary
 				var esc := e.historique.filter(func(h: Dictionary) -> bool: return h["type"] == "escargots")
@@ -290,10 +293,12 @@ func _tests_parties() -> void:
 					ok_c06 = false
 				if c06["choix"] == "b" and not esc.is_empty():
 					ok_c06 = false
-	verifier("CA-FO3 : « epargner » rend Sylvie fâchée au moins une fois (40 graines sur 40)", ok_fachee)
-	print("    MESURE C00 (epargner) : C00 jouée dans %d graines sur 40 ; sans C00 : %s" % [graines_c00, str(sans_c00)])
-	verifier("CA-FO3 (règles de C00) : seulement si Sylvie est fâchée, 2 fois au plus, jamais deux créneaux de suite, jamais en S4 ; jouée dans au moins une graine « epargner » (taux imprimé : la cible de 100 % n'est pas tenue avec les données de docs/15, voir compte rendu)",
-		ok_c00 and graines_c00 > 0, "%d / 40 %s" % [graines_c00, detail_c00.left(600)])
+	for politique in graines_c00:
+		print("    MESURE C00 (%s) : C00 jouée dans %d graines sur 40 ; sans C00 : %s" % [politique, int(graines_c00[politique]), str(sans_c00[politique])])
+	verifier("CA-FO3 : « epargner » rend Sylvie fâchée au moins une fois et déclenche C00, dans 40 graines sur 40 (D15)",
+		ok_fachee and int(graines_c00["epargner"]) == 40, "%d / 40" % int(graines_c00["epargner"]))
+	verifier("CA-FO3 (règles de C00, 3 politiques) : seulement si Sylvie est fâchée, 2 fois au plus, jamais deux créneaux de suite, jamais en S4",
+		ok_c00, detail_c00.left(600))
 	verifier("CA-FO3 : « depenser » : compte + Livret A jamais sous 0 à cause d'une carte (choix non payable désactivé)", ok_payable)
 	verifier("CA-FO3 : un choix désactivé est refusé par resoudre_modale (renvoie {}, la carte reste ouverte, rien n'est payé)", ok_refus, "%d refus essayés" % nb_refus)
 	verifier("CA-FO4 (R-MIROIR) : après chaque carte conso ou revenu, les 3 témoins ont le même mouvement le même mois (au centime) ; après C06, aucun", ok_miroir, detail_miroir.left(400))
@@ -319,27 +324,10 @@ func _tests_parties() -> void:
 		for h in range(g + 1, 11):
 			if jeux["depenser %d" % g] != jeux["depenser %d" % h]:
 				differentes += 1
-	verifier("CA-FO6 : sur 10 graines, des parties différentes (au moins 2 cartes différentes entre deux graines)", differentes > 0 and ok_div, "%d paires différentes sur 45 ; cartes jouées (80 parties) %s" % [differentes, str(tous)])
+	verifier("CA-FO6 : sur 10 graines, des parties différentes (au moins 2 cartes différentes entre deux graines)", differentes > 0 and ok_div, "%d paires différentes sur 45 ; cartes jouées (120 parties) %s" % [differentes, str(tous)])
 	# Fâchée « epargner » et C00 : rappel de la mesure
 	var ex: Array = jeux["epargner 7"]
 	print("    Graine 7 epargner : ", ex, " · depenser : ", jeux["depenser 7"])
-
-
-## Diagnostic pour le chef de projet (rien n'est vérifié) : taux de C00 avec « epargner » si l'érosion de janvier
-## n'existait pas (foyer.json > humeur.erosion = 0 le temps de la mesure, puis rétabli).
-func _mesure_c00_sans_erosion() -> void:
-	var p: Dictionary = Foyer.donnees()["humeur"]
-	var erosion: Variant = p["erosion"]
-	p["erosion"] = 0
-	StrategieTest.politique_cartes = "epargner"
-	var n := 0
-	for g in range(1, 41):
-		var e := _nouvelle(g)
-		StrategieTest.aller_a(e, Dates.lire("1989-01"), true)
-		if e.cartes_jouees().any(func(x: Dictionary) -> bool: return x["id"] == "C00"):
-			n += 1
-	p["erosion"] = erosion
-	print("    MESURE C00 (epargner) sans érosion de janvier : %d graines sur 40" % n)
 
 
 # ---------------------------------------------------------------------
@@ -437,7 +425,7 @@ func _tests_escargots() -> void:
 				if n.get("type", "") == "escargots":
 					notif = n
 					notif["m"] = e.m
-		if notif.is_empty() or int(notif["m"]) != m0 + 9 or absf(float(notif["montant"]) * F - 800.0) > 0.01 or not notif.get("persistante", false) \
+		if notif.is_empty() or int(notif["m"]) != m0 + 9 or absf(float(notif["montant"]) * F - 800.0) > 0.01 or not notif.get("persistant", false) or notif.has("persistante") \
 				or notif["source"] != "maison" or notif["cls"] != "perte" or not miroir_ok:
 			ok = false
 	verifier("CA-FO5 (CA-2.4) : C06 prêtée → notification persistante « escargots » à + 9 mois, 800 F rendus, dans 100 % des graines (40)", ok and nb == 40, "%d prêts" % nb)

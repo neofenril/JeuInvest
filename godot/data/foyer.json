@@ -3,8 +3,9 @@
   "_actif": "D11 : moteur éteint par défaut. Une partie lit config.cartes (défaut : cette valeur) au démarrage et garde ce réglage dans sa sauvegarde ; une sauvegarde sans champ foyer reste sans cartes. La vague 3 (03-I2) allumera ce drapeau.",
   "actif": false,
 
-  "_humeur": "Valeur cachée entière de min à max, départ 0 ; contente si ≥ contente, fâchée si ≤ fachee, sinon neutre. naissance : effet d'une naissance. Chaque 1er janvier : un pas vers 0 (erosion).",
-  "humeur": { "min": -3, "max": 3, "depart": 0, "contente": 2, "fachee": -2, "naissance": 1, "erosion": 1 },
+  "_humeur": "Valeur cachée entière de min à max, départ 0 ; contente si ≥ contente, fâchée si ≤ fachee, sinon neutre. naissance : effet d'une naissance. Chaque 1er janvier : erosion_positive pas vers 0 si l'humeur est positive, erosion_negative si elle est négative.",
+  "_erosion": "D15 (lot_03.md) : l'usure du 1er janvier ne s'applique qu'à une humeur positive (« le bonheur s'use, la rancune attend une réconciliation ») ; à confirmer par le game designer (G2).",
+  "humeur": { "min": -3, "max": 3, "depart": 0, "contente": 2, "fachee": -2, "naissance": 1, "erosion_positive": 1, "erosion_negative": 0 },
   "phrases": { "contente": "Sylvie est contente", "neutre": "Sylvie va bien", "fachee": "Sylvie fait la tête" },
   "_notif_humeur": "Notification (bulle) quand l'état visible change. neutre_depuis_contente : ajout de dev-logique (le contrat ne donne que 3 titres ; « Sylvie va mieux » ne convient pas en redescendant de contente), à relire par le game designer (G1).",
   "notif_humeur": {

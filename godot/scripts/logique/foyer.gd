@@ -155,12 +155,15 @@ static func ajuster_salaire(e: EtatPartie) -> void:
 	s["applique"] = true
 
 
-## Érosion de l'humeur chaque 1er janvier, issue des escargots. Appelé à l'entrée dans le mois (hors premier mois).
+## Usure de l'humeur chaque 1er janvier, issue des escargots. Appelé à l'entrée dans le mois (hors premier mois).
+## Usure (D15) : erosion_positive pas vers 0 si l'humeur est positive, erosion_negative (0 : aucun) si elle est
+## négative ; une humeur négative ne remonte que par un choix, la naissance ou la réconciliation (C00).
 static func debut_mois(e: EtatPartie, notifs: Array) -> void:
 	if Dates.mois(e.ab_courant()) == 1:
 		var h := int(e.foyer.get("humeur", 0))
-		var pas := int(donnees()["humeur"]["erosion"])
-		if h != 0:
+		var p: Dictionary = donnees()["humeur"]
+		var pas := int(p["erosion_positive"]) if h > 0 else int(p["erosion_negative"])
+		if h != 0 and pas > 0:
 			_regler_humeur(e, h - signi(h) * mini(pas, absi(h)), "", notifs)
 	var esc: Dictionary = e.foyer.get("escargots", {})
 	if not esc.is_empty() and not bool(esc.get("fait", false)) and e.m >= int(esc["m_issue"]):
@@ -169,7 +172,7 @@ static func debut_mois(e: EtatPartie, notifs: Array) -> void:
 		var rendu := float(esc["rendu"])
 		e.joueur.cc += rendu
 		esc["fait"] = true
-		notifs.append({"type": "escargots", "source": "maison", "cls": "perte", "persistante": true, "persistant": true,
+		notifs.append({"type": "escargots", "source": "maison", "cls": "perte", "persistant": true,
 			"montant": rendu, "titre": str(d["titre"]),
 			"texte": Format.gabarit(str(d["texte"]), {"rendu": Format.entier(rendu, a), "prete": Format.entier(float(esc["prete"]), a)})})
 
