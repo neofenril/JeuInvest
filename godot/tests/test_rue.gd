@@ -90,7 +90,10 @@ func _initialize() -> void:
 	_verifier(manquantes.is_empty(), "API : %d propriétés présentes" % PROPRIETES.size(), ", ".join(manquantes))
 	_verifier(ville.has_signal("batiment_touche") and ville.has_signal("camera_bougee"), "API : signaux batiment_touche et camera_bougee")
 	# V8 (lot 03) : ciel vectoriel retiré pour de bon : ni shader ni propriété ciel_mat
-	_verifier(not "ciel_mat" in ville and not FileAccess.file_exists("res://shaders/ciel.gdshader"), "API : ciel_mat et shaders/ciel.gdshader retirés ensemble (V8)")
+	var shaders_ciel: Array = []
+	if DirAccess.dir_exists_absolute("res://shaders"):    # dossier disparu avec son dernier fichier
+		shaders_ciel = Array(DirAccess.get_files_at("res://shaders")).filter(func(f: String) -> bool: return f.begins_with("ciel"))
+	_verifier(not "ciel_mat" in ville and shaders_ciel.is_empty(), "API : ciel_mat et le shader du ciel vectoriel retirés ensemble (V8)", ", ".join(shaders_ciel))
 	var consts: Dictionary = (ville.get_script() as Script).get_script_constant_map()
 	_verifier(consts.has("PERSONNAGES") and consts["PERSONNAGES"].size() == 9, "API : PERSONNAGES (9)")
 	_verifier(ville.get("camera") is Camera2D, "API : camera est une Camera2D")
