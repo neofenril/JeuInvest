@@ -162,6 +162,12 @@ foreach ($t in @(@("1080", "1920x1080", ""), @("1152", "1152x648", ""), @("tel",
 foreach ($t in @(@("1080", "1920x1080", ""), @("1152", "1152x648", ""), @("tel", "1440x648", "1"), @("tel169", "1280x720", "169"))) {
     $plan.Add(@("bulle", ("l3_bulle_" + $t[0]), $t[1], $t[2]))
 }
+# Lot 03 (I6) : ligne des dividendes dans la fiche d'Elf, avant (avril 1987) et après (juin 1987) le 1er versement
+foreach ($e in @("fiche_dividendes", "fiche_dividendes_avant")) {
+    foreach ($t in @(@("1080", "1920x1080", ""), @("tel", "1440x648", "1"))) {
+        $plan.Add(@($e, ("l3_" + $e + "_" + $t[0]), $t[1], $t[2]))
+    }
+}
 $echecs = 0
 $script:sorties_bloquees = 0
 $i = 0

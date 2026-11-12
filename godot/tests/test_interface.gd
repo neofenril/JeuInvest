@@ -20,6 +20,7 @@ var _chemin_test := ""
 var hud: Hud
 var modales: Modales
 var _recu: Array = []
+var _div_vus := {}        # lot 03 (I6) : « reçus » / « versé » -> nombre de fiches d'action vérifiées
 
 
 func _ready() -> void:
@@ -169,7 +170,7 @@ func _balayer_etiquettes(scene: Node, h: Hud) -> void:
 	h.basculer_panneau(true)
 	await _images(2)
 	var b: Vector2 = ville.call("bornes_rue")
-	var decalage: float = ville.call("_cx_pour", 0.0)
+	var decalage: float = ville.call("cx_pour", 0.0)
 	var n := 0
 	var chev := 0
 	var incoh := []
@@ -297,6 +298,15 @@ func _test_demo_complete(actif: bool) -> void:
 	_verifier("%s : fenêtre Banque (fiche, « chaque mois », formulaire d'ordre) sur chaque produit détenu en déc. 1986 et juin 1988" % nom,
 		banque_ok and (n_produits >= 8 if actif else n_produits >= 0), str(banques))
 	if actif:
+		_verifier("%s : fiche d'une action : « Dividende versé chaque année en mai » avant le 1er versement, « Dividendes reçus » après (%s)" % [nom, str(_div_vus)],
+			int(_div_vus.get("versé", 0)) >= 1 and int(_div_vus.get("reçus", 0)) >= 1, str(_div_vus))
+		# Notifications de dividendes (dont dividende_nul, cls « neutre ») : notifications ordinaires de la banque
+		var nul := Banquier.notif_dividende_nul(e, "peugeot")
+		hud.notifier(nul, e.ab_courant())
+		await get_tree().process_frame
+		var textes_nul := hud.notifs.find_children("*", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+		_verifier("%s : notification « dividende_nul » (cls %s) affichée comme une notification de la banque (« %s »)" % [nom, str(nul["cls"]), str(nul["titre"])],
+			str(nul["titre"]) != "" and textes_nul.has(str(nul["titre"])) and textes_nul.has(str(nul["texte"])), str(textes_nul))
 		var frais := float(releve.get("frais_total", 0.0))
 		var releve_ok := false
 		if frais > 0.0:
@@ -383,6 +393,18 @@ func _visiter_banque(e: EtatPartie) -> Dictionary:
 			pb.fermer_demande.emit()
 			break
 		fiche_ok = fiche_ok and droite.get_child_count() > 0 and _textes(droite).size() >= 3
+		# Lot 03 (I6) : ligne des dividendes, seulement pour une action, d'après la logique
+		var ld := droite.find_child("Dividendes", true, false) as Label
+		var attendu := ""
+		if e.mois_dividende(pid) > 0:
+			attendu = ("Dividendes reçus : " + Format.entier(e.dividendes_recus(pid), e.ab_courant())) if e.dividendes_recus(pid) > 0.0 \
+				else "Dividende versé chaque année en " + Dates.MOIS[e.mois_dividende(pid) - 1]
+		var lu := ld.text if ld != null else ""
+		if lu != attendu:
+			ok = false
+			vus.append("%s KO (dividendes « %s » au lieu de « %s »)" % [pid, lu, attendu])
+		elif attendu != "":
+			_div_vus[attendu.get_slice(" ", 1)] = int(_div_vus.get(attendu.get_slice(" ", 1), 0)) + 1
 		pb.call("_afficher_automatique", pid)
 		await get_tree().process_frame
 		var auto_ok := droite.get_child_count() > 0 and _textes(droite).size() >= 2
