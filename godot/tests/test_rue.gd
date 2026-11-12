@@ -10,8 +10,9 @@ const RUE := preload("res://scripts/ville/rue.gd")
 const VILLE_GD := "res://scripts/ville/ville.gd"
 const METHODES := ["cadrer", "viser", "revenir", "plonger_vers_maison", "position_ecran", "ecran_batiment", "batiment", "regler_mois",
 	"point_etiquette", "est_visible", "aller_vers", "position_camera", "bornes_rue", "regler_humeur_sylvie", "humeur_sylvie",
-	"faire_passer", "point_tete", "porte_ecran", "centrer_sur", "a_la_maison", "calme"]
-const PROPRIETES := ["anime", "interactif", "mode_titre", "facteur_trafic", "phase", "nuit", "krach", "gel", "pluie", "ciel_mat",
+	"faire_passer", "point_tete", "porte_ecran", "centrer_sur", "a_la_maison", "calme", "cx_pour", "point_sylvie"]
+const SEUIL_GENERATION_MS := 2000
+const PROPRIETES := ["anime", "interactif", "mode_titre", "facteur_trafic", "phase", "nuit", "krach", "gel", "pluie",
 	"camera", "maison", "banque", "media", "voiture_maison", "potelet", "passants"]
 const FORMATS := [[Vector2i(1280, 720), 2, 0.667], [Vector2i(1366, 768), 2, 0.711], [Vector2i(1600, 720), 2, 0.667],
 	[Vector2i(1920, 1080), 2, 1.0], [Vector2i(2560, 1440), 3, 0.889], [Vector2i(3840, 2160), 4, 1.0], [Vector2i(1440, 648), 2, 0.600]]
@@ -34,6 +35,23 @@ func _images(n: int) -> void:
 		await process_frame
 
 
+## Seconde mesure de D9 : la génération est refaite pour de bon (le catalogue ne garde que ce qui est généré une
+## fois par lancement : « rue/maison », le ciel et la skyline sont oubliés), dans une seconde ville, puis celle-ci
+## est libérée (elle attend ses tâches de fond à la sortie). Renvoie la durée en ms.
+func _relancer_generation() -> int:
+	for n in ["rue/maison", "matiere/ciel", "matiere/skyline"]:
+		GrillePixel._images.erase(n)
+	var t0 := Time.get_ticks_msec()
+	var v2 := Node2D.new()
+	v2.set_script(load(VILLE_GD))
+	root.add_child(v2)
+	var ms2 := Time.get_ticks_msec() - t0
+	await _images(2)
+	v2.queue_free()
+	await _images(2)
+	return ms2
+
+
 func _initialize() -> void:
 	var debut := Time.get_ticks_msec()
 	await process_frame
@@ -53,7 +71,8 @@ func _initialize() -> void:
 	root.add_child(ville)
 	var ms := Time.get_ticks_msec() - t0
 	print("RUE generation_ms=%d" % ms)
-	_verifier(ms <= 2000, "génération de la rue ≤ 2 000 ms (≈ 1,3 s mesurée : façades de fond, skyline, arbres en tâche de fond)", "%d ms" % ms)
+	# D9 (lot 03) : la mesure est vérifiée à la fin du test ; si elle dépasse le seuil (machine chargée), une seule
+	# relance et la plus courte des deux compte.
 	await _images(3)
 	# API (§2.1, §2.2)
 	for m in METHODES:
@@ -64,6 +83,8 @@ func _initialize() -> void:
 			manquantes.append(p)
 	_verifier(manquantes.is_empty(), "API : %d propriétés présentes" % PROPRIETES.size(), ", ".join(manquantes))
 	_verifier(ville.has_signal("batiment_touche") and ville.has_signal("camera_bougee"), "API : signaux batiment_touche et camera_bougee")
+	# V8 (lot 03) : ciel vectoriel retiré pour de bon : ni shader ni propriété ciel_mat
+	_verifier(not "ciel_mat" in ville and not FileAccess.file_exists("res://shaders/ciel.gdshader"), "API : ciel_mat et shaders/ciel.gdshader retirés ensemble (V8)")
 	var consts: Dictionary = (ville.get_script() as Script).get_script_constant_map()
 	_verifier(consts.has("PERSONNAGES") and consts["PERSONNAGES"].size() == 9, "API : PERSONNAGES (9)")
 	_verifier(ville.get("camera") is Camera2D, "API : camera est une Camera2D")
@@ -110,11 +131,32 @@ func _initialize() -> void:
 	await _images(2)
 	var pm: Vector2 = ville.call("porte_ecran", "maison")
 	_verifier(pm.x >= 0.0 and ville.call("a_la_maison"), "portes : porte de la maison à l'écran au repos (caméra à la maison)", str(pm))
+	# D10 (lot 03) : cx_pour public = ancien calcul (x − milieu du libre en px d'art + demi-vue)
+	var vue: VuePixel = ville.get("vue")
+	var a_v: Vector2 = vue.art_par_virtuel()
+	var libre_v: Rect2 = ville.get("_libre")
+	var la := Rect2(libre_v.position * a_v, libre_v.size * a_v)
+	var ecarts_cx: Array = []
+	for xm: float in [-683.0, 114.0, 813.0]:
+		var attendu: float = xm - la.get_center().x + vue.taille_vue().x / 2.0
+		var lu: float = ville.call("cx_pour", xm)
+		if absf(lu - attendu) > 0.001 or absf(lu - float(ville.call("_cx_pour", xm))) > 0.001:
+			ecarts_cx.append("%d : %f au lieu de %f" % [xm, lu, attendu])
+	_verifier(ecarts_cx.is_empty(), "D10 : cx_pour(x) = ancien calcul sur 3 valeurs (Gazette, maison, banque)", ", ".join(ecarts_cx))
+	# point_sylvie (lot 03, vague 3) : au-dessus de la fenêtre de Sylvie quand la maison est visible
+	var maison_b: Node2D = ville.call("batiment", "maison")
+	var fs: Rect2 = maison_b.call("fenetre_sylvie")
+	var haut_fenetre: Vector2 = maison_b.position + Vector2(fs.get_center().x, fs.position.y)
+	var ps: Vector2 = ville.call("point_sylvie")
+	var ps_monde: Vector2 = vue.ecran_vers_monde(ps) if ps.x >= 0.0 else Vector2(-9999, -9999)
+	_verifier(Rect2(Vector2.ZERO, ecran).has_point(ps) and absf(ps_monde.x - haut_fenetre.x) <= 8.0 and ps_monde.y <= haut_fenetre.y and ps_monde.y >= haut_fenetre.y - 8.0,
+		"point_sylvie : dans l'écran, au-dessus de la fenêtre de Sylvie (± 8 px d'art), maison visible", "%s → monde %s, fenêtre %s" % [str(ps), str(ps_monde), str(haut_fenetre)])
 	ville.call("aller_vers", "banque", 0.0)
 	await _images(2)
 	var pb: Vector2 = ville.call("porte_ecran", "banque")
 	_verifier(pb.x >= 0.0 and not ville.call("a_la_maison"), "portes : porte de la banque à l'écran après aller_vers ; caméra plus à la maison", str(pb))
 	_verifier((ville.call("porte_ecran", "media") as Vector2).x < 0.0, "portes : la Gazette n'a pas de porte de pièces")
+	_verifier(ville.call("point_sylvie") == Vector2(-1, -1), "point_sylvie : (-1, -1) quand la maison est hors champ (caméra sur la banque)", str(ville.call("point_sylvie")))
 	_verifier(consts.get("RETOUR_AUTO_S", 0.0) == 10.0 and consts.get("RETOUR_DUREE_S", 0.0) == 0.8, "D7 : retour automatique après 10 s, glissement de 0,8 s")
 	ville.set("interactif", true)
 	await _images(30)
@@ -231,6 +273,16 @@ func _initialize() -> void:
 	_verifier(GrillePixel.existe("rue/arbre_m0_0_ete") and GrillePixel.existe("rue/arbre_m3_1_ete") and GrillePixel.existe("rue/premier_plan_1_ete"), "arbres : 4 modèles × 2 images et premier plan enregistrés")
 	_verifier(GrillePixel.existe("neige/rue/maison") and GrillePixel.existe("neige/rue/banque") and GrillePixel.existe("neige/rue/fond_0"), "hiver : neige sur les toits générée")
 	_verifier(GrillePixel.existe("rue/arbre_m0_0_automne") and GrillePixel.existe("rue/premier_plan_1_hiver"), "automne, hiver : feuillages recolorés")
+	# D9 (lot 03) : durée de génération, meilleure de 2 mesures (relance seulement si la 1re dépasse le seuil ;
+	# --rue-relance la force pour l'éprouver)
+	var ms_retenue := ms
+	if ms > SEUIL_GENERATION_MS or "--rue-relance" in OS.get_cmdline_user_args():
+		var ms2: int = await _relancer_generation()
+		ms_retenue = mini(ms, ms2)
+		print("RUE generation_ms=%d relance_ms=%d retenue_ms=%d seuil_ms=%d" % [ms, ms2, ms_retenue, SEUIL_GENERATION_MS])
+	else:
+		print("RUE generation_ms=%d relance=non retenue_ms=%d seuil_ms=%d" % [ms, ms_retenue, SEUIL_GENERATION_MS])
+	_verifier(ms_retenue <= SEUIL_GENERATION_MS, "génération de la rue ≤ 2 000 ms, meilleure de 2 mesures si la 1re dépasse (≈ 1,3 s à vide ; D9)", "%d ms" % ms_retenue)
 	ville.queue_free()
 	await _images(2)
 	# Sortie propre : une rue quittée pendant que ses tâches de fond tournent les attend (blocage à la sortie, PX1-bis)

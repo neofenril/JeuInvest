@@ -161,7 +161,7 @@ func _camera() -> String:
 	var cx: float = ville.call("position_camera")
 	for id in ["maison", "banque", "media"]:
 		var b: Node2D = ville.call("batiment", id)
-		var d: float = absf(float(ville.call("_cx_pour", b.position.x)) - cx)
+		var d: float = absf(float(ville.call("cx_pour", b.position.x)) - cx)
 		if d < ecart:
 			ecart = d
 			meilleur = id

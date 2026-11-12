@@ -36,7 +36,6 @@ var pluie: bool = false:
 		pluie = v
 		if rue != null:
 			rue.call("regler_pluie", v)
-var ciel_mat: ShaderMaterial             # accepté, ignoré (le ciel est dans la rue)
 var camera: Camera2D
 var maison: Batiment
 var media: Batiment
@@ -206,6 +205,11 @@ func _cy_pour(haut: float) -> float:
 func _cx_pour(x_monde: float) -> float:
 	var la := _libre_art()
 	return x_monde - la.get_center().x + vue.taille_vue().x / 2.0
+
+
+## Accesseur public de _cx_pour (lot 03, D10) : même calcul, pour les séquences, tests et captures.
+func cx_pour(x_monde: float) -> float:
+	return _cx_pour(x_monde)
 
 
 ## x mini et maxi du centre de la vue (px d'art).
@@ -400,6 +404,19 @@ func regler_humeur_sylvie(h: int) -> void:
 
 func humeur_sylvie() -> int:
 	return _humeur
+
+
+## Point d'écran logique (px virtuels) juste au-dessus de la fenêtre de Sylvie (milieu du haut, 2 px d'art plus
+## haut), pour une bulle (lot 03, vague 3) ; Vector2(-1, -1) si ce point ou le milieu de la fenêtre sort du
+## rectangle libre (maison hors champ).
+func point_sylvie() -> Vector2:
+	var haut: Vector2 = maison.position + maison.call("point_sylvie") + Vector2(0, -2)
+	var fs: Rect2 = maison.call("fenetre_sylvie")
+	var milieu: Vector2 = maison.position + fs.get_center()
+	var libre := libre_monde()
+	if not libre.has_point(haut) or not libre.has_point(milieu):
+		return Vector2(-1, -1)
+	return position_ecran(haut)
 
 
 ## Un personnage traverse la rue sur le trottoir, d'un bord de la vue à l'autre (sens 1 : de gauche à droite),
