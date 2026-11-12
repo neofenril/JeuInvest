@@ -262,7 +262,8 @@ func cartes_jouees() -> Array           # [{id, creneau, titre, choix, libelle, 
 Fichiers modifiés (comparés au §3), décisions prises à l'intérieur des règles (V1 : méthode contre l'enseigne ; V7 : cause de E6 ; V8 : `ciel_mat` ; FO2 : algorithme des créneaux), écarts d'interface (aucun attendu), non vérifié, nombre de vérifications avant / après, captures à relire en priorité, base de connaissances à jour. 03-L : nouvelle référence `integrale` et ligne D5. 03-foyer : répartition des cartes.
 
 ## 11. Validation (rempli par le chef de projet)
-- [ ] 03-L : CA-L1 à L8 · [ ] 03-V : CA-V1 à V9 · [ ] 03-I : CA-I1 à I9 · [ ] 03-foyer : CA-FO1 à FO8 · [ ] captures relues · [ ] bases à jour
+- [x] 03-L : CA-L1 à L8 · [x] 03-V : CA-V1 à V9 (passage 2) · [x] 03-I : CA-I1 à I9 (CA-I5 reformulé : `test_rue.gd` exclu) · [x] 03-foyer : CA-FO1 à FO8 · [x] captures relues (testeur) · [x] bases à jour
+- **VALIDÉ le 2026-11-12** par le chef de projet. Fusion : `lot/03-interface` puis `lot/03-foyer`. Décisions et reports : `feuille_de_route.md` §2.8 (mini-lot 03-R avant l'export 0.4.1, invariant « une carte ouverte se ferme toujours » en 04-L).
 
 ## 12. Corrections 03-foyer (2026-11-12, après le 1er compte rendu de dev-logique)
 
