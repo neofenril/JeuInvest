@@ -124,10 +124,6 @@ func compact() -> bool:
 
 
 func _appliquer() -> void:
-	# La vitrine PX0 (scenes/px0.tscn) règle elle-même sa fenêtre : on n'y touche pas.
-	var scene := get_tree().current_scene
-	if scene != null and scene.scene_file_path == "res://scenes/px0.tscn":
-		return
 	var fen := get_window()
 	var taille_phys := fen.size
 	if taille_phys.x <= 0 or taille_phys.y <= 0:
@@ -135,7 +131,7 @@ func _appliquer() -> void:
 	_t = facteur_texel_pour(taille_phys, _dpi(), _mobile())
 	_echelle = _t / TEXEL
 	var f := facteur_contenu_pour(taille_phys, _dpi(), _mobile())
-	# Étirement désactivé pour la scène du jeu (project.godot garde canvas_items pour la vitrine PX0) :
+	# Étirement désactivé (project.godot garde canvas_items, ignoré ici) :
 	# le facteur s'applique tel quel, sans arrondi de la zone logique.
 	if not _mobile() and fen.min_size != FENETRE_MIN_PC:
 		fen.min_size = FENETRE_MIN_PC

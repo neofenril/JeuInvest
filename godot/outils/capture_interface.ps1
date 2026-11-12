@@ -71,6 +71,9 @@ function Lancer([string]$etape, [string]$nom, [string]$taille, [string]$tel, [st
     # Lot 02 : tuiles du carnet ≥ 20 px (m10), badge = non_lues
     foreach ($l in ($ui | Where-Object { $_ -match 'UI tuiles taille_min=(\d+)' })) { if ([int]([regex]::Match($l, 'taille_min=(\d+)').Groups[1].Value) -lt 20) { $fautes += "tuile sous 20 px" } }
     foreach ($l in ($ui | Where-Object { $_ -match '^UI badge n=(\S*) = non_lues=(\d+)' })) { $m = [regex]::Match($l, 'n=(\S*) = non_lues=(\d+)'); $k = [int]$m.Groups[2].Value; $att = if ($k -gt 9) { "9+" } elseif ($k -eq 0) { "" } else { "$k" }; if ($m.Groups[1].Value -ne $att) { $fautes += "badge différent de non_lues" } }
+    # Lot 03 (D6, m9) : le total du relevé = somme des valeurs affichées
+    foreach ($l in ($ui | Where-Object { $_ -match '^UI releve frais=(\d+) manque=(\d+) total=(\d+)' })) { $m = [regex]::Match($l, 'frais=(\d+) manque=(\d+) total=(\d+)'); if ([int]$m.Groups[1].Value + [int]$m.Groups[2].Value -ne [int]$m.Groups[3].Value) { $fautes += "relevé : total différent de la somme affichée" } }
+    foreach ($l in ($ui | Where-Object { $_ -match '^UI releve frais=\?' })) { $fautes += "relevé : grille des frais introuvable" }
     foreach ($l in ($ui | Where-Object { $_ -match 'atkinson_min=(\d+)' })) { if ([int]([regex]::Match($l, 'atkinson_min=(\d+)').Groups[1].Value) -lt 20) { $fautes += "atkinson_min < 20" } }
     foreach ($l in ($ui | Where-Object { $_ -match '^Images par seconde.*: ([\d.,]+)' })) { if ([double]([regex]::Match($l, ': ([\d.,]+)').Groups[1].Value.Replace(',','.')) -lt 55) { $fautes += "moins de 55 images par seconde" } }
     $pix = $ui | Where-Object { $_ -match 'pixelify_min=(\d+)' } | ForEach-Object { [int]([regex]::Match($_, 'pixelify_min=(\d+)').Groups[1].Value) }
@@ -155,6 +158,10 @@ $plan.Add(@("pastille_signe", "l2_pastille_signe_1080", "1920x1080", ""))
 foreach ($t in @(@("1080", "1920x1080", ""), @("1152", "1152x648", ""), @("tel", "1440x648", "1"), @("tel169", "1280x720", "169"))) {
     $plan.Add(@("etiquettes_balayage", ("l2_etiquettes_balayage_" + $t[0]), $t[1], $t[2]))
 }
+# Lot 03 (I4) : composant Bulle et pictos d'humeur, préfixe l3_
+foreach ($t in @(@("1080", "1920x1080", ""), @("1152", "1152x648", ""), @("tel", "1440x648", "1"), @("tel169", "1280x720", "169"))) {
+    $plan.Add(@("bulle", ("l3_bulle_" + $t[0]), $t[1], $t[2]))
+}
 $echecs = 0
 $script:sorties_bloquees = 0
 $i = 0
@@ -169,15 +176,14 @@ foreach ($p in $plan) {
     foreach ($l in $r.Erreurs) { "    ERREUR $l" | Out-File $journal -Append -Encoding utf8; Write-Host "    ERREUR $l" }
     foreach ($l in $r.Fautes) { "    FAUTE $l" | Out-File $journal -Append -Encoding utf8; Write-Host "    FAUTE $l" }
 }
-# Montages : avant / après, et les téléphones (hud_tel | hud_tel169 | heritage_tel | banque_ordre_tel)
-$v3 = Join-Path $captures "v3_rue.png"
-$px0 = Join-Path $captures "px0_carte_1080.png"
-foreach ($m in @(@(@($v3, (Join-Path $captures "px2_hud_1080.png")), "px2_montage_pc.png"), @(@($px0, (Join-Path $captures "px2_heritage_1080.png")), "px2_montage_carte.png"),
-        @(@((Join-Path $captures "px2_hud_tel.png"), (Join-Path $captures "px2_hud_tel169.png"), (Join-Path $captures "px2_heritage_tel.png"), (Join-Path $captures "px2_banque_ordre_tel.png")), "px2_montage_telephones.png"))) {
+# Montage des téléphones (hud_tel | hud_tel169 | heritage_tel | banque_ordre_tel). Les montages « avant / après »
+# contre v3_rue.png et px0_carte_1080.png (vitrine PX0 supprimée en 02-V) sont retirés au lot 03 (I3).
+foreach ($m in @(,@(@((Join-Path $captures "px2_hud_tel.png"), (Join-Path $captures "px2_hud_tel169.png"), (Join-Path $captures "px2_heritage_tel.png"), (Join-Path $captures "px2_banque_ordre_tel.png")), "px2_montage_telephones.png"))) {
     $ok = Monter $m[0] (Join-Path $captures $m[1])
-    $t = if ($ok) { "montage $($m[1]) : écrit" } else { "montage $($m[1]) : source absente ($($m[0] -join ', ')) ; copier la capture de référence dans godot\captures\" }
+    $t = if ($ok) { "montage $($m[1]) : écrit" } else { "montage $($m[1]) : source absente ($($m[0] -join ', '))" }
     Write-Host $t; $t | Out-File $journal -Append -Encoding utf8
-}$apres = Empreinte
+}
+$apres = Empreinte
 $t = "user:// : sauvegarde du joueur {0} (avant {1}, après {2})" -f $(if ($avant -eq $apres) { "inchangée" } else { "MODIFIÉE" }), $avant.Substring(0, [Math]::Min(12, $avant.Length)), $apres.Substring(0, [Math]::Min(12, $apres.Length))
 if ($avant -ne $apres) { $echecs++ }
 Write-Host $t; $t | Out-File $journal -Append -Encoding utf8
