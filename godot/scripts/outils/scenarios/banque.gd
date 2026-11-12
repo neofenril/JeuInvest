@@ -48,8 +48,23 @@ func jouer(etape: String) -> void:
 			await sc.delai(0.8)
 			if etape == "releve":
 				Partie.changer_vitesse(0)
-				jeu.toucher_notif(jeu.dernier_releve)
+				# CA-I2 (D6) : frais et manque à gagner fabriqués dont les arrondis tombent mal (416,6 + 41,6 = 458,2)
+				var n: Dictionary = jeu.dernier_releve.duplicate()
+				n["frais_total"] = Produits.f(416.6)
+				n["manque"] = Produits.f(41.6)
+				n["texte"] = "Relevé fabriqué pour la capture (arrondis) : 416,60 F de frais et 41,60 F de gains manqués, soit 458,20 F exactement."
+				jeu.toucher_notif(n)
 				await sc.delai(0.8)
+				var chiffres := func(nom: String) -> String:
+					var l := modales.courant.find_child(nom, true, false) if is_instance_valid(modales.courant) else null
+					if l == null:
+						return "?"
+					var t := ""
+					for ch in (l as Label).text:
+						if ch >= "0" and ch <= "9":
+							t += ch
+					return t
+				print("UI releve frais=%s manque=%s total=%s" % [chiffres.call("Frais"), chiffres.call("Manque"), chiffres.call("Total")])
 			print("Relevé : ", jeu.dernier_releve.get("texte", "?"))
 		"carnet_pel", "automatique", "automatique_pel":
 			sc.aller_a(Dates.lire("1986-12"), true)

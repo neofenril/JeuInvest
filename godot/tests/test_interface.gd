@@ -304,6 +304,15 @@ func _test_demo_complete(actif: bool) -> void:
 			releve_ok = await _attendre_genre("info")
 			_fermer("fermer")
 		_verifier("%s : relevé de décembre affiché (frais payés depuis le début (cumul) : %s)" % [nom, Format.montant(frais, e.ab_courant())], releve_ok)
+		# Lot 03, D6 (m9) : total = somme des valeurs affichées ; cas fabriqués dont les arrondis tombent mal
+		for cas: Array in [[416.6, 41.6, 417, 42, 459], [100.0, 200.0, 100, 200, 300], [1234.4, 0.4, 1234, 0, 1234], [999.6, 0.6, 1000, 1, 1001]]:
+			var nf := {"titre": "Relevé", "texte": "Relevé fabriqué (arrondis).", "frais_total": Produits.f(cas[0]), "manque": Produits.f(cas[1])}
+			modales.releve(nf, e.ab_courant())
+			var vu := await _attendre_genre("info")
+			var lus := [_chiffres_case("Frais"), _chiffres_case("Manque"), _chiffres_case("Total")]
+			_fermer("fermer")
+			_verifier("%s : relevé %s F + %s F affiché %s (attendu %d + %d = %d, somme des affichés)" % [nom, cas[0], cas[1], lus, cas[2], cas[3], cas[4]],
+				vu and lus == [cas[2], cas[3], cas[4]])
 	var bilan := Bilan.calculer(e)
 	modales.fin_demo(e)
 	var fin_ok := await _attendre_genre("fin")
@@ -461,6 +470,20 @@ func _attendre_genre(genre: String) -> bool:
 
 
 ## Ferme la modale ouverte avec le choix id ; renvoie [genre, id] reçu par choix_fait (signal synchrone).
+## Chiffres affichés dans la case « nom » de la fenêtre ouverte (grille des frais du relevé), -1 si absente.
+func _chiffres_case(nom: String) -> int:
+	if not is_instance_valid(modales.courant):
+		return -1
+	var l := modales.courant.find_child(nom, true, false) as Label
+	if l == null:
+		return -1
+	var s := ""
+	for ch in l.text:
+		if ch >= "0" and ch <= "9":
+			s += ch
+	return int(s) if s != "" else -1
+
+
 func _fermer(id: String) -> Array:
 	_recu.clear()
 	modales.fermer(id)
