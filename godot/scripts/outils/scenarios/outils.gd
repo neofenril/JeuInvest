@@ -87,6 +87,7 @@ func _integrale(jeu: Node, saut := false) -> void:
 			"courrier":
 				modales.fermer(str(Partie.etat.contenu_modale()["choix"][0]["id"]))
 			"projet":
+				_fiches["projet"] = int(_fiches.get("projet", 0)) + 1
 				# Projet du foyer (Modales.projet) : jour J -> réaliser si possible, sinon le premier choix actif
 				var mpj := modales.etat_projet()
 				var voulu := ""
@@ -102,6 +103,7 @@ func _integrale(jeu: Node, saut := false) -> void:
 					if mpj.phase == "conclusion":
 						mpj.passer()
 			"carte":
+				_fiches["carte"] = int(_fiches.get("carte", 0)) + 1
 				# Carte du foyer (Modales.carte) : le premier choix payable, puis la conclusion est passée d'un toucher
 				var mc := modales.etat_carte()
 				for id: String in mc.ordre:
@@ -116,10 +118,11 @@ func _integrale(jeu: Node, saut := false) -> void:
 	var e := Partie.etat
 	if saut:
 		print("UI saut bilan arrets=%d sans_modale=%d fin=%d vitesses_ok=%d/%d vitesses_ecarts=%d" % [_arrets, _sans_modale, _arret_fin, _vitesses_ok, _vitesses_vues, _vitesses_vues - _vitesses_ok])
-	print("Intégrale : modales vues %s, fin = %s, mois = %s, patrimoine = %s, interruptions = %d, frais = %s, dividendes = %s, cartes jouées = %d, durée %.0f s à ×3" % [vus, e.fin, Dates.texte(e.ab_courant()),
-		Format.montant(e.patrimoine(e.joueur), e.ab_courant()), int(e.banque.get("interruptions", 0)), Format.montant(e.frais_payes(), e.ab_courant()), Format.montant(e.dividendes_recus(), e.ab_courant()), e.cartes_jouees().size(), (Time.get_ticks_msec() - t0) / 1000.0])
+	print("Intégrale : modales vues %s, fin = %s, mois = %s, patrimoine = %s, interruptions = %d, frais = %s, dividendes = %s, cartes jouées = %d, projets réalisés = %d / %d, fiches %s, durée %.0f s à ×3" % [vus, e.fin, Dates.texte(e.ab_courant()),
+		Format.montant(e.patrimoine(e.joueur), e.ab_courant()), int(e.banque.get("interruptions", 0)), Format.montant(e.frais_payes(), e.ab_courant()), Format.montant(e.dividendes_recus(), e.ab_courant()), e.cartes_jouees().size(), e.projets_passes().filter(func(p: Dictionary) -> bool: return str(p["statut"]).begins_with("realise")).size(), e.projets_passes().size(), str(_fiches), (Time.get_ticks_msec() - t0) / 1000.0])
 
 
+var _fiches := {}             # fiches ouvertes par Modales.carte / Modales.projet ("RUE fiche … appel=modales")
 var _arrets := 0
 var _sans_modale := 0
 var _arret_fin := 0
