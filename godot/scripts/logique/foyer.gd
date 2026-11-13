@@ -23,6 +23,7 @@ extends RefCounted
 const EPS := 0.005
 const DECALAGE_GRAINE := 2000003
 const PICTOS := {1: "contente", 0: "neutre", -1: "fachee"}
+const CHOIX_AUCUN := "aucun"   # lot 04 (D1) : sortie d'une carte dont aucun choix n'est payable
 
 
 static func donnees() -> Dictionary:
@@ -80,15 +81,47 @@ static func apres_chargement(e: EtatPartie, avait_foyer: bool) -> void:
 		e.foyer["creneaux"] = {}
 
 
+## Lot 04 (D1) : réponse d'un ordre débiteur du joueur refusé pendant une carte ou un projet (rien ne bouge).
+static func refus_ordre() -> Dictionary:
+	return {"ok": false, "refus": "carte", "msg": str(donnees().get("ordre_refuse", "Réglez d'abord la carte du foyer."))}
+
+
 # =====================================================================
-# Projets (lot 04) : conditions toujours fausses tant qu'ils n'existent pas (D14)
+# Projets (lot 04, D6) : conditions réelles, vraies seulement projets allumés (Projets)
 # =====================================================================
 
-static func _projet_choisi(_e: EtatPartie, _id: String) -> bool:
-	return false
+## Le projet 2 (ou 1) choisi est-il l'option id (« P2A ») ?
+static func _projet_choisi(e: EtatPartie, id: String) -> bool:
+	return Projets.option_choisie(e, id)
 
 
-static func _echeance_projet_en(_e: EtatPartie, _ab: int) -> bool:
+## Une échéance de projet tombe-t-elle au mois absolu ab ?
+static func _echeance_projet_en(e: EtatPartie, ab: int) -> bool:
+	return Projets.echeance_en(e, ab - e.mk.ab_debut)
+
+
+## Une interruption datée au mois mm ferait-elle perdre toute sa fenêtre à un créneau de carte encore à venir ?
+## (utilisé pour placer le report d'un projet : D2 / R-CADENCE, les cartes ne doivent pas être sacrifiées sans besoin)
+static func fenetre_condamnee(e: EtatPartie, mm: int) -> bool:
+	if not actif(e):
+		return false
+	if Projets.choix_condamne(e, mm):
+		return true
+	for cr: Dictionary in donnees()["creneaux"]:
+		var s: Dictionary = e.foyer["creneaux"].get(str(cr["id"]), {})
+		if s.is_empty() or not (s["etat"] in ["attente", "en_file"]):
+			continue
+		var deb := maxi(e.m, _mois_de(e, cr["fenetre"][0]))
+		var fin := _mois_de(e, cr["fenetre"][1])
+		var touche := false
+		var libre := false
+		for x in range(deb, fin + 1):
+			if absi(x - mm) <= 1:
+				touche = true
+			else:
+				libre = true
+		if touche and not libre:
+			return true
 	return false
 
 
@@ -185,22 +218,27 @@ static func _mois_de(e: EtatPartie, d: String) -> int:
 	return Dates.lire(d) - e.mk.ab_debut
 
 
-## Interruption datée connue à mm − 1, mm ou mm + 1 (le créneau ne pourrait pas partir à mm).
-static func _bloque(e: EtatPartie, mm: int) -> bool:
-	return Cadence.date_connue(e, mm - 1) or Cadence.date_connue(e, mm) or Cadence.date_connue(e, mm + 1)
+## Interruption datée connue à mm − 1, mm ou mm + 1 (le créneau ne pourrait pas partir à mm). Lot 04 (D2) : les
+## événements de vie aléatoires déjà tirés comptent aussi (carte → vie : un coup dur garde sa pause, mais la carte
+## glisse d'abord ailleurs). strict faux : le mois mm + 1 ne compte que pour les interruptions datées « classiques »
+## (repli quand toute la fenêtre est bloquée : mieux vaut « carte puis coup dur » qu'une carte abandonnée).
+static func _bloque(e: EtatPartie, mm: int, strict := true) -> bool:
+	if Cadence.date_connue_carte(e, mm - 1) or Cadence.date_connue_carte(e, mm):
+		return true
+	return Cadence.date_connue_carte(e, mm + 1) if strict else Cadence.date_connue(e, mm + 1)
 
 
 ## Mois à partir duquel la carte du créneau attend dans la file (D14).
 static func _depart(e: EtatPartie, cr: Dictionary) -> int:
 	var deb := _mois_de(e, cr["fenetre"][0])
 	var p := _mois_de(e, cr["prefere"])
-	if not _bloque(e, p):
-		return p
-	for mm in range(p - 1, deb - 1, -1):
-		if not _bloque(e, mm):
-			return mm
+	for strict in [true, false]:
+		if not _bloque(e, p, strict):
+			return p
+		for mm in range(p - 1, deb - 1, -1):
+			if not _bloque(e, mm, strict):
+				return mm
 	return p
-
 
 static func _item_en_file(e: EtatPartie, sid: String) -> Dictionary:
 	for it: Dictionary in e.file:
@@ -232,7 +270,7 @@ static func preparer(e: EtatPartie) -> void:
 				continue
 			if e.m < _mois_de(e, cr["fenetre"][0]) or e.m < _depart(e, cr):
 				continue
-			it = {"kind": "carte", "id": "", "creneau": sid, "m": e.m, "prio": 6, "source": "maison"}
+			it = {"kind": "carte", "id": "", "creneau": sid, "m": e.m, "prio": 6, "source": "maison", "fin_fenetre": fin, "fixe": bool(cr.get("fixe", false))}
 			e.file.append(it)
 			s["etat"] = "en_file"
 		elif it.is_empty():
@@ -260,6 +298,8 @@ static func _carte_pour(e: EtatPartie, cr: Dictionary, s: Dictionary) -> String:
 	var liste := [str(s["carte"])]
 	for x in s.get("remplacantes", []):
 		liste.append(str(x))
+	if cr.has("si_projet") and _projet_choisi(e, str(cr["si_projet"])):
+		liste = _candidates_si_projet(e, cr)
 	for id: String in liste:
 		var c := carte(id)
 		if c.is_empty() or (bool(c.get("requiert_enfant", false)) and e.enfants <= 0):
@@ -267,6 +307,26 @@ static func _carte_pour(e: EtatPartie, cr: Dictionary, s: Dictionary) -> String:
 		if _payable(e, c, "a") or _payable(e, c, "b"):
 			return id
 	return ""
+
+
+## S7 quand le projet 2 est P2A (docs/15 §2.4) : « l'autre » de C09 / C10, c'est-à-dire les candidates_si_projet
+## pas encore jouées, celle tirée par un autre créneau en dernier.
+static func _candidates_si_projet(e: EtatPartie, cr: Dictionary) -> Array:
+	var jouees := (e.foyer.get("jouees", []) as Array).map(func(x: Dictionary) -> String: return str(x["id"]))
+	var tirees := []
+	for sid: String in e.foyer.get("creneaux", {}):
+		if sid != str(cr["id"]):
+			tirees.append(str(e.foyer["creneaux"][sid].get("carte", "")))
+	var out := []
+	var apres := []
+	for x in cr.get("candidates_si_projet", []):
+		if jouees.has(str(x)):
+			continue
+		if tirees.has(str(x)):
+			apres.append(str(x))
+		else:
+			out.append(str(x))
+	return out + apres
 
 
 ## Le créneau joué juste avant (dans l'ordre des créneaux) était-il C00 ?
@@ -315,10 +375,16 @@ static func _picto(h: Variant) -> String:
 	return str(PICTOS.get(clampi(int(h), -1, 1), "neutre"))
 
 
+## Gabarits d'un texte de carte : {prix_a}, {prix_b}, {prenoms} et les valeurs propres à la carte (« gabarits » :
+## { "promesse": "30 % » }), pour qu'aucun chiffre ne soit écrit dans les textes (lot 04, D3).
 static func _remplir(e: EtatPartie, t: String, c: Dictionary) -> String:
 	var a := e.ab_courant()
-	return Format.gabarit(t, {"prix_a": Format.entier(prix(e, c, "a"), a), "prix_b": Format.entier(prix(e, c, "b"), a),
-		"prenoms": Banquier.prenoms_enfants(e)})
+	var vals := {"prix_a": Format.entier(prix(e, c, "a"), a), "prix_b": Format.entier(prix(e, c, "b"), a),
+		"prenoms": Banquier.prenoms_enfants(e)}
+	var propres: Dictionary = c.get("gabarits", {})
+	for k in propres:
+		vals[k] = str(propres[k])
+	return Format.gabarit(t, vals)
 
 
 static func texte_carte(e: EtatPartie, c: Dictionary) -> String:
@@ -349,9 +415,14 @@ static func contenu(e: EtatPartie) -> Dictionary:
 		"disponible": dispo, "choix": ch}
 
 
+## « aucun » (lot 04, D1) n'est accepté que si aucun des deux choix n'est payable.
 static func choix_valide(e: EtatPartie, choix_id: String) -> bool:
 	var c := carte(str(e.modale.get("id", "")))
-	return not c.is_empty() and choix_id in ["a", "b"] and _payable(e, c, choix_id)
+	if c.is_empty():
+		return false
+	if choix_id == CHOIX_AUCUN:
+		return not _payable(e, c, "a") and not _payable(e, c, "b")
+	return choix_id in ["a", "b"] and _payable(e, c, choix_id)
 
 
 ## Choix par défaut (resolution_auto) : le moins cher payable (le plus grand montant signé).
@@ -368,6 +439,8 @@ static func choix_politique(e: EtatPartie, politique: String) -> String:
 	var mb := montant(e, c, "b")
 	var pa := _payable(e, c, "a")
 	var pb := _payable(e, c, "b")
+	if not pa and not pb:
+		return CHOIX_AUCUN   # filet (D1) : « Pas les moyens ce mois-ci »
 	if not pa:
 		return "b"
 	if not pb:
@@ -386,7 +459,13 @@ static func consequence(e: EtatPartie, c: Dictionary, k: String) -> String:
 		var vf := -mt * pow(1.0 + taux / 100.0, float(e.m_fin - e.m) / 12.0)
 		return Format.gabarit(str(donnees()["consequence_depense"]), {"taux": Banquier.taux_txt(taux), "montant": Format.entier(-mt, a),
 			"vf": Format.entier(vf, a), "annee": str(Dates.annee(e.ab_de(e.m_fin)))})
-	if str(c["type"]) == "conso" and c[k].has("replique"):
+	# Lot 04 (D4, docs/23 G1.3) : un revenu montre la somme reçue puis la réplique ; sinon la réplique de Sylvie
+	if str(c[k]["sens"]) == "revenu" and mt > EPS and c[k].has("replique"):
+		var gab := str(donnees().get("gabarits", {}).get("consequence_revenu", ""))
+		if gab == "":
+			return str(c[k]["replique"])
+		return Format.gabarit(gab, {"montant": Format.entier(mt, a), "replique": str(c[k]["replique"])})
+	if c[k].has("replique"):
 		return str(c[k]["replique"])
 	return _remplir(e, str(c["pourquoi"]), c)
 
@@ -398,6 +477,8 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 	var id := str(it.get("id", ""))
 	var c := carte(id)
 	var a := e.ab_courant()
+	if choix_id == CHOIX_AUCUN:
+		return _resoudre_aucun(e, c, vu)
 	var mt := montant(e, c, choix_id)
 	var notifs := []
 	# Paiement : compte courant puis Livret A
@@ -440,11 +521,32 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 		"humeur_apres": humeur_visible(e), "notifs": notifs}
 
 
+## Filet (lot 04, D1) : aucun choix payable (disponible tombé sous les deux prix) : la carte se ferme sans rien
+## payer ni changer l'humeur ; elle compte comme jouée (choix « aucun »).
+static func _resoudre_aucun(e: EtatPartie, c: Dictionary, vu: Dictionary) -> Dictionary:
+	var it := e.modale
+	var h := humeur_visible(e)
+	var cons := str(donnees().get("pas_les_moyens", "Pas les moyens ce mois-ci."))
+	var s: Dictionary = e.foyer["creneaux"].get(str(it.get("creneau", "")), {})
+	if not s.is_empty():
+		s["etat"] = "joue"
+		s["jouee"] = str(it.get("id", ""))
+		s["m"] = e.m
+	(e.foyer["jouees"] as Array).append({"id": str(it.get("id", "")), "creneau": str(it.get("creneau", "")), "titre": str(c.get("titre", "")),
+		"choix": CHOIX_AUCUN, "libelle": cons.trim_suffix("."), "montant": 0.0, "humeur_effet": 0, "picto": "neutre", "m": e.m, "ab": e.ab_courant()})
+	vu["consequence"] = cons
+	vu["montant_choisi"] = 0.0
+	vu["choix_libelle"] = cons.trim_suffix(".")
+	return {"choix": CHOIX_AUCUN, "kind": "carte", "montant": 0.0, "consequence": cons, "humeur_avant": h, "humeur_apres": h, "notifs": []}
+
+
 ## Entrée d'historique d'une carte (appelé par EtatPartie._historiser_modale) : montant du choix, ligne de conséquence.
 static func completer_historique(entree: Dictionary, c: Dictionary) -> void:
 	entree["montant"] = float(c.get("montant_choisi", 0.0))
 	entree["a_montant"] = true
 	entree["resume"] = EtatPartie.resume_texte(str(c.get("consequence", "")))
+	if c.has("choix_libelle"):
+		entree["choix"] = str(c["choix_libelle"])
 
 
 # =====================================================================
