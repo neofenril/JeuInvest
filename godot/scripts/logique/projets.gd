@@ -245,17 +245,13 @@ static func _lignes(e: EtatPartie) -> Array:
 	return out
 
 
-## Ordre de vente : rentabilité croissante ; à égalité, ordre « egalite » de projets.json, puis l'identifiant.
+## Ordre de vente (D7 bis) : rentabilité croissante ; à égalité, la plus grosse ligne (net) d'abord, puis l'identifiant.
 static func _avant_vente(x: Dictionary, z: Dictionary) -> bool:
 	if absf(float(x["perf"]) - float(z["perf"])) > 1e-9:
 		return float(x["perf"]) < float(z["perf"])
-	var egalite: Array = donnees()["egalite"]
-	var gx := egalite.find(x["genre"])
-	var gz := egalite.find(z["genre"])
-	if gx != gz:
-		return gx < gz
+	if absf(float(x["net"]) - float(z["net"])) > 1e-9:
+		return float(x["net"]) > float(z["net"])
 	return str(x["id"]) < str(z["id"])
-
 
 ## Valeur nette de revente de tous les placements (frais, impôts et pénalités déduits).
 static func revendable(e: EtatPartie) -> float:
