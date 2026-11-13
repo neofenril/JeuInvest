@@ -421,6 +421,117 @@ static func _miroirs(nom: String, poses: Array) -> void:
 		GrillePixel.enregistrer("miroir/%s_%s" % [nom, pose], img, Vector2i(img.get_width() - 1 - o.x, o.y))
 
 
+## Tricycle d'enfant rouge (22 × 18), guidon à droite, roue avant plus grande.
+static func tricycle() -> Image:
+	var img := M.vide(22, 18)
+	P._ellipse(img, 16.0, 12.5, 5.0, 5.0, ["gris_pierre", "ardoise", "nuit", "encre"], 0.0)
+	M.px(img, 16, 12, "zinc_clair")
+	P._ellipse(img, 4.0, 14.5, 3.2, 3.2, ["gris_pierre", "ardoise", "nuit", "encre"], 0.0)
+	P._ellipse(img, 9.0, 14.5, 3.2, 3.2, ["gris_pierre", "ardoise", "nuit", "encre"], 0.0)
+	for t in 12:
+		M.rect(img, 4 + t, 13 - t / 3, 2, 2, "rouge_auvent")      # cadre
+	M.rect(img, 3, 8, 6, 2, "nuit")                               # selle
+	M.rect(img, 15, 2, 2, 9, "rouge_auvent")                      # fourche
+	M.rect(img, 12, 1, 7, 2, "nuit")                              # guidon
+	M.px(img, 12, 1, "blanc_chaud")
+	M.px(img, 18, 1, "blanc_chaud")
+	return img
+
+
+## Niche de bois (30 × 28) : toit à deux pans, entrée sombre, nom du chien sur une planchette.
+static func niche() -> Image:
+	var img := M.vide(30, 28)
+	M.rect(img, 3, 11, 24, 17, "bois")
+	M.rect(img, 3, 11, 3, 17, "caramel")
+	M.rect(img, 24, 11, 3, 17, "bois_sombre")
+	for y in range(13, 28, 4):
+		M.rect(img, 3, y, 24, 1, "bois_sombre")
+	P._poly(img, PackedVector2Array([Vector2(0, 12), Vector2(15, 0), Vector2(30, 12), Vector2(27, 14), Vector2(15, 4), Vector2(3, 14)]), "rouge_auvent")
+	M.rect(img, 10, 16, 10, 12, "encre")
+	P._ellipse(img, 15.0, 16.5, 5.0, 3.0, ["nuit", "nuit", "encre", "encre"], 0.0)
+	M.rect(img, 11, 7, 8, 3, "creme")
+	return img
+
+
+## Chien assis de profil vers la gauche (22 × 18), pelage caramel, oreille tombante ; queue en 2 images.
+static func chien(queue := 0) -> Image:
+	var img := M.vide(22, 18)
+	P._ellipse(img, 12.0, 12.0, 6.5, 5.5, ["caramel", "bois", "bois_sombre", "bois_sombre"], 0.3)    # corps assis
+	P._ellipse(img, 6.0, 6.0, 4.5, 4.0, ["caramel", "bois", "bois_sombre", "bois_sombre"], 0.4)      # tête
+	M.rect(img, 1, 6, 3, 3, "bois")                                                                  # museau
+	M.px(img, 1, 6, "encre")                                                                         # truffe
+	M.px(img, 5, 5, "encre")                                                                         # œil
+	M.rect(img, 7, 3, 3, 6, "bois_sombre")                                                           # oreille
+	M.rect(img, 7, 13, 2, 5, "bois")                                                                 # patte avant
+	M.rect(img, 7, 17, 3, 1, "bois_sombre")
+	M.rect(img, 5, 9, 4, 1, "rouge_auvent")                                                          # collier
+	if queue == 0:
+		M.rect(img, 18, 7, 2, 5, "bois")
+		M.px(img, 19, 6, "caramel")
+	else:
+		M.rect(img, 18, 9, 3, 2, "bois")
+		M.px(img, 21, 8, "caramel")
+	return img
+
+
+## Antenne râteau sur le toit (26 × 24), mât et 5 brins.
+static func antenne() -> Image:
+	var img := M.vide(26, 24)
+	M.rect(img, 12, 2, 2, 22, "gris_pierre")
+	M.rect(img, 12, 2, 1, 22, "zinc_clair")
+	M.rect(img, 2, 6, 22, 1, "ardoise")
+	for x in range(3, 24, 4):
+		M.rect(img, x, 3, 1, 7, "gris_pierre")
+	M.rect(img, 6, 13, 14, 1, "ardoise")
+	for x in range(7, 20, 4):
+		M.rect(img, x, 11, 1, 5, "gris_pierre")
+	return img
+
+
+## Diplôme encadré (CNAM) posé sur l'appui, 10 × 12.
+static func diplome() -> Image:
+	var img := M.vide(10, 12)
+	M.rect(img, 0, 0, 10, 12, "bois_sombre")
+	M.rect(img, 1, 1, 8, 10, "blanc_chaud")
+	M.rect(img, 2, 3, 6, 1, "ardoise")
+	M.rect(img, 2, 5, 5, 1, "gris_pierre")
+	M.rect(img, 2, 7, 6, 1, "gris_pierre")
+	M.px(img, 6, 9, "rouge_auvent")
+	M.px(img, 7, 9, "or")
+	return img
+
+
+## Escargot sur le mur (9 × 7) : coquille en spirale, corps clair.
+static func escargot() -> Image:
+	var img := M.vide(9, 7)
+	P._ellipse(img, 5.0, 3.0, 3.5, 3.0, ["terre_cuite_claire", "caramel", "bois", "bois_sombre"], 0.3)
+	M.px(img, 5, 3, "bois_sombre")
+	M.px(img, 6, 2, "bois_sombre")
+	M.rect(img, 0, 5, 8, 2, "peau_ombre")
+	M.px(img, 0, 3, "peau_ombre")
+	M.px(img, 1, 4, "peau_ombre")
+	return img
+
+
+## Traces des cartes du foyer (lot 04, 03-V2, D11) : « objet/… », origine au milieu du bas.
+static func enregistrer_traces() -> void:
+	if GrillePixel.existe("objet/niche"):
+		return
+	enregistrer_objets()
+	var tri := tricycle()
+	GrillePixel.enregistrer("objet/tricycle", tri)
+	var deux := M.vide(48, 18)
+	M.coller(deux, tri, 0, 0)
+	M.coller(deux, tri, 26, 0)
+	GrillePixel.enregistrer("objet/tricycles", deux)
+	GrillePixel.enregistrer("objet/niche", niche())
+	for k in 2:
+		GrillePixel.enregistrer("objet/chien_%d" % (k + 1), chien(k))
+	GrillePixel.enregistrer("objet/antenne", antenne())
+	GrillePixel.enregistrer("objet/diplome", diplome())
+	GrillePixel.enregistrer("objet/escargot", escargot(), Vector2i(0, 0))
+
+
 ## Objets de la planche et des voisins : enfants, poussettes, vélo, panneau (« objet/… »).
 static func enregistrer_objets() -> void:
 	if GrillePixel.existe("objet/velo_1"):

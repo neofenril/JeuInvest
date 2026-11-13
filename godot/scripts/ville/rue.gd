@@ -291,6 +291,7 @@ static func generer() -> int:
 	for n in ["passant_1", "passant_2", "passant_3"]:
 		Voisins.enregistrer(n)
 	Edifices.enregistrer_objets()
+	Voisins.enregistrer_traces()           # traces des cartes du foyer (lot 04, 03-V2)
 	GrillePixel.enregistrer("ville/lampadaire", Facades.lampadaire(), Vector2i(7, 125))
 	GrillePixel.enregistrer("ville/bouche_incendie", Facades.bouche_incendie(), Vector2i(6, 20))
 	GrillePixel.enregistrer("ville/boite_poste", Facades.boite_poste(), Vector2i(6, 35))

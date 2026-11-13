@@ -1,7 +1,7 @@
 # Base de connaissances de dev-ville
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `developpeur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-11-12 (lot 03-V : enseignes, cartouches, départ figé, E6, §2 nonies).
+> Dernière mise à jour : 2026-11-12 (lot 04, 03-V2 : Sylvie, traces, carte, §2 decies).
 > Téléphone de référence (PX2) : 1440 × 648 → N = 2, R = 0,600, Gérard 76 px ; les mesures 1600 × 720 de §2 sont historiques.
 
 ## 1. Atelier pixel (`godot/scripts/pixel/`, conservé après PX0)
@@ -109,6 +109,15 @@
 - Captures : `camera_retour` → `_glissement.png` / `_retour.png` ; `pieces_or|fleche|dividende` → `_arrivee.png` ; `pieces_bascule` ; `pieces_dividende_jeu` (« RUE pieces dividende=absent » tant que 03-L n'est pas fusionné). `capture_ville.ps1` échoue aussi sur `pieces enseigne≠0`, `hors_libre≠0`, `regulier=non`.
 - Pièges : `Object.get("CONST")` ne lit pas une constante (`get_script().get_script_constant_map()`) ; `--script` : ne pas nommer `Sequences` (sa compilation tire les autoloads) → `load(...).new()` ; `git add` avec un chemin inexistant annule **tout** l'ajout (le commit part sans les fichiers).
 - Vu, non corrigé (hors périmètre ou à arbitrer) : au téléphone, en hors champ, le cartouche près de COMPTE recouvre encore une partie du panneau INDICE de la Gazette pendant 0,9 s (lisible, passager).
+
+## 2 decies. Lot 04, partie 03-V2 (Sylvie, traces, sortie de la carte, reports)
+
+- **Sylvie** (`personnages.sylvie(h, coucou)`, buste 27 × 32, fenêtre de Sylvie à gauche de la maison : x 21-60, y 99-147, appui y 147) : contente = yeux en ^, coudes écartés, coucou (`ville/sylvie_contente_coucou_1/2`), géraniums (`ville/geraniums`, appui gauche) ; fâchée = V doux d'1 px, paupière y 11, pupilles à gauche (= extérieur), bras croisés y 24-27, épaules − 1, rideau tiré 8 px (`ville/rideau_tire`, il s'arrête avant le visage). `maison.changer_humeur(h)` : clignement 0,15 s avec l'ancienne image puis la nouvelle ; `ville.regler_humeur_sylvie` passe dessus. `maison.image_sylvie()` pour les contrôles.
+- **Foyer** : `ville.suivre_foyer(e)` (connecté à `Partie.partie_commencee`, `mois_passe`, `modale_fermee` par `get_node_or_null("/root/Partie")`), `traces_foyer(e)` → `scripts/ville/traces_foyer.gd` (sans class_name : `calculer(actives, jouees, ab, jumeaux, escargots)` pure, `de_partie(e)`), `traces_dessinees()`. Façade (maison.gd, couche Bâtiments) : télé = lueur bleue couleurs **de jour** (variante NUIT trop sombre), antenne contre la cheminée, diplôme appui droit, escargot sur le mur de l'étage (en bas, Gérard le cachait). Trottoir : **la couche Sol est dessinée après les bâtiments** → poussette, tricycle, niche, chien sont des accessoires dans `trafic` (y 409, derrière les passants à 414).
+- **Carte** (`Sequences._sequence_carte`) : viser maison 0,35 s + porte 3 × 0,08 s (sortie mesurée 0,62 s) → `modales.carte` (has_method) sinon `courrier` ; boucle tant que `resoudre_modale` rend `{}` ; `conclure_carte` ; porte refermée.
+- **Cartouches** : `PiecesMois` D13 (total = revenus − titres nommés ; texte vide possible, filtré par `_flottants_pile`) ; `_flottants_pile` évite `ville.panneau_indice_ecran()` et les piles vivantes (`_piles` : rectangle balayé + fin) : plus haut d'abord (le bas porte les étiquettes), puis de côté, puis plus bas. Contrôle image par image des `PanelContainer` de `Juice.calque_effets` (`RUE flottant indice= chevauchements=`).
+- Captures : `-Telephone169` (`--telephone=169`). Une partie cartes allumées en capture : `sc.jeu.nouvelle_partie(cfg avec "cartes": true)`, `resolution_auto()`, `demarrer_direct(0)` ; `StrategieTest.politique_cartes`.
+- Graine 7, 12/1988 : dépenser = télé, antenne, tricycle, chien, escargot ; épargner et alterner = tricycle, chien (C02 et C07 jamais tirées avec cette graine : non vues en partie réelle, seulement dans les tests).
 
 ## 3. Décisions (étape A)
 

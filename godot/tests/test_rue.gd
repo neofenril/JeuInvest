@@ -255,6 +255,42 @@ func _initialize() -> void:
 	for h in 3:
 		ville.call("regler_humeur_sylvie", h)
 		_verifier(int(ville.call("humeur_sylvie")) == h, "Sylvie : humeur %d relue" % h)
+	# Lot 04 (03-V2) : changement d'humeur = clignement avec l'ancienne image, puis la nouvelle (docs/17 §4.2)
+	var mais: Node2D = ville.call("batiment", "maison")
+	ville.call("regler_humeur_sylvie", 1)
+	await create_timer(0.3).timeout
+	ville.call("regler_humeur_sylvie", 2)
+	await process_frame
+	var pendant: String = mais.call("image_sylvie")
+	await create_timer(0.3).timeout
+	_verifier(pendant == "ville/sylvie_neutre" and mais.call("image_sylvie") == "ville/sylvie_contrariee", "Sylvie (V1) : clignement avec l'ancienne image, puis la nouvelle", "%s puis %s" % [pendant, mais.call("image_sylvie")])
+	_verifier(GrillePixel.existe("ville/sylvie_contente_coucou_1") and GrillePixel.existe("ville/sylvie_contente_coucou_2") and GrillePixel.existe("ville/geraniums") and GrillePixel.existe("ville/rideau_tire"),
+		"Sylvie (V1) : coucou en 2 images, géraniums, rideau tiré")
+	# D10 : la ville suit le foyer ; cartes éteintes = Sylvie neutre, aucune trace
+	var e_off := EtatPartie.new()
+	e_off.demarrer(Donnees.config_demo(7))
+	var cfg_on := Donnees.config_demo(7)
+	cfg_on["cartes"] = true
+	var e_on := EtatPartie.new()
+	e_on.demarrer(cfg_on)
+	e_on.foyer["humeur"] = 3
+	(e_on.foyer["jouees"] as Array).append({"id": "C04", "choix": "a"})
+	(e_on.foyer["jouees"] as Array).append({"id": "C10", "choix": "b"})
+	(e_on.foyer["jouees"] as Array).append({"id": "C03", "choix": "a"})
+	ville.call("suivre_foyer", e_on)
+	await create_timer(0.3).timeout
+	var attendu: PackedStringArray = ville.call("traces_foyer", e_on)
+	var dessine: PackedStringArray = ville.call("traces_dessinees")
+	_verifier(int(ville.call("humeur_sylvie")) == 0 and mais.call("image_sylvie").begins_with("ville/sylvie_contente"), "D10 : cartes allumées, humeur +3 : Sylvie contente")
+	_verifier(Array(attendu) == ["tele", "antenne", "poussette", "chien"] and attendu == dessine, "D11 : traces calculées = traces dessinées (façade et trottoir)", "%s / %s" % [str(attendu), str(dessine)])
+	ville.call("suivre_foyer", e_off)
+	await create_timer(0.3).timeout
+	_verifier(int(ville.call("humeur_sylvie")) == 1 and (ville.call("traces_dessinees") as PackedStringArray).is_empty() and mais.call("image_sylvie") == "ville/sylvie_neutre",
+		"D10 : cartes éteintes : Sylvie neutre, aucune trace", str(ville.call("traces_dessinees")))
+	ville.call("suivre_foyer", null)
+	_verifier(int(ville.call("humeur_sylvie")) == 1, "D10 : suivre_foyer(null) ne change rien")
+	var pan: Rect2 = ville.call("panneau_indice_ecran")
+	_verifier(pan.size.x > 100.0 and pan.size.y > 30.0, "m1 : panneau INDICE de la Gazette connu à l'écran", str(pan))
 	# Voisins : chacun traverse et est libéré à la sortie
 	var noeuds: Array = []
 	for qui in consts["PERSONNAGES"]:

@@ -16,7 +16,9 @@ func _initialize() -> void:
 	_tests_regle()
 	_tests_cas_particuliers()
 	_tests_notifications()
+	_tests_une_notification()
 	_tests_releve()
+	_tests_fiche()
 	_tests_sauvegarde()
 	_mesure_aller_retour()
 	_reference_integrale()
@@ -185,18 +187,19 @@ func _tests_cas_particuliers() -> void:
 	verifier("docs/20 : action achetée au mois de détachement : rien avant le mois de détachement suivant", e2.dividendes_recus() == 0.0)
 	var r2 := _mois(e2)
 	verifier("docs/20 : … puis versement en mai 1988", _lignes_div(r2).size() == 1 and e2.dividendes_recus("elf") > 0.0)
-	# divNul fabriqué : Elf ne verse rien en 1987 ; notification neutre « pas de dividende »
+	# divNul fabriqué : Elf ne verse rien en 1987, L'Oréal verse : une seule notification (03-R, D1) qui nomme Elf
 	var info: Dictionary = e.mk.infos["elf"]
 	var e3 := _partie("1987-04")
 	_acheter(e3, ["elf", "loreal"], 5000.0)
 	info["divNul"] = [1987.0]
 	var r3 := _mois(e3)
 	info.erase("divNul")
-	var nul := _notifs(r3, "dividende_nul")
+	var div3 := _notifs(r3, "dividende")
 	verifier("CA-L2 : année listée dans divNul (fabriquée pour Elf en 1987) : 0 pour Elf, L'Oréal verse quand même",
 		_lignes_div(r3).size() == 1 and _lignes_div(r3)[0]["id"] == "loreal" and e3.dividendes_recus("elf") == 0.0)
-	verifier("divNul : notification neutre « Pas de dividende cette année » pour le titre détenu, sans montant",
-		nul.size() == 1 and nul[0]["id"] == "elf" and not nul[0].has("montant") and str(nul[0]["texte"]).begins_with("Elf ") and nul[0]["source"] == "banque", str(nul))
+	verifier("divNul + un titre versant (03-R, D1) : pas de notification « dividende_nul » à part ; la notification du dividende nomme Elf (nuls)",
+		_notifs(r3, "dividende_nul").is_empty() and div3.size() == 1 and div3[0]["nuls"] == [{"id": "elf", "nom": "Elf"}]
+		and str(div3[0]["texte"]).ends_with(" Elf : rien cette année."), str(div3[0]["texte"]) if div3.size() == 1 else "")
 	verifier("Peugeot dans les données : divNul = [1984, 1985, 1986] (docs/20 B2), taux_dividende nul ces années-là, 3,6 % en 1987",
 		e3.taux_dividende("peugeot", 1985) == 0.0 and e3.taux_dividende("peugeot", 1986) == 0.0 and is_equal_approx(e3.taux_dividende("peugeot", 1987), 3.6)
 		and is_equal_approx(e3.taux_dividende("elf", 1987), 5.1) and is_equal_approx(e3.taux_dividende("loreal", 1987), 2.1))
@@ -277,6 +280,56 @@ func _tests_notifications() -> void:
 
 
 # ---------------------------------------------------------------------
+# 03-R, CA-R2 : une seule notification de dividende par mois (D1)
+# ---------------------------------------------------------------------
+
+func _notifs_div(r: Dictionary) -> Array:
+	return (r["notifs"] as Array).filter(func(n: Dictionary) -> bool: return n.get("type", "") in ["dividende", "dividende_nul"])
+
+
+func _tests_une_notification() -> void:
+	# (a) Elf et Peugeot détenues en avril 1986 : Peugeot est en divNul en 1986
+	var a := _partie("1986-04")
+	_acheter(a, ["elf", "peugeot"], 5000.0)
+	var ra := _mois(a)
+	var na := _notifs_div(ra)
+	var ta := str(na[0]["texte"]) if na.size() == 1 else ""
+	print("    CA-R2 (a) mai 1986, Elf + Peugeot : « %s » (%d mots)" % [ta, Banquier.nb_mots(ta)])
+	verifier("CA-R2 (a) : Elf et Peugeot en mai 1986 : une seule notification, « dividende », premier, explication et « Peugeot : rien cette année », nuls = [Peugeot]",
+		na.size() == 1 and na[0]["type"] == "dividende" and na[0]["premier"] and ta.contains("Un dividende, c'est") and ta.contains("Peugeot : rien cette année")
+		and na[0]["nuls"] == [{"id": "peugeot", "nom": "Peugeot"}] and Banquier.nb_mots(ta) <= 60, ta)
+	var entrees := a.historique.filter(func(h: Dictionary) -> bool: return int(h["m"]) == a.m and h["source"] == "banque" and str(h["type"]) in ["dividende", "dividende_nul"])
+	verifier("CA-R2 (d) : une seule entrée d'historique (banque) pour les dividendes de mai 1986", entrees.size() == 1)
+	# (b) Peugeot seule : une seule notification « dividende_nul »
+	var b := _partie("1986-04")
+	_acheter(b, ["peugeot"], 5000.0)
+	var nb := _notifs_div(_mois(b))
+	var tb := str(nb[0]["texte"]) if nb.size() == 1 else ""
+	print("    CA-R2 (b) mai 1986, Peugeot seule : « %s » (%d mots)" % [tb, Banquier.nb_mots(tb)])
+	verifier("CA-R2 (b) : Peugeot seule en mai 1986 : une seule notification, « dividende_nul »",
+		nb.size() == 1 and nb[0]["type"] == "dividende_nul" and nb[0]["id"] == "peugeot" and tb.begins_with("Peugeot ") and Banquier.nb_mots(tb) <= 60, tb)
+	# (c) Elf seule : nuls vide, pas de « rien cette année »
+	var c := _partie("1986-04")
+	_acheter(c, ["elf"], 5000.0)
+	var nc := _notifs_div(_mois(c))
+	var tc := str(nc[0]["texte"]) if nc.size() == 1 else ""
+	print("    CA-R2 (c) mai 1986, Elf seule : « %s » (%d mots)" % [tc, Banquier.nb_mots(tc)])
+	verifier("CA-R2 (c) : Elf seule : une notification, nuls == [], texte sans « rien cette année »",
+		nc.size() == 1 and nc[0]["type"] == "dividende" and nc[0]["nuls"] == [] and not tc.contains("rien cette année") and Banquier.nb_mots(tc) <= 60, tc)
+	# Pire cas fabriqué : 3 titres versants + 1 nul, texte « premier » (L'Oréal en divNul en 1987)
+	var p := _partie("1987-04")
+	_acheter(p, TITRES, 5000.0)
+	var info: Dictionary = p.mk.infos["loreal"]
+	info["divNul"] = [1987.0]
+	var np := _notifs_div(_mois(p))
+	info.erase("divNul")
+	var tp := str(np[0]["texte"]) if np.size() == 1 else ""
+	print("    CA-R2 pire cas (3 versants + 1 nul, premier) : « %s » (%d mots)" % [tp, Banquier.nb_mots(tp)])
+	verifier("CA-R2 : pire cas fabriqué (3 titres versants + 1 nul, 1re notification) : une notification, ≤ 60 mots",
+		np.size() == 1 and np[0]["premier"] and (np[0]["lignes"] as Array).size() == 3 and tp.contains("L'Oréal : rien cette année") and Banquier.nb_mots(tp) <= 60, "%d mots" % Banquier.nb_mots(tp))
+
+
+# ---------------------------------------------------------------------
 # CA-L4 : relevé de décembre
 # ---------------------------------------------------------------------
 
@@ -295,9 +348,10 @@ func _tests_releve() -> void:
 		for n: Dictionary in _notifs(r, "dividende"):
 			nets += float(n["montant"])
 		rel = _releve(r)
-	var phrase := "Vos actions vous ont versé "
+	# Joueur passif sans Livret A avec des actions : 0 intérêt, des dividendes (cas 2 de 03-R, D2)
+	var phrase := "Pas d'intérêts cette année, mais "
 	verifier("CA-L4 : relevé de décembre 1987 : n[\"dividendes\"] = somme des nets de l'année, phrase présente, avec l'avoir fiscal (1re année)",
-		absf(float(rel.get("dividendes", -1.0)) - nets) < 1e-9 and nets > 0.0 and str(rel["texte"]).contains(phrase + Format.entier(nets, a.ab_courant()))
+		absf(float(rel.get("dividendes", -1.0)) - nets) < 1e-9 and nets > 0.0 and str(rel["texte"]).begins_with(phrase + Format.entier(nets, a.ab_courant()) + " de dividendes")
 		and str(rel["texte"]).contains("avoir fiscal") and rel["cls"] == "gain", str(rel.get("texte", "")))
 	var rel2 := {}
 	while a.fin == "" and rel2.is_empty():
@@ -305,14 +359,83 @@ func _tests_releve() -> void:
 	if rel2.is_empty():
 		rel2 = {"texte": "", "dividendes": -1.0}
 	verifier("Relevé de décembre 1988 : phrase des dividendes, sans répéter l'avoir fiscal",
-		float(rel2["dividendes"]) > 0.0 and str(rel2["texte"]).contains(phrase) and not str(rel2["texte"]).contains("avoir fiscal"), str(rel2["texte"]))
+		float(rel2["dividendes"]) > 0.0 and str(rel2["texte"]).begins_with(phrase) and not str(rel2["texte"]).contains("avoir fiscal"), str(rel2["texte"]))
 	# Une année sans dividende : joueur passif, décembre 1987
 	var p := _partie("1987-11")
 	var rel3 := {}
 	while p.fin == "" and rel3.is_empty():
 		rel3 = _releve(_mois(p))
 	verifier("CA-L4 : relevé d'une année sans dividende : n[\"dividendes\"] = 0, phrase absente",
-		float(rel3.get("dividendes", -1.0)) == 0.0 and not str(rel3["texte"]).contains(phrase))
+		float(rel3.get("dividendes", -1.0)) == 0.0 and not str(rel3["texte"]).contains("dividendes"))
+	_tests_releve_4_cas()
+
+
+## 03-R, CA-R3 : relevé fabriqué dans les 4 cas (intérêts 0 / > 0, dividendes 0 / > 0), décembre 1987.
+func _tests_releve_4_cas() -> void:
+	var base := _partie("1987-12")
+	var msg: Dictionary = Banquier.donnees()["messages"]
+	var a := base.ab_courant()
+	var i_eur := Produits.f(1234.4)
+	var d_eur := Produits.f(345.6)
+	var vals_i := {"interets": Format.entier(i_eur, a)}
+	var vals_d := {"dividendes": Format.entier(d_eur, a)}
+	var avoir := Format.gabarit(str(msg["releve_avoir_fiscal"]), {"taux": "16"})
+	var cas := [[0.0, 0.0], [0.0, d_eur], [i_eur, 0.0], [i_eur, d_eur]]
+	var attendus := [str(msg["releve_sans_interets"]),
+		Format.gabarit(str(msg["releve_dividendes_sans_interets"]), vals_d) + avoir,
+		Format.gabarit(str(msg["releve_interets"]), vals_i),
+		Format.gabarit(str(msg["releve_interets"]), vals_i) + Format.gabarit(str(msg["releve_dividendes"]), vals_d) + avoir]
+	var ok := true
+	var ok_champs := true
+	var detail := ""
+	for k in 4:
+		var e := _copie(base)
+		e.banque["interets_annee"] = cas[k][0]
+		e.banque["dividendes_annee"] = cas[k][1]
+		var n := Banquier.releve(e)
+		var t := str(n["texte"])
+		print("    CA-R3 cas %d : « %s »" % [k + 1, t])
+		if not t.begins_with(attendus[k]) or (k == 1 and (t.contains("Aucun intérêt") or t.contains("Vos actions vous ont versé"))):
+			ok = false
+			detail += "cas %d : %s ; " % [k + 1, t]
+		if float(n["dividendes"]) != cas[k][1] or float(n["interets"]) != cas[k][0] or n["cls"] != ("neutre" if k == 0 else "gain"):
+			ok_champs = false
+	verifier("CA-R3 : relevé en 4 cas : (1) nouveau texte sans intérêt ni dividende ; (2) une seule phrase « Pas d'intérêts cette année, mais … » + avoir fiscal, jamais « Aucun intérêt » ni la phrase des dividendes en plus ; (3) et (4) inchangés",
+		ok, detail)
+	verifier("CA-R3 : champs dividendes, interets et cls du relevé inchangés dans les 4 cas", ok_champs)
+	verifier("CA-R3 : textes du relevé ≤ 60 mots une fois assemblés (cas 4, le plus long)", Banquier.nb_mots(attendus[3]) <= 60, "%d mots" % Banquier.nb_mots(attendus[3]))
+
+
+# ---------------------------------------------------------------------
+# 03-R, CA-R4 : phrase de la fiche d'une action (D4)
+# ---------------------------------------------------------------------
+
+func _tests_fiche() -> void:
+	var regle := "Dividende : versé en mai, si l'entreprise en distribue cette année-là."
+	var e := _partie("1986-04")
+	_acheter(e, ["elf", "peugeot"], 5000.0)
+	var avant := Banquier.texte_fiche_dividende(e, "elf")
+	_mois(e)
+	var apres := Banquier.texte_fiche_dividende(e, "elf")
+	var peugeot := Banquier.texte_fiche_dividende(e, "peugeot")
+	print("    CA-R4 fiche Elf avant : « %s » ; après mai 1986 : « %s » ; Peugeot 1986 : « %s »" % [avant, apres, peugeot])
+	verifier("CA-R4 : fiche d'Elf avant tout versement et de Peugeot en 1986 (année sans dividende) : « %s »" % regle, avant == regle and peugeot == regle)
+	verifier("CA-R4 : fiche d'Elf après versement : « Dividendes reçus : » + Format.entier(dividendes_recus)",
+		apres == "Dividendes reçus : " + Format.entier(e.dividendes_recus("elf"), e.ab_courant()) and e.dividendes_recus("elf") > 0.0, apres)
+	var vides := true
+	for id in ["livret", "sicav", "pel", "emprunt", "av", "cc"]:
+		if Banquier.texte_fiche_dividende(e, id) != "":
+			vides = false
+	verifier("CA-R4 : texte vide pour le Livret A, la SICAV, le PEL, l'emprunt d'État, l'assurance-vie", vides)
+	var msg: Dictionary = Banquier.donnees()["messages"]
+	var ok_mots := true
+	for k: String in msg:
+		if k.begins_with("fiche_") or k.begins_with("dividendes"):
+			var t := str(msg[k]).to_lower()
+			for mot in ["chaque année", "régulier", "toujours"]:
+				if t.contains(mot):
+					ok_mots = false
+	verifier("CA-R4 : aucune clé fiche_* ni dividendes* ne contient « chaque année », « régulier » ou « toujours » (docs/22 §1)", ok_mots)
 
 
 # ---------------------------------------------------------------------

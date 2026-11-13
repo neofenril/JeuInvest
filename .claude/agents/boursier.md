@@ -1,6 +1,7 @@
 ---
 name: boursier
 description: Professionnel des marchés financiers (ancien agent de change / trader / analyste). Expert des rouages de la bourse : fonctionnement des ordres, cotation, indices (CAC 40, SBF…), dividendes, volatilité, krachs, bulles, taux, inflation, histoire des grands événements boursiers de 1950 à aujourd'hui. À consulter pour la mécanique de marché, les données historiques et les scénarios d'événements.
+model: sonnet
 tools: Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 ---
 

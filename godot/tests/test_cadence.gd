@@ -170,7 +170,7 @@ func _tests_cadence_cartes() -> void:
 				var dm := int(x["m"]) - int(p["m"])
 				if dm == 0:
 					ok_un = false
-				if dm == 1 and not (p["kind"] == "marche" and x["kind"] == "vie" and x["motif"] == "scripte"):
+				if dm == 1 and not (p["kind"] == "marche" and x["kind"] == "vie" and x["motif"] == "scripte") and not (p["kind"] == "carte" and x["kind"] == "vie"):
 					ok_suite = false
 					detail += "%s g%d %s : %s puis %s ; " % [politique, g, Dates.texte_court(e.ab_de(int(x["m"]))), p["id"], x["id"]]
 			var datees := {}
@@ -198,7 +198,7 @@ func _tests_cadence_cartes() -> void:
 	if detail != "":
 		print("    ", detail.left(2000))
 	verifier("CA-FO2 : cartes allumées, 40 graines × 3 politiques (depenser, epargner, alterner) : 8 à 10 cartes par partie (C00 comprise), parties finies", ok_nb, resume)
-	verifier("CA-FO2 : une interruption par mois au plus ; jamais deux mois de suite (hors krach → panne)", ok_un and ok_suite)
+	verifier("CA-FO2 : une interruption par mois au plus ; jamais deux mois de suite (hors krach → panne et carte → vie, lot 04 D2)", ok_un and ok_suite)
 	verifier("CA-FO2 : jamais de carte (ni d'autre flexible) au mois qui précède une interruption datée", ok_anticip)
 	verifier("CA-FO2 : dates imposées inchangées (PEL ≤ 07/1984, naissance, Saint-Gobain, krach, panne, héritage)", ok_dates)
 	verifier("CA-FO2 : classiques ≤ %d, cartes ≤ %d et comptées dans leur catégorie" % [Cadence.budget("classiques"), Cadence.budget("cartes")], ok_budget)

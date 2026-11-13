@@ -237,23 +237,46 @@ static func _tete_gerard(img: Image, dy: int) -> void:
 
 # --- Sylvie à la fenêtre ------------------------------------------------------------------------------------
 
-## Buste de face 27 × 32, accoudée : humeur 0 contente, 1 neutre, 2 contrariée.
-static func sylvie(humeur: int) -> Image:
+## Buste de face 27 × 32, accoudée : humeur 0 contente, 1 neutre, 2 contrariée (« fâchée »). Lot 03-V2 (docs/17
+## §4.2, lot_04 D12) : chaque humeur a un visage ET une posture (lisible à ×1) : contente = coudes écartés sur
+## l'appui, yeux en ^ ; neutre = mains jointes ; fâchée = bras croisés hauts (bande du pull remontée de 2 px, mains
+## cachées, épaules + 1 px), sourcils en V doux (bout intérieur 1 px plus bas), regard de côté (pupilles décalées
+## d'1 px vers l'extérieur de la maison, à gauche), bouche en arc tombant. coucou (contente seulement) : 0 = sans,
+## 1 et 2 = main levée (2 images).
+static func sylvie(humeur: int, coucou := 0) -> Image:
 	var img := M.vide(SYLVIE.x, SYLVIE.y)
+	var dy := -1 if humeur == 2 else 0                                    # fâchée : épaules remontées d'1 px
 	# Cheveux longs (derrière)
 	_ellipse(img, 13.0, 10.5, 10.5, 10.5, CHEVEUX_S, 0.2)
 	M.rect(img, 3, 10, 5, 13, "bois")
 	M.rect(img, 19, 10, 5, 13, "bois_sombre")
 	M.rect(img, 3, 10, 2, 12, "caramel")
-	# Pull jaune moutarde, épaules, bras croisés sur l'appui
-	_ellipse(img, 13.0, 29.0, 13.0, 8.0, PULL, 0.3)
-	M.rect(img, 0, 27, 27, 5, "or")
-	M.rect(img, 1, 28, 25, 1, "orange")
-	M.rect(img, 3, 29, 9, 2, "lumiere")
-	M.rect(img, 15, 29, 9, 2, "or")
-	M.rect(img, 11, 28, 5, 3, "peau_claire")                           # mains jointes
-	M.rect(img, 11, 30, 5, 1, "peau_ombre")
-	M.px(img, 13, 29, "peau_ombre")
+	# Pull jaune moutarde, épaules
+	_ellipse(img, 13.0, 29.0 + dy, 13.0, 8.0, PULL, 0.3)
+	M.rect(img, 0, 27 + dy, 27, 5 - dy, "or")
+	M.rect(img, 1, 28 + dy, 25, 1, "orange")
+	match humeur:
+		0:      # coudes écartés sur l'appui, mains à plat aux deux bords
+			M.rect(img, 1, 29, 25, 2, "lumiere")
+			M.rect(img, 12, 29, 3, 2, "or")
+			M.rect(img, 1, 31, 25, 1, "orange")
+			M.rect(img, 1, 29, 3, 2, "peau_claire")
+			M.rect(img, 23, 29, 3, 2, "peau_claire")
+			M.px(img, 3, 30, "peau_ombre")
+			M.px(img, 25, 30, "peau_ombre")
+		2:      # bras croisés hauts : bande du pull remontée (y 24-27), plis, aucune main
+			M.rect(img, 3, 24, 21, 4, "lumiere")
+			M.rect(img, 3, 27, 21, 1, "orange")
+			for k in 4:
+				M.px(img, 9 + k, 24 + k, "orange")
+				M.px(img, 17 - k, 24 + k, "caramel")
+			M.rect(img, 2, 28, 23, 4, "or")
+		_:      # neutre : mains jointes sur l'appui
+			M.rect(img, 3, 29, 9, 2, "lumiere")
+			M.rect(img, 15, 29, 9, 2, "or")
+			M.rect(img, 11, 28, 5, 3, "peau_claire")
+			M.rect(img, 11, 30, 5, 1, "peau_ombre")
+			M.px(img, 13, 29, "peau_ombre")
 	# Cou et visage
 	M.rect(img, 11, 19, 5, 5, "peau_ombre")
 	M.rect(img, 11, 19, 2, 5, "peau_claire")
@@ -264,40 +287,75 @@ static func sylvie(humeur: int) -> Image:
 		var hh := 4 + int(absf(x - 13.5) / 3.0)
 		M.rect(img, x, 3, 1, hh, "bois" if x < 15 else "bois_sombre")
 	M.rect(img, 7, 3, 4, 1, "caramel")
-	# Yeux (2 × 2 : blanc + pupille), joues
-	var ye := 11
-	for ex in [9, 15]:
-		M.rect(img, ex, ye, 1, 2, "blanc_chaud")
-		M.rect(img, ex + 1, ye, 2, 2, "encre")
-		M.px(img, ex + 2, ye, "bleu_ardoise")
 	# Nez
 	M.px(img, 13, 14, "peau_ombre")
 	M.px(img, 14, 15, "peau_ombre")
 	match humeur:
-		0:      # contente : sourcils hauts arqués, grand sourire, joues roses
+		0:      # contente : sourcils hauts arqués, yeux en ^ (fermés de plaisir), joues roses, grand sourire
 			for q in [Vector2i(9, 9), Vector2i(10, 8), Vector2i(11, 8), Vector2i(12, 9), Vector2i(15, 9), Vector2i(16, 8), Vector2i(17, 8), Vector2i(18, 9)]:
 				M.px(img, q.x, q.y, "bois_sombre")
+			for q in [Vector2i(10, 11), Vector2i(9, 12), Vector2i(11, 12), Vector2i(16, 11), Vector2i(15, 12), Vector2i(17, 12)]:
+				M.px(img, q.x, q.y, "encre")
 			M.rect(img, 8, 14, 2, 1, "tuile")
 			M.rect(img, 17, 14, 2, 1, "tuile")
 			M.px(img, 10, 16, "brique_sombre")
-			M.px(img, 17, 16, "brique_sombre")
-			M.rect(img, 11, 17, 6, 1, "brique_sombre")
-			M.rect(img, 12, 18, 4, 1, "tuile")
-		1:      # neutre : sourcils droits, bouche droite
-			M.rect(img, 9, 9, 4, 1, "bois_sombre")
-			M.rect(img, 15, 9, 4, 1, "bois_sombre")
+			M.px(img, 16, 16, "brique_sombre")
 			M.rect(img, 11, 17, 5, 1, "brique_sombre")
-		2:      # contrariée : sourcils froncés vers le nez, yeux plissés, bouche en arc tombant, ride
-			for q in [Vector2i(9, 8), Vector2i(10, 9), Vector2i(11, 9), Vector2i(12, 10), Vector2i(18, 8), Vector2i(17, 9), Vector2i(16, 9), Vector2i(15, 10)]:
+			M.rect(img, 12, 18, 3, 1, "tuile")
+		2:      # fâchée (D12) : V doux (bout intérieur 1 px plus bas), paupières lourdes, regard de côté, moue
+			for q in [Vector2i(9, 9), Vector2i(10, 9), Vector2i(11, 10), Vector2i(12, 10), Vector2i(18, 9), Vector2i(17, 9), Vector2i(16, 10), Vector2i(15, 10)]:
 				M.px(img, q.x, q.y, "bois_sombre")
-			M.rect(img, 9, 11, 4, 1, "peau_ombre")
-			M.rect(img, 15, 11, 4, 1, "peau_ombre")
-			M.px(img, 13, 9, "peau_ombre")
-			M.px(img, 14, 9, "peau_ombre")
+			for ex in [9, 15]:
+				M.rect(img, ex, 11, 3, 1, "peau_ombre")                  # paupière
+				M.rect(img, ex, 12, 2, 1, "encre")                       # pupille décalée vers la gauche
+				M.px(img, ex + 2, 12, "blanc_chaud")
 			M.rect(img, 11, 16, 5, 1, "brique_sombre")
 			M.px(img, 10, 17, "brique_sombre")
 			M.px(img, 16, 17, "brique_sombre")
+		_:      # neutre : yeux 2 × 2 (blanc + pupille), sourcils droits, bouche droite
+			for ex in [9, 15]:
+				M.rect(img, ex, 11, 1, 2, "blanc_chaud")
+				M.rect(img, ex + 1, 11, 2, 2, "encre")
+				M.px(img, ex + 2, 11, "bleu_ardoise")
+			M.rect(img, 9, 9, 4, 1, "bois_sombre")
+			M.rect(img, 15, 9, 4, 1, "bois_sombre")
+			M.rect(img, 11, 17, 5, 1, "brique_sombre")
+	if humeur == 0 and coucou > 0:
+		# Main levée près de la joue droite (2 images : la main bascule d'1 px)
+		var mx := 21 + (coucou - 1)
+		M.rect(img, 22, 20, 3, 8, "or")                                   # avant-bras dans la manche
+		M.rect(img, 22, 20, 1, 8, "lumiere")
+		M.rect(img, mx, 14, 4, 5, "peau_claire")
+		M.rect(img, mx, 13, 1, 2, "peau_claire")
+		M.rect(img, mx + 2, 13, 1, 2, "peau_claire")
+		M.rect(img, mx + 3, 15, 1, 4, "peau_ombre")
 	contour_teinte(img, _table_contours())
+	return img
+
+
+## Pot de géraniums (Sylvie contente, posé à gauche de l'appui), 11 × 9.
+static func geraniums() -> Image:
+	var img := M.vide(11, 9)
+	M.rect(img, 2, 5, 7, 4, "terre_cuite_claire")
+	M.rect(img, 2, 5, 7, 1, "blanc_chaud")
+	M.rect(img, 7, 6, 2, 3, "tuile")
+	for q in [Vector2i(1, 3), Vector2i(3, 2), Vector2i(5, 3), Vector2i(7, 2), Vector2i(9, 3), Vector2i(4, 4), Vector2i(8, 4)]:
+		M.px(img, q.x, q.y, "feuille")
+		M.px(img, q.x + 1, q.y, "feuille_vive")
+	for q in [Vector2i(2, 1), Vector2i(5, 0), Vector2i(6, 1), Vector2i(8, 1), Vector2i(3, 0)]:
+		M.px(img, q.x, q.y, "rouge_auvent")
+	M.px(img, 5, 1, "tuile")
+	return img
+
+
+## Rideau gauche tiré à moitié (Sylvie fâchée) : crème, plis d'1 px, 8 × 40 (il s'arrête avant son visage).
+static func rideau_tire() -> Image:
+	var img := M.vide(8, 40)
+	M.rect(img, 0, 0, 8, 40, "creme")
+	for x in [2, 5]:
+		M.rect(img, x, 1, 1, 39, "pierre_claire")
+	M.rect(img, 7, 0, 1, 40, "pierre_ombre")
+	M.rect(img, 0, 0, 8, 1, "blanc_chaud")
 	return img
 
 
@@ -318,3 +376,7 @@ static func enregistrer() -> void:
 	for h in 3:
 		GrillePixel.enregistrer("ville/" + noms[h], sylvie(h), Vector2i(13, 31))
 	GrillePixel.enregistrer("ville/sylvie_cligne", sylvie_cligne(), Vector2i(13, 31))
+	for k in [1, 2]:
+		GrillePixel.enregistrer("ville/sylvie_contente_coucou_%d" % k, sylvie(0, k), Vector2i(13, 31))
+	GrillePixel.enregistrer("ville/geraniums", geraniums(), Vector2i(0, 8))
+	GrillePixel.enregistrer("ville/rideau_tire", rideau_tire(), Vector2i(0, 0))

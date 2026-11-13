@@ -6,14 +6,15 @@ extends RefCounted
 ##   maison vers la banque. Seuil : 10 F chacun. Nombre de pièces = 1 + arrondi(log10(montant / 10 F)), de 1 à 6.
 ## - Jamais en pause, à ×3 ni pendant un saut (la rue file trop vite pour suivre une pièce).
 ## - Textes (cartouches, lot 03 D7 : 2 lignes au plus, MAX_CAR caractères chacune, séparées par « \n ») :
-##   « + 312 F » ; « + 312 F ce mois-ci » / « versés en décembre » (toutes les lignes de revenus sont créditées
-##   au 31/12 et le mois écoulé n'est pas décembre) ; « Elf : + 840 F » (coupons, dividendes : 2 cartouches au
-##   plus, les plus gros ; nom long : « Emprunt d'État : » / « + 600 F ») ; « − 45 F de frais ». Espaces
-##   insécables, vrai signe moins.
+##   « + 312 F » ; « + 312 F ce mois-ci » / « versés en décembre » (toutes les autres lignes de revenus sont
+##   créditées au 31/12 et le mois écoulé n'est pas décembre) ; « Elf : + 840 F » (un cartouche par coupon ou
+##   dividende, les plus gros d'abord ; nom long : « Emprunt d'État : » / « + 600 F ») ; « − 45 F de frais ».
+##   Le cartouche total ne compte que ce qui n'a pas de cartouche nommé (D13, lot 04) : il peut manquer (texte
+##   vide) quand tout vient de coupons ou de dividendes. Espaces insécables, vrai signe moins.
 
 const SEUIL_F := 10.0
 const MAX_PIECES := 6
-const MAX_LIGNES := 2
+const MAX_LIGNES := 5                    # un cartouche par titre versant (4 actions et l'emprunt d'État au plus)
 const MAX_CAR := 20
 const GENRES_REVENUS := ["interets", "coupon", "dividende"]
 const GENRES_LIGNES := ["coupon", "dividende"]
@@ -33,7 +34,7 @@ static func en_francs(eur: float) -> float:
 
 ## flux : res["flux"] du moteur ({revenus, frais, lignes}) ; vitesse : Partie.vitesse ; en_saut : saut en cours
 ## (ou mois franchi pendant un saut) ; ab : mois ÉCOULÉ dont c'est le flux (devise et règle de décembre).
-## Renvoie {"or": {"n", "texte"} ou {}, "cuivre": {"n", "texte"} ou {}, "lignes": [String] (≤ 2),
+## Renvoie {"or": {"n", "texte"} ou {}, "cuivre": {"n", "texte"} ou {}, "lignes": [String] (≤ MAX_LIGNES),
 ## "raison": "" si au moins une pièce, sinon pas_de_flux | saut | pause | vitesse3 | sous_seuil}.
 static func plan(flux: Dictionary, vitesse: int, en_saut: bool, ab: int) -> Dictionary:
 	var r := {"or": {}, "cuivre": {}, "lignes": [], "raison": ""}
@@ -52,12 +53,24 @@ static func plan(flux: Dictionary, vitesse: int, en_saut: bool, ab: int) -> Dict
 	var lignes: Array = flux.get("lignes", [])
 	var n_or := nombre(en_francs(revenus))
 	if n_or > 0:
-		var texte := "+" + Format.ESPACE + Format.entier(revenus, ab)
-		if _verses_en_decembre(lignes, ab):
-			var avec := texte + " ce mois-ci"
-			texte = (avec if avec.length() <= MAX_CAR else texte) + "\nversés en décembre"
+		# D13 (lot 04) : jamais d'intérêts « versés en décembre » mêlés à des coupons ou dividendes versés tout de
+		# suite : chaque coupon ou dividende a son cartouche nommé, le reste (intérêts) le sien.
+		var nommees := _nommees(lignes)
+		var reste := revenus
+		var autres: Array = []
+		for l: Dictionary in lignes:
+			if nommees.has(l):
+				reste -= float(l["montant"])
+			else:
+				autres.append(l)
+		var texte := ""
+		if nombre(en_francs(reste)) > 0:
+			texte = "+" + Format.ESPACE + Format.entier(reste, ab)
+			if _verses_en_decembre(autres, ab):
+				var avec := texte + " ce mois-ci"
+				texte = (avec if avec.length() <= MAX_CAR else texte) + "\nversés en décembre"
 		r["or"] = {"n": n_or, "texte": texte}
-		r["lignes"] = _lignes(lignes, ab)
+		r["lignes"] = _textes(nommees, ab)
 	var n_cu := nombre(en_francs(frais))
 	if n_cu > 0:
 		var moins := Format.MOINS + Format.ESPACE + Format.entier(frais, ab)
@@ -80,16 +93,21 @@ static func _verses_en_decembre(lignes: Array, ab: int) -> bool:
 	return vues > 0
 
 
-## « Elf : + 840 F » pour les coupons et dividendes au-dessus du seuil, les plus gros d'abord, 2 au plus. Au-delà
-## de MAX_CAR caractères, le nom passe sur sa ligne (« Emprunt d'État : » / « + 600 F »), raccourci par « … » si besoin.
-static func _lignes(lignes: Array, ab: int) -> Array:
+## Coupons et dividendes au-dessus du seuil, les plus gros d'abord, MAX_LIGNES au plus (un par titre versant).
+static func _nommees(lignes: Array) -> Array:
 	var retenues: Array = []
 	for l: Dictionary in lignes:
 		if str(l.get("genre", "")) in GENRES_LIGNES and nombre(en_francs(float(l.get("montant", 0.0)))) > 0:
 			retenues.append(l)
 	retenues.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["montant"]) > float(b["montant"]))
+	return retenues.slice(0, MAX_LIGNES)
+
+
+## « Elf : + 840 F ». Au-delà de MAX_CAR caractères, le nom passe sur sa ligne (« Emprunt d'État : » / « + 600 F »),
+## raccourci par « … » si besoin.
+static func _textes(nommees: Array, ab: int) -> Array:
 	var textes: Array = []
-	for l: Dictionary in retenues.slice(0, MAX_LIGNES):
+	for l: Dictionary in nommees:
 		var nom := str(l.get("nom", l.get("id", "")))
 		var montant := "+" + Format.ESPACE + Format.entier(float(l["montant"]), ab)
 		var une := nom + Format.ESPACE + ":" + Format.ESPACE + montant

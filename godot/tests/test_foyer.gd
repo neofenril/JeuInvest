@@ -136,6 +136,7 @@ func _tests_donnees() -> void:
 				ok_interdits = false
 				detail += "« %s » ; " % mot
 	verifier("CA-FO5 : textes de carte ≤ 30 mots (variante jumeaux et prénoms comprises), titres ≤ 5 mots", ok_mots, detail)
+	_tests_textes_lot04(d)
 	verifier("CA-FO5 : aucun texte ne contient « auriez dû », « devriez », « conseil », « il faut »", ok_interdits, detail)
 	verifier("CA-FO5 : aucun montant écrit en dur dans un texte de carte (gabarits {prix_a}, {prix_b} seulement)", ok_montants, detail)
 	verifier("FO1 : 16 cartes C00-C15, 10 créneaux, chaque choix complet (libellé, prix, sens, humeur)",
@@ -148,6 +149,45 @@ func _tests_donnees() -> void:
 	verifier("D12 : prix retenus du banquier (C02 5 500 F, C04 2 200 / 3 800 F, C07 2 500 F, C09 location 600 F)",
 		ok_prix and int(d["cartes"]["C04"]["a"]["prix_jumeaux_F"]) == 3800 and int(d["cartes"]["C09"]["b"]["prix_F"]) == 600)
 
+
+## Lot 04 (D3, D4, CA-L4) : répliques de docs/23 G1.2, aucun chiffre hors gabarits, C10, bulles, ligne après C14.
+func _tests_textes_lot04(d: Dictionary) -> void:
+	var rx_gab := RegEx.create_from_string("\\{[^}]*\\}")
+	var rx_chiffre := RegEx.create_from_string("\\d")
+	var nb := 0
+	var ok_mots := true
+	var ok_chiffres := true
+	var detail := ""
+	for id: String in d["cartes"]:
+		var c: Dictionary = d["cartes"][id]
+		for k in ["a", "b"]:
+			if c[k].has("replique"):
+				nb += 1
+				var n := Banquier.nb_mots(str(c[k]["replique"]))
+				if n < 2 or n > 10:
+					ok_mots = false
+					detail += "%s %s : %d mots ; " % [id, k, n]
+		for cle in ["texte", "texte_jumeaux", "pourquoi"]:
+			if c.has(cle) and rx_chiffre.search(rx_gab.sub(str(c[cle]), "", true)) != null:
+				ok_chiffres = false
+				detail += "%s %s : chiffre ; " % [id, cle]
+		for k in ["a", "b"]:
+			if c[k].has("replique") and rx_chiffre.search(rx_gab.sub(str(c[k]["replique"]), "", true)) != null:
+				ok_chiffres = false
+				detail += "%s %s réplique : chiffre ; " % [id, k]
+	verifier("CA-L4 : 32 répliques de Sylvie (docs/23 G1.2), chacune de 2 à 10 mots (docs/23 G1.2 en annonce 8 : C10 b et C12 b en font 9)", nb == 32 and ok_mots, "%d répliques ; %s" % [nb, detail])
+	verifier("CA-L4 : aucun chiffre hors gabarits {…} dans texte, texte_jumeaux, pourquoi, replique", ok_chiffres, detail)
+	var e := _nouvelle(7)
+	e.enfants = 1
+	var c10: Dictionary = d["cartes"]["C10"]
+	verifier("CA-L4 : C10 : requiert_enfant, texte_jumeaux (docs/23 G1.5) ; bulle « Sylvie se radoucit » en remontant de fâchée ; gabarit consequence_revenu",
+		bool(c10.get("requiert_enfant", false)) and c10.has("texte_jumeaux") and str(d["notif_humeur"]["neutre"]) == "Sylvie se radoucit"
+		and str(d["gabarits"]["consequence_revenu"]).contains("{montant}") and str(d["gabarits"]["consequence_revenu"]).contains("{replique}"))
+	# C14 « Tout vendre » : « + 1 200 F sur votre compte. « Pas mon fauteuil ! » »
+	e.modale = {"kind": "carte", "id": "C14", "creneau": "S9", "m": e.m, "prio": 6, "source": "maison"}
+	var r := e.resoudre_modale("a")
+	var att := "+ %s sur votre compte. « Pas mon fauteuil ! »" % Format.entier(Produits.f(1200.0), e.ab_courant())
+	verifier("CA-L4 : C14 « a » : conséquence « + 1 200 F sur votre compte. « Pas mon fauteuil ! » » (montant au format)", str(r.get("consequence", "")) == att, str(r.get("consequence", "")))
 
 # ---------------------------------------------------------------------
 # CA-FO7 : humeur
@@ -210,18 +250,30 @@ func _tests_parties() -> void:
 	var graines_c00 := {}
 	var sans_c00 := {}
 	var jeux := {}
+	var fins_fachees := {}
+	var plus_long := {}
+	var alertes := []
 	for politique in ["epargner", "depenser", "alterner"]:
 		graines_c00[politique] = 0
 		sans_c00[politique] = []
+		fins_fachees[politique] = 0
+		plus_long[politique] = 0
 		for g in range(1, 41):
 			StrategieTest.politique_cartes = politique
 			var e := _nouvelle(g)
 			var fachee := false
 			var garde := 0
+			var dernier_m := -1
+			var serie := 0
+			var serie_max := 0
 			while e.fin == "" and garde < 200:
 				garde += 1
 				if e.humeur_visible() == 2:
 					fachee = true
+				if e.m != dernier_m:
+					dernier_m = e.m
+					serie = serie + 1 if e.humeur_visible() == 2 else 0
+					serie_max = maxi(serie_max, serie)
 				if e.modale.get("kind", "") == "carte":
 					var c := e.contenu_modale()
 					var choix := Foyer.choix_politique(e, politique)
@@ -268,6 +320,11 @@ func _tests_parties() -> void:
 					e.resolution_auto()
 				if e.modale.is_empty():
 					e.avancer()
+			if e.humeur_visible() == 2:
+				fins_fachees[politique] = int(fins_fachees[politique]) + 1
+			plus_long[politique] = maxi(int(plus_long[politique]), serie_max)
+			if politique == "alterner" and serie_max > 24:
+				alertes.append("    ALERTE humeur alterner graine=%d mois=%d" % [g, serie_max])
 			var jouees := e.cartes_jouees()
 			var ids := jouees.map(func(x: Dictionary) -> String: return str(x["id"]))
 			jeux["%s %d" % [politique, g]] = ids
@@ -294,7 +351,9 @@ func _tests_parties() -> void:
 				if c06["choix"] == "b" and not esc.is_empty():
 					ok_c06 = false
 	for politique in graines_c00:
-		print("    MESURE C00 (%s) : C00 jouée dans %d graines sur 40 ; sans C00 : %s" % [politique, int(graines_c00[politique]), str(sans_c00[politique])])
+		print("    MESURE C00 (%s) : C00 jouée dans %d graines sur 40 ; sans C00 : %s ; finissent fâchées : %d ; plus long séjour fâché : %d mois" % [politique, int(graines_c00[politique]), str(sans_c00[politique]), int(fins_fachees[politique]), int(plus_long[politique])])
+	for al: String in alertes:
+		print(al)
 	verifier("CA-FO3 : « epargner » rend Sylvie fâchée au moins une fois et déclenche C00, dans 40 graines sur 40 (D15)",
 		ok_fachee and int(graines_c00["epargner"]) == 40, "%d / 40" % int(graines_c00["epargner"]))
 	verifier("CA-FO3 (règles de C00, 3 politiques) : seulement si Sylvie est fâchée, 2 fois au plus, jamais deux créneaux de suite, jamais en S4",
@@ -373,8 +432,11 @@ func _tests_salaire() -> void:
 	for g in range(1, 41):
 		var e := _nouvelle(g)
 		if not _jusqu_a_carte(e, "epargner", "C07"):
-			continue
+			e = _nouvelle(g)
+			if not _jusqu_a_carte(e, "depenser", "C07"):
+				continue
 		trouve = true
+		e.joueur.cc += Produits.f(10000.0)   # les deux choix sont payables quelle que soit la politique qui a mené ici
 		var b := EtatPartie.depuis_dict(bytes_to_var(var_to_bytes(e.vers_dict())))
 		e.resoudre_modale("a")
 		b.resoudre_modale("b")

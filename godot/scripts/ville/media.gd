@@ -141,6 +141,13 @@ func _construire_ticker() -> void:
 	set_meta("ticker_rouge", ImageTexture.create_from_image(rouge))
 
 
+## Panneau du journal lumineux (« INDICE », courbe, bandeau) avec son cadre, rectangle local : les cartouches des
+## montants ne s'y posent jamais (lot 04, m1 de 03-V).
+func panneau() -> Rect2:
+	var r: Rect2i = E.ECRAN
+	return Rect2(Vector2(coin_image() + r.position - Vector2i(8, 4)), Vector2(r.size + Vector2i(16, 10)))
+
+
 func _dessiner_dessus(d: Vector2i) -> void:
 	var c := coin_image() + d
 	var r: Rect2i = E.ECRAN

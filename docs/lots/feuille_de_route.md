@@ -124,6 +124,9 @@ const SOURCES_HISTORIQUE := [...]                      # + "rue"
 - **03-R** (`lot/03-retouches`, dev-logique) : notification de dividende unique (« Peugeot : rien cette année », champ `nuls`), relevé en 4 cas (variante sobre « Pas d'intérêts cette année, mais … »), `Banquier.texte_fiche_dividende` préparée (affichée en 03-I2), version 0.4.1 / code 5 ; exports 0.4.1 par le coordinateur sur `main`.
 - **Vague 3** (`lot_04.md`) : **03-V2** part tout de suite ; **04-L** et **03-I2** après la fusion de 03-R. 03-I2 fusionne en dernier (il allume les cartes, l'invariant de 04-L doit être dans le moteur). Cartes allumées par `principal._config()` hors mode capture seulement (les étapes de capture gardent les cartes éteintes sauf demande). Projets écrits mais **éteints** (`projets.json > actif`, contrat figé pour 04-I). Sortie **0.5 « les dilemmes du foyer »** à F3 ; les numéros de sortie du §1 glissent d'un cran (0.6 = projets).
 
+### 2.10 Version jouable (2026-11-13)
+Décision du joueur : une version **jouable** des vagues 3, 4 et 5 avant tout peaufinage. **`feuille_de_route_jouable.md` prime sur le §1 pour les vagues 3 à 5** (une seule sortie 0.5 « jouable », essentiel / reporté, 03-V2 réduit, 2e instance de dev-logique, recettes groupées R-MAISON et R-RUE). Plans : `lot_04.md` §12 (réductions de 03-V2 et 03-I2), `lot_05.md` (04-I, 05-L phases A et B, D7 bis = ordre de vente du joueur, demandes aux experts §8), `lot_06.md` (05-I, recette finale, sortie). Les vagues 6 et 7 (P5, SV, 1.0) restent celles du §1 et du §10, après le verdict du joueur.
+
 ## 3. Carte de propriété des fichiers en vague 1 (PX1 ∥ PX2 ∥ 02-L)
 
 Chemins relatifs à `godot/`. Un fichier = un propriétaire pendant toute la vague ; un fichier absent = interdit à tous.
@@ -217,3 +220,7 @@ T16, T9, T15, B1, B3 → PX2 ; T14, T17 (`tests.ps1`), T18 (`tests.ps1`) → 02-
 - dev-ville : rien. UX : maquette du menu, de l'écran des 3 emplacements, du bandeau et du bouton « Sauvegarder d'abord » (début de vague 6, §7). Game designer : relecture des seuils ; « un an après » dans la liste « toujours » ou non.
 - Conséquences : **07-L** lit `bilan["record_possible"]` (record non mis à jour si faux) ; **07-I** affiche « Partie rejouée depuis une sauvegarde : hors record ». Aucun lot avant la vague 6 ne dépend de SV.
 - Restés par défaut (pas de nouvelle question avant le lancement) : bandeau plutôt que question ; titre d'une partie rejouée gardé dans la collection (à confirmer par le client en 07-L).
+
+## 2.11 À définir plus tard : règle de vente automatique des projets (2026-11-13)
+Décision du joueur : garder la règle actuelle (compte courant, Livret A, puis du moins au plus rentable, non annualisé ; égalité : la plus grosse ligne d'abord ; pénalité affichée ligne par ligne) et la redéfinir proprement plus tard. Points ouverts : définition de la rentabilité (annualisée ou non), place du PEL (docs/18 §3.1 le met en dernier ; il peut partir tôt aujourd'hui), mot « Livret bleu » = Livret A du jeu (glossaire seulement), RENONCER vs RENONCER POUR L'INSTANT.
+

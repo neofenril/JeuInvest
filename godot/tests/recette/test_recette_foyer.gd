@@ -74,6 +74,7 @@ func _parties() -> void:
 	var nb_c07a := 0
 	var nb_c07b := 0
 	var nb_humeur := 0
+	var nb_carte_vie := 0
 	for politique in ["depenser", "epargner", "alterner"]:
 		repartition[politique] = {}
 		c00_par[politique] = 0
@@ -180,14 +181,17 @@ func _parties() -> void:
 				if dm == 1:
 					var cle := "%s:%s -> %s:%s" % [liste[i - 1]["kind"], liste[i - 1]["id"], liste[i]["kind"], liste[i]["id"]]
 					exceptions_suite[cle] = int(exceptions_suite.get(cle, 0)) + 1
-					if not (liste[i - 1]["kind"] == "marche" and liste[i]["motif"] == "scripte"):
+					# 04-L (lot_04 §13 A3, D2 b) : seule autre exception admise = une interruption « vie » le mois qui suit une carte
+					if liste[i - 1]["kind"] == "carte" and liste[i]["kind"] == "vie":
+						nb_carte_vie += 1
+					elif not (liste[i - 1]["kind"] == "marche" and liste[i]["motif"] == "scripte"):
 						ko["suite"] += "%s g%d %s ; " % [politique, g, cle]
 			# rien (carte) la veille d'une interruption datée
 			for x: Dictionary in liste:
 				if x["kind"] != "carte":
 					continue
 				for y: Dictionary in liste:
-					if y["datee"] and int(y["m"]) == int(x["m"]) + 1:
+					if y["datee"] and int(y["m"]) == int(x["m"]) + 1 and y["kind"] != "vie":
 						ko["veille"] += "%s g%d %s m%d ; " % [politique, g, x["id"], int(x["m"])]
 			# dates imposées : mêmes que la même graine cartes éteintes (joueur actif)
 			var off := _partie(g, false)
@@ -237,11 +241,12 @@ func _parties() -> void:
 	print("    RECETTE cartes : %d parties, %.2f cartes en moyenne ; par politique %s" % [nb_parties, float(nb_cartes_tot) / nb_parties, str(repartition)])
 	print("    RECETTE C00 : graines avec C00 %s ; C06 prêtée %d fois ; C07 inscrit %d, refusé %d ; bulles d'humeur après carte %d" % [str(c00_par), nb_c06a, nb_c07a, nb_c07b, nb_humeur])
 	print("    RECETTE deux mois de suite (toutes) : %s" % str(exceptions_suite))
+	print("    RECETTE carte -> vie (exception D2 b) : %d cas sur %d parties" % [nb_carte_vie, nb_parties])
 	verifier("FO2 : 8 à 10 cartes OBSERVÉES par partie (120 parties), = compteur « cartes », parties finies", ko["nb"] == "", ko["nb"].left(400))
 	verifier("FO2 : modales observées = liste de Cadence (mêmes mois)", ko["obs"] == "", ko["obs"].left(300))
 	verifier("FO2 : une interruption par mois au plus", ko["mois"] == "", ko["mois"].left(300))
-	verifier("FO2 : jamais deux mois de suite, hors krach → panne", ko["suite"] == "", ko["suite"].left(300))
-	verifier("FO2 : aucune carte au mois qui précède une interruption datée", ko["veille"] == "", ko["veille"].left(300))
+	verifier("FO2 : jamais deux mois de suite, hors krach → panne et carte → vie (D2 b, 04-L)", ko["suite"] == "", ko["suite"].left(300))
+	verifier("FO2 : aucune carte au mois qui précède une interruption datée (hors « vie » : exception carte → vie)", ko["veille"] == "", ko["veille"].left(300))
 	verifier("FO2 : dates imposées (scripte, historique, marché) identiques à la même graine cartes éteintes ; PEL ≤ 07/1984", ko["imposees"] == "", ko["imposees"].left(400))
 	verifier("FO3 : compte + Livret A = avant + montant, jamais sous 0 après une dépense de carte", ko["argent"] == "", ko["argent"].left(300))
 	verifier("FO4 : politique de choix recalculée (depenser / epargner / alterner) = choix de StrategieTest", ko["politique"] == "", ko["politique"].left(300))
