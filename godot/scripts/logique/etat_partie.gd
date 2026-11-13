@@ -62,6 +62,8 @@ var flux_mois: Dictionary = {}
 var saut_en_cours := false
 ## P2 « Les dilemmes du foyer » (lot 03-foyer) : humeur de Sylvie, créneaux, cartes jouées. Règles : Foyer (foyer.gd).
 var foyer: Dictionary = {}
+## P1 « Les projets du foyer » (lot 04) : réglage, état des deux projets, apports gardés. Règles : Projets (projets.gd).
+var projets: Dictionary = {}
 
 
 # =====================================================================
@@ -87,6 +89,7 @@ func demarrer(config: Dictionary = {}) -> Dictionary:
 	banque = Banquier.etat_initial() if bool(config.get("banquier", false)) else {"actif": false}
 	calendrier = _tirer_calendrier()
 	foyer = Foyer.etat_initial(self, config)
+	projets = Projets.etat_initial(self, config)
 	# État de départ garni (démonstration) : le joueur a un compte et un livret ; les témoins reçoivent
 	# le même capital en argent (03 §7.8) et le placent selon leur règle. Compté comme épargne.
 	var cc0 := float(config.get("cc_depart", 0.0))
@@ -281,7 +284,7 @@ func valeur_risquee(w: Portefeuille, mois: int = -999) -> float:
 
 
 func patrimoine(w: Portefeuille, mois: int = -999) -> float:
-	return w.cc + w.livret + valeur_risquee(w, mois) + w.valeur_epargne()
+	return w.cc + w.livret + valeur_risquee(w, mois) + w.valeur_epargne() + Projets.apport(self, w)
 
 
 ## Plus-value latente d'une ligne (valeur − coût de revient, frais d'achat compris).
@@ -418,6 +421,8 @@ func devis_achat(id: String, budget: float) -> Dictionary:
 
 
 func acheter(w: Portefeuille, id: String, budget: float) -> Dictionary:
+	if w == joueur and ordres_bloques():
+		return Foyer.refus_ordre()
 	var d := devis_achat(id, budget)
 	if not d["ok"]:
 		return d
@@ -535,6 +540,8 @@ func vente_totale(w: Portefeuille) -> Dictionary:
 
 ## Dépôt refusé au-delà du plafond daté (03 §7.3) : { ok, montant, refus, max, msg }.
 func deposer_livret(w: Portefeuille, montant: float) -> Dictionary:
+	if w == joueur and ordres_bloques():
+		return Foyer.refus_ordre()
 	var a := ab_courant()
 	var plaf := Marche.plafond_livret(a)
 	montant = maxf(0.0, montant)
@@ -572,11 +579,15 @@ func place_livret(w: Portefeuille) -> float:
 # =====================================================================
 
 func ouvrir_pel(depot: float, mensuel: float) -> Dictionary:
+	if ordres_bloques():
+		return Foyer.refus_ordre()
 	var r := Produits.ouvrir_pel(self, joueur, depot, mensuel)
 	return _apres_ordre(r, "pel")
 
 
 func verser_pel(montant: float) -> Dictionary:
+	if ordres_bloques():
+		return Foyer.refus_ordre()
 	return _apres_ordre(Produits.verser_pel(self, joueur, montant), "pel")
 
 
@@ -585,6 +596,8 @@ func cloturer_pel() -> Dictionary:
 
 
 func acheter_emprunt(montant: float) -> Dictionary:
+	if ordres_bloques():
+		return Foyer.refus_ordre()
 	return _apres_ordre(Produits.acheter_emprunt(self, joueur, montant), "emprunt")
 
 
@@ -596,6 +609,8 @@ func vendre_emprunt(montant: float, tout := false) -> Dictionary:
 
 
 func verser_av(montant: float) -> Dictionary:
+	if ordres_bloques():
+		return Foyer.refus_ordre()
 	var r := Produits.verser_av(self, joueur, montant)
 	if r.get("ok", false):
 		_noter_frais(joueur, float(r["frais"]))
@@ -832,8 +847,9 @@ func _entrer_mois(initial: bool) -> Dictionary:
 	_stats_mois()
 	_enregistrer_hist()
 
-	# P2 : cartes de dilemme des créneaux ouverts mises en file (rien si les cartes sont éteintes)
+	# P1 : rappel, choix et jour J des projets mis en file ; P2 : cartes de dilemme des créneaux ouverts (rien s'ils sont éteints)
 	if modale.is_empty():
+		Projets.preparer(self, notifs)
 		Foyer.preparer(self)
 
 	# Au plus une modale par mois (démo : Cadence, R-CADENCE de docs/15 §0.1)
@@ -1308,6 +1324,8 @@ func contenu_modale() -> Dictionary:
 		return Banquier.contenu(self, str(modale["id"]))
 	if modale["kind"] == "carte":
 		return Foyer.contenu(self)
+	if modale["kind"] == "projet":
+		return Projets.contenu(self)
 	if modale["kind"] == "marche":
 		var ev := evenement(modale["id"])
 		var m_avant := maxi(m_depart, m - int(ev.get("fenetre", 1)))
@@ -1347,12 +1365,16 @@ func resoudre_modale(choix_id: String) -> Dictionary:
 	var item := modale
 	if item["kind"] == "carte" and not Foyer.choix_valide(self, choix_id):
 		return {}   # choix désactivé (non payable) : refusé, la carte reste ouverte
+	if item["kind"] == "projet" and not Projets.choix_valide(self, choix_id):
+		return {}   # choix absent ou désactivé : la carte du projet reste ouverte
 	var vu := contenu_modale()   # tel que le joueur l'a vu, pour l'historique
 	var r := {"choix": choix_id, "kind": item["kind"]}
 	if item["kind"] == "banquier":
 		r = Banquier.resoudre(self, str(item["id"]), choix_id)
 	elif item["kind"] == "carte":
 		r = Foyer.resoudre(self, choix_id, vu)
+	elif item["kind"] == "projet":
+		r = Projets.resoudre(self, choix_id, vu)
 	elif item["kind"] == "marche":
 		var ev := evenement(item["id"])
 		choix.append({"id": ev["id"], "m": item["m"], "choix": choix_id, "indice": indice(int(item["m"])),
@@ -1398,7 +1420,9 @@ func resolution_auto() -> Dictionary:
 	if c["kind"] == "marche":
 		return resoudre_modale("rien" if c["detient"] else "ecart")
 	if c["kind"] == "carte":
-		return resoudre_modale(Foyer.choix_auto(self))
+		return resoudre_modale(Foyer.choix_auto(self))   # « aucun » si aucun choix n'est payable (D1)
+	if c["kind"] == "projet":
+		return resoudre_modale(Projets.choix_auto(self))
 	var premier: String = c["choix"][0]["id"]
 	return resoudre_modale("decouvert" if premier == "vendre" else premier)
 
@@ -1548,6 +1572,8 @@ func _historiser_modale(c: Dictionary, choix_id: String) -> void:
 				e["suffixe"] = "en Bourse"
 		"carte":
 			Foyer.completer_historique(e, c)
+		"projet":
+			Projets.completer_historique(e, c)
 		"vie":
 			if c.get("effet", "") == "naissance":
 				e["montant"] = -float(c.get("cout_mensuel", 0.0))
@@ -1634,6 +1660,8 @@ func marquer_lues(source := "") -> void:
 
 ## Crée ou modifie le plan de pid (PEL : change le versement obligatoire). Effet le mois suivant.
 func programmer_versement(pid: String, montant: float) -> Dictionary:
+	if ordres_bloques():
+		return Foyer.refus_ordre()
 	return Versements.programmer(self, pid, montant)
 
 
@@ -1642,6 +1670,8 @@ func arreter_versement(pid: String) -> Dictionary:
 
 
 func reactiver_versement(pid: String) -> Dictionary:
+	if ordres_bloques():
+		return Foyer.refus_ordre()
 	return Versements.reactiver(self, pid)
 
 
@@ -1657,6 +1687,12 @@ func historiser_evenement(n: Dictionary) -> void:
 ## Les cartes de dilemme s'ouvrent-elles dans cette partie ? (éteintes par défaut, D11)
 func cartes_actives() -> bool:
 	return Foyer.actif(self)
+
+
+## Lot 04 (D1) : vrai tant qu'une carte du foyer ou un projet attend un choix ; les ordres qui baissent le
+## disponible du joueur sont alors refusés (Foyer.refus_ordre) ; ventes, retraits, rachats restent permis.
+func ordres_bloques() -> bool:
+	return str(modale.get("kind", "")) in ["carte", "projet"]
 
 
 ## 0 contente, 1 neutre, 2 fâchée (même codage que ville.regler_humeur_sylvie).
@@ -1680,12 +1716,36 @@ func cartes_jouees() -> Array:
 
 
 # =====================================================================
+# P1 « Les projets du foyer » : lecture pour l'interface (contrat du lot 04 §4.2 ; règles dans Projets)
+# =====================================================================
+
+func projets_actifs() -> bool:
+	return Projets.actif(self)
+
+
+func projet_en_cours() -> Dictionary:
+	return Projets.projet_en_cours(self)
+
+
+func projets_passes() -> Array:
+	return Projets.projets_passes(self)
+
+
+func ligne_projet_guichet() -> String:
+	return Projets.ligne_guichet(self)
+
+
+func plan_vente_projet() -> Array:
+	return Projets.plan_vente_projet(self)
+
+
+# =====================================================================
 # Sauvegarde : tout l'état, sans les données (rechargées depuis data/) ni le marché (déterministe)
 # =====================================================================
 
 const CHAMPS_ETAT := ["m", "m_depart", "m_fin", "salaire_base", "calendrier", "file", "modale", "choix", "panique",
 	"epargne_nette", "bag_mis", "decouvert_mois", "enfants", "fin", "hist", "stats", "journal", "banque", "historique",
-	"flux_mois", "foyer"]
+	"flux_mois", "foyer", "projets"]
 
 
 func vers_dict() -> Dictionary:
@@ -1747,6 +1807,7 @@ static func depuis_dict(d: Dictionary) -> EtatPartie:
 				v = complet
 		e.set(k, v.duplicate(true) if (v is Dictionary or v is Array) else v)
 	Foyer.apres_chargement(e, d.get("foyer", null) is Dictionary)
+	Projets.apres_chargement(e, d.get("projets", null) is Dictionary)
 	e._reparer()
 	return e
 
