@@ -12,6 +12,9 @@ const RUE := preload("res://scripts/ville/rue.gd")
 const PIECE_COTE := 24.0                 # pièce 8 × 8 texels de 3 px virtuels
 const ARCS_PIECES := [120.0, 180.0, 240.0, 300.0, 360.0, 420.0, 480.0, 60.0, 0.0]   # essayés dans cet ordre (arc_pieces)
 const ECART_FLOTTANTS := 6.0             # entre deux cartouches empilés (px virtuels)
+const PORTE_IMAGE_S := 0.08              # porte de la maison : 3 images (carte du foyer)
+
+var _piles: Array = []                   # piles de cartouches à l'écran : [rectangle balayé, fin (s)] (m3 de 03-V)
 
 var jeu: Node          # scène principale (principal.gd) : en_titre, pluie_jusqua, demo, ouvrir_banque, nouvelle_partie, demarrer_direct
 var ville: Node2D
@@ -85,6 +88,8 @@ func jouer_modale(c: Dictionary) -> void:
 		vedette(_sequence_journal.bind(c))
 	elif c.get("effet", "") == "naissance":
 		vedette(_sequence_naissance.bind(c))
+	elif c.get("kind", "") == "carte":
+		vedette(_sequence_carte.bind(c))
 	else:
 		vedette(_sequence_courrier.bind(c))
 
@@ -370,6 +375,56 @@ func _sequence_courrier(c: Dictionary) -> void:
 		_reparer_voiture(voiture, crash)
 	ville.call("revenir")
 	hud.maj(e, true, 0.5)
+
+
+## Carte de dilemme du foyer (lot 04, §4.3 ; docs/17 §3.1, §4.1) : la caméra glisse sur la maison, la porte s'ouvre
+## en 3 images (sortie ≤ 1 s, passable d'un toucher), puis Modales.carte (03-I2) part de la porte ; sans elle,
+## repli permanent sur le courrier. Un choix refusé (désactivé : resoudre_modale rend {}) laisse la carte ouverte
+## (le courrier est rouvert). Puis conclure_carte si elle existe, et la porte se referme.
+func _sequence_carte(c: Dictionary) -> void:
+	var e := Partie.etat
+	var maison: Node2D = ville.get("maison")
+	var t0 := _maintenant()
+	var cam0 := _camera()
+	_debut_animation(maison, 0.35)
+	await _attendre(0.35)
+	for k in [1, 2, 3]:
+		maison.set("porte_ouverte", k)
+		await _attendre(PORTE_IMAGE_S)
+	maison.set("porte_ouverte", 3)
+	var sortie := _maintenant() - t0
+	_fin_animation("carte", t0, "%s->%s" % [cam0, _camera()])
+	_trace("RUE carte sortie=%.2f porte=3 carte=%s" % [sortie, "modales" if modales.has_method("carte") else "courrier"])
+	var porte := _point_porte_maison()
+	var avec_carte := modales.has_method("carte")
+	var res := {}
+	while res.is_empty():
+		if avec_carte:
+			if res.is_empty() and not modales.ouverte():
+				modales.call("carte", Partie.etat.contenu_modale(), porte)
+		else:
+			modales.courrier(Partie.etat.contenu_modale(), porte, e)
+		var r: Array = await modales.choix_fait
+		res = Partie.resoudre_modale(str(r[1]))
+		if Partie.etat.modale.is_empty() and res.is_empty():
+			break                                      # carte fermée ailleurs (filet du moteur) : rien à rouvrir
+	_trace("RUE carte choix=%s montant=%s" % [str(res.get("choix", "")), str(res.get("montant", ""))])
+	if avec_carte and modales.has_method("conclure_carte") and not res.is_empty():
+		await modales.call("conclure_carte", res, porte)
+	for k in [2, 1, 0]:
+		maison.set("porte_ouverte", k)
+		await get_tree().create_timer(PORTE_IMAGE_S).timeout
+	ville.call("revenir")
+	hud.maj(e, true, 0.5)
+
+
+## Porte de la maison à l'écran (départ et rangement de la carte), ramenée au bord si elle est hors champ.
+func _point_porte_maison() -> Vector2:
+	var p: Vector2 = ville.call("porte_ecran", "maison")
+	if p.x >= 0.0:
+		return p
+	var maison: Node2D = ville.get("maison")
+	return _depart(maison, (maison.call("porte") as Rect2).get_center())
 
 
 ## Panne de voiture, version burlesque (≤ 2,6 s, passable d'un toucher) : le moteur tousse, la voiture part
@@ -677,9 +732,13 @@ func _sauter_si_fleche(id: String) -> void:
 
 ## Cartouches empilés au-dessus d'un point (textes : [[texte, couleur]], le premier en haut, les suivants 0,3 s
 ## après l'un l'autre), la pile entière (montée comprise) gardée dans le rectangle libre du HUD (lot 03, D7).
+## Lot 04 (m1, m3 de 03-V) : la pile évite le panneau INDICE de la Gazette et les piles encore à l'écran (or et
+## cuivre du même mois) : elle monte, puis descend, puis glisse de côté jusqu'à une place libre.
 func _flottants_pile(textes: Array, pos: Vector2, au_dessus := 36.0) -> void:
-	if textes.is_empty():
+	var vrais: Array = textes.filter(func(t: Array) -> bool: return str(t[0]) != "")
+	if vrais.is_empty():
 		return
+	textes = vrais
 	var libre: Rect2 = (hud.rect_libre() if hud != null else ville.get_viewport_rect()).grow(-6.0)
 	var tailles: Array = []
 	var largeur := 0.0
@@ -690,11 +749,30 @@ func _flottants_pile(textes: Array, pos: Vector2, au_dessus := 36.0) -> void:
 		largeur = maxf(largeur, s.x)
 		hauteur += s.y + ECART_FLOTTANTS
 	# Juice.flottant : haut du cartouche à p.y − 20, puis montée de MONTEE_FLOTTANT
-	var p := pos + Vector2(0, -au_dessus)
 	var haut_min := libre.position.y + Juice.MONTEE_FLOTTANT + 20.0
-	var haut_max := libre.end.y - hauteur + 20.0
-	p.x = clampf(p.x, libre.position.x + largeur / 2.0, maxf(libre.position.x + largeur / 2.0, libre.end.x - largeur / 2.0))
-	p.y = clampf(p.y, haut_min, maxf(haut_min, haut_max))
+	var haut_max := maxf(haut_min, libre.end.y - hauteur + 20.0)
+	var x_min := libre.position.x + largeur / 2.0
+	var x_max := maxf(x_min, libre.end.x - largeur / 2.0)
+	var p0 := pos + Vector2(0, -au_dessus)
+	p0 = Vector2(clampf(p0.x, x_min, x_max), clampf(p0.y, haut_min, haut_max))
+	var maintenant := _maintenant()
+	_piles = _piles.filter(func(z: Array) -> bool: return float(z[1]) > maintenant)
+	var obstacles: Array = []
+	for z in _piles:
+		obstacles.append(z[0])
+	if ville.has_method("panneau_indice_ecran"):
+		obstacles.append((ville.call("panneau_indice_ecran") as Rect2).grow(4.0))
+	var p := p0
+	for c: Vector2 in _places_pile(p0, Vector2(x_min, x_max), Vector2(haut_min, haut_max)):
+		var libre_ici := true
+		for o: Rect2 in obstacles:
+			if _balayage_pile(c, largeur, hauteur).intersects(o):
+				libre_ici = false
+				break
+		if libre_ici:
+			p = c
+			break
+	_piles.append([_balayage_pile(p, largeur, hauteur), maintenant + 0.3 * (textes.size() - 1) + 1.0])
 	var y := p.y
 	for k in textes.size():
 		var ici := Vector2(p.x, y)
@@ -704,6 +782,31 @@ func _flottants_pile(textes: Array, pos: Vector2, au_dessus := 36.0) -> void:
 			get_tree().create_timer(0.3 * k).timeout.connect(Juice.flottant.bind(str(textes[k][0]), ici, textes[k][1]))
 		y += (tailles[k] as Vector2).y + ECART_FLOTTANTS
 
+
+## Rectangle balayé par une pile (départ et montée) dont le premier cartouche part de p.
+func _balayage_pile(p: Vector2, largeur: float, hauteur: float) -> Rect2:
+	return Rect2(p.x - largeur / 2.0, p.y - 20.0 - Juice.MONTEE_FLOTTANT, largeur, hauteur + Juice.MONTEE_FLOTTANT)
+
+
+## Places essayées pour une pile, dans l'ordre : la place voulue, plus haut, plus bas, puis de côté.
+func _places_pile(p0: Vector2, xs: Vector2, ys: Vector2) -> Array:
+	var r: Array = [p0]
+	# Plus haut d'abord (le bas de l'écran porte les étiquettes des bâtiments), puis de côté, puis plus bas
+	for k in range(1, 50):
+		if p0.y - 12.0 * k >= ys.x:
+			r.append(Vector2(p0.x, p0.y - 12.0 * k))
+	var bas: Array = []
+	for k in range(1, 40):
+		if p0.y + 12.0 * k <= ys.y:
+			bas.append(Vector2(p0.x, p0.y + 12.0 * k))
+	for k in range(1, 30):
+		for sens in [-1.0, 1.0]:
+			var x: float = p0.x + sens * 40.0 * k
+			if x >= xs.x and x <= xs.y:
+				for dy in [0.0, -60.0, -120.0, 60.0, 120.0]:
+					var y := clampf(p0.y + dy, ys.x, ys.y)
+					r.append(Vector2(x, y))
+	return r + bas
 
 ## Ni maison ni banque à l'écran : seulement les montants, près du compteur COMPTE (D8).
 func _flottants_compte(p: Dictionary) -> void:

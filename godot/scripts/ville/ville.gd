@@ -91,6 +91,12 @@ func _ready() -> void:
 	vue.vue_change.connect(_recalculer)
 	_recalculer()
 	_controle = "--controle" in OS.get_cmdline_user_args()
+	# D10 (lot 04) : la ville suit seule l'humeur de Sylvie et les traces des cartes
+	var p := get_node_or_null("/root/Partie")
+	if p != null:
+		p.connect("partie_commencee", _foyer_change)
+		p.connect("mois_passe", _foyer_change_res)
+		p.connect("modale_fermee", _foyer_change_res)
 
 
 # =====================================================================
@@ -386,6 +392,14 @@ func porte_ecran(id: String) -> Vector2:
 	return position_ecran(vu.get_center())
 
 
+## Panneau INDICE de la Gazette en px d'écran logiques (les cartouches l'évitent ; lot 04, m1 de 03-V).
+func panneau_indice_ecran() -> Rect2:
+	var r: Rect2 = media.call("panneau")
+	var p0 := position_ecran(media.position + r.position)
+	var p1 := position_ecran(media.position + r.end)
+	return Rect2(p0, p1 - p0)
+
+
 ## Rectangle libre en px d'art du monde (contrôles des captures).
 func libre_monde() -> Rect2:
 	var la := _libre_art()
@@ -396,14 +410,81 @@ func libre_monde() -> Rect2:
 # Sylvie, voisins
 # =====================================================================
 
+## Humeur de Sylvie (0 contente, 1 neutre, 2 fâchée) : clignement puis nouvelle image ; rien si elle ne change pas.
 func regler_humeur_sylvie(h: int) -> void:
 	_humeur = clampi(h, 0, 2)
-	maison.set("humeur", _humeur)
-	maison.call("cligner")
+	maison.call("changer_humeur", _humeur)
 
 
 func humeur_sylvie() -> int:
 	return _humeur
+
+
+# =====================================================================
+# Foyer : humeur de Sylvie et traces des cartes (lot 04, 03-V2, D10, D11)
+# =====================================================================
+
+const TRACES := preload("res://scripts/ville/traces_foyer.gd")
+## Traces posées sur le trottoir (dans le trafic, triées en y, derrière les passants) : [images, x, cadence].
+const TRACES_SOL := {
+	"poussette": [["objet/poussette"], 158, 0.0], "poussette_double": [["objet/poussette_double"], 166, 0.0],
+	"tricycle": [["objet/tricycle"], 160, 0.0], "tricycles": [["objet/tricycles"], 166, 0.0],
+	"niche": [["objet/niche"], 244, 0.0], "chien": [["objet/chien_1", "objet/chien_2"], 270, 2.0],
+}
+const Y_TRACES_SOL := 409
+var _traces_sol := {}                    # nom -> Accessoire
+
+
+func _foyer_change() -> void:
+	suivre_foyer(Partie.etat)
+
+
+func _foyer_change_res(_r: Dictionary) -> void:
+	suivre_foyer(Partie.etat)
+
+
+## D10 : règle Sylvie (humeur visible si les cartes sont allumées, sinon neutre) et les traces des cartes ;
+## idempotent (rien ne bouge si rien ne change) ; e null = rien.
+func suivre_foyer(e: EtatPartie) -> void:
+	if e == null:
+		return
+	regler_humeur_sylvie(e.humeur_visible() if e.cartes_actives() else 1)
+	var t := traces_foyer(e)
+	maison.set("traces", t)
+	var voulues := {}
+	for n in t:
+		if n == "chien":
+			voulues["niche"] = true
+		if TRACES_SOL.has(n):
+			voulues[n] = true
+	for n in _traces_sol.keys():
+		if not voulues.has(n):
+			var a: Node2D = _traces_sol[n]
+			if is_instance_valid(a):
+				a.call("liberer")
+			_traces_sol.erase(n)
+	for n in voulues:
+		if not _traces_sol.has(n) or not is_instance_valid(_traces_sol[n]):
+			var cfg: Array = TRACES_SOL[n]
+			_traces_sol[n] = rue.call("ajouter", cfg[0], Vector2(cfg[1], Y_TRACES_SOL), cfg[2], true)
+
+
+## D11 : ids des traces présentes ce mois-ci (fonction pure, scripts/ville/traces_foyer.gd).
+func traces_foyer(e: EtatPartie) -> PackedStringArray:
+	return TRACES.de_partie(e)
+
+
+## Traces effectivement dessinées (façade + trottoir), dans l'ordre de traces_foyer (contrôles des captures).
+func traces_dessinees() -> PackedStringArray:
+	var r := PackedStringArray()
+	var facade: PackedStringArray = maison.get("traces")
+	for n in TRACES.ORDRE:
+		if TRACES_SOL.has(n):
+			if _traces_sol.has(n) and is_instance_valid(_traces_sol[n]):
+				r.append(n)
+		elif n in facade:
+			r.append(n)
+	return r
 
 
 ## Point d'écran logique (px virtuels) juste au-dessus de la fenêtre de Sylvie (milieu du haut, 2 px d'art plus

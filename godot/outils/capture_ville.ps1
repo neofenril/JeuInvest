@@ -11,8 +11,11 @@
 #   planche_personnages, voisins, trafic, fps ; lot 02 : pieces_or, pieces_fleche, pieces_cuivre, pieces_dividende,
 #   pieces_glisse (+ image <nom>_vol.png pendant le vol), pieces_x3, pieces_saut, pieces_hors_champ, pieces_sous_seuil,
 #   camera_retour (+ <nom>_glissement.png, <nom>_retour.png), pieces_jeu, jouer_rapide ; lot 03 : pieces_bascule,
-#   pieces_dividende_jeu (+ <nom>_arrivee.png pour pieces_or, pieces_fleche, pieces_dividende).
-# Contrôles en échec aussi : « pieces enseigne=N » (N ≠ 0), « hors_libre=N » (N ≠ 0), « regulier=non », et pour
+#   pieces_dividende_jeu (+ <nom>_arrivee.png pour pieces_or, pieces_fleche, pieces_dividende) ; lot 04 : pieces_or_cuivre
+#   (+ _cartouches.png), sylvie_humeurs (+ _h0/_h1/_h2/_coucou/_transition.png), traces_foyer (+ _<politique>.png et
+#   _<politique>_soir.png), carte_sortie (+ _porte/_carte/_apres.png). -Telephone169 : téléphone 1280 x 720.
+# Contrôles en échec aussi : « pieces enseigne=N » (N ≠ 0), « hors_libre=N » (N ≠ 0), « regulier=non »,
+# « flottant indice=N », « chevauchements=N » (N ≠ 0), « RUE traces … egal=non », et pour
 # pieces_dividende_jeu l'absence de « RUE pieces dividende=present » (en échec tant que 03-L n'est pas fusionné).
 # 1920 x 1080 : plein écran (taille exacte). Journal de Godot hors de user:// (--log-file).
 # Code de sortie 0 seulement si chaque lancement rend 0, sans erreur de script, et si tous les contrôles sont à
@@ -22,6 +25,7 @@ param(
     [string]$Nom = "px1",
     [string]$Taille = "1920x1080",
     [switch]$Telephone,
+    [switch]$Telephone169,
     [int]$Facteur = 0,
     [switch]$SansHud,
     [switch]$Controle,
@@ -66,7 +70,7 @@ function Capturer([hashtable]$o) {
     if ($taille -eq "1920x1080" -and -not $o.Telephone) { $a += "--fullscreen" }
     $att = [string]::Format([Globalization.CultureInfo]::InvariantCulture, '{0}', $o.Attente)
     $a += @("--", "--capture=captures/$($o.Nom).png", "--frames=10", "--attente=$att", "--etape=$($o.Etape)")
-    if ($o.Telephone) { $a += "--telephone" }
+    if ($o.Telephone169) { $a += "--telephone=169" } elseif ($o.Telephone) { $a += "--telephone" }
     if ($o.Facteur -gt 0) { $a += "--rue-facteur=$($o.Facteur)" }
     if ($o.SansHud) { $a += "--rue-sans-hud" }
     if ($o.Controle) { $a += "--controle" }
@@ -75,11 +79,12 @@ function Capturer([hashtable]$o) {
     $rue = @($r.sortie | Where-Object { $_ -like "RUE *" -or $_ -like "Images par seconde*" -or $_ -like "Capture enregistr*" })
     $erreurs = @($r.sortie | Where-Object { $l = $_; $motifsErreur | Where-Object { $l -like "*$_*" } })
     $ko = @($rue | Where-Object { ($_ -match 'hors_palette=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'irreguliers=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'hors_texel=(\d+)' -and [int]$matches[1] -ne 0) -or
-        ($_ -match 'pieces enseigne=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'hors_libre=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'regulier=non') })
+        ($_ -match 'pieces enseigne=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'hors_libre=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'regulier=non') -or
+        ($_ -match 'flottant indice=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'chevauchements=(\d+)' -and [int]$matches[1] -ne 0) -or ($_ -match 'RUE traces .*egal=non') })
     $ok = ($r.code -eq 0) -and ($erreurs.Count -eq 0) -and ($ko.Count -eq 0)
     # pieces_dividende_jeu (lot 03) : le dividende de mai 1987 doit être vu (branche contenant 03-L)
     if ($o.Etape -eq "pieces_dividende_jeu" -and -not ($rue | Where-Object { $_ -like "RUE pieces dividende=present*" })) { $ok = $false }
-    Ecrire ("--- {0} ({1}, {2}{3}) : code {4}{5}" -f $o.Nom, $o.Etape, $(if ($o.Telephone) { "téléphone" } else { $taille }), $(if ($o.Facteur) { " x$($o.Facteur)" } else { "" }), $r.code, $(if ($ok) { "" } else { "  ** ECHEC **" }))
+    Ecrire ("--- {0} ({1}, {2}{3}) : code {4}{5}" -f $o.Nom, $o.Etape, $(if ($o.Telephone169) { "téléphone 1280x720" } elseif ($o.Telephone) { "téléphone" } else { $taille }), $(if ($o.Facteur) { " x$($o.Facteur)" } else { "" }), $r.code, $(if ($ok) { "" } else { "  ** ECHEC **" }))
     foreach ($l in $r.sortie) {
         if ($l -like "RUE *" -or $l -like "Images par seconde*" -or $l -like "Trafic*" -or ($motifsErreur | Where-Object { $l -like "*$_*" }) -or $l -like "ERROR*" -or $l -like "*at: *") { Ecrire "    $l" }
     }
@@ -209,7 +214,17 @@ if ($Serie) {
         # Lot 03 (03-V) : pièces au-dessus des enseignes, cartouches, départ figé, dividende réel (après 03-L)
         @{ Nom = "${p}pieces_bascule"; Etape = "pieces_bascule"; Controle = $true },
         @{ Nom = "${p}pieces_bascule_tel"; Etape = "pieces_bascule"; Telephone = $true; Controle = $true },
-        @{ Nom = "${p}pieces_dividende_jeu"; Etape = "pieces_dividende_jeu"; Controle = $true }
+        @{ Nom = "${p}pieces_dividende_jeu"; Etape = "pieces_dividende_jeu"; Controle = $true },
+        # Lot 04 (03-V2) : Sylvie en 3 humeurs, traces des cartes, sortie de la carte, cartouches or et cuivre
+        @{ Nom = "${p}pieces_or_cuivre"; Etape = "pieces_or_cuivre"; Controle = $true },
+        @{ Nom = "${p}pieces_or_cuivre_tel"; Etape = "pieces_or_cuivre"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}pieces_hors_champ_tel169"; Etape = "pieces_hors_champ"; Telephone169 = $true; Controle = $true },
+        @{ Nom = "${p}sylvie_humeurs"; Etape = "sylvie_humeurs"; Controle = $true },
+        @{ Nom = "${p}sylvie_humeurs_tel"; Etape = "sylvie_humeurs"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}sylvie_humeurs_tel169"; Etape = "sylvie_humeurs"; Telephone169 = $true; Controle = $true },
+        @{ Nom = "${p}traces_foyer"; Etape = "traces_foyer"; Controle = $true },
+        @{ Nom = "${p}traces_foyer_tel"; Etape = "traces_foyer"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}carte_sortie"; Etape = "carte_sortie"; Controle = $true }
     )
     foreach ($o in $liste) {
         if (-not $o.ContainsKey("Attente")) { $o.Attente = 0 }
@@ -221,7 +236,7 @@ if ($Serie) {
     if (-not (Faire-Montages)) { $toutOk = $false }
 } else {
     if ($errImp.Count) { Write-Host ("import : " + ($errImp -join " / ")) }
-    $o = @{ Nom = $Nom; Etape = $Etape; Taille = $Taille; Telephone = [bool]$Telephone; Facteur = $Facteur; SansHud = [bool]$SansHud;
+    $o = @{ Nom = $Nom; Etape = $Etape; Taille = $Taille; Telephone = [bool]$Telephone; Telephone169 = [bool]$Telephone169; Facteur = $Facteur; SansHud = [bool]$SansHud;
             Controle = [bool]$Controle; Attente = $Attente; Passer = $Passer }
     if (-not (Capturer $o)) { $toutOk = $false }
 }

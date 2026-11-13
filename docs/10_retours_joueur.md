@@ -99,3 +99,8 @@ Décisions : 3 emplacements ; le joueur choisit l'emplacement à écraser ; la l
 ## 2026-11-13
 - Ordre de vente automatique : « l'ordre est compte courant, puis livret bleu, puis le reste par ordre de rentabilité ». Demande : « tu peux accélérer le développement des features programmées ? »
 
+
+## 2026-11-13 (suite)
+- Règle de vente automatique des projets : « on garde ce qui est fait aujourd'hui, on verra plus tard » ; à redéfinir proprement plus tard (aujourd'hui : compte courant, Livret A, puis du moins au plus rentable, rentabilité non annualisée ; le PEL clos avant 4 ans peut partir avant des actions en gain).
+- Le joueur a lui-même choisi les modèles des agents (chef de projet en Opus, les autres en Sonnet pour certains, Opus pour client, game-designer et ux-designer) : ne pas y toucher.
+
