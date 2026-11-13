@@ -250,4 +250,27 @@ Fichiers modifiés (comparés au §3), décisions prises à l'intérieur des rè
 
 ## Décision du joueur (2026-11-13) : ordre de vente automatique (C1, réponse partielle)
 Ordre de vente automatique des projets (D7) : **compte courant d'abord, puis Livret bleu, puis le reste par ordre de rentabilité** (verbatim : « l'ordre est compte courant, puis livret bleu, puis le reste par ordre de rentabilité »). Si le Livret bleu n'existe pas encore à la date jouée, il est sauté. L'accélération du développement des features programmées est demandée : 04-L et 03-I2 étape 1 démarrent en parallèle de 03-R.
+→ Règle appliquée par 04-L : **D7 bis** de `lot_05.md` §1 (le « Livret bleu » est le Livret A du jeu ; le reste du moins rentable au plus rentable ; question de confirmation au joueur, `lot_05.md` §8 Q-J1).
+
+## 12. Version jouable (2026-11-13) : périmètre réduit de ce lot
+
+> Décision du joueur du 13/11 et `feuille_de_route_jouable.md`. **Prime sur §0, §5, §6 et §7 ci-dessus pour 03-V2 et 03-I2.** 04-L garde tout son périmètre (c'est le moteur du jeu), avec D7 bis.
+
+### 12.1 Ce qui change dans l'ordre et la fusion (§6)
+- Plus de fusion simulée par la seconde de 04-L / 03-V2 : le coordinateur relance `tests.ps1 -Recette` sur `main` après chaque fusion (échec → correctif).
+- 03-I2 n'a **plus de recette ni de fusion propres** : son étape 1 réduite (§12.3) est commitée sur `lot/03-interface2`, puis dev-interface enchaîne 04-I sur `lot/04-interface`, **empilée** sur ce commit (`lot_05.md`). L'étape 2 de 03-I2 se fait avec celle de 04-I, et la recette **R-MAISON** (`lot_05.md` §7.2) vaut pour les deux. `lot/03-interface2` entre dans `main` par la fusion de `lot/04-interface`.
+- Pas d'export 0.5 à F3 : la sortie au joueur est la **0.5 « jouable »** (`feuille_de_route_jouable.md` §4.3, point 6). `config/version="0.5"` et `export_presets.cfg` 0.5 / code 6 restent écrits dans ce lot.
+
+### 12.2 03-V2 réduit : consigne et CA de la recette courte
+Consigne : `feuille_de_route_jouable.md` §3 (s'arrêter, routage générique `carte` / `projet` / `gazette`, garder ce qui est fini, le reste sur `lot/03-ville2-suite` non poussée). CA (remplacent CA-V1 à V7) :
+- **CA-V1 ★** : `tests.ps1 -Recette` vert, 0 erreur de script, total ≥ `main` ; tests présents pour ce qui est gardé (si `traces_foyer` est gardée : chaque règle de D11 **pour les traces de `TRACES_DESSINEES`**, cartes éteintes = vide ; si `suivre_foyer` est gardé : cartes éteintes = neutre).
+- **CA-V2 ★ (routage)** : `carte_sortie` sur la branche seule : repli `courrier`, la partie continue après le choix ; ligne `RUE fiche kind=carte appel=courrier` ; un test ou une étape montre qu'un contenu `kind "projet"` et un contenu `kind "gazette"` passent aussi par le repli (`appel=courrier`) et que la partie avance ; sortie ≤ 1 s.
+- **CA-V3 ★ (non-régression)** : `capture_ville.ps1 -Serie` code 0, `hors_palette=0`, `irreguliers=0` ; si V5 est gardé : `RUE flottant indice=0`, `RUE flottant chevauchements=0` (PC et 1440 × 648).
+- **CA-V4** : si V1 est gardé : `sylvie_humeurs` PC et 1440 × 648, les 3 états se distinguent (relu, sans exigence de niveaux de gris ni de ×1) ; sinon le compte rendu le dit.
+- **CA-V5 ★ (périmètre)** : `git diff --stat main...lot/03-ville2` dans la colonne 03-V2 du §3 ; API existante de la ville inchangée ; `lot/03-ville2-suite` **non poussée**.
+
+### 12.3 03-I2 étape 1 réduite (dev-interface, `lot/03-interface2`)
+Garder (essentiel) : **I1** carte de dilemme **sans** vol, dépli ni aimant (apparition sur place, fondu ≤ 0,2 s si le `depart` est donné, tampon = mot « CHOISI » en encre), avec tout le reste de I1 (choix non payable grisé et hachuré si déjà fait, « Il manque … », « Disponible sans rien vendre », touches 1 / 2, ni Échap ni clic extérieur, conclusion 3 s passable, relecture) ; **I2** picto sur l'étiquette MA MAISON et bulle d'humeur (sans saut d'1 texel) ; **I3** « Mon foyer » (portrait 48 × 48 en 3 expressions déjà commencé ; **téléphone : une colonne avec défilement**, pas d'onglets ; colonne PROJET EN COURS laissée vide pour 04-I) ; **I4** BANQUE fermée ; **I5** cartes allumées (D9) ; **I6** fiche des dividendes ; **I7** reprises (D14, m4, m2, `config/version="0.5"`).
+Réduire **I8** : `test_interface` passe toute la démo cartes allumées (actif et passif) sans blocage ★ ; `test_ecran` couvre la carte ; étapes `carte` (deux choix ; un choix non payable ; conclusion), `mon_foyer`, `banque_fermee`, `integrale_cartes` sur **PC 1080 et 1440 × 648 seulement**. Retirés : `carte_jumeaux`, `etiquette_humeur` relue à ×1 et ×3, `bulle_humeur` en capture (la ligne `UI bulle apres_carte=oui` reste imprimée par `carte`), `integrale_cartes_saut`, formats 1152 × 648 et 1280 × 720.
+Commit, puis compte rendu court : il enchaîne 04-I (`lot_05.md`). Les CA de 03-I2 sont vérifiés dans R-MAISON (`lot_05.md` §7.2).
 

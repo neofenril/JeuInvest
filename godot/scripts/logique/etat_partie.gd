@@ -956,10 +956,11 @@ func _verser_dividendes(notifs: Array) -> void:
 		stats["dividende_vu"] = true
 		if banquier_actif():
 			banque["dividendes_annee"] = float(banque.get("dividendes_annee", 0.0)) + brut_j - impot_j
-		notifs.append(Banquier.notif_dividendes(self, lignes_j, brut_j, impot_j, premier))
+		# 03-R (D1) : une seule notification par mois ; les titres sans dividende y sont nommés
+		notifs.append(Banquier.notif_dividendes(self, lignes_j, brut_j, impot_j, premier, nuls))
 		_enregistrer_hist()
-	for id: String in nuls:
-		notifs.append(Banquier.notif_dividende_nul(self, id))
+	elif not nuls.is_empty():
+		notifs.append(Banquier.notif_dividende_nul(self, nuls[0], nuls.slice(1)))
 
 
 # =====================================================================

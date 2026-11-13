@@ -155,26 +155,37 @@ func _peugeot_1986() -> void:
 	e.joueur.cc += Produits.f(20000.0)
 	e.acheter(e.joueur, "peugeot", Produits.f(5000.0))
 	e.acheter(e.joueur, "elf", Produits.f(5000.0))
+	var h0 := e.historique.size()
 	var r := _mois(e)
 	var nul := _notifs(r, "dividende_nul")
 	var div := _notifs(r, "dividende")
 	print("    Mai 1986 : ", str(nul), " | ", str(div))
-	verifier("Peugeot mai 1986 : une notification dividende_nul (neutre, banque), Elf verse seul, aucune ligne Peugeot",
-		nul.size() == 1 and nul[0]["id"] == "peugeot" and nul[0]["cls"] == "neutre" and div.size() == 1
-		and _lignes_div(r).size() == 1 and _lignes_div(r)[0]["id"] == "elf")
-	verifier("dividende_nul rangée dans l'historique (source banque)",
-		e.historique.any(func(h: Dictionary) -> bool: return h["type"] == "dividende_nul" and h["source"] == "banque"))
+	# 03-R (D1) : une seule notification, de type dividende, qui nomme Peugeot (champ nuls)
+	var t: String = str(div[0]["texte"]) if div.size() == 1 else ""
+	var mots := Banquier.nb_mots(t)
+	print("RECETTE 03R mai1986 notifs_dividende=%d notifs_nul=%d mots=%d (espaces : %d) texte=%s" % [div.size(), nul.size(), mots, t.split(" ", false).size(), t])
+	verifier("03-R Peugeot + Elf mai 1986 : une seule notification (dividende), aucune dividende_nul, aucune ligne Peugeot",
+		nul.is_empty() and div.size() == 1 and _lignes_div(r).size() == 1 and _lignes_div(r)[0]["id"] == "elf")
+	verifier("03-R notification unique : premier, explication + « Peugeot : rien cette année. » en fin, nuls = [Peugeot]",
+		div.size() == 1 and bool(div[0]["premier"]) and t.contains("Un dividende, c'est") and t.ends_with("Peugeot : rien cette année.")
+		and div[0].get("nuls", null) == [{"id": "peugeot", "nom": "Peugeot"}], str(div[0].get("nuls", "absent")) if div.size() == 1 else "")
+	verifier("03-R notification unique ≤ 60 mots", mots > 0 and mots <= 60, "%d mots" % mots)
+	var ajout_hist := e.historique.slice(h0).filter(func(h: Dictionary) -> bool: return str(h.get("type", "")).begins_with("dividende"))
+	verifier("03-R une seule entrée d'historique « dividende » pour mai 1986", ajout_hist.size() == 1, str(ajout_hist.size()))
 	verifier("Mai 1986 : pas d'interruption ni de modale ouverte par ces notifications", e.modale.is_empty() or e.modale.get("kind", "") != "dividende")
 	# Peugeot seul : notification nul, la 1re vraie notification de dividende restera « premier » plus tard
 	var p := _partie("1986-04")
 	p.joueur.cc += Produits.f(20000.0)
 	p.acheter(p.joueur, "peugeot", Produits.f(5000.0))
 	var rp := _mois(p)
+	verifier("dividende_nul (Peugeot seul) rangée dans l'historique (source banque)",
+		p.historique.any(func(h: Dictionary) -> bool: return h["type"] == "dividende_nul" and h["source"] == "banque"))
 	StrategieTest.aller_a(p, Dates.lire("1987-04"), false)
 	var rp2 := _mois(p)
 	var d2 := _notifs(rp2, "dividende")
-	verifier("Peugeot seul : nul en 1986, puis 1er vrai dividende en mai 1987 avec premier = true",
-		_notifs(rp, "dividende_nul").size() == 1 and _notifs(rp, "dividende").is_empty() and d2.size() == 1 and bool(d2[0]["premier"]))
+	verifier("Peugeot seul : nul en 1986, puis 1er vrai dividende en mai 1987 avec premier = true, nuls = []",
+		_notifs(rp, "dividende_nul").size() == 1 and _notifs(rp, "dividende").is_empty() and d2.size() == 1 and bool(d2[0]["premier"])
+		and d2[0].get("nuls", null) == [] and not str(d2[0]["texte"]).contains("rien cette année"))
 
 
 ## Témoins : aucun ne détient d'action en direct → aucun dividende (comparaison Livret A inchangée).
@@ -227,6 +238,13 @@ func _releve_sans_interets() -> void:
 			rel = n
 	print("    Relevé 1987 (sans livret) : ", str(rel.get("texte", "")))
 	var t := str(rel.get("texte", ""))
-	verifier("Relevé sans intérêts mais avec dividendes : phrase des dividendes présente", t.contains("Vos actions vous ont versé"))
-	# Anomalie mineure m1 de la recette 03-L (consignée, non bloquante) : imprimée, pas comptée en KO.
-	print("RECETTE m1 releve_contradiction=%s" % str(t.contains("resté sur le compte courant") and t.contains("Vos actions vous ont versé")))
+	# 03-R (D2, cas 2) : une seule phrase « Pas d'intérêts cette année, mais … de dividendes versés par vos actions, après impôt. »
+	var net := Format.entier(float(e.stats.get("dividendes", {}).get("elf", 0.0)), e.ab_courant())
+	verifier("03-R relevé cas 2 : « Pas d'intérêts cette année, mais %s de dividendes versés par vos actions, après impôt. » en tête" % net,
+		t.begins_with("Pas d'intérêts cette année, mais %s de dividendes versés par vos actions, après impôt." % net))
+	verifier("03-R relevé cas 2 : ni « Aucun intérêt », ni « compte courant », ni « Vos actions vous ont versé »",
+		not t.contains("Aucun intérêt") and not t.contains("resté sur le compte courant") and not t.contains("Vos actions vous ont versé"))
+	# Anomalie mineure m1 de la recette 03-L : corrigée en 03-R (attendu false).
+	var contradiction := t.contains("resté sur le compte courant") and t.contains("dividendes")
+	print("RECETTE m1 releve_contradiction=%s" % str(contradiction))
+	verifier("03-R m1 levée : releve_contradiction = false", not contradiction)
