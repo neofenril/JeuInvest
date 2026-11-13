@@ -118,7 +118,13 @@ func modales_init() -> void:
 
 ## Configuration d'une nouvelle partie : graine de vie tirée au hasard (graine fixe pour les captures).
 func _config() -> Dictionary:
-	return Donnees.config_demo(-1 if ScenariosCapture.mode_capture() else randi_range(1, 2147483646))
+	var c := Donnees.config_demo(-1 if ScenariosCapture.mode_capture() else randi_range(1, 2147483646))
+	# Lot 04 (D9, I5) et lot 05 (D11, P6) : les cartes du foyer et les projets sont allumés pour toute nouvelle partie du
+	# joueur ; éteints en capture (aucune étape existante ne change : `integrale` reste la référence), sauf étape qui les demande.
+	if not ScenariosCapture.mode_capture():
+		c["cartes"] = true
+		c["projets"] = true
+	return c
 
 
 ## config : partie imposée (tests : graine fixe) ; vide : graine de vie tirée au hasard.
@@ -275,7 +281,7 @@ func _process(delta: float) -> void:
 	hud.maj_banque_fermee(banque_fermee())
 
 
-## Une carte du foyer attend (ou un projet, vague 4) : la BANQUE est fermée (lot 04, I4). Le moteur
+## Une carte du foyer ou un projet attend : la BANQUE est fermée (lot 04, I4). Le moteur
 ## (EtatPartie.ordres_bloques, 04-L) fait foi quand il existe ; sinon, une modale de kind « carte ».
 func banque_fermee() -> bool:
 	var e := Partie.etat
@@ -283,7 +289,7 @@ func banque_fermee() -> bool:
 		return false
 	if e.has_method("ordres_bloques"):
 		return bool(e.call("ordres_bloques"))
-	return e.modale.get("kind", "") == "carte"
+	return e.modale.get("kind", "") in ["carte", "projet"]
 
 
 ## Écran titre, fenêtre ou modale ouverte, séquence animée : le joueur ne peut pas lancer de saut.

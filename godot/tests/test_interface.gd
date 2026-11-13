@@ -61,6 +61,9 @@ func _test_scene_principale(empreinte_avant: String) -> void:
 		bouton == "JOUER" and hud_cache and Partie.etat != null and Partie.etat.fin == "", "bouton « %s »" % bouton)
 	_verifier("écran titre : aucune sauvegarde écrite (ni celle du joueur, ni celle du test)",
 		FileAccess.get_sha256(Sauvegarde.CHEMIN) == empreinte_avant and not FileAccess.file_exists(_chemin_test) and Partie.chemin_sauvegarde == _chemin_test)
+	# Lot 04-05 (D9, D11, CA-M9) : une nouvelle partie du joueur (hors mode capture) a les cartes et les projets allumés
+	var cfg: Dictionary = scene.call("_config")
+	_verifier("principal._config() hors capture : \"cartes\": true et \"projets\": true", cfg.get("cartes", false) == true and cfg.get("projets", false) == true, str(cfg.keys()))
 	scene.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -308,6 +311,8 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	if cartes:
 		_verifier("%s : %d cartes du foyer affichées par Modales.carte, chacune fermée par un choix, rangée dans l'historique, sans blocage" % [nom, cartes_vues],
 			cartes_vues >= 8 and cartes_vues <= 10 and int(vues.get("carte", 0)) == cartes_vues and ecarts_genre.is_empty() and ecarts_choix.is_empty(), "%s %s" % [str(ecarts_genre), str(ecarts_choix)])
+	if cartes:
+		await _verifier_projets(nom, e)
 	if actif and not cartes:
 		_verifier("%s : fiche d'une action : « Dividende versé chaque année en mai » avant le 1er versement, « Dividendes reçus » après (%s)" % [nom, str(_div_vus)],
 			int(_div_vus.get("versé", 0)) >= 1 and int(_div_vus.get("reçus", 0)) >= 1, str(_div_vus))
@@ -445,6 +450,106 @@ func _afficher_carte(e: EtatPartie, c: Dictionary, choix: String, vues: Dictiona
 	await modales.carte_rangee
 	hud.maj(e, false)
 
+
+## Lot 05 (04-I) : cartes de projet sur contenus fabriqués (contrat lot_04 §4.2) : choix, jour J, confirmation, étiquette,
+## BANQUE fermée, « Mon foyer ». Les captures de la famille interface utilisent les mêmes fabricants.
+func _verifier_projets(nom: String, e: EtatPartie) -> void:
+	var scen: GDScript = load("res://scripts/outils/scenarios/interface.gd")
+	var pos := Vector2(960, 400)
+	var attendre_phase := func(mp: ModaleProjet, phase: String) -> bool:
+		var t := 0.0
+		while mp.phase != phase and t < 5.0:
+			await get_tree().process_frame
+			t += get_process_delta_time()
+		return mp.phase == phase
+	var mp := modales.etat_projet()
+	# Choix : 3 options, touche 2, ni Échap ni clic extérieur, la carte reste affichée
+	var c: Dictionary = scen.call("fabriquer_choix")
+	modales.projet(c, pos)
+	var ok: bool = await attendre_phase.call(mp, "attente")
+	_recu.clear()
+	await _touche(KEY_ESCAPE)
+	var apres_echap := _recu.is_empty() and modales.genre_courant == "projet"
+	var tit: Array = mp.ordre.map(func(id: String) -> String: return str((mp.boutons[id].find_child("TitreChoix", true, false) as Label).text))
+	var attendus: Array = c["choix"].map(func(x: Dictionary) -> String: return str(x["titre"]))
+	await _touche(KEY_2)
+	var r: Array = _recu.pop_back() if not _recu.is_empty() else []
+	_verifier("%s : projet, choix : 3 options (noms == contenu), touche 2 émet [projet, P1B], Échap sans effet, la carte reste affichée" % nom,
+		ok and mp.ordre.size() == 3 and tit == attendus and apres_echap and r == ["projet", "P1B"] and modales.genre_courant == "projet", "%s %s %s" % [str(tit), str(r), modales.genre_courant])
+	modales.conclure_projet({"choix": "P1B", "kind": "projet", "etape": "choix", "montant": 0.0, "consequence": "C'est décidé."}, pos)
+	await attendre_phase.call(mp, "conclusion")
+	var lq := modales.courant.find_child("Consequence", true, false) as Label if modales.courant != null else null
+	var conseq_ok := lq != null and lq.text == "C'est décidé."
+	mp.passer()
+	await modales.carte_rangee
+	_verifier("%s : projet, conclusion : ligne de conséquence affichée, passée d'un toucher, carte rangée" % nom, conseq_ok and modales.genre_courant == "" and not modales.carte_en_cours)
+	# Jour J, cas B : RÉALISER désactivé et sans effet, confirmation de RÉALISER EN VENDANT == plan, Échap = RETOUR, CONFIRMER émet
+	c = scen.call("fabriquer_jour_j", "b")
+	modales.projet(c, pos)
+	ok = await attendre_phase.call(mp, "attente")
+	_recu.clear()
+	var refus_avant := mp.refus
+	mp.choisir("realiser")
+	var refus_ok := mp.refus == refus_avant + 1 and _recu.is_empty()
+	mp.choisir("realiser_en_vendant")
+	var noms: Array = modales.courant.find_children("NomVente", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+	var plan: Array = []
+	for i in (c["ventes"] as Array).size():
+		plan.append("%d  %s" % [i + 1, str(c["ventes"][i]["nom"])])
+	var conf_ok: bool = mp.en_confirmation and noms == plan and _recu.is_empty()
+	await _touche(KEY_ESCAPE)
+	var retour_ok: bool = not mp.en_confirmation and modales.genre_courant == "projet" and _recu.is_empty()
+	mp.choisir("realiser_en_vendant")
+	mp.choisir_rang(0)   # 1 = CONFIRMER
+	r = _recu.pop_back() if not _recu.is_empty() else []
+	_verifier("%s : jour J (cas B) : choix désactivé sans effet, confirmation listant le plan, Échap = RETOUR, CONFIRMER émet realiser_en_vendant (%s)" % [nom, str(r)],
+		ok and refus_ok and conf_ok and retour_ok and r == ["projet", "realiser_en_vendant"], "%s %s %s %s" % [refus_ok, conf_ok, retour_ok, str(noms)])
+	modales.conclure_projet({"choix": "realiser_en_vendant", "kind": "projet", "etape": "echeance", "montant": 0.0, "consequence": "Fait.", "ventes": []}, pos)
+	await attendre_phase.call(mp, "conclusion")
+	mp.passer()
+	await modales.carte_rangee
+	# Jour J, cas A : rien à vendre (pas de 4e case), RÉALISER EN VENDANT désactivé
+	c = scen.call("fabriquer_jour_j", "a")
+	modales.projet(c, pos)
+	await attendre_phase.call(mp, "attente")
+	var sans_ventes: bool = modales.courant.find_child("RienAVendre", true, false) != null and modales.courant.find_child("CaseApresVentes", true, false) == null
+	var vendre_off: bool = bool(mp.choix["realiser_en_vendant"].get("desactive", false)) and mp.boutons["realiser_en_vendant"].disabled
+	_verifier("%s : jour J (cas A) : « Rien à vendre », pas de case APRÈS LES VENTES, RÉALISER EN VENDANT désactivé" % nom, sans_ventes and vendre_off)
+	mp.choisir("renoncer")
+	_recu.clear()
+	modales.conclure_projet({"choix": "renoncer", "kind": "projet", "etape": "echeance", "montant": 0.0, "consequence": "Abandonné.", "ventes": []}, pos)
+	await attendre_phase.call(mp, "conclusion")
+	mp.passer()
+	await modales.carte_rangee
+	# Étiquette MA MAISON : 2e ligne == contrat ; absente sans projet
+	var pr: Dictionary = scen.call("fabriquer_projet_en_cours")
+	var texte := hud.maj_projet(e, pr)
+	var attendu_t := "%s / %s" % [Format.nombre(Format.en_devise(float(pr["disponible"]), Format.devise(e.ab_courant()))), Format.entier(float(pr["montant"]), e.ab_courant())]
+	var sans := hud.maj_projet(e, {"_aucun": true})
+	_verifier("%s : étiquette MA MAISON : 2e ligne « %s » == disponible / montant du projet, absente sans projet" % [nom, attendu_t], texte == attendu_t and sans == "", "%s / %s" % [texte, sans])
+	# BANQUE fermée : bouton grisé et phrase ; rouverte ensuite
+	var ferme := hud.maj_banque_fermee(true)
+	var phrase_ok := hud.l_banque_fermee.text == "Réglez d'abord la carte du foyer." and hud.l_banque_fermee.visible and hud.b_marche.disabled
+	hud.maj_banque_fermee(false)
+	_verifier("%s : BANQUE grisée avec « Réglez d'abord la carte du foyer. » pendant une carte, rouverte ensuite" % nom, ferme and phrase_ok and not hud.b_marche.disabled and not hud.l_banque_fermee.visible)
+	# « Mon foyer » : projet en cours et projets passés == contenus
+	var fab := {"projet": pr, "passes": scen.call("fabriquer_projets_passes")}
+	modales.foyer(e, pos, fab)
+	await _attendre_genre("info")
+	var mf := modales.etat_foyer()
+	var lp: Array = mf.lignes_projet.map(func(l: Label) -> String: return l.text)
+	var ls: Array = mf.lignes_passes.map(func(l: Label) -> String: return l.text)
+	var passes_ok := ls.size() == 3 and str(ls[0]).begins_with("abandonné") and str(ls[1]).begins_with("réalisé après report") and str(ls[2]).begins_with("réalisé ·")
+	var sans_jauge := true
+	var chiffres_humeur: Array = []
+	for l in [mf.l_phrase, mf.l_cause]:
+		if l != null and RegEx.create_from_string("[0-9]").search((l as Label).text) != null:
+			chiffres_humeur.append((l as Label).text)
+	sans_jauge = chiffres_humeur.is_empty()
+	_fermer("fermer")
+	_verifier("%s : « Mon foyer » : projet en cours == contrat (%d lignes), 3 projets passés avec leur mot, aucun nombre d'humeur" % [nom, lp.size()],
+		lp == ModaleFoyer.textes_projet(pr, e.ab_courant()) and passes_ok and sans_jauge, "%s | %s | %s %s" % [str(lp), str(ls), str(passes_ok), str(sans_jauge)])
+	hud.maj_projet(e, {"_aucun": true})
 
 ## Fenêtre Banque sur chaque produit détenu : fiche, réglage « chaque mois », formulaire d'ordre.
 func _visiter_banque(e: EtatPartie) -> Dictionary:

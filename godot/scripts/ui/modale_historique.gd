@@ -279,7 +279,7 @@ func relire(e: EtatPartie, i: int) -> bool:
 			m.journal(c, Vector2(-1, -1), false, str(h["choix"]))
 		"courrier":
 			m.courrier(c, Vector2(-1, -1), e, str(h["choix"]), a)
-		"carte":
+		"carte", "projet":
 			m.carte_lecture(h, a)
 		_:
 			if str(h["type"]) == "releve" and float(c.get("frais_total", 0.0)) > 0.0:

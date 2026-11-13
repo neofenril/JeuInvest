@@ -1,7 +1,7 @@
 extends RefCounted
 ## Étapes de capture : vérifications techniques (polices, F10, partie intégrale, raccourcis de test).
 
-const ETAPES := ["polices", "f10", "integrale", "raccourcis", "integrale_saut", "integrale_cartes"]
+const ETAPES := ["polices", "f10", "integrale", "raccourcis", "integrale_saut", "integrale_cartes", "integrale_maison"]
 
 var sc: ScenariosCapture
 
@@ -9,10 +9,13 @@ var sc: ScenariosCapture
 func jouer(etape: String) -> void:
 	var jeu := sc.jeu
 	var hud: Hud = jeu.hud
-	if etape == "integrale_cartes":
-		# Lot 04 (I8) : partie complète, cartes du foyer allumées, graine fixe (nouvelle référence)
+	if etape == "integrale_cartes" or etape == "integrale_maison":
+		# Lot 04 (I8) : partie complète, cartes du foyer allumées, graine fixe (nouvelle référence) ;
+		# integrale_maison (lot 05, CA-M9) : projets allumés aussi (sans effet tant que le moteur 04-L n'est pas fusionné)
 		var cfg := Donnees.config_demo(-1)
 		cfg["cartes"] = true
+		if etape == "integrale_maison":
+			cfg["projets"] = true
 		jeu.nouvelle_partie(cfg)
 	sc.partir_de_la_rue(etape)
 	match etape:
@@ -22,7 +25,7 @@ func jouer(etape: String) -> void:
 			await _integrale(jeu)
 		"integrale_saut":
 			await _integrale(jeu, true)
-		"integrale_cartes":
+		"integrale_cartes", "integrale_maison":
 			await _integrale(jeu)
 		"f10":
 			var fen := sc.get_window()
@@ -83,6 +86,21 @@ func _integrale(jeu: Node, saut := false) -> void:
 				modales.call("_on_choix_journal", "rien")
 			"courrier":
 				modales.fermer(str(Partie.etat.contenu_modale()["choix"][0]["id"]))
+			"projet":
+				# Projet du foyer (Modales.projet) : jour J -> réaliser si possible, sinon le premier choix actif
+				var mpj := modales.etat_projet()
+				var voulu := ""
+				for id: String in mpj.ordre:
+					if not bool(mpj.choix[id].get("desactive", false)) and (voulu == "" or id == "realiser"):
+						voulu = id
+				if voulu != "":
+					mpj.choisir(voulu)
+					await sc.delai(0.3)
+					if mpj.en_confirmation:
+						mpj.choisir_rang(0)
+					await sc.delai(0.6)
+					if mpj.phase == "conclusion":
+						mpj.passer()
 			"carte":
 				# Carte du foyer (Modales.carte) : le premier choix payable, puis la conclusion est passée d'un toucher
 				var mc := modales.etat_carte()

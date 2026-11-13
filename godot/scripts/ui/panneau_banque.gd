@@ -23,6 +23,8 @@ var _jauge: Control
 var _l_cc: Label
 var _b_messages: Button
 var _l_titre: Label
+var _l_projet: Label          # lot 05 (P2)
+var ligne_fab := ""              # ligne fabriquée (captures et tests, jamais en jeu)
 # Formulaire d'ordre
 var _l_montant: Label
 var _ligne_montant: Control
@@ -96,6 +98,11 @@ func construire(etat: EtatPartie, id: String, montant_initial: float) -> void:
 	x.pressed.connect(func() -> void: fermer_demande.emit())
 	tete.add_child(x)
 	v.add_child(tete)
+	# Lot 05 (04-I, P2) : ligne du projet en cours, sous l'en-tête (cachée sans projet)
+	_l_projet = Style.label("", 20, Style.ui_gras(), Style.ACCENT)
+	_l_projet.name = "LigneProjetGuichet"
+	_l_projet.visible = false
+	v.add_child(_l_projet)
 	# Corps : carnet à gauche, fiche ou ordre à droite
 	var corps := HBoxContainer.new()
 	corps.add_theme_constant_override("separation", 18 if compact else 28)
@@ -178,6 +185,8 @@ func _maj_carnet() -> void:
 	_l_titre.text = "LA BANQUE · " + Dates.texte(a).to_upper()
 	_l_decouverts.text = "Produits découverts : %d sur %d" % [Banquier.nb_decouverts(e), Banquier.ordre_carnet().size()]
 	_l_cc.text = Format.entier(e.joueur.cc, a) + " · 0 %"
+	_l_projet.text = ligne_projet()
+	_l_projet.visible = _l_projet.text != ""
 	_b_messages.text = "HISTORIQUE"
 	_jauge.queue_redraw()
 	for pid in _cartes:
@@ -331,6 +340,15 @@ func _afficher_fiche(pid: String) -> void:
 ## Lot 03 (I6) : ligne des dividendes de la fiche d'une action détenue ; "" pour les autres produits ou une
 ## action non détenue. Jamais de rendement prévisionnel.
 ## Vrai si `Banquier` définit la fonction statique « nom » (appel dynamique : elle peut venir d'une branche non fusionnée).
+## Ligne du guichet (lot 05, P2) : ligne_projet_guichet() du moteur quand un projet est en cours, "" sinon (ou si le moteur ne la fournit pas).
+func ligne_projet() -> String:
+	if ligne_fab != "":
+		return ligne_fab
+	if e != null and e.has_method("ligne_projet_guichet"):
+		return str(e.call("ligne_projet_guichet"))
+	return ""
+
+
 static func banquier_a(nom: String) -> bool:
 	for m: Dictionary in (load("res://scripts/logique/banquier.gd") as GDScript).get_script_method_list():
 		if str(m["name"]) == nom:
@@ -525,6 +543,10 @@ func _afficher_ordre(pid: String, m: String, montant_initial := -1.0) -> void:
 	tete.add_child(nom)
 	tete.add_child(_info_prix(a))
 	_droite.add_child(tete)
+	if not compact and ligne_projet() != "":
+		var lpo := Style.label(ligne_projet(), 20, Style.ui_gras(), Style.ACCENT)
+		lpo.name = "LigneProjetOrdre"
+		_droite.add_child(lpo)
 	var libelles := _libelles_modes(pid)
 	var modes := HBoxContainer.new()
 	modes.add_theme_constant_override("separation", 8)

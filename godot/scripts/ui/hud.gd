@@ -85,6 +85,7 @@ var _frais_affiches := 0.0
 var _point_banque := false
 var b_marche: Button
 var l_banque_fermee: Label        # lot 04 (I4)
+var _projet_fab := {}              # projet fabriqué pour une capture (jamais en jeu)
 var b_historique: Button
 var languette: Button
 var notifs: Control
@@ -926,7 +927,32 @@ func _creer_etiquettes() -> void:
 		cd.name = "ChevronDroite"
 		cd.visible = false
 		hb.add_child(cd)
-		p.add_child(hb)
+		if id == "maison":
+			# Lot 05 (04-I, P3, docs/24 §1.3) : 2e ligne « 21 400 / 30 000 F » et icône du projet (absentes sans projet en cours)
+			var ligne := HBoxContainer.new()
+			ligne.name = "LigneMaison"
+			ligne.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ligne.add_theme_constant_override("separation", 9)
+			var icone_p := Control.new()
+			icone_p.name = "IconeProjet"
+			icone_p.custom_minimum_size = Vector2(48, 48)
+			icone_p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			icone_p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			icone_p.visible = false
+			ligne.add_child(icone_p)
+			var colonne := VBoxContainer.new()
+			colonne.add_theme_constant_override("separation", 0)
+			colonne.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			colonne.add_child(hb)
+			var l_proj := Style.label("", 22, Style.ui_gras(), Style.TEXTE)
+			l_proj.name = "LigneProjet"
+			l_proj.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			l_proj.visible = false
+			colonne.add_child(l_proj)
+			ligne.add_child(colonne)
+			p.add_child(ligne)
+		else:
+			p.add_child(hb)
 		p.gui_input.connect(_on_etiquette.bind(id))
 		if id == "banque":
 			p.draw.connect(_dessiner_point_banque.bind(p))
@@ -984,6 +1010,8 @@ func placer_etiquettes() -> void:
 			p.find_child("ChevronGauche", true, false).visible = cote == "gauche"
 			p.find_child("ChevronDroite", true, false).visible = cote == "droite"
 			p.reset_size()
+			if id == "maison":
+				maj_projet(Partie.etat)   # l'icône du projet disparaît dans la flèche de bord
 		if cote == "":
 			en_place.append(id)
 			continue
@@ -1204,6 +1232,56 @@ func maj_banque_fermee(fermee: bool) -> bool:
 	return fermee
 
 
+## 2e ligne de l'étiquette MA MAISON (lot 05, 04-I P3) : « {disponible} / {montant} » du projet en cours, avec son icône
+## (16 × 16 ×3) ; rien sans projet. `projet` : projet_en_cours() (contrat lot_04 §4.2), lu sur l'état si omis.
+## Renvoie le texte affiché ("" si caché). Les flèches de bord n'ont pas l'icône (place).
+func maj_projet(e: EtatPartie, projet := {}) -> String:
+	var p: PanelContainer = etiquettes.get("maison")
+	if p == null:
+		return ""
+	var lp := p.find_child("LigneProjet", true, false) as Label
+	var ic := p.find_child("IconeProjet", true, false) as Control
+	if not projet.is_empty():
+		# contenu fabriqué (captures et tests) : gardé tant qu'un autre n'est pas donné ; {"_aucun": true} l'efface
+		_projet_fab = {} if projet.has("_aucun") else projet
+	var pr: Dictionary = _projet_fab
+	if pr.is_empty() and e != null and e.has_method("projet_en_cours"):
+		pr = e.call("projet_en_cours")
+	var texte := ""
+	if not pr.is_empty():
+		var a := e.ab_courant() if e != null else 0
+		texte = "%s / %s" % [Format.nombre(Format.en_devise(float(pr.get("disponible", 0.0)), Format.devise(a))), Format.entier(float(pr.get("montant", 0.0)), a)]
+	var fleche := str(p.get_meta("fleche", "")) != ""
+	if lp.visible != (texte != "") or lp.text != texte:
+		lp.text = texte
+		lp.visible = texte != ""
+		p.reset_size()
+	var nom_icone := str(pr.get("icone", ""))
+	var veut_icone := texte != "" and not fleche
+	if ic.visible != veut_icone:
+		ic.visible = veut_icone
+		p.reset_size()
+	if veut_icone and str(ic.get_meta("icone", "?")) != nom_icone:
+		for ch in ic.get_children():
+			ch.queue_free()
+		CadresPixel.charger()
+		if nom_icone != "" and GrillePixel.existe("ui/" + nom_icone):
+			var r := CadresPixel.icone(nom_icone)
+			r.size = Vector2(48, 48)
+			ic.add_child(r)
+		else:
+			var pc := PanelContainer.new()
+			pc.size = Vector2(48, 48)
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Style.ENCRE
+			pc.add_theme_stylebox_override("panel", sb)
+			var li := Style.label(str(pr.get("nom", "P")).strip_edges().left(1).to_upper(), 28, Style.capitales(), Style.TEXTE)
+			li.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			pc.add_child(li)
+			ic.add_child(pc)
+		ic.set_meta("icone", nom_icone)
+	return texte
+
 ## Picto d'humeur de l'étiquette MA MAISON (lot 04, I2) : humeur_visible() si les cartes sont allumées, rien
 ## sinon ; au changement d'état, le picto saute d'1 texel. Renvoie l'humeur affichée (-1 : picto caché).
 func maj_humeur(e: EtatPartie) -> int:
@@ -1244,6 +1322,7 @@ func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 	var fmt := func(v: float) -> String: return Format.montant(v, a)
 	date.regler(a, anime)
 	maj_humeur(e)
+	maj_projet(e)
 	var cc := e.joueur.cc
 	var patr := e.patrimoine(e.joueur)
 	var d := duree_roule if anime else 0.0

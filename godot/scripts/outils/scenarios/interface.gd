@@ -10,7 +10,8 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau",
 	"etiquettes_balayage", "pastille_signe", "bulle",
 	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
-	"mon_foyer", "mon_foyer_eteint", "banque_fermee"]
+	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
+	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -48,6 +49,8 @@ func jouer(etape: String) -> void:
 			await _mon_foyer(etape, jeu)
 		"banque_fermee":
 			await _banque_fermee(jeu)
+		"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet":
+			await _projet(etape, jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -417,6 +420,209 @@ func _carte(etape: String, jeu: Node) -> void:
 			var lc := modales.courant.find_child("ChoixPris", true, false) as Label if modales.courant != null else null
 			print("UI carte_relue choix=« %s »" % (lc.text if lc != null else "?"))
 			_mesurer(etape, modales.courant)
+
+
+# =====================================================================
+# Projets (lot 05, 04-I : P1 à P5 ; contenus fabriqués sur le contrat lot_04 §4.2)
+# =====================================================================
+
+static func _f(francs: float) -> float:
+	return Produits.f(francs)
+
+
+## Contenu fabriqué de l'étape « choix » (P1, mars 1984). long : « sous » de plus de 2 lignes sur la 3e option (cas P2C).
+static func fabriquer_choix(long := false) -> Dictionary:
+	var sous3 := "Apport comptant, la vieille 4L en reprise"
+	if long:
+		sous3 = "Un PEL ouvert en 1984 verse chaque année une prime d'État et un taux fixe : l'apport vient de ce plan, qu'il faut garder au moins quatre ans."
+	return {"kind": "projet", "etape": "choix", "source": "maison", "date": "MARS 1984", "ab": Dates.lire("1984-03"), "id": "P1",
+		"titre": "Un projet pour 1986", "texte": "Sylvie et vous voulez vous offrir quelque chose d'ici avril 1986. Lequel ?",
+		"choix": [
+			{"id": "P1A", "titre": "Le salon et la chaîne hi-fi", "montant": _f(12000.0), "echeance_txt": "avril 1986", "icone": "salon", "sous": "Canapé, fauteuils et une vraie chaîne"},
+			{"id": "P1B", "titre": "La Grèce pour les 30 ans de Sylvie", "montant": _f(16000.0), "echeance_txt": "avril 1986", "icone": "grece", "sous": "Deux semaines dans les Cyclades, à deux"},
+			{"id": "P1C", "titre": "La Super 5 neuve", "montant": _f(30000.0), "echeance_txt": "avril 1986", "icone": "auto", "sous": sous3}]}
+
+
+static func _vente_sicav() -> Dictionary:
+	return {"id": "sicav", "nom": "SICAV Avenir", "vendu": _f(4145.0), "net": _f(4100.0), "frais": _f(0.0), "impot": _f(45.0), "penalite": 0.0,
+		"texte_penalite": "Impôt sur la plus-value : 45 F.", "ecart_verse": _f(-300.0), "texte_ecart": "SICAV : 4 100 F, soit 300 F de moins que vos versements."}
+
+
+static func _vente_pel() -> Dictionary:
+	return {"id": "pel", "nom": "Plan d'épargne-logement", "vendu": _f(6250.0), "net": _f(5100.0), "frais": 0.0, "impot": 0.0, "penalite": _f(1150.0),
+		"texte_penalite": "Prime d'État perdue : 1 150 F. Le PEL est clos avant 4 ans : seuls les intérêts au taux réduit sont versés.", "ecart_verse": _f(900.0),
+		"texte_ecart": "PEL : 5 100 F, soit 900 F de plus que vos versements."}
+
+
+## Les 3 cas du jour J (docs/24 §1.2) : "a" disponible suffisant, "b" manque couvert par les ventes, "c" rien ne suffit.
+static func fabriquer_jour_j(cas: String) -> Dictionary:
+	var c := {"kind": "projet", "etape": "echeance", "source": "maison", "date": "AVRIL 1986", "ab": Dates.lire("1986-04"), "id": "P1C",
+		"titre": "Le jour J : La Super 5 neuve", "texte": "C'est le moment : La Super 5 neuve, 30 000 F.", "montant": _f(30000.0), "icone": "auto"}
+	var realiser := {"id": "realiser", "titre": "Réaliser", "desactive": false, "sous": ""}
+	var vendre := {"id": "realiser_en_vendant", "titre": "Réaliser en vendant", "desactive": false, "sous": ""}
+	var reporter := {"id": "reporter", "titre": "Reporter de 4 mois", "desactive": false, "sous": "Nouvelle date : août 1986"}
+	var renoncer := {"id": "renoncer", "titre": "Renoncer", "desactive": false, "sous": "Le projet est abandonné"}
+	match cas:
+		"a":
+			c.merge({"disponible": _f(35000.0), "manque": 0.0, "ventes": [], "apres_ventes": _f(35000.0)})
+			realiser["sous"] = "Le compte et le Livret A suffisent"
+			vendre["desactive"] = true
+			vendre["sous"] = "Rien à vendre : tout est disponible"
+		"b":
+			c.merge({"disponible": _f(21400.0), "manque": _f(8600.0), "ventes": [_vente_sicav(), _vente_pel()], "apres_ventes": _f(30600.0)})
+			realiser["desactive"] = true
+			realiser["sous"] = "Il manque 8 600 F sur le compte et le Livret A"
+			vendre["sous"] = "Il faut vendre pour 8 600 F"
+		_:
+			c.merge({"disponible": _f(12000.0), "manque": _f(18000.0), "ventes": [_vente_sicav()], "apres_ventes": _f(16100.0)})
+			realiser["desactive"] = true
+			realiser["sous"] = "Il manque 18 000 F sur le compte et le Livret A"
+			vendre["desactive"] = true
+			vendre["sous"] = "Même en vendant, il manque 13 900 F"
+	c["choix"] = [realiser, vendre, reporter, renoncer]
+	return c
+
+
+static func fabriquer_projet_en_cours() -> Dictionary:
+	return {"id": "P1C", "nom": "La Super 5 neuve", "icone": "auto", "montant": _f(30000.0), "m_echeance": 0, "echeance_txt": "avril 1986", "mois_restants": 14,
+		"report_utilise": false, "reportable": true, "disponible": _f(21400.0), "revendable": _f(4100.0), "atteint": false}
+
+
+static func fabriquer_projets_passes() -> Array:
+	return [{"id": "P1A", "nom": "Le salon et la chaîne hi-fi", "icone": "salon", "montant": _f(12000.0), "statut": "realise", "m": 0, "ab": Dates.lire("1986-04")},
+		{"id": "P2B", "nom": "La Grèce pour les 30 ans de Sylvie", "icone": "grece", "montant": _f(16000.0), "statut": "realise_apres_report", "m": 0, "ab": Dates.lire("1987-08")},
+		{"id": "P2C", "nom": "Le petit T3", "icone": "", "montant": _f(60000.0), "statut": "abandonne", "m": 0, "ab": Dates.lire("1988-02")}]
+
+
+func _projet(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	var hud: Hud = jeu.hud
+	var cas := ScenariosCapture.option("cas")
+	if cas == "":
+		cas = "b"
+	partie_cartes(jeu)
+	var e := Partie.etat
+	if etape in ["foyer_projet", "etiquette_projet", "banque_guichet"]:
+		jusqu_a_carte("C04")
+		while not e.modale.is_empty():
+			e.resolution_auto()
+		sc.rafraichir_apres_saut()
+	var porte: Vector2 = jeu.ville.call("porte_ecran", "maison")
+	match etape:
+		"projet_choix", "projet_conclusion":
+			var c := fabriquer_choix(ScenariosCapture.option("long") == "oui")
+			modales.projet(c, porte)
+			await sc.attendre_que(func() -> bool: return modales.etat_projet().phase == "attente", 5.0)
+			await sc.delai(0.3)
+			var mp := modales.etat_projet()
+			var recu := {}
+			var coup := func(g: String, id: String) -> void: recu["id"] = id; recu["g"] = g
+			modales.choix_fait.connect(coup)
+			await sc.touche(KEY_ESCAPE)
+			await sc.clic_dehors()
+			await sc.delai(0.3)
+			print("UI projet echap_clic=%s (ni Échap ni clic extérieur)" % ("ignores" if modales.genre_courant == "projet" and recu.is_empty() else "FERMENT incoherences=1"))
+			print("UI projet choix options=%d = c=%d egal=%s ids=%s" % [mp.ordre.size(), (c["choix"] as Array).size(), "oui" if mp.ordre.size() == 3 else "non incoherences=1", ", ".join(PackedStringArray(mp.ordre))])
+			var lignes_c: Array = []
+			for id: String in mp.ordre:
+				var b: Button = mp.boutons[id]
+				lignes_c.append("%s | %s | %s" % [(b.find_child("TitreChoix", true, false) as Label).text, (b.find_child("Montant", true, false) as Label).text, (b.find_child("Echeance", true, false) as Label).text])
+			for l in lignes_c:
+				print("UI projet option « %s »" % l)
+			await sc.touche(KEY_2)
+			print("UI projet touche_2=%s" % str(recu.get("id", "AUCUN")))
+			modales.choix_fait.disconnect(coup)
+			if etape == "projet_conclusion":
+				modales.conclure_projet({"choix": "P1B", "kind": "projet", "etape": "choix", "montant": _f(16000.0), "consequence": "C'est décidé : la Grèce, pour avril 1986."}, porte)
+				await sc.delai(1.0)
+			_mesurer(etape, modales.courant)
+			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+		"projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion":
+			var c := fabriquer_jour_j(cas)
+			modales.projet(c, porte)
+			await sc.attendre_que(func() -> bool: return modales.etat_projet().phase == "attente", 5.0)
+			await sc.delai(0.3)
+			var mp := modales.etat_projet()
+			var recu := {}
+			var coup := func(g: String, id: String) -> void: recu["id"] = id
+			modales.choix_fait.connect(coup)
+			for id: String in mp.ordre:
+				var ch: Dictionary = mp.choix[id]
+				if bool(ch.get("desactive", false)):
+					var avant := mp.refus
+					mp.choisir(id)
+					print("UI projet refus=%s (%s désactivé, raison « %s »)" % ["ignore" if mp.refus == avant + 1 and recu.is_empty() else "ACCEPTE incoherences=1", id, str(ch.get("sous", ""))])
+			print("UI projet jour_j cas=%s boutons=%s bandeau=%s" % [cas, ", ".join(PackedStringArray(mp.ordre)),
+				", ".join(PackedStringArray(modales.courant.find_children("Valeur", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)))])
+			if etape == "projet_confirmation":
+				mp.choisir("realiser_en_vendant")
+				await sc.delai(0.4)
+				var noms: Array = modales.courant.find_children("NomVente", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+				var attendu: Array = []
+				for i in (c["ventes"] as Array).size():
+					attendu.append("%d  %s" % [i + 1, str(c["ventes"][i]["nom"])])
+				var tot := modales.courant.find_child("TotalVentes", true, false) as Label
+				print("UI projet confirmation ventes=%s = plan=%s egal=%s total=%s emis_avant_confirmer=%s" % [str(noms), str(attendu), "oui" if noms == attendu else "non incoherences=1",
+					tot.text if tot != null else "?", "OUI incoherences=1" if not recu.is_empty() else "non"])
+				await sc.touche(KEY_ESCAPE)
+				print("UI projet echap_confirmation=%s" % ("retour" if not mp.en_confirmation and modales.genre_courant == "projet" else "AUTRE incoherences=1"))
+				mp.choisir("realiser_en_vendant")
+				await sc.delai(0.3)
+			elif etape == "projet_jour_j_conclusion":
+				mp.choisir("renoncer")
+				modales.conclure_projet({"choix": "renoncer", "kind": "projet", "etape": "echeance", "montant": 0.0, "consequence": "Projet abandonné.", "ventes": []}, porte)
+				await sc.delai(0.8)
+			modales.choix_fait.disconnect(coup)
+			_mesurer(etape, modales.courant)
+			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+		"etiquette_projet":
+			var texte := hud.maj_projet(e, fabriquer_projet_en_cours())
+			await sc.delai(0.6)
+			hud.placer_etiquettes()
+			await sc.delai(0.3)
+			print("UI etiquette_projet texte=« %s » attendu=« %s » chevauchements=%d" % [texte, "%s / %s" % [Format.nombre(Format.en_devise(_f(21400.0), "F")), Format.entier(_f(30000.0), e.ab_courant())], hud.chevauchements_etiquettes()])
+			var sans := hud.maj_projet(e, {"_aucun": true})
+			print("UI etiquette_projet sans_projet_ligne=« %s »" % ("" if sans == "" else sans))
+			hud.maj_projet(e, fabriquer_projet_en_cours())
+			await sc.delai(0.3)
+			print("UI etiquette_projet chevauchements_apres=%d" % hud.chevauchements_etiquettes())
+			_mesurer(etape, hud)
+		"foyer_projet":
+			var fab := {"projet": fabriquer_projet_en_cours(), "passes": fabriquer_projets_passes()}
+			hud.maj_projet(e, fabriquer_projet_en_cours())
+			Partie.changer_vitesse(0)
+			modales.foyer(e, porte, fab)
+			await sc.attendre_que(func() -> bool: return modales.genre_courant == "info" and modales.courant != null, 5.0)
+			await sc.delai(0.8)
+			var mf := modales.etat_foyer()
+			var lp: Array = mf.lignes_projet.map(func(l: Label) -> String: return l.text)
+			var ls: Array = mf.lignes_passes.map(func(l: Label) -> String: return l.text)
+			for l in lp:
+				print("UI foyer projet « %s »" % l)
+			for l in ls:
+				print("UI foyer passe « %s »" % l)
+			var attendu_p: Array = ModaleFoyer.textes_projet(fab["projet"], e.ab_courant())
+			print("UI foyer projet_egal=%s (lignes %d, attendues %d)" % ["oui" if lp == attendu_p else "non incoherences=1", lp.size(), attendu_p.size()])
+			_mesurer(etape, modales.courant)
+			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+		"banque_guichet":
+			# Le moteur 04-L fournit la ligne ; sans lui, une ligne fabriquée vérifie la mise en page
+			jeu.ouvrir_banque("elf", -2.0)
+			await sc.delai(1.0)
+			var pb: PanneauBanque = modales.banque
+			var ligne := pb.ligne_projet()
+			var vue := modales.courant.find_child("LigneProjetGuichet", true, false) as Label
+			print("UI guichet ligne=« %s » visible=%s (moteur : %s)" % [vue.text if vue != null else "?", str(vue.visible) if vue != null else "?", "04-L" if e.has_method("ligne_projet_guichet") else "absent"])
+			if ligne == "":
+				pb.ligne_fab = "Projet : la Super 5, avril 1986 (dans 14 mois) · 30 000 F"
+				pb.call("_maj_carnet")
+				await sc.delai(0.3)
+			_mesurer(etape, modales.courant)
+			pb.call("_afficher_ordre", "elf", "a", -1.0)
+			await sc.delai(0.5)
+			var lo := modales.courant.find_child("LigneProjetOrdre", true, false) as Label
+			print("UI guichet ordre ligne=%s" % (("« %s »" % lo.text) if lo != null else "absente (téléphone ou pas de projet)"))
+			_mesurer(etape + "_ordre", modales.courant)
 
 
 ## « Mon foyer » (lot 04, I3, CA-I4) : après 3 cartes jouées (politique alternée), humeur au choix

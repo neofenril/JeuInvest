@@ -15,6 +15,7 @@ var phase := ""                       # entree | attente | choisi | conclusion |
 var boutons := {}                     # id -> Button
 var choix := {}                       # id -> Dictionary (contrat)
 var ordre: Array = []                 # ids dans l'ordre d'affichage (touches 1, 2)
+var genre_emis := "carte"                # genre du signal choix_fait (« projet » pour ModaleProjet)
 var refus := 0                        # touchers ignorés sur un choix désactivé (contrôle des captures)
 var _p: Control = null                # enveloppe (découpe du dépliage), modale courante
 var _panel: PanelContainer = null
@@ -70,7 +71,7 @@ func ouvrir(c: Dictionary, depart: Vector2) -> void:
 	v.add_child(Style.label("MA MAISON · " + str(c.get("date", "")).to_upper(), 20, Style.capitales(), Style.TEXTE_PAPIER_2))
 	var corps := HBoxContainer.new()
 	corps.add_theme_constant_override("separation", 18 if compact else 24)
-	var portrait := CadresPixel.icone("portrait_sylvie_" + nom_humeur(_humeur_actuelle()), {}, 2 if compact else 3)
+	var portrait := CadresPixel.icone("portrait_sylvie_" + nom_humeur(_humeur_actuelle()))
 	portrait.name = "Portrait"
 	portrait.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	corps.add_child(portrait)
@@ -87,7 +88,7 @@ func ouvrir(c: Dictionary, depart: Vector2) -> void:
 	droite.add_child(_texte)
 	corps.add_child(droite)
 	var interieur := largeur - 66.0
-	var cote_portrait := 48.0 * (2.0 if compact else 3.0)
+	var cote_portrait := 144.0
 	titre.custom_minimum_size.x = interieur - cote_portrait - 24.0
 	_texte.custom_minimum_size.x = interieur - cote_portrait - 24.0
 	v.add_child(corps)
@@ -248,7 +249,7 @@ func choisir(id: String) -> void:
 		refus += 1
 		return
 	phase = "choisi"
-	m.choix_fait.emit("carte", id)
+	m.choix_fait.emit(genre_emis, id)
 	# Sans conclusion lancée par la séquence (refus du moteur), la carte attend un autre choix
 	if phase == "choisi" and is_instance_valid(_p):
 		phase = "attente"

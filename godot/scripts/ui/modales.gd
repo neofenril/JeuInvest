@@ -37,6 +37,7 @@ var _simples: ModaleSimples
 var _historique: ModaleHistorique
 var _carte: ModaleCarte
 var _foyer: ModaleFoyer
+var _projet: ModaleProjet
 
 
 func _init() -> void:
@@ -48,6 +49,7 @@ func _init() -> void:
 	_historique = ModaleHistorique.new(self)
 	_carte = ModaleCarte.new(self)
 	_foyer = ModaleFoyer.new(self)
+	_projet = ModaleProjet.new(self)
 
 
 func _ready() -> void:
@@ -158,9 +160,25 @@ func carte_lecture(h: Dictionary, a: int) -> void:
 	await _carte.lecture(h, a)
 
 
+## Projet du foyer (lot 05, 04-I ; contrat lot_05 §4.2) : carte de choix (étape « choix ») ou « Le jour J » (étape « echeance »).
+## Émet choix_fait("projet", id) au toucher d'un choix actif (ou touches 1 à 4) et RESTE affichée ; « realiser_en_vendant »
+## passe d'abord par un écran de confirmation dans la carte. Ni Échap ni clic extérieur (sauf Échap = RETOUR dans la confirmation).
+func projet(c: Dictionary, depart: Vector2) -> void:
+	await _projet.ouvrir(c, depart)
+
+
+## Coroutine : tampon « CHOISI », conséquence 3 s (un toucher passe), disparition.
+func conclure_projet(r: Dictionary, arrivee: Vector2) -> void:
+	await _projet.conclure(r, arrivee)
+
+
+func etat_projet() -> ModaleProjet:
+	return _projet
+
+
 ## « Mon foyer » (lot 04, docs/17 §4.4) : lecture seule ; ferme avec « fermer », ou « extra » (historique MA MAISON).
-func foyer(e: EtatPartie, depart := Vector2(-1, -1)) -> void:
-	await _foyer.ouvrir(e, depart)
+func foyer(e: EtatPartie, depart := Vector2(-1, -1), fab := {}) -> void:
+	await _foyer.ouvrir(e, depart, fab)
 
 
 func etat_foyer() -> ModaleFoyer:
@@ -337,9 +355,10 @@ func _on_fond(event: InputEvent) -> void:
 			fermer("non")
 		"banque":
 			banque.fermer_demande.emit()
-		"carte":
-			if _carte.phase == "conclusion":
-				_carte.passer()
+		"carte", "projet":
+			var objet_f: ModaleCarte = _projet if genre_courant == "projet" else _carte
+			if objet_f.phase == "conclusion":
+				objet_f.passer()
 			else:
 				_fremir(courant)
 		_:
@@ -369,10 +388,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
 	if k == null or not k.pressed or k.echo or courant == null:
 		return
-	if genre_courant == "carte":
+	if genre_courant == "carte" or genre_courant == "projet":
+		var objet: ModaleCarte = _projet if genre_courant == "projet" else _carte
 		var nc := k.keycode - KEY_1
-		if nc >= 0 and nc < 2:
-			_carte.choisir_rang(nc)
+		if nc >= 0 and nc < 4 and (genre_courant == "projet" or nc < 2):
+			objet.choisir_rang(nc)
+			get_viewport().set_input_as_handled()
+		elif k.keycode == KEY_ESCAPE and genre_courant == "projet" and _projet.en_confirmation:
+			_projet.echap()
 			get_viewport().set_input_as_handled()
 	elif genre_courant == "journal" and boutons_actifs:
 		var n := k.keycode - KEY_1
