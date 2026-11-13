@@ -12,7 +12,7 @@ extends Node
 ## Aucun script du jeu n'est modifié ; seules des fonctions publiques (ou déjà appelées par principal.gd) sont utilisées.
 
 const GRAINE := 7
-const MOIS_BANQUE := ["1986-12", "1988-06"]
+const MOIS_BANQUE := ["1986-12", "1987-04", "1988-06"]   # lot 05 : avril 1987 = un projet est en cours (ligne du guichet)
 
 var _ko := 0
 var _n := 0
@@ -20,6 +20,11 @@ var _chemin_test := ""
 var hud: Hud
 var modales: Modales
 var _recu: Array = []
+var _ordres_refuses := 0       # lot 05 : refus d'ordres débiteurs constatés pendant une carte ou un projet
+var _projets_choisis := 0
+var _etiquettes_vues := 0
+var _guichets_vus := 0
+var _ventes_conformes := 0
 var _div_vus := {}        # lot 03 (I6) : « reçus » / « versé » -> nombre de fiches d'action vérifiées
 
 
@@ -235,6 +240,12 @@ func _touche(code: Key) -> void:
 func _test_demo_complete(actif: bool, cartes := false) -> void:
 	var nom := ("joueur actif" if actif else "joueur passif") + (", cartes allumées" if cartes else "")
 	var cartes_vues := 0
+	var ecarts_etiquette: Array = []
+	_ordres_refuses = 0
+	_projets_choisis = 0
+	_ventes_conformes = 0
+	_etiquettes_vues = 0
+	_guichets_vus = 0
 	var calque_hud := CanvasLayer.new()
 	calque_hud.layer = 1
 	add_child(calque_hud)
@@ -257,8 +268,12 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	hud.afficher(true, false)
 
 	var config_partie := Donnees.config_demo(GRAINE)
+	# Lot 05 : le joueur actif choisit le projet le plus cher et vend pour le réaliser (la vente passe par la confirmation)
+	StrategieTest.politique_projets = "plus_cher" if (actif and cartes) else "moins_cher"
+	StrategieTest.politique_echeance = "vendre" if (actif and cartes) else "auto"
 	if cartes:
 		config_partie["cartes"] = true
+		config_partie["projets"] = true   # lot 05 : le vrai moteur des projets (04-L)
 	Partie.nouvelle_partie(config_partie)
 	var e := Partie.etat
 	var mois_hud := 0
@@ -271,6 +286,14 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	while e.fin == "" and garde < 100:
 		hud.maj(e, false)
 		mois_hud += 1
+		if cartes:
+			var pe := e.projet_en_cours()
+			var vu_p := (hud.etiquettes["maison"].find_child("LigneProjet", true, false) as Label)
+			var attendu_p := "" if pe.is_empty() else "%s / %s" % [Format.nombre(Format.en_devise(float(pe["disponible"]), Format.devise(e.ab_courant()))), Format.entier(float(pe["montant"]), e.ab_courant())]
+			if (vu_p.text if vu_p.visible else "") != attendu_p:
+				ecarts_etiquette.append("%s : « %s » au lieu de « %s »" % [Dates.texte_court(e.ab_courant()), vu_p.text, attendu_p])
+			elif attendu_p != "":
+				_etiquettes_vues += 1
 		if not e.modale.is_empty():
 			if e.modale.get("kind", "") == "carte":
 				cartes_vues += 1
@@ -301,20 +324,25 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 		ecarts_genre.is_empty() and int(vues.get("appel", 0)) >= 8 and int(vues.get("journal", 0)) >= 1 and int(vues.get("courrier", 0)) >= 1, str(ecarts_genre))
 	_verifier("%s : chaque modale fermée par le choix de la stratégie, choix rangé dans l'historique" % nom, ecarts_choix.is_empty(), str(ecarts_choix))
 	var n_produits := 0
-	var banque_ok := banques.size() == 2
+	var banque_ok := banques.size() == 3
 	for b: Dictionary in banques:
 		n_produits += int(b["produits"])
 		if not b["ok"]:
 			banque_ok = false
-	_verifier("%s : fenêtre Banque (fiche, « chaque mois », formulaire d'ordre) sur chaque produit détenu en déc. 1986 et juin 1988" % nom,
+	_verifier("%s : fenêtre Banque (fiche, « chaque mois », formulaire d'ordre) sur chaque produit détenu en déc. 1986, avril 1987 et juin 1988" % nom,
 		banque_ok and (n_produits >= 8 if actif else n_produits >= 0), str(banques))
 	if cartes:
 		_verifier("%s : %d cartes du foyer affichées par Modales.carte, chacune fermée par un choix, rangée dans l'historique, sans blocage" % [nom, cartes_vues],
 			cartes_vues >= 8 and cartes_vues <= 10 and int(vues.get("carte", 0)) == cartes_vues and ecarts_genre.is_empty() and ecarts_choix.is_empty(), "%s %s" % [str(ecarts_genre), str(ecarts_choix)])
 	if cartes:
 		await _verifier_projets(nom, e)
+	StrategieTest.politique_projets = "moins_cher"
+	StrategieTest.politique_echeance = "auto"
+	if cartes:
+		_verifier("%s : vrai moteur des projets : %d choix de projet (projet_en_cours()[id] == option choisie), ventes faites == plan (%d), %d refus d'ordres pendant une carte ou un projet avec la phrase de l'interface, étiquette == projet_en_cours() (%d mois), ligne du guichet == ligne_projet_guichet() (%d fiches)" % [nom, _projets_choisis, _ventes_conformes, _ordres_refuses, _etiquettes_vues, _guichets_vus],
+			_projets_choisis >= 2 and int(vues.get("projet", 0)) >= 3 and _ordres_refuses >= 10 and ecarts_etiquette.is_empty() and ecarts_genre.is_empty() and ecarts_choix.is_empty() and (not actif or _guichets_vus >= 1), "%s %s %s" % [str(ecarts_etiquette), str(ecarts_genre), str(ecarts_choix)])
 	if actif and not cartes:
-		_verifier("%s : fiche d'une action : « Dividende versé chaque année en mai » avant le 1er versement, « Dividendes reçus » après (%s)" % [nom, str(_div_vus)],
+		_verifier("%s : fiche d'une action : « Dividende : versé en mai… » avant le 1er versement, « Dividendes reçus » après (%s)" % [nom, str(_div_vus)],
 			int(_div_vus.get("versé", 0)) >= 1 and int(_div_vus.get("reçus", 0)) >= 1, str(_div_vus))
 		# Notifications de dividendes (dont dividende_nul, cls « neutre ») : notifications ordinaires de la banque
 		var nul := Banquier.notif_dividende_nul(e, "peugeot")
@@ -370,7 +398,12 @@ func _afficher_modale(e: EtatPartie, actif: bool, vues: Dictionary, ecarts_genre
 	var pos := Vector2(960, 400)
 	var genre := ""
 	if c.get("kind", "") == "carte":
+		_verifier_ordres_bloques(e, ecarts_choix, str(c.get("titre", "")))
 		await _afficher_carte(e, c, choix, vues, ecarts_genre, ecarts_choix)
+		return
+	if c.get("kind", "") == "projet":
+		_verifier_ordres_bloques(e, ecarts_choix, str(c.get("titre", "")))
+		await _afficher_projet(e, c, choix, vues, ecarts_genre, ecarts_choix)
 		return
 	if c.get("kind", "") == "banquier":
 		genre = "appel"
@@ -542,7 +575,7 @@ func _verifier_projets(nom: String, e: EtatPartie) -> void:
 	var passes_ok := ls.size() == 3 and str(ls[0]).begins_with("abandonné") and str(ls[1]).begins_with("réalisé après report") and str(ls[2]).begins_with("réalisé ·")
 	var sans_jauge := true
 	var chiffres_humeur: Array = []
-	for l in [mf.l_phrase, mf.l_cause]:
+	for l in [mf.l_phrase]:   # la cause est une citation du moteur (elle peut citer un montant)
 		if l != null and RegEx.create_from_string("[0-9]").search((l as Label).text) != null:
 			chiffres_humeur.append((l as Label).text)
 	sans_jauge = chiffres_humeur.is_empty()
@@ -550,6 +583,81 @@ func _verifier_projets(nom: String, e: EtatPartie) -> void:
 	_verifier("%s : « Mon foyer » : projet en cours == contrat (%d lignes), 3 projets passés avec leur mot, aucun nombre d'humeur" % [nom, lp.size()],
 		lp == ModaleFoyer.textes_projet(pr, e.ab_courant()) and passes_ok and sans_jauge, "%s | %s | %s %s" % [str(lp), str(ls), str(passes_ok), str(sans_jauge)])
 	hud.maj_projet(e, {"_aucun": true})
+
+## Carte ou projet ouvert : le moteur refuse les ordres débiteurs (« Réglez d'abord la carte du foyer. ») et l'interface dit la même phrase.
+func _verifier_ordres_bloques(e: EtatPartie, ecarts: Array, titre: String) -> void:
+	var cc0 := e.joueur.cc
+	var r0 := e.acheter(e.joueur, "elf", Produits.f(500.0))
+	if not e.ordres_bloques() or r0.get("ok", true) or str(r0.get("msg", "")) != Hud.PHRASE_BANQUE_FERMEE or str(r0.get("refus", "")) != "carte" or e.joueur.cc != cc0:
+		ecarts.append("%s : ordres_bloques()=%s, achat %s" % [titre, str(e.ordres_bloques()), str(r0)])
+	else:
+		_ordres_refuses += 1
+
+
+## Projet du foyer joué comme la séquence de la ville : Modales.projet, choix, confirmation éventuelle, résolution, conclusion.
+## Vérifie sur le vrai moteur : le choix fixe projet_en_cours()["id"], les ventes faites égalent le plan, le compte ne passe pas sous 0.
+func _afficher_projet(e: EtatPartie, c: Dictionary, choix: String, vues: Dictionary, ecarts_genre: Array, ecarts_choix: Array) -> void:
+	var titre := str(c.get("titre", ""))
+	var pos := Vector2(960, 400)
+	modales.projet(c, pos)
+	var mp := modales.etat_projet()
+	var t := 0.0
+	while mp.phase != "attente" and t < 5.0:
+		await get_tree().process_frame
+		t += get_process_delta_time()
+	vues["projet"] = int(vues.get("projet", 0)) + 1
+	if modales.genre_courant != "projet" or mp.phase != "attente":
+		ecarts_genre.append("%s : « %s » affiché comme « %s »" % [Dates.texte_court(e.ab_courant()), titre, modales.genre_courant])
+		return
+	var plan: Array = e.plan_vente_projet() if str(c.get("etape", "")) == "echeance" else []
+	if str(c.get("etape", "")) == "choix":
+		for ch: Dictionary in c["choix"]:
+			if str(ch["id"]) == "P2B" and absf(float(ch["montant"]) - Produits.f(35000.0)) > 0.01:
+				ecarts_choix.append("P2B à %s au lieu de 35 000 F" % str(ch["montant"]))
+	_recu.clear()
+	mp.choisir(choix)
+	if mp.en_confirmation:
+		var noms: Array = modales.courant.find_children("NomVente", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+		var attendus: Array = []
+		for i in plan.size():
+			attendus.append("%d  %s" % [i + 1, str(plan[i]["nom"])])
+		if noms != attendus or not _recu.is_empty():
+			ecarts_choix.append("%s : confirmation %s au lieu du plan %s" % [titre, str(noms), str(attendus)])
+		mp.choisir_rang(0)
+	var r: Array = _recu.pop_back() if not _recu.is_empty() else []
+	if r != ["projet", choix]:
+		ecarts_choix.append("%s : choix_fait %s au lieu de %s" % [titre, str(r), str(["projet", choix])])
+	var res := e.resoudre_modale(choix)
+	if res.is_empty() or str(res.get("choix", "")) != choix:
+		ecarts_choix.append("%s : résolution %s" % [titre, str(res)])
+		return
+	if str(c.get("etape", "")) == "choix":
+		var pe := e.projet_en_cours()
+		if str(pe.get("id", "")) != choix:
+			ecarts_choix.append("%s : projet_en_cours()[id] = %s au lieu de %s" % [titre, str(pe.get("id", "")), choix])
+		else:
+			_projets_choisis += 1
+	elif choix == "realiser_en_vendant":
+		var faites: Array = res.get("ventes", [])
+		var ok_plan := faites.size() == plan.size()
+		for i in mini(faites.size(), plan.size()):
+			ok_plan = ok_plan and str(faites[i].get("id", "")) == str(plan[i].get("id", "")) and absf(float(faites[i].get("net", 0.0)) - float(plan[i].get("net", 0.0))) < 0.5
+		if not ok_plan or e.joueur.cc < -0.01:
+			ecarts_choix.append("%s : ventes faites %s != plan %s (compte %s)" % [titre, str(faites.size()), str(plan.size()), str(e.joueur.cc)])
+		else:
+			_ventes_conformes += 1
+	modales.conclure_projet(res, pos)
+	t = 0.0
+	while mp.phase != "conclusion" and t < 3.0:
+		await get_tree().process_frame
+		t += get_process_delta_time()
+	var lq := modales.courant.find_child("Consequence", true, false) as Label if modales.courant != null else null
+	if lq != null and str(res.get("consequence", "")) != "" and lq.text != str(res["consequence"]):
+		ecarts_choix.append("%s : conséquence affichée « %s »" % [titre, lq.text])
+	mp.passer()
+	await modales.carte_rangee
+	hud.maj(e, false)
+
 
 ## Fenêtre Banque sur chaque produit détenu : fiche, réglage « chaque mois », formulaire d'ordre.
 func _visiter_banque(e: EtatPartie) -> Dictionary:
@@ -571,18 +679,26 @@ func _visiter_banque(e: EtatPartie) -> Dictionary:
 			pb.fermer_demande.emit()
 			break
 		fiche_ok = fiche_ok and droite.get_child_count() > 0 and _textes(droite).size() >= 3
+		var lg := modales.courant.find_child("LigneProjetGuichet", true, false) as Label
+		var attendu_g := e.ligne_projet_guichet()
+		if lg == null or (lg.text if lg.visible else "") != attendu_g:
+			ok = false
+			vus.append("%s KO (ligne du guichet « %s » au lieu de « %s »)" % [pid, lg.text if lg != null else "?", attendu_g])
+		elif attendu_g != "":
+			_guichets_vus += 1
 		# Lot 03 (I6) : ligne des dividendes, seulement pour une action, d'après la logique
 		var ld := droite.find_child("Dividendes", true, false) as Label
 		var attendu := ""
 		if e.mois_dividende(pid) > 0:
-			attendu = ("Dividendes reçus : " + Format.entier(e.dividendes_recus(pid), e.ab_courant())) if e.dividendes_recus(pid) > 0.0 \
-				else "Dividende versé chaque année en " + Dates.MOIS[e.mois_dividende(pid) - 1]
+			# 03-R : le texte de la fiche est écrit par la logique (Banquier.texte_fiche_dividende, CA-I7)
+			attendu = Banquier.texte_fiche_dividende(e, pid)
 		var lu := ld.text if ld != null else ""
 		if lu != attendu:
 			ok = false
 			vus.append("%s KO (dividendes « %s » au lieu de « %s »)" % [pid, lu, attendu])
 		elif attendu != "":
-			_div_vus[attendu.get_slice(" ", 1)] = int(_div_vus.get(attendu.get_slice(" ", 1), 0)) + 1
+			var cle_div := "reçus" if attendu.begins_with("Dividendes reçus") else "versé"
+			_div_vus[cle_div] = int(_div_vus.get(cle_div, 0)) + 1
 		pb.call("_afficher_automatique", pid)
 		await get_tree().process_frame
 		var auto_ok := droite.get_child_count() > 0 and _textes(droite).size() >= 2
