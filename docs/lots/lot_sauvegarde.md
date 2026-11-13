@@ -5,6 +5,8 @@
 > Réponses du joueur (06/11, verbatim dans docs/10) : « 3 emplacements possibles. l'utilisateur choisis quel emplacement écraser lors d'une nouvelle sauvegarde. je valide les décisions importantes. Je confirme une recharge de sauvegarde annule la prise en compte de la partie courante dans le record. »
 > Existant (`main` ae19d02) : un seul fichier `user://partie_en_cours.sav` (format 3, migration douce par `EtatPartie.defauts_etat`), écrit à chaque mois, après chaque choix et ordre, à la fermeture ; « Continuer » sur l'écran titre ; la modale en attente est rouverte à la reprise ; le marché est déterministe et tout le hasard vient de `graine_vie` (sauvegardée dans `config`).
 
+> **Mise à jour du 2026-11-13 (audit de préparation)** : `kind` réels relevés dans le code (05-L) : carte `carte` (C06 = `id`), projet `projet` (étapes `choix` / `echeance` dans `c["etape"]`), krach `marche` (id `p1e6`), héritage `D08`, « un an après » `gazette`. `rythme.json > sauvegarde.toujours` devient `["marche", "D08", "projet"]` (+ `"gazette"` si le game designer le veut). Le compteur `retours` et `bilan["record_possible"]` sont **créés par 07-L** (défaut 0 / vrai, `lot_07.md`) : SV-L ne fait plus que l'incrémenter ; 07 ne dépend donc plus de SV. Reste avant lancement : feu vert du joueur, maquette UX (U6 de `audit_preparation.md`), relecture des seuils (G6 point 6).
+
 ## 1. Design validé
 
 | Sujet | Décision |
