@@ -173,3 +173,10 @@
 - Exe par `--main-pack` : exécutable non-console `Godot_v4.7.2-stable_win64.exe` + `--log-file` + `-- --capture=<png avec /> --etape=titre|reprise`, `Start-Process -PassThru` + `WaitForExit`.
 - Pire cas de notification de dividende = 60 mots pile : zone fragile (03-I2/04-L ne doivent rien ajouter aux gabarits).
 - Les 2 Godot visibles d'autres lots : ne pas les tuer.
+
+## 4 sexdecies. 04-L (recette 2026-11-13, `lot/04-logique` 9a90a60 : OK, 5 mineures ; rapport + `test_recette_foyer` adapté commités sur la branche)
+- Références : **831** avec `-Recette` (749 sans) ; `test_projets` 44 ; mon `test_recette_foyer` 19 (FO2 admet « carte → vie » : 20 cas / 120 parties). Éteint : graine 7 actif 172 139,25 F / 869,97 F / 11 / 360,43 F, passif 145 655,67 F (inchangés). Calibrage (graines 101-140) 100 % / 100 %, développeur 100 % / 87 % ; 0 partie à 7 cartes ; projets 4 à 6 par partie.
+- Mesure indépendante : script `scratchpad\testeur_l04_mesures.gd` (graines 101-140, boucle qui OBSERVE `e.modale` : à rejouer sur 05-L / 04-I). Vente : portefeuille fabriqué (compte 2 000, Livret A 1 000, SICAV / AV / PEL) sur le jour J de P2B à 35 000 F, ordre recalculé avec `devis_vente`, `Produits.devis_rachat_av`, `devis_cloture_pel`.
+- `vie_retrogradee` littéral (même événement, modale éteinte → notification allumée) peut être non nul sans défaut de cadence : l'argent du joueur actif diffère (une carte déplace une présentation, donc un achat) ; mesurer plutôt « gros événement de vie (montant > seuil) fini en notification ». Zone fragile pour 05-L.
+- Règle de vente : non annualisée (décision joueur, `feuille_de_route.md` §2.11) ; `lot_05.md` D7 bis dit « annualisée » + paramètre `ordre_vente` (absent du code) : écart documentaire.
+- Copie de `main` : `git archive main godot`, `custom_user_dir_name` ; son `--import` est rapide (≈ 1 min) ; nettoyer `%APPDATA%\JeuClaude_recette_*` après usage.
