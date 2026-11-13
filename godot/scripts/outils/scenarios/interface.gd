@@ -887,7 +887,8 @@ func _planche_cadres() -> void:
 	for nom: String in ["pause", "lecture", "x2", "x3", "menu", "historique", "fleche_haut", "fleche_bas", "curseur", "drapeau", "croix",
 			"source_maison", "source_banque", "source_media", "piece", "calendrier", "chevron_gauche", "chevron_droite",
 			"bulle_pointe", "humeur_contente", "humeur_neutre", "humeur_fachee", "aimant",
-			"portrait_sylvie_contente", "portrait_sylvie_neutre", "portrait_sylvie_fachee"]:
+			"portrait_sylvie_contente", "portrait_sylvie_neutre", "portrait_sylvie_fachee",
+			"salon", "grece", "voiture", "club_med", "break", "maison"]:
 		var t := CadresPixel.texture(nom)
 		var r := TextureRect.new()
 		r.texture = t

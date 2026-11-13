@@ -403,3 +403,125 @@ etttttte
 ebbbbbbe
 .ebbbbe.
 ..eeee..
+
+# --- Lot 05 (04-I) : icones des projets du foyer, 16 x 16, affichees x3 (docs/24 : carte de choix, etiquette MA MAISON, Mon foyer) ---
+: k encre
+: t brique_vive
+: T brique
+: b tuile
+: d bois_sombre
+: c ciel_clair
+: m bleu_vif
+: M bleu_ardoise
+: w blanc_chaud
+: l lumiere
+: s terre_cuite_claire
+: v vert
+: V vert_sombre
+: r rouge_auvent
+: R brique_sombre
+: o orange
+: a bleu_ardoise
+: A bleu_nuit
+image salon 16x16
+................
+................
+....kkkkkkkk....
+...kttttttttk...
+.kkkttttttttkkk.
+kttttttttttttttk
+ktttbbbbbbbbtttk
+ktttbbbbbbbbtttk
+ktttTTTTTTTTtttk
+ktttTTTTTTTTtttk
+ktttTTTTTTTTtttk
+.kkdkkkkkkkkdkk.
+...k........k...
+................
+................
+................
+image grece 16x16
+................
+.kkkkkkkkkkkkkk.
+kcccccccccclccck
+kccccccccclllcck
+kcccwwwcclllllck
+kccwwwwwcclllcck
+kccwmwwwccclccck
+kccwwmwwccccccck
+kccwwmwwccccccck
+kmmwwwwwmmmmmmmk
+kmmmmmmmmmmmmmmk
+kmmMMMMMMMMMMMMk
+kmmmmmmmmmmmmmmk
+kmmmmmMMMMMMMmmk
+.kkkkkkkkkkkkkk.
+................
+image voiture 16x16
+................
+................
+................
+................
+....kkkkkkkk....
+...krrrrrrrrk...
+...krccccccrk...
+.kkkrccccccrkkk.
+krrrrccccccrrrrk
+korrrrrrrrrrrrlk
+kRRRRRRRRRRRRRRk
+krrrkrrrrrrkrrrk
+.kkkwkkkkkkwkkk.
+...kkk....kkk...
+....k......k....
+................
+image club_med 16x16
+............k...
+.....kkkkkkklk..
+...kkVVVVVVlllk.
+..kvvvvkkvvvvllk
+..kvvvvkkvvvvlk.
+.kvkvvvddvvvlvk.
+..k.kkdddkkkkk..
+......kddk......
+......kddk......
+......kddk......
+.kkkkkkddkkkkkk.
+kssssssddssssssk
+kssssssssssssssk
+kmmmmmmmmmmmmmmk
+.kkkkkkkkkkkkkk.
+................
+image break 16x16
+................
+................
+................
+...kkkkkkkkkkkk.
+..kaaaaaaaaaaaak
+..kaccccccccccak
+..kaccccccccccak
+kkkaccccccccccak
+aaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaal
+AAAAAAAAAAAAAAAA
+aaaakaaaaaaakaaa
+kkkkwkkkkkkkwkkk
+...kkk.....kkk..
+....k.......k...
+................
+image maison 16x16
+.......kk.......
+.....kkrrkk.....
+...kkrrrrrrkk...
+.kkrrrrrrrrrrkk.
+krrrrrrrrrrrrrrk
+krrrrrrrrrrrrrrk
+.kkwwwwwwwwwwkk.
+..kwwwwwwwwwwk..
+..kwcccwwwccck..
+..kwcccdddccck..
+..kwcccdddccck..
+..kwwwwdddwwwk..
+..kwwwwdddwwwk..
+..kwwwwdddwwwk..
+...kkkkkkkkkk...
+................

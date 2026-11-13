@@ -95,7 +95,10 @@ func ouvrir(c: Dictionary, depart: Vector2) -> void:
 	var l_titre := HBoxContainer.new()
 	l_titre.add_theme_constant_override("separation", 12)
 	if etape == "echeance":
-		l_titre.add_child(_icone(str(c.get("icone", "")), str(c.get("titre", ""))))
+		var nom_icone := str(c.get("icone", ""))
+		if nom_icone == "" and Partie.etat != null and Partie.etat.has_method("projet_en_cours"):
+			nom_icone = str(Partie.etat.projet_en_cours().get("icone", ""))   # le contenu du jour J ne porte pas l'icône
+		l_titre.add_child(_icone(nom_icone, str(c.get("titre", ""))))
 	_t_entete = Style.label(str(c.get("titre", "")).to_upper(), 32 if compact else 40, Style.capitales(), Style.ENCRE)
 	_t_entete.name = "Titre"
 	_t_entete.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
