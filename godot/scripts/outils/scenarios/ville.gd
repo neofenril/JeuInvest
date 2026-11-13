@@ -23,7 +23,8 @@ const ETAPES := ["rue", "rue_nuit", "trafic", "crash_anim", "crash_fin", "crash_
 	"rue_banque", "rue_gazette", "rue_libre", "defilement", "saison_hiver", "saison_automne", "saison_printemps", "pluie",
 	"banquier_anim", "banquier_signal", "journal_anim", "courrier_anim", "jouer_repos", "sylvie_0", "sylvie_1", "sylvie_2", "planche_personnages", "voisins",
 	"pieces_or", "pieces_fleche", "pieces_cuivre", "pieces_dividende", "pieces_glisse", "pieces_x3", "pieces_saut", "pieces_hors_champ",
-	"pieces_sous_seuil", "camera_retour", "pieces_jeu", "jouer_rapide", "pieces_bascule", "pieces_dividende_jeu"]
+	"pieces_sous_seuil", "camera_retour", "pieces_jeu", "jouer_rapide", "pieces_bascule", "pieces_dividende_jeu",
+	"pieces_or_cuivre", "sylvie_humeurs", "traces_foyer", "carte_sortie"]
 const RUE := preload("res://scripts/ville/rue.gd")
 const VILLE := preload("res://scripts/ville/ville.gd")
 
@@ -195,8 +196,14 @@ func jouer(etape: String) -> void:
 			if _controle:
 				await sc.attendre_que(func() -> bool: return float(ville.get("krach")) >= 1.0, 3.0)
 				await _controle_palette(ville, "krach_anim")
-		"pieces_or", "pieces_fleche", "pieces_cuivre", "pieces_dividende", "pieces_glisse", "pieces_x3", "pieces_saut", "pieces_hors_champ", "pieces_sous_seuil", "pieces_bascule":
+		"pieces_or", "pieces_fleche", "pieces_cuivre", "pieces_dividende", "pieces_glisse", "pieces_x3", "pieces_saut", "pieces_hors_champ", "pieces_sous_seuil", "pieces_bascule", "pieces_or_cuivre":
 			await _pieces(ville, etape)
+		"sylvie_humeurs":
+			await _sylvie_humeurs(ville)
+		"traces_foyer":
+			await _traces_foyer(ville)
+		"carte_sortie":
+			await _carte_sortie(ville)
 		"camera_retour":
 			await _camera_retour(ville)
 		"pieces_jeu":
@@ -451,7 +458,7 @@ func _pieces(ville: Node2D, etape: String) -> void:
 	var banque: Node2D = ville.get("banque")
 	var milieu: float = (maison.position.x + maison.call("porte").get_center().x + banque.position.x + banque.call("porte").get_center().x) / 2.0
 	match etape:
-		"pieces_or", "pieces_cuivre", "pieces_dividende", "pieces_glisse", "pieces_x3", "pieces_sous_seuil", "pieces_bascule":
+		"pieces_or", "pieces_cuivre", "pieces_dividende", "pieces_glisse", "pieces_x3", "pieces_sous_seuil", "pieces_bascule", "pieces_or_cuivre":
 			ville.call("centrer_sur", milieu, 0.0)
 		"pieces_hors_champ":
 			var t: Tween = ville.call("aller_vers", "media", 0.0)
@@ -466,6 +473,8 @@ func _pieces(ville: Node2D, etape: String) -> void:
 			res = _res_fabrique([], 45.0)
 		"pieces_dividende":
 			res = _res_fabrique([LIVRET_312, ELF_840], 0.0)
+		"pieces_or_cuivre":
+			res = _res_fabrique([LIVRET_312, ELF_840], 45.0)      # m3 : cartouches or et cuivre du même mois
 		"pieces_sous_seuil":
 			res = _res_fabrique([["livret", "Livret A", "interets", 9.0, true]], 0.0)
 		"pieces_x3":
@@ -521,6 +530,10 @@ func _pieces(ville: Node2D, etape: String) -> void:
 			await sc.delai(0.15)
 			await _capture_supp("_arrivee")
 			await sc.delai(0.6)
+	elif etape == "pieces_or_cuivre":
+		await sc.delai(1.25)
+		await _capture_supp("_cartouches")
+		await sc.delai(1.4)
 	elif etape == "pieces_hors_champ":
 		await sc.delai(0.35)    # le montant flottant près de COMPTE vit 0,9 s
 	else:
@@ -563,6 +576,8 @@ var _contacts := 0           # images × pièces en contact avec une enseigne
 var _images_vol := 0
 var _temps_jeu := 0.0
 var _suivi_reprendre := false
+var _sur_indice := 0          # images × cartouches posés sur le panneau INDICE (lot 04, m1)
+var _chevauchements := 0      # images × paires de cartouches qui se recouvrent (lot 04, m3)
 const PAS_ECHANTILLON_S := 1.0 / 60.0
 
 
@@ -570,6 +585,8 @@ func _suivi_debut() -> void:
 	_suivi = {}
 	_contacts = 0
 	_images_vol = 0
+	_sur_indice = 0
+	_chevauchements = 0
 	if not RenderingServer.frame_pre_draw.is_connected(_suivre_pieces):
 		RenderingServer.frame_pre_draw.connect(_suivre_pieces)
 
@@ -610,6 +627,19 @@ func _suivre_pieces() -> void:
 			s["t"] = maintenant
 	if vu:
 		_images_vol += 1
+	# Cartouches visibles à cette image : jamais sur le panneau INDICE, jamais l'un sur l'autre
+	var cartouches: Array = []
+	for c in Juice.calque_effets.get_children():
+		if c is PanelContainer and c.visible and not c.is_queued_for_deletion() and c.modulate.a > 0.05:
+			cartouches.append((c as Control).get_global_rect())
+	if not cartouches.is_empty():
+		var indice: Rect2 = sc.jeu.ville.call("panneau_indice_ecran")
+		for i in cartouches.size():
+			if (cartouches[i] as Rect2).intersects(indice):
+				_sur_indice += 1
+			for j in range(i + 1, cartouches.size()):
+				if (cartouches[i] as Rect2).intersects(cartouches[j]):
+					_chevauchements += 1
 
 
 func _suivi_fin() -> void:
@@ -618,6 +648,7 @@ func _suivi_fin() -> void:
 	if not _controle:
 		return
 	print("RUE pieces enseigne=%d images_vol=%d pieces=%d" % [_contacts, _images_vol, _suivi.size()])
+	print("RUE flottant indice=%d chevauchements=%d" % [_sur_indice, _chevauchements])
 	var k := 0
 	for id in _suivi:
 		var pas: Array = _suivi[id]["pas"]
@@ -789,6 +820,8 @@ func _pieces_dividende_jeu(ville: Node2D) -> void:
 			print("RUE pieces_dividende_jeu mai revenus=%s frais=%s vitesse=%d saut=%s" % [Format.montant(float(f.get("revenus", 0.0)), mai),
 				Format.montant(float(f.get("frais", 0.0)), mai), Partie.vitesse, "oui" if Partie.saut_actif or res.get("pendant_saut", false) else "non"])
 	Partie.mois_passe.connect(cb)
+	var f0 := Juice.derniers_flottants.size()
+	_suivi_debut()
 	Partie.changer_vitesse(1)
 	var t := 0.0
 	while not vu["mai"] and t < 40.0:
@@ -801,10 +834,162 @@ func _pieces_dividende_jeu(ville: Node2D) -> void:
 	ville.set("_calme", 0.0)
 	await sc.delai(1.8)
 	Partie.mois_passe.disconnect(cb)
+	_suivi_fin()
+	_flottants_controle(f0)
 	if _controle:
 		print("RUE pieces dividende=%s%s" % ["present" if vu["dividende"] != "" else "absent", (" lignes=" + str(vu["dividende"])) if vu["dividende"] != "" else ""])
 		print("RUE pieces_dividende_jeu mai_vu=%s fin=%s" % ["oui" if vu["mai"] else "non", Dates.texte(Partie.etat.ab_courant())])
 
+
+# --- Lot 04 (03-V2) : Sylvie, traces des cartes, sortie de la carte -------------------------------------------
+
+## Les 3 humeurs (V1) : une image par humeur (<nom>_h0/_h1/_h2.png), la transition (clignement avec l'ancienne
+## image : <nom>_transition.png) et le coucou de « contente » (<nom>_coucou.png). L'image finale : fâchée.
+func _sylvie_humeurs(ville: Node2D) -> void:
+	_aller_a(Dates.lire("1987-05"), true)
+	ville.set("phase", 0.18)
+	Partie.changer_vitesse(1)
+	Partie.bloquee = true
+	var maison: Node2D = ville.get("maison")
+	for h in [0, 1, 2]:
+		ville.call("regler_humeur_sylvie", h)
+		await sc.delai(0.6)
+		maison.set("_cligne_t", 99.0)
+		await sc.delai(0.2)
+		await _capture_supp("_h%d" % h)
+		if _controle:
+			print("RUE sylvie humeur=%d image=%s" % [h, maison.call("image_sylvie")])
+	ville.call("regler_humeur_sylvie", 0)
+	await sc.delai(0.4)
+	maison.set("_coucou_t", 7.9)
+	await sc.delai(0.2)
+	await _capture_supp("_coucou")
+	if _controle:
+		print("RUE sylvie coucou image=%s" % maison.call("image_sylvie"))
+	await sc.delai(0.6)
+	var avant: String = maison.call("image_sylvie")
+	ville.call("regler_humeur_sylvie", 2)
+	await sc.get_tree().process_frame
+	await _capture_supp("_transition")
+	var pendant: String = maison.call("image_sylvie")
+	await sc.delai(0.4)
+	maison.set("_cligne_t", 99.0)
+	if _controle:
+		print("RUE sylvie transition avant=%s pendant=%s apres=%s" % [avant, pendant, maison.call("image_sylvie")])
+	if _controle:
+		await _controle_palette(ville, "sylvie_humeurs")
+
+
+## Traces des cartes (V3, CA-V3) : 3 parties types menées par StrategieTest, cartes allumées, graine fixe, jusqu'en
+## décembre 1988 ; image de la maison pour chacune (<nom>_<politique>.png, et _<politique>_soir.png pour la lueur
+## de la télévision). Imprime « RUE traces politique=<p> attendu=<…> dessine=<…> ».
+func _traces_foyer(ville: Node2D) -> void:
+	var avant := StrategieTest.politique_cartes
+	for pol in ["depenser", "epargner", "alterner"]:
+		var cfg := Donnees.config_demo(TRACES_GRAINE)
+		cfg["cartes"] = true
+		sc.jeu.nouvelle_partie(cfg)
+		Partie.etat.resolution_auto()
+		sc.jeu.demarrer_direct(0)
+		StrategieTest.politique_cartes = pol
+		_aller_a(Dates.lire("1988-12"), true)
+		ville.call("suivre_foyer", Partie.etat)
+		ville.call("plonger_vers_maison", 0.0)
+		ville.set("phase", 0.18)
+		Partie.changer_vitesse(1)
+		Partie.bloquee = true
+		await sc.delai(0.8)
+		var attendu: PackedStringArray = ville.call("traces_foyer", Partie.etat)
+		var dessine: PackedStringArray = ville.call("traces_dessinees")
+		var cartes: Array = []
+		for c: Dictionary in Partie.etat.cartes_jouees():
+			cartes.append("%s%s" % [c["id"], c["choix"]])
+		if _controle:
+			print("RUE traces politique=%s attendu=%s dessine=%s egal=%s humeur=%d cartes=%s" % [pol, ",".join(attendu), ",".join(dessine),
+				"oui" if attendu == dessine else "non", int(ville.call("humeur_sylvie")), ",".join(cartes)])
+		await _capture_supp("_" + pol)
+		ville.set("phase", 0.7)
+		await sc.delai(0.6)
+		await _capture_supp("_%s_soir" % pol)
+		ville.set("phase", 0.18)
+		Partie.bloquee = false
+	StrategieTest.politique_cartes = avant
+	await sc.delai(0.6)
+
+
+const TRACES_GRAINE := 7
+
+
+## Sortie de la carte (V4, CA-V4) : vraie partie cartes allumées jusqu'à la 1re carte, puis la séquence (porte en 3
+## images, carte : Modales.carte si elle existe, sinon le courrier) ; images pendant l'ouverture de la porte
+## (<nom>_porte.png), carte affichée (<nom>_carte.png), après le rangement (<nom>_apres.png) ; le premier choix
+## payable est pris, puis la partie continue d'un mois à ×1.
+func _carte_sortie(ville: Node2D) -> void:
+	var cfg := Donnees.config_demo(TRACES_GRAINE)
+	cfg["cartes"] = true
+	sc.jeu.nouvelle_partie(cfg)
+	Partie.etat.resolution_auto()
+	sc.jeu.demarrer_direct(0)
+	var e := Partie.etat
+	var garde := 0
+	while e.fin == "" and garde < 100:
+		if not e.modale.is_empty():
+			if str(e.contenu_modale().get("kind", "")) == "carte":
+				break
+			StrategieTest.jouer_mois(e, true)
+			if not e.modale.is_empty():
+				e.resolution_auto()
+		else:
+			StrategieTest.jouer_mois(e, true)
+		e.avancer()
+		garde += 1
+	_rafraichir()
+	ville.call("suivre_foyer", e)
+	ville.set("phase", 0.18)
+	var c := e.contenu_modale()
+	if _controle:
+		print("RUE carte mois=%s id=%s kind=%s" % [Dates.texte(e.ab_courant()), str(c.get("id", "")), str(c.get("kind", ""))])
+	if str(c.get("kind", "")) != "carte":
+		return
+	ville.call("centrer_sur", ville.get("media").position.x, 0.0)      # caméra ailleurs : elle doit revenir sur la maison
+	await sc.delai(0.5)
+	Partie.rouvrir_modale()
+	await sc.delai(0.47)
+	await _capture_supp("_porte")
+	if _controle:
+		print("RUE carte porte=%d camera_maison=%s" % [int(ville.get("maison").get("porte_ouverte")), "oui" if ville.call("est_visible", "maison") else "non"])
+	await sc.delai(0.8)
+	await _capture_supp("_carte")
+	var modales: Modales = sc.jeu.modales
+	var pris := ""
+	for ch: Dictionary in c.get("choix", []):
+		if not bool(ch.get("desactive", false)):
+			pris = str(ch["id"])
+			break
+	if _controle:
+		print("RUE carte affichee genre=%s modales_carte=%s choix=%s" % [modales.genre_courant, "oui" if modales.has_method("carte") else "non", pris])
+	if modales.has_method("carte"):
+		modales.choix_fait.emit("carte", pris)
+	else:
+		modales.fermer(pris)
+	var t := 0.0
+	while sc.jeu.sequences.occupe and t < 10.0:
+		await sc.delai(0.1)
+		t += 0.1
+	await sc.delai(0.3)
+	await _capture_supp("_apres")
+	var ab0 := Partie.etat.ab_courant()
+	Partie.changer_vitesse(1)
+	t = 0.0
+	while Partie.etat.ab_courant() == ab0 and t < 15.0:
+		await sc.delai(0.25)
+		t += 0.25
+		await _repondre_modale()
+	if _controle:
+		print("RUE carte suite porte=%d modale=%s mois_suivant=%s choisie=%s" % [int(ville.get("maison").get("porte_ouverte")),
+			"vide" if Partie.etat.modale.is_empty() else str(Partie.etat.modale.get("kind", "")),
+			"oui" if Partie.etat.ab_courant() > ab0 else "non", str(Partie.etat.cartes_jouees().back().get("choix", "")) if not Partie.etat.cartes_jouees().is_empty() else "-"])
+	Partie.changer_vitesse(0)
 
 ## Attend que n mois soient passés, en répondant aux modales comme le joueur passif (fermeture par l'interface).
 func _attendre_mois(mois: Array, n: int, delai_max: float) -> void:

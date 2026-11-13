@@ -154,6 +154,12 @@
 - Rejouer une étape de capture en logique pure : `EtatPartie.new()` + `demarrer(Donnees.config_demo(-1))` + `resolution_auto()` (= `partir_de_la_rue`), puis `StrategieTest.jouer_mois` / `resolution_auto` / `avancer` mois par mois (= `aller_a`) : mêmes chiffres que la capture. Test en scène `.tscn` pour avoir les autoloads (`PanneauBanque`, `Hud` ne compilent pas en `--script`).
 - Aucune étape ne montre `dividende_nul` : étape jetable `recette_nul` dans ma copie (Peugeot + Elf en avril 1986, ×1 jusqu'en mai). Zones fragiles : pile des notifications au téléphone (2 longues le même mois → la plus ancienne retirée sans être vue) ; textes de fiche qui « promettent » (divNul) ; montants des notifications en centimes vs texte arrondi.
 
+## 4 quindecies. 03-V2 recette courte (2026-11-13, `lot/03-ville2` 47c00e2 : OK, 2 mineures ; rapport + `test_recette_routage` commités sur la branche)
+- Références : 755 avec `-Recette` (main 725) ; `capture_ville.ps1 -Serie` = **84** lancements ≈ 17 min, code 0, journal `godot/captures/px1_serie.log` (la sortie console ne garde pas les lignes `RUE`) ; `RUE carte sortie=0.61` ; flottants 20 x `indice=0 chevauchements=0`.
+- `test_recette_routage` (scène, 11 vérifications) : carte réelle + contenus `projet` / `gazette` fabriqués depuis un courrier `vie` (le moteur ne produit pas ces kinds avant 04-L) via `scene.sequences.jouer_modale`. Réutilisable à 04-V pour les projets réels.
+- Plusieurs Godot du coordinateur / d'autres agents tournent en même temps : ne jamais en tuer ; la série de captures reste verte.
+- Zone fragile : un courrier projet / gazette passe par la séquence enveloppe (1,9 s) ; ligne `RUE fiche … appel=` du plan jamais imprimée.
+
 ## 5. Anomalies récurrentes / à surveiller
 - Fichiers « recopiés de main » dans une branche (tests.ps1, trouver_godot.ps1 sur px0-ville) : vérifier `git diff main <branche> -- <fichier>` vide → sans conflit, mineur.
 - Ce que le développeur marque « non vérifié » : le vérifier en priorité (lot 01 : `Jouer_Godot.bat` cassé sans variable).

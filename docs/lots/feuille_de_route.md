@@ -220,3 +220,7 @@ T16, T9, T15, B1, B3 → PX2 ; T14, T17 (`tests.ps1`), T18 (`tests.ps1`) → 02-
 - dev-ville : rien. UX : maquette du menu, de l'écran des 3 emplacements, du bandeau et du bouton « Sauvegarder d'abord » (début de vague 6, §7). Game designer : relecture des seuils ; « un an après » dans la liste « toujours » ou non.
 - Conséquences : **07-L** lit `bilan["record_possible"]` (record non mis à jour si faux) ; **07-I** affiche « Partie rejouée depuis une sauvegarde : hors record ». Aucun lot avant la vague 6 ne dépend de SV.
 - Restés par défaut (pas de nouvelle question avant le lancement) : bandeau plutôt que question ; titre d'une partie rejouée gardé dans la collection (à confirmer par le client en 07-L).
+
+## 2.11 À définir plus tard : règle de vente automatique des projets (2026-11-13)
+Décision du joueur : garder la règle actuelle (compte courant, Livret A, puis du moins au plus rentable, non annualisé ; égalité : la plus grosse ligne d'abord ; pénalité affichée ligne par ligne) et la redéfinir proprement plus tard. Points ouverts : définition de la rentabilité (annualisée ou non), place du PEL (docs/18 §3.1 le met en dernier ; il peut partir tôt aujourd'hui), mot « Livret bleu » = Livret A du jeu (glossaire seulement), RENONCER vs RENONCER POUR L'INSTANT.
+
