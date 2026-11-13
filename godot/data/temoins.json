@@ -10,12 +10,44 @@
     "nom": "Tata Livret", "initiale": "L",
     "regle": "Met tout sur le Livret A, dans la limite du plafond.",
     "devant": "Le Livret A, mon petit, ça ne fait jamais de mauvaise surprise.",
-    "derriere": "Tu as pris des risques… et ça a payé. Bravo !"
+    "derriere": "Vous avez pris des risques… et ça a payé. Bravo !"
   },
   "indice": {
     "nom": "Cousin Indice", "initiale": "C",
     "regle": "Garde 3 mois de dépenses sur le livret, puis place tout le reste chaque mois dans un fonds indiciel, sans jamais paniquer.",
     "devant": "J'ai tout mis dans l'indice chaque mois, sans jamais regarder les cours. Ennuyeux, mais efficace !",
-    "derriere": "Chapeau ! Tu as fait mieux que l'indice. Peu de gens y arrivent."
+    "derriere": "Chapeau ! Vous avez fait mieux que l'indice. Peu de gens y arrivent."
+  },
+  "jeanmi": {
+    "nom": "Jean-Mi", "initiale": "J",
+    "regle": "Garde tout sur son compte en attendant le bon tuyau.",
+    "regle_apres": "Tout sur Peugeot, à crédit. Sa Porsche compte à son prix d'occasion, moins son crédit.",
+    "devant": "Même avec mes dettes, je suis devant ? Il s'est passé quoi chez vous ?",
+    "derriere": "Bravo. Moi, je rembourse jusqu'en 1990. Plus jamais de crédit pour la Bourse.",
+    "_provisoire": "Textes du game designer (docs/27 §2.2) ; regle_apres : règle affichée à partir de l'ouverture de la position (lue par le code en phase B).",
+    "_plan": "Plan de Jean-Mi en proportions (docs/19 §2.2-2.4, lot_05.md D4), calculé chaque mois par Quartier.pas_mensuel sur le cours de Peugeot du jeu. Montants en F, dates AAAA-MM. couverture_part : part du compte courant mise en couverture à l'ouverture ; levier : position = levier × couverture ; report_mensuel : coût mensuel du report, en part de la position (pas de report le mois de la liquidation) ; renfort.part : part de la position ajoutée au mois du renfort (à la clôture du mois précédent) ; voiture : achat à crédit (apport pris sur les gains du compte de bourse), mensualités dès le mois suivant, décote = valeur de marché par mois (dernière valeur connue ensuite), vente au mois indiqué (le prix règle le crédit ; l'écart éventuel passe par le compte courant) ; remboursement : la dette de bourse est remboursée chaque mois depuis le mois de début.",
+    "plan": {
+      "ouverture": "1986-09",
+      "couverture_part": 0.8,
+      "levier": 5.0,
+      "report_mensuel": 0.007,
+      "renfort": { "mois": "1987-08", "part": 0.3333333333 },
+      "liquidation": "1987-10",
+      "voiture": {
+        "achat": "1987-04",
+        "prix": 140000.0,
+        "apport": 30000.0,
+        "credit": 110000.0,
+        "duree_mois": 48,
+        "taux": 0.12,
+        "vente": "1988-02",
+        "decote": [
+          ["1987-04", 140000.0], ["1987-05", 138000.0], ["1987-06", 136000.0], ["1987-07", 134000.0],
+          ["1987-08", 132000.0], ["1987-09", 130000.0], ["1987-10", 125000.0], ["1987-11", 115000.0],
+          ["1987-12", 108000.0], ["1988-01", 100000.0], ["1988-02", 91000.0]
+        ]
+      },
+      "remboursement": { "debut": "1987-12", "mensuel": 1000.0 }
+    }
   }
 }
