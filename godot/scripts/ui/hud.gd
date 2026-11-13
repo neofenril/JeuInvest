@@ -22,6 +22,7 @@ const BAS := 96.0               # 32 texels (lot_px2 §9.1) : bouton HISTORIQUE 
 const LARGEUR_PANNEAU := 500.0
 const LARGEUR_PANNEAU_COMPACT := 900.0
 const LARGEUR_LANGUETTE := 104.0
+const PHRASE_BANQUE_FERMEE := "Réglez d'abord la carte du foyer."   # même phrase que le refus du moteur (EtatPartie, lot 04)
 const NOMS_SOURCES := {"maison": "MA MAISON", "banque": "MA BANQUE", "media": "LA GAZETTE"}
 
 var ville: Node2D = null
@@ -83,6 +84,7 @@ var l_frais: Label
 var _frais_affiches := 0.0
 var _point_banque := false
 var b_marche: Button
+var l_banque_fermee: Label        # lot 04 (I4)
 var b_historique: Button
 var languette: Button
 var notifs: Control
@@ -833,6 +835,13 @@ func _creer_panneau() -> void:
 	b_marche = Style.bouton("BANQUE  ·  carnet et guichet", true)
 	b_marche.pressed.connect(func() -> void: marche_demande.emit())
 	col_b.add_child(b_marche)
+	# Lot 04 (I4) : phrase affichée sous le bouton BANQUE quand il est grisé pendant une carte du foyer
+	l_banque_fermee = Style.label(PHRASE_BANQUE_FERMEE, 20, Style.ui(), Style.ALERTE)
+	l_banque_fermee.name = "BanqueFermee"
+	l_banque_fermee.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l_banque_fermee.custom_minimum_size.x = 200
+	l_banque_fermee.visible = false
+	col_b.add_child(l_banque_fermee)
 	languette = Button.new()
 	languette.focus_mode = Control.FOCUS_NONE
 	languette.name = "Languette"
@@ -900,6 +909,19 @@ func _creer_etiquettes() -> void:
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		l.size_flags_vertical = Control.SIZE_FILL
 		hb.add_child(l)
+		if id == "maison":
+			# Lot 04 (03-I2, I2) : picto d'humeur de Sylvie (cartes allumées seulement), saute d'1 texel au changement
+			var ph := Control.new()
+			ph.name = "HumeurPicto"
+			ph.custom_minimum_size = Vector2(48, 48)
+			ph.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			ph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ph.visible = false
+			var pt := CadresPixel.icone("humeur_neutre")
+			pt.name = "Picto"
+			pt.size = Vector2(48, 48)
+			ph.add_child(pt)
+			hb.add_child(ph)
 		var cd := CadresPixel.icone("chevron_droite")
 		cd.name = "ChevronDroite"
 		cd.visible = false
@@ -1168,10 +1190,60 @@ func rect_libre() -> Rect2:
 # Mise à jour
 # =====================================================================
 
+## BANQUE fermée pendant une carte du foyer (lot 04, I4, docs/17 : confort ; la garantie est dans le moteur) :
+## bouton grisé, phrase sous le bouton, étiquette MA BANQUE ternie. Renvoie l'état appliqué.
+func maj_banque_fermee(fermee: bool) -> bool:
+	if b_marche == null or l_banque_fermee == null:
+		return false
+	if b_marche.disabled != fermee:
+		b_marche.disabled = fermee
+		l_banque_fermee.visible = fermee
+		var eb: Control = etiquettes.get("banque")
+		if eb != null:
+			eb.modulate.a = 0.55 if fermee else 1.0
+	return fermee
+
+
+## Picto d'humeur de l'étiquette MA MAISON (lot 04, I2) : humeur_visible() si les cartes sont allumées, rien
+## sinon ; au changement d'état, le picto saute d'1 texel. Renvoie l'humeur affichée (-1 : picto caché).
+func maj_humeur(e: EtatPartie) -> int:
+	var p: PanelContainer = etiquettes.get("maison")
+	if p == null:
+		return -1
+	var ph := p.find_child("HumeurPicto", true, false) as Control
+	var actif := e != null and e.has_method("cartes_actives") and e.cartes_actives()
+	if ph.visible != actif:
+		ph.visible = actif
+		p.reset_size()
+	if not actif:
+		ph.set_meta("humeur", -1)
+		return -1
+	var h := e.humeur_visible()
+	var avant := int(ph.get_meta("humeur", -1))
+	if h != avant:
+		var pt := ph.get_node("Picto") as TextureRect
+		pt.texture = CadresPixel.texture("humeur_" + ModaleCarte.nom_humeur(h))
+		ph.set_meta("humeur", h)
+		if avant >= 0:
+			sauter_picto_humeur()
+	return h
+
+
+func sauter_picto_humeur() -> void:
+	var p: PanelContainer = etiquettes.get("maison")
+	if p == null or Juice.animations_reduites:
+		return
+	var pt := p.find_child("Picto", true, false) as Control
+	var t := pt.create_tween()
+	t.tween_property(pt, "position:y", -3.0, 0.08)
+	t.tween_property(pt, "position:y", 0.0, 0.08)
+
+
 func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 	var a := e.ab_courant()
 	var fmt := func(v: float) -> String: return Format.montant(v, a)
 	date.regler(a, anime)
+	maj_humeur(e)
 	var cc := e.joueur.cc
 	var patr := e.patrimoine(e.joueur)
 	var d := duree_roule if anime else 0.0
@@ -1354,7 +1426,9 @@ func notifier(n: Dictionary, a: int, depart := Vector2(-1, -1)) -> void:
 	h.add_child(v)
 	if n.has("montant"):
 		var mt := float(n["montant"])
-		var l := Style.label(Format.montant(mt, a, false, true), 26, Style.chiffres(), Style.GAIN if mt >= 0.0 else Style.PERTE)
+		# D14 (lot 04) : le dividende s'écrit à l'unité, comme son texte et ses cartouches (« +176 F »)
+		var txt_mt := Format.ecart(mt, a) if n.get("type", "") == "dividende" else Format.montant(mt, a, false, true)
+		var l := Style.label(txt_mt, 26, Style.chiffres(), Style.GAIN if mt >= 0.0 else Style.PERTE)
 		l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		h.add_child(l)
 	var persistant: bool = n.get("persistant", false)
@@ -1385,6 +1459,8 @@ func notifier(n: Dictionary, a: int, depart := Vector2(-1, -1)) -> void:
 	# duree_mois_s() renvoie la durée du saut (rythme.json > saut, ≈ 1,3 s) : la notification reste 3 s (borne).
 	var vie := clampf(Partie.duree_mois_s(maxi(1, Partie.vitesse)), 3.0, 8.0)
 	await get_tree().create_timer(vie + 0.4).timeout
+	if not is_instance_valid(p):   # le HUD a pu être libéré entre-temps (tests enchaînés)
+		return
 	_retirer(p)
 
 

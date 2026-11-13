@@ -330,7 +330,18 @@ func _afficher_fiche(pid: String) -> void:
 
 ## Lot 03 (I6) : ligne des dividendes de la fiche d'une action détenue ; "" pour les autres produits ou une
 ## action non détenue. Jamais de rendement prévisionnel.
+## Vrai si `Banquier` définit la fonction statique « nom » (appel dynamique : elle peut venir d'une branche non fusionnée).
+static func banquier_a(nom: String) -> bool:
+	for m: Dictionary in (load("res://scripts/logique/banquier.gd") as GDScript).get_script_method_list():
+		if str(m["name"]) == nom:
+			return true
+	return false
+
+
 static func texte_dividendes(e: EtatPartie, pid: String) -> String:
+	# Lot 04 (I6) : la logique de 03-R fournit le texte (Peugeot sans dividende, etc.) ; repli tant qu'elle n'est pas fusionnée
+	if banquier_a("texte_fiche_dividende"):
+		return str(load("res://scripts/logique/banquier.gd").call("texte_fiche_dividende", e, pid))
 	var mois := e.mois_dividende(pid)
 	if mois <= 0 or not Banquier.detenu(e, pid):
 		return ""

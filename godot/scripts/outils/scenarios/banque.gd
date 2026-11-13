@@ -79,7 +79,7 @@ func jouer(etape: String) -> void:
 			jeu.ouvrir_banque("elf", -2.0)
 			await sc.delai(1.5)
 			var ld: Label = modales.courant.find_child("Dividendes", true, false) as Label if is_instance_valid(modales.courant) else null
-			var logique: String = ("Dividendes reçus : " + Format.entier(e.dividendes_recus("elf"), e.ab_courant())) if e.dividendes_recus("elf") > 0.0 \
+			var logique: String = str(load("res://scripts/logique/banquier.gd").call("texte_fiche_dividende", e, "elf")) if PanneauBanque.banquier_a("texte_fiche_dividende") else ("Dividendes reçus : " + Format.entier(e.dividendes_recus("elf"), e.ab_courant())) if e.dividendes_recus("elf") > 0.0 \
 				else "Dividende versé chaque année en " + Dates.MOIS[e.mois_dividende("elf") - 1]
 			var lu := ld.text if ld != null else "(absente)"
 			print("UI fiche dividendes=%s = logique=%s%s" % [lu, logique, "" if lu == logique else " incoherences=1"])

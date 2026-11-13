@@ -2,15 +2,13 @@ class_name ModaleCarte
 extends RefCounted
 ## Morceau de Modales (lot 04, 03-I2) : la carte de dilemme du foyer, « pense-bête aimanté du frigo »
 ## (docs/17 §4.1 ; contrat lot_04 §4.3, contenu lot_03 §5.3 bis).
-## - ouvrir(c, depart) : une fiche de 12 × 8 texels vole de la porte au centre, la carte se déplie en 3 images
-##   (découpe, sans mise à l'échelle), l'aimant tombe d'1 texel. Toucher un choix non désactivé (ou 1 / 2) émet
+## - ouvrir(c, depart) : apparition sur place (version jouable : ni vol, ni dépli, ni aimant). Toucher un choix non désactivé (ou 1 / 2) émet
 ##   choix_fait("carte", id) ; la carte reste affichée. Ni clic extérieur ni Échap.
 ## - conclure(r, arrivee) : tampon « CHOISI », l'autre choix à 40 %, la ligne de conséquence 3 s (un toucher
 ##   passe), puis rangement vers arrivee ((-1, -1) : fondu) ; rend la main quand la carte a disparu.
 ## - lecture(h, a) : relecture depuis l'historique (titre, choix pris, montant, conséquence, FERMER).
 
 const DUREE_CONSEQUENCE := 3.0
-const FICHE := Vector2(36, 24)        # 12 × 8 texels
 
 var m: Modales
 var phase := ""                       # entree | attente | choisi | conclusion | rangement
@@ -22,7 +20,6 @@ var _p: Control = null                # enveloppe (découpe du dépliage), modal
 var _panel: PanelContainer = null
 var _texte: Label = null
 var _suite: Label = null
-var _aimant: TextureRect = null
 var _passer := false
 
 
@@ -139,12 +136,6 @@ func ouvrir(c: Dictionary, depart: Vector2) -> void:
 	_p.size = s
 	var pos := (((vue - s) / 2.0).max(Vector2(0, 6)) / 3.0).round() * 3.0
 	_p.position = pos
-	_aimant = CadresPixel.icone("aimant")
-	_aimant.name = "Aimant"
-	_aimant.size = Vector2(24, 24)
-	_aimant.position = Vector2(roundf(s.x / 6.0) * 3.0 - 12.0, -12.0)
-	_aimant.visible = false
-	_p.add_child(_aimant)
 	await _entree(depart, pos, s)
 	if is_instance_valid(_p) and phase == "entree":
 		phase = "attente"
@@ -280,54 +271,15 @@ func passer() -> void:
 		_passer = true
 
 
-func _entree(depart: Vector2, pos: Vector2, s: Vector2) -> void:
-	if Juice.animations_reduites:
-		_p.visible = true
-		_aimant.visible = true
-		_aimant.position.y = -9.0
-		return
-	var centre := pos + s / 2.0
-	if depart.x >= 0.0 and depart.y >= 0.0:
-		var fiche := PanelContainer.new()
-		fiche.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		fiche.add_theme_stylebox_override("panel", CadresPixel.style_marges("carte_papier", 0, 0, 0, 0))
-		fiche.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		fiche.size = FICHE
-		m.add_child(fiche)
-		var a0 := depart - FICHE / 2.0
-		var a1 := centre - FICHE / 2.0
-		var sommet := (a0 + a1) / 2.0 + Vector2(0, -120)
-		var vol := func(u: float) -> void:
-			if is_instance_valid(fiche):
-				fiche.position = (a0.lerp(sommet, u).lerp(sommet.lerp(a1, u), u) / 3.0).round() * 3.0
-		vol.call(0.0)
-		var tw := m.create_tween()
-		tw.tween_method(vol, 0.0, 1.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		await tw.finished
-		if is_instance_valid(fiche):
-			fiche.queue_free()
-	if not is_instance_valid(_p):
-		return
-	# Dépliage en 3 images (1/3, 2/3, plein), depuis le milieu de la carte
-	_p.clip_contents = true
+## Version jouable (lot 04 §12.3) : la carte apparaît sur place, sans vol, dépli ni aimant ; fondu ≤ 0,2 s
+## si un point de départ est donné (la porte), apparition immédiate sinon.
+func _entree(depart: Vector2, _pos: Vector2, _s: Vector2) -> void:
 	_p.visible = true
-	for f: float in [1.0 / 3.0, 2.0 / 3.0, 1.0]:
-		var h := roundf(s.y * f / 3.0) * 3.0
-		_p.size = Vector2(s.x, h)
-		_p.position = Vector2(pos.x, roundf((pos.y + (s.y - h) / 2.0) / 3.0) * 3.0)
-		_panel.position = Vector2(0, -roundf((s.y - h) / 6.0) * 3.0)
-		await m.get_tree().create_timer(0.06).timeout
-		if not is_instance_valid(_p):
-			return
-	_panel.position = Vector2.ZERO
-	_p.position = pos
-	_p.size = s
-	_p.clip_contents = false
-	_aimant.visible = true
-	await m.get_tree().create_timer(0.08).timeout
-	if is_instance_valid(_aimant):
-		_aimant.position.y = -9.0   # l'aimant tombe d'1 texel
-
+	if depart.x >= 0.0 and depart.y >= 0.0 and not Juice.animations_reduites:
+		_p.modulate.a = 0.0
+		var tw := _p.create_tween()
+		tw.tween_property(_p, "modulate:a", 1.0, 0.18)
+		await tw.finished
 
 ## Conclusion (contrat lot_04 §4.3). r : retour de Partie.resoudre_modale.
 func conclure(r: Dictionary, arrivee: Vector2) -> void:
@@ -370,42 +322,17 @@ func _tamponner(b: Button) -> void:
 	tp.position = (Vector2(b.size.x - tp.size.x - 12.0, -12.0) / 3.0).round() * 3.0
 
 
-func _ranger(arrivee: Vector2) -> void:
+## Rangement : fondu de 0,2 s (pas de vol vers la porte dans la version jouable).
+func _ranger(_arrivee: Vector2) -> void:
 	phase = "rangement"
-	if is_instance_valid(_p) and not Juice.animations_reduites:
-		var s := _p.size
-		var pos := _p.position
-		_aimant.visible = false
-		_p.clip_contents = true
-		for f: float in [2.0 / 3.0, 1.0 / 3.0]:
-			var h := roundf(s.y * f / 3.0) * 3.0
-			_p.size = Vector2(s.x, h)
-			_p.position = Vector2(pos.x, roundf((pos.y + (s.y - h) / 2.0) / 3.0) * 3.0)
-			_panel.position = Vector2(0, -roundf((s.y - h) / 6.0) * 3.0)
-			await m.get_tree().create_timer(0.06).timeout
-			if not is_instance_valid(_p):
-				break
-		if is_instance_valid(_p):
-			var centre := pos + s / 2.0
+	if is_instance_valid(_p):
+		if Juice.animations_reduites:
 			_p.visible = false
-			if arrivee.x >= 0.0 and arrivee.y >= 0.0:
-				var fiche := PanelContainer.new()
-				fiche.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-				fiche.add_theme_stylebox_override("panel", CadresPixel.style_marges("carte_papier", 0, 0, 0, 0))
-				fiche.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				fiche.size = FICHE
-				fiche.position = ((centre - FICHE / 2.0) / 3.0).round() * 3.0
-				m.add_child(fiche)
-				var tw := fiche.create_tween()
-				tw.tween_property(fiche, "position", ((arrivee - FICHE / 2.0) / 3.0).round() * 3.0, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-				tw.tween_callback(fiche.queue_free)
-				await tw.finished
-	elif is_instance_valid(_p):
-		var tf := _p.create_tween()
-		tf.tween_property(_p, "modulate:a", 0.0, 0.2)
-		await tf.finished
+		else:
+			var tf := _p.create_tween()
+			tf.tween_property(_p, "modulate:a", 0.0, 0.2)
+			await tf.finished
 	_ranger_fin()
-
 
 func _ranger_fin() -> void:
 	if is_instance_valid(_p):

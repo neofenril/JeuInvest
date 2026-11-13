@@ -9,7 +9,8 @@ extends RefCounted
 const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette",
 	"courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau",
 	"etiquettes_balayage", "pastille_signe", "bulle",
-	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue"]
+	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
+	"mon_foyer", "mon_foyer_eteint", "banque_fermee"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -41,6 +42,12 @@ func jouer(etape: String) -> void:
 			await _bulle(jeu)
 		"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue":
 			await _carte(etape, jeu)
+		"bulle_humeur", "etiquette_humeur":
+			await _humeur(etape, jeu)
+		"mon_foyer", "mon_foyer_eteint":
+			await _mon_foyer(etape, jeu)
+		"banque_fermee":
+			await _banque_fermee(jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -379,7 +386,8 @@ func _carte(etape: String, jeu: Node) -> void:
 			var attente := func(_g: String, id: String) -> void:
 				r.merge(Partie.resoudre_modale(id))
 			modales.choix_fait.connect(attente, CONNECT_ONE_SHOT)
-			await sc.touche(KEY_2)
+			e.foyer["humeur"] = 1   # le choix « a » (+1) rend Sylvie contente : notification « humeur » → bulle après le rangement
+			await sc.touche(KEY_1)
 			if r.is_empty():
 				print("UI carte conclusion=absente (choix refusé)")
 				return
@@ -389,6 +397,15 @@ func _carte(etape: String, jeu: Node) -> void:
 			print("UI carte consequence=« %s » = r=« %s » egal=%s" % [lq.text if lq != null else "?", str(r.get("consequence", "")), "oui" if lq != null and lq.text == str(r.get("consequence", "")) else "non"])
 			_mesurer(etape, modales.courant)
 			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+			await RenderingServer.frame_post_draw
+			var nom_png := "res://captures/l4_carte_conclusion_vue%s.png" % ("_tel" if Ecran.compact() else "")
+			sc.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path(nom_png))
+			# La bulle d'humeur née de cette carte n'apparaît qu'après le rangement (CA-I3)
+			var avant: Bulle = jeu.derniere_bulle if is_instance_valid(jeu.derniere_bulle) else null
+			await sc.attendre_que(func() -> bool: return not modales.carte_en_cours, 8.0)
+			await sc.delai(0.3)
+			var apres: Bulle = jeu.derniere_bulle if is_instance_valid(jeu.derniere_bulle) else null
+			print("UI bulle apres_carte=%s texte=« %s »" % ["oui" if apres != null and apres != avant else "non", apres.texte_label.text if apres != null else ""])
 		"carte_relue":
 			await jouer_carte(jeu, "a")
 			await sc.delai(0.3)
@@ -400,6 +417,167 @@ func _carte(etape: String, jeu: Node) -> void:
 			var lc := modales.courant.find_child("ChoixPris", true, false) as Label if modales.courant != null else null
 			print("UI carte_relue choix=« %s »" % (lc.text if lc != null else "?"))
 			_mesurer(etape, modales.courant)
+
+
+## « Mon foyer » (lot 04, I3, CA-I4) : après 3 cartes jouées (politique alternée), humeur au choix
+## (--humeur=contente|neutre|fachee). mon_foyer_eteint : partie sans cartes (bloc du foyer seul).
+func _mon_foyer(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	var e: EtatPartie
+	if etape == "mon_foyer_eteint":
+		sc.partir_de_la_rue(etape)
+		e = Partie.etat
+		sc.aller_a(Dates.lire("1986-06"), true)
+	else:
+		partie_cartes(jeu)
+		e = Partie.etat
+		var garde := 0
+		StrategieTest.politique_cartes = "alterner"
+		while e.fin == "" and e.cartes_jouees().size() < 4 and garde < 200:
+			garde += 1
+			StrategieTest.jouer_mois(e, true)
+			while not e.modale.is_empty():
+				e.resolution_auto()
+			e.avancer()
+		while not e.modale.is_empty():
+			e.resolution_auto()
+		var voulu: int = {"contente": 2, "neutre": 0, "fachee": -2}.get(ScenariosCapture.option("humeur"), 0)
+		if ScenariosCapture.option("humeur") != "":
+			e.foyer["humeur"] = voulu
+		sc.rafraichir_apres_saut()
+	Partie.changer_vitesse(0)
+	await sc.delai(0.8)
+	jeu.toucher_batiment("maison")
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "info" and modales.courant != null, 5.0)
+	await sc.delai(0.8)
+	var mf := modales.etat_foyer()
+	var jouees: Array = e.cartes_jouees()
+	var attendues: Array = []
+	for k in mini(ModaleFoyer.NB_CARTES, jouees.size()):
+		attendues.append(ModaleFoyer.texte_carte(jouees[jouees.size() - 1 - k], e.ab_de(int(jouees[jouees.size() - 1 - k].get("m", e.m)))))
+	var lues: Array = mf.lignes_cartes.map(func(l: Label) -> String: return l.text)
+	print("UI foyer cartes=%d = attendues=%d egal=%s" % [lues.size(), attendues.size(), "oui" if lues == attendues else "non incoherences=1"])
+	print("UI foyer phrase=« %s » = humeur_phrase=« %s » egal=%s" % [mf.l_phrase.text if mf.l_phrase != null else "-", e.humeur_phrase(), "oui" if (mf.l_phrase == null and not e.cartes_actives()) or (mf.l_phrase != null and mf.l_phrase.text == e.humeur_phrase() + ".") else "non incoherences=1"])
+	print("UI foyer cause=« %s » = derniere_cause=« %s »" % [mf.l_cause.text if mf.l_cause != null else "-", e.derniere_cause_humeur()])
+	for l in lues:
+		print("UI foyer carte « %s »" % l)
+	var nombres := 0
+	for l in modales.courant.find_children("*", "Label", true, false):
+		var t := (l as Label).text
+		if t.begins_with("Sylvie") or t.begins_with("«"):
+			nombres += 1 if RegEx.create_from_string("[0-9]").search(t) != null else 0
+	print("UI foyer chiffres_dans_humeur=%d (attendu 0 : jamais de nombre ni de jauge)" % nombres)
+	_mesurer(etape, modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+	# Fermeture : clic extérieur, Échap, [×]
+	var ferme := {}
+	var coup := func(_g: String, id: String) -> void: ferme["id"] = id
+	modales.choix_fait.connect(coup)
+	await sc.clic_dehors()
+	await sc.delai(0.5)
+	var r1 := str(ferme.get("id", "AUCUNE"))
+	jeu.toucher_batiment("maison")
+	await sc.delai(1.0)
+	await sc.touche(KEY_ESCAPE)
+	await sc.delai(0.5)
+	var r2 := str(ferme.get("id", "AUCUNE"))
+	jeu.toucher_batiment("maison")
+	await sc.delai(1.0)
+	(modales.courant.find_child("Fermer", true, false) as Button).pressed.emit()
+	await sc.delai(0.5)
+	print("UI foyer fermeture clic=%s echap=%s croix=%s" % [r1, r2, str(ferme.get("id", "AUCUNE"))])
+	modales.choix_fait.disconnect(coup)
+	# Réouvrir pour l'image finale
+	jeu.toucher_batiment("maison")
+	await sc.delai(1.0)
+
+
+## Banque fermée pendant une carte (lot 04, I4, CA-I5).
+func _banque_fermee(jeu: Node) -> void:
+	var hud: Hud = jeu.hud
+	var modales: Modales = jeu.modales
+	partie_cartes(jeu)
+	var e := Partie.etat
+	if not jusqu_a_carte("C01"):
+		print("UI banque_fermee carte=absente incoherences=1")
+		return
+	await sc.delai(0.5)
+	var fermee_carte: bool = jeu.banque_fermee()
+	hud.maj_banque_fermee(fermee_carte)
+	var phrase_if := Hud.PHRASE_BANQUE_FERMEE
+	# Le moteur refuse un ordre pendant la carte (04-L) : même phrase ; sans 04-L, l'ordre passe (écart signalé)
+	var refus: Dictionary = e.acheter(e.joueur, "elf", Produits.f(1000.0)) if e.has_method("ordres_bloques") else {}
+	var msg := str(refus.get("msg", "(moteur sans ordres_bloques)"))
+	print("UI banque_fermee grise=%s phrase_visible=%s phrase=« %s » msg_moteur=« %s » egale=%s" % [str(hud.b_marche.disabled), str(hud.l_banque_fermee.visible), phrase_if, msg,
+		"oui" if msg == phrase_if else ("sans objet (04-L absent)" if refus.is_empty() else "NON incoherences=1")])
+	jeu.ouvrir_banque("", -2.0)
+	await sc.delai(0.3)
+	print("UI banque_fermee ouverte=%s (touche ou bâtiment : sans effet)" % ("OUI incoherences=1" if modales.genre_courant == "banque" else "non"))
+	# Après la carte, la BANQUE se rouvre
+	e.resolution_auto()
+	hud.maj_banque_fermee(jeu.banque_fermee())
+	print("UI banque_fermee apres_carte grise=%s" % str(hud.b_marche.disabled))
+	# Image : carte de nouveau en attente
+	if jusqu_a_carte("C03"):
+		hud.maj_banque_fermee(jeu.banque_fermee())
+		await sc.delai(0.6)
+
+
+## Humeur de Sylvie (lot 04, I2, CA-I3) : bulle née d'une carte (après le rangement), picto de l'étiquette.
+## etiquette_humeur : les 3 états (option --humeur=contente|neutre|fachee pour l'image, défaut fâchée).
+func _humeur(etape: String, jeu: Node) -> void:
+	var hud: Hud = jeu.hud
+	partie_cartes(jeu)
+	var e := Partie.etat
+	if not jusqu_a_carte("C01"):
+		print("UI humeur carte=absente incoherences=1")
+		return
+	if etape == "etiquette_humeur":
+		var ecarts := 0
+		for h: int in [2, 0, -2]:
+			e.foyer["humeur"] = h
+			var vu := hud.maj_humeur(e)
+			if vu != e.humeur_visible():
+				ecarts += 1
+			print("UI etiquette humeur=%d picto=%d visible=%d" % [h, vu, e.humeur_visible()])
+		var voulu: int = {"contente": 2, "neutre": 0, "fachee": -2}.get(ScenariosCapture.option("humeur"), -2)
+		e.foyer["humeur"] = voulu
+		hud.maj_humeur(e)
+		e.foyer["actif"] = false
+		var eteint := hud.maj_humeur(e)
+		e.foyer["actif"] = true
+		hud.maj_humeur(e)
+		print("UI etiquette eteintes picto=%d (attendu -1) incoherences=%d" % [eteint, ecarts + (0 if eteint == -1 else 1)])
+		await sc.delai(1.0)
+		_mesurer(etape, hud)
+		return
+	# Bulle : humeur à +1 (neutre) ; le Club Med (+1) la rend contente → notification « humeur »
+	e.foyer["humeur"] = 1
+	hud.maj_humeur(e)
+	jeu.derniere_bulle = null
+	var modales: Modales = jeu.modales
+	var porte: Vector2 = jeu.ville.call("porte_ecran", "maison")
+	modales.carte(e.contenu_modale(), porte)
+	await sc.attendre_que(func() -> bool: return modales.etat_carte().phase == "attente", 5.0)
+	var r := {}
+	var attente := func(_g: String, id: String) -> void:
+		r.merge(Partie.resoudre_modale(id))
+	modales.choix_fait.connect(attente, CONNECT_ONE_SHOT)
+	modales.etat_carte().choisir("a")
+	await sc.get_tree().process_frame
+	var pendant := is_instance_valid(jeu.derniere_bulle)
+	await modales.conclure_carte(r, porte)
+	await sc.get_tree().process_frame
+	await sc.get_tree().process_frame
+	var b: Bulle = jeu.derniere_bulle if is_instance_valid(jeu.derniere_bulle) else null
+	var empilee := hud.notifs.find_children("*", "Label", true, false).any(func(l: Node) -> bool: return (l as Label).text == (b.texte_label.text if b != null else "§"))
+	print("UI bulle apres_carte=%s (pendant la carte : %s) texte=« %s » notif_empilee=%s" % ["oui" if b != null and not pendant else "non", "oui" if pendant else "non",
+		b.texte_label.text if b != null else "", "OUI incoherences=1" if empilee else "aucune"])
+	await sc.delai(0.6)
+	if b != null:
+		var libre := hud.rect_libre().grow(1.0)
+		print("UI bulle_humeur ancre=%s dans_libre=%s duree=%.1f picto=%d humeur=%d" % ["point_sylvie" if jeu.ville.has_method("point_sylvie") else "porte_maison",
+			"oui" if libre.encloses(b.rect_total()) else "non", b.duree, hud.maj_humeur(e), e.humeur_visible()])
 
 
 # =====================================================================

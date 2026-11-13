@@ -36,6 +36,7 @@ var _releve_fin: ModaleReleveFin
 var _simples: ModaleSimples
 var _historique: ModaleHistorique
 var _carte: ModaleCarte
+var _foyer: ModaleFoyer
 
 
 func _init() -> void:
@@ -46,6 +47,7 @@ func _init() -> void:
 	_simples = ModaleSimples.new(self)
 	_historique = ModaleHistorique.new(self)
 	_carte = ModaleCarte.new(self)
+	_foyer = ModaleFoyer.new(self)
 
 
 func _ready() -> void:
@@ -154,6 +156,15 @@ func conclure_carte(r: Dictionary, arrivee: Vector2) -> void:
 ## Relecture d'une carte depuis l'historique (lecture seule).
 func carte_lecture(h: Dictionary, a: int) -> void:
 	await _carte.lecture(h, a)
+
+
+## « Mon foyer » (lot 04, docs/17 §4.4) : lecture seule ; ferme avec « fermer », ou « extra » (historique MA MAISON).
+func foyer(e: EtatPartie, depart := Vector2(-1, -1)) -> void:
+	await _foyer.ouvrir(e, depart)
+
+
+func etat_foyer() -> ModaleFoyer:
+	return _foyer
 
 
 ## État de la carte affichée (tests et captures) : phase, refus, boutons.
