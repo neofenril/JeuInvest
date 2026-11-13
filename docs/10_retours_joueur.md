@@ -104,3 +104,10 @@ Décisions : 3 emplacements ; le joueur choisit l'emplacement à écraser ; la l
 - Règle de vente automatique des projets : « on garde ce qui est fait aujourd'hui, on verra plus tard » ; à redéfinir proprement plus tard (aujourd'hui : compte courant, Livret A, puis du moins au plus rentable, rentabilité non annualisée ; le PEL clos avant 4 ans peut partir avant des actions en gain).
 - Le joueur a lui-même choisi les modèles des agents (chef de projet en Opus, les autres en Sonnet pour certains, Opus pour client, game-designer et ux-designer) : ne pas y toucher.
 
+
+## 2026-11-13 (décisions pour le lot 07 et la diffusion)
+- Record personnel : validé « face à Tata Livret » (meilleur écart final en % face à Tata Livret ; rang et titre aussi affichés).
+- Sons : « pas de sons pour l'instant » (hors 1.0 tant que non redemandé).
+- Signature de l'exe : « peut attendre ».
+- APK : le joueur a essayé la toute première version ; il attend une nouvelle APK avec les nouvelles fonctionnalités majeures (censées ajouter du fun) pour voir si c'est réellement le cas. Donc la 0.5 jouable doit être exportée en exe ET en APK.
+
