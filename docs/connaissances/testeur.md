@@ -128,3 +128,11 @@
 - Ce que le développeur marque « non vérifié » : le vérifier en priorité (lot 01 : `Jouer_Godot.bat` cassé sans variable).
 - Contrôles automatiques au vert ≠ écran correct : à PX2, 61 lancements verts mais 3 défauts visibles à l'image (débordement de conteneur, police des chiffres, élément sous un panneau). Toujours relire chaque image et comparer à `main`.
 - Polices `*.ttf.import` non suivies dans les worktrees : seul dev-interface PX0 les commite (CA-C1 de `lot_px0.md`) ; ailleurs, les signaler s'ils apparaissent dans un diff.
+
+## 4 undecies. 03-R (recette 2026-11-13, `lot/03-retouches` 3367af2 : OK, 2 mineures)
+- Références : 742 vérifications avec `-Recette` (725 sur `main`) ; `integrale` = `integrale_saut` = **161 419 F / 805,93 F / 11** (nouvelle référence depuis 03-L) ; graine 7 actif 172 139,25 F / 869,97 F / 360,43 F de dividendes, passif 145 655,67 F ; `test_cadence` comparé ligne à ligne à la base (copie isolée `git archive d306dec`) : identique.
+- Mon `test_recette_dividendes` attend désormais 1 notification en mai 1986 (`nuls` Peugeot, ≤ 60 mots via `Banquier.nb_mots`) et le relevé cas 2.
+- Étapes jetables `recette_r9*` dans `scenarios/banque.gd` d'une copie : notification de mai 1986 (Partie.mois_passe + capture à 1,8 s / 4 s) et relevé fabriqué (livret vidé, Elf achetée en avril 1986, `toucher_notif(jeu.dernier_releve)`).
+- Exe par `--main-pack` : exécutable non-console `Godot_v4.7.2-stable_win64.exe` + `--log-file` + `-- --capture=<png avec /> --etape=titre|reprise`, `Start-Process -PassThru` + `WaitForExit`.
+- Pire cas de notification de dividende = 60 mots pile : zone fragile (03-I2/04-L ne doivent rien ajouter aux gabarits).
+- Les 2 Godot visibles d'autres lots : ne pas les tuer.
