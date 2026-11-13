@@ -30,7 +30,7 @@
       "options": [
         { "id": "P2A", "nom": "Le Club Med en famille", "court": "le Club Med", "montant_F": 14000, "echeance": "1987-07", "icone": "club_med",
           "sous": "Une semaine en juillet, tous ensemble", "replique_realise": "Des vacances où je ne cuisine pas !", "_certitude": "C" },
-        { "id": "P2B", "nom": "Un break familial", "court": "le break", "montant_F": 40000, "echeance": "1988-02", "icone": "break",
+        { "id": "P2B", "nom": "Un break familial", "court": "le break", "montant_F": 35000, "_montant": "35 000 F : calibrage CA-L5 (chef de projet, 13/11) ; docs/18 §2 donnait 40 000 F. ≈ 40 % d'un break neuf 1988 (80-95 000 F). Certitude C.", "echeance": "1988-02", "icone": "break",
           "sous": "Apport comptant ; le reste serait à crédit", "replique_realise": "Enfin de la place pour tout le monde !", "_certitude": "C" },
         { "id": "P2C", "nom": "L'apport pour un T3", "court": "l'apport du T3", "montant_F": 90000, "echeance": "1988-12", "icone": "maison",
           "sous": "Apport comptant ; un PEL de 4 ans y aide",

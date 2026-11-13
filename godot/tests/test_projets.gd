@@ -217,6 +217,8 @@ func _vies_modales(g: int, cartes: bool, politique: String) -> Dictionary:
 func _tests_coup_dur() -> void:
 	var perdus := 0
 	var carte_puis_vie := 0
+	var max_par_partie := 0
+	var cas_ok := true
 	var detail := ""
 	for politique in ["depenser", "epargner", "alterner"]:
 		for g in range(1, 41):
@@ -230,10 +232,18 @@ func _tests_coup_dur() -> void:
 			var e := _nouvelle(g, true)
 			StrategieTest.aller_a(e, Dates.lire("1989-01"), true)
 			var l: Array = e.banque["interruptions_liste"]
+			var n_partie := 0
 			for i in range(1, l.size()):
 				if l[i]["kind"] == "vie" and l[i - 1]["kind"] == "carte" and int(l[i]["m"]) - int(l[i - 1]["m"]) == 1:
 					carte_puis_vie += 1
-	print("    MESURE carte_puis_vie=%d (repli quand toute la fenêtre de la carte est bloquée par un coup dur)" % carte_puis_vie)
+					n_partie += 1
+					# la vie du mois m a bien sa pause : une interruption de l'historique, du calendrier (scriptée ou aléatoire)
+					if not (str(l[i]["motif"]) in ["scripte", "ecart", "echeance"]) or str(l[i]["id"]) == "":
+						cas_ok = false
+			max_par_partie = maxi(max_par_partie, n_partie)
+	print("    MESURE vie_retrogradee=%d" % perdus)
+	print("    MESURE carte_puis_vie=%d max_par_partie=%d (repli quand toute la fenêtre de la carte est bloquée par un coup dur)" % [carte_puis_vie, max_par_partie])
+	verifier("CA-L3 : chaque cas « carte puis vie » est une carte au mois m − 1 puis un événement de vie au mois m avec sa pause (interruption comptée)", cas_ok)
 	verifier("CA-L3 : 40 graines × 3 politiques : aucun événement de vie qui ouvre une modale cartes éteintes ne devient une notification cartes allumées", perdus == 0, detail.left(400))
 	# L'exception « carte → vie » est la seule dérogation nouvelle : un coup dur le mois d'après une carte garde sa pause
 	var e := _nouvelle(7)
@@ -361,27 +371,7 @@ func _tests_calibrage() -> void:
 	var x := 100.0 * p1c / maxf(n, 1.0)
 	var y := 100.0 * p2b / maxf(n, 1.0)
 	print("    MESURE projets P1C_a_la_date=%.0f%% P2B_a_la_date=%.0f%% (%d graines sans jumeaux sur 40) %s" % [x, y, n, detail])
-	# Variantes du montant de P2B (données, non commitées) : pour la décision du chef de projet
-	var opts: Array = (Projets._def("P2")["options"] as Array)
-	var p2b_opt: Dictionary = opts[1]
-	var orig := int(p2b_opt["montant_F"])
-	for variante in [35000, 30000, 25000]:
-		p2b_opt["montant_F"] = variante
-		var ok_v := 0
-		var nv := 0
-		for g in range(1, 41):
-			var ev := _jouer(g, false, {"P1": "P1C", "P2": "P2B"})
-			if ev.enfants >= 2:
-				continue
-			nv += 1
-			if str(_statut(ev, "P2")["etat"]) == "realise":
-				ok_v += 1
-		print("    MESURE projets variante P2B=%d F : P2B_a_la_date=%.0f%%" % [variante, 100.0 * ok_v / maxf(nv, 1.0)])
-	p2b_opt["montant_F"] = orig
-	var cible_ok := x >= 80.0 and y >= 60.0
-	if not cible_ok:
-		print("    POINT D'ARRET CA-L5 : calibrage sous la cible (P1C %.0f %% / P2B %.0f %%) : décision du chef de projet attendue (montant de P2B en données)" % [x, y])
-	verifier("CA-L5 : calibrage (passif, cartes epargner, sans jumeaux) : P1C réalisé à la date ≥ 80 %%, P2B ≥ 60 %% [POINT D'ARRÊT si la cible n'est pas atteinte : non bloquant, décision du chef de projet]", x >= 80.0, "%.0f %% / %.0f %%" % [x, y])
+	verifier("CA-L5 : calibrage (passif, cartes epargner, sans jumeaux) : P1C réalisé à la date ≥ 80 %%, P2B (35 000 F) ≥ 60 %%", x >= 80.0 and y >= 60.0, "%.0f %% / %.0f %%" % [x, y])
 
 
 func _tests_cadence_projets() -> void:
@@ -431,10 +421,10 @@ func _tests_cadence_projets() -> void:
 	StrategieTest.politique_cartes = "epargner"
 	StrategieTest.politique_projets = "moins_cher"
 	print("    Cadence projets allumés : %d parties, cartes par partie %s, %s" % [nb, str(par_partie), str(rep)])
-	if not ok_nb:
-		print("    POINT D'ARRET CA-L6 : parties à moins de 8 cartes projets allumés : %s" % detail.left(500))
-	verifier("CA-L6 : projets et cartes allumés, 40 graines × 3 politiques : 8 à 10 cartes par partie, parties finies [POINT D'ARRÊT si non tenu : non bloquant, décision du chef de projet]", par_partie.keys().all(func(k: int) -> bool: return k >= 7 and k <= 10) and nb == 120, detail.left(500))
-	verifier("CA-L6 : projets ≤ Cadence.budget(projets) par partie (2 choix, 2 jours J, reports compris)", ok_proj)
+	print("    MESURE cartes7=%d/120" % int(par_partie.get(7, 0)))
+	verifier("CA-L6 : projets et cartes allumés, 40 graines × 3 politiques : 7 à 10 cartes par partie, au plus 2 parties à 7, 120 parties finies",
+		par_partie.keys().all(func(k: int) -> bool: return k >= 7 and k <= 10) and int(par_partie.get(7, 0)) <= 2 and nb == 120, detail.left(500))
+	verifier("CA-L6 : projets ≤ 6 par partie (2 choix, 2 jours J, 2 reports) ; Cadence.budget(projets) == 6", ok_proj and Cadence.budget("projets") == 6)
 	verifier("CA-L6 : jamais deux interruptions le même mois ni deux mois de suite (hors marché → panne et carte → vie)", ok_suite, detail.left(500))
 	verifier("CA-L6 : S7 prend C09 / C10 (pas C11) quand le projet 2 est P2A ; S10 absent si une échéance tombe en 02/1988", ok_s7 and ok_s10)
 
