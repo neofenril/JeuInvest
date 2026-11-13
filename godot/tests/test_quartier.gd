@@ -153,9 +153,10 @@ func _tests_jeanmi() -> void:
 	# Compte courant négatif toléré, patrimoine conservé à la vente
 	verifier("Vente de la Porsche : mouvement = −mensualité − remboursement + prix − solde (91 199 F)", absf(float(tr["1988-02"]["mouvement"]) - (-2897.0 - 1000.0 + 91000.0 - 91199.0)) < 5.0,
 		str(tr["1988-02"]["mouvement"]))
-	# Compte négatif : couverture nulle
+	# Compte négatif : couverture = plancher de temoins.json (lot 05-L B2 : couverture_min), jamais plus
 	var r0 := Quartier.pas_mensuel(Quartier.jeanmi_initial(), Dates.lire("1986-09"), 520.0, 470.0, -500.0)
-	verifier("Compte négatif à l'ouverture : couverture 0, pas de position", r0["etat"]["position"] == 0.0)
+	var cmin := float(Quartier.plan_jeanmi().get("couverture_min", 0.0))
+	verifier("Compte négatif à l'ouverture : couverture = le plancher du plan (couverture_min), position = levier × couverture", absf(float(r0["etat"]["couverture"]) - cmin) < 1e-9 and absf(float(r0["etat"]["position"]) - cmin * float(Quartier.plan_jeanmi()["levier"])) < 1e-9)
 	# Avant l'ouverture : rien ne bouge
 	var r1 := Quartier.pas_mensuel(Quartier.jeanmi_initial(), Dates.lire("1986-08"), 470.0, 440.0, 37500.0)
 	verifier("08/1986 : Jean-Mi attend (mouvement 0)", r1["etat"]["etape"] == "attend" and r1["mouvement"] == 0.0)

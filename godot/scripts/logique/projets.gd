@@ -591,6 +591,8 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 				r["consequence"] = str(t["consequence_abandonne_p2c" if bool(o2.get("dans_patrimoine", false)) else "consequence_abandonne"])
 				Foyer._regler_humeur(e, int(e.foyer.get("humeur", 0)) + int(h["abandonne"]), str(r["consequence"]), notifs)
 	r["humeur_apres"] = Foyer.humeur_visible(e)
+	if str(r["etape"]) == "echeance" and str(_etats(e)[str(e.modale["projet"])]["etat"]) in ["realise", "realise_apres_report"]:
+		e.noter_evt_rue("projet_realise", str(e.modale["id"]))
 	e._enregistrer_hist()
 	vu["consequence"] = r["consequence"]
 	vu["montant_choisi"] = r["montant"]
@@ -609,7 +611,7 @@ static func _payer(e: EtatPartie, o: Dictionary, mt: float) -> void:
 		e.temoins[k].cc -= mt
 	if garde:
 		var ap: Dictionary = e.projets.get("apports", {})
-		for k2 in ["joueur", "matelas", "livret", "indice"]:
+		for k2 in ["joueur", "matelas", "livret", "indice", "jeanmi"]:
 			ap[k2] = float(ap.get(k2, 0.0)) + mt
 		e.projets["apports"] = ap
 	else:

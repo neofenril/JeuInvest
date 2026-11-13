@@ -25,10 +25,12 @@
     "devant": "Même avec mes dettes, je suis devant ? Il s'est passé quoi chez vous ?",
     "derriere": "Bravo. Moi, je rembourse jusqu'en 1990. Plus jamais de crédit pour la Bourse.",
     "_provisoire": "Textes du game designer (docs/27 §2.2) ; regle_apres : règle affichée à partir de l'ouverture de la position (lue par le code en phase B).",
+    "_couverture_min": "Lot 05-L B2 (écart au plan D4, à valider par le chef de projet) : couverture = max(couverture_part × compte courant, couverture_min F) ; Jean-Mi peut être à découvert (aucun agio). Sans ce plancher, le compte du joueur (et donc celui de Jean-Mi, son miroir) est trop bas en 09/1986 quand un projet a été payé : J1 échoue dans 26 parties passives sur 40 (marge minimale -16 627 F en 09/1987). Avec 30 000 F (le chiffre de docs/19 §2.2) : J1 tenu dans 120 parties sur 120, marge minimale 5 125 F ; J2 : Jean-Mi à 68 % au plus de Tata.",
     "_plan": "Plan de Jean-Mi en proportions (docs/19 §2.2-2.4, lot_05.md D4), calculé chaque mois par Quartier.pas_mensuel sur le cours de Peugeot du jeu. Montants en F, dates AAAA-MM. couverture_part : part du compte courant mise en couverture à l'ouverture ; levier : position = levier × couverture ; report_mensuel : coût mensuel du report, en part de la position (pas de report le mois de la liquidation) ; renfort.part : part de la position ajoutée au mois du renfort (à la clôture du mois précédent) ; voiture : achat à crédit (apport pris sur les gains du compte de bourse), mensualités dès le mois suivant, décote = valeur de marché par mois (dernière valeur connue ensuite), vente au mois indiqué (le prix règle le crédit ; l'écart éventuel passe par le compte courant) ; remboursement : la dette de bourse est remboursée chaque mois depuis le mois de début.",
     "plan": {
       "ouverture": "1986-09",
       "couverture_part": 0.8,
+      "couverture_min": 30000.0,
       "levier": 5.0,
       "report_mensuel": 0.007,
       "renfort": { "mois": "1987-08", "part": 0.3333333333 },

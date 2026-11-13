@@ -61,10 +61,12 @@ static func calculer(e: EtatPartie) -> Dictionary:
 		if str(c.get("lecon", "")) != "":
 			lecons.append(c["lecon"])
 
+	var rue := e.classement_rue()
 	return {
 		"a": a, "fin": e.fin, "nominal": nominal, "auj": auj, "bag": bag, "classement": classement,
 		"objectif": {"atteint": atteint, "bag_patrimoine": bag["vous"], "bag_mis": e.bag_mis},
 		"battus": battus, "nb_battus": nb_battus, "etoiles": etoiles, "nb_etoiles": nb_etoiles,
 		"replique": replique, "lecons": lecons, "epargne_nette": e.epargne_nette,
 		"frais": e.stats["frais"], "impots": e.stats["impots"], "interets": e.joueur.interets_total,
+		"rue": rue, "replique_rue": Quartier.replique_rue(rue) if not rue.is_empty() else {},
 	}

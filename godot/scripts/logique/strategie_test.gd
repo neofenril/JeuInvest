@@ -17,6 +17,9 @@ static var politique_cartes := "epargner"
 ## Projets (P1, lot 04, D8) : choix de l'option (moins_cher par défaut = resolution_auto, plus_cher, milieu) et jour J
 ## (auto = resolution_auto : réaliser si le disponible suffit, sinon reporter, sinon renoncer ; vendre : réaliser en
 ## vendant quand c'est possible).
+## Stratégie de bourse du joueur actif : "" (celle de la démo) ou "peugeot" (lot 05-L B6 : « tout sur Peugeot sans crédit » :
+## dès 03/1986, tout le disponible au-delà d'un mois de dépenses achète des Peugeot ; les présentations restent refusées).
+static var strategie := ""
 static var politique_projets := "moins_cher"
 static var politique_echeance := "auto"
 
@@ -61,7 +64,7 @@ static func jouer_mois(e: EtatPartie, actif: bool) -> void:
 	if not e.modale.is_empty():
 		if e.modale.get("kind", "") in ["carte", "projet"]:
 			e.resoudre_modale(choix_modale(e, actif))
-		elif not actif:
+		elif not actif or strategie == "peugeot":
 			e.resolution_auto()
 		else:
 			match choix_modale(e, true):
@@ -72,7 +75,9 @@ static func jouer_mois(e: EtatPartie, actif: bool) -> void:
 					e.resoudre_modale("vendre")
 				_:
 					e.resolution_auto()
-	if actif:
+	if actif and strategie == "peugeot":
+		_tout_peugeot(e)
+	elif actif:
 		_reequilibrer(e)
 
 
@@ -136,3 +141,12 @@ static func _reequilibrer(e: EtatPartie) -> void:
 		e.retirer_livret(e.joueur, minf(e.joueur.livret, -e.joueur.cc + e.salaire_base))
 	if e.joueur.cc > e.salaire_base and Banquier.presente(e, "livret"):
 		e.deposer_livret(e.joueur, minf(e.joueur.cc - e.salaire_base, e.place_livret(e.joueur)))
+
+## « Tout sur Peugeot sans crédit » : dès 03/1986, tout ce qui dépasse un mois de dépenses sur le compte courant achète
+## des Peugeot (titres entiers, frais compris) ; jamais d'achat à crédit (le compte ne devient pas négatif par un ordre).
+static func _tout_peugeot(e: EtatPartie) -> void:
+	if e.ab_courant() < Dates.lire("1986-03"):
+		return
+	var budget := e.joueur.cc - float(e.depenses()["total"])
+	if budget > 0.0:
+		e.acheter(e.joueur, "peugeot", budget)

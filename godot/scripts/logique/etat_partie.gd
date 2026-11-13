@@ -64,6 +64,11 @@ var saut_en_cours := false
 var foyer: Dictionary = {}
 ## P1 « Les projets du foyer » (lot 04) : réglage, état des deux projets, apports gardés. Règles : Projets (projets.gd).
 var projets: Dictionary = {}
+## P3 « La rue » (lot 05-L) : Jean-Mi (témoin « jeanmi », état de son plan en francs), état du quartier (notifications,
+## passages vus, réglage actif), instantané du krach. Règles : Quartier (quartier.gd) et Krach (krach.gd).
+var jeanmi: Dictionary = {}
+var quartier: Dictionary = {}
+var instantane_k: Dictionary = {}
 
 
 # =====================================================================
@@ -77,8 +82,8 @@ func demarrer(config: Dictionary = {}) -> Dictionary:
 	_configurer(config)
 	m = m_depart
 	salaire_base = valeur_table(profil, Dates.annee(ab_courant()))
-	temoins = {"matelas": Portefeuille.new(), "livret": Portefeuille.new(), "indice": Portefeuille.new()}
-	for k in ["j", "mis", "matelas", "livret", "indice"]:
+	temoins = {"matelas": Portefeuille.new(), "livret": Portefeuille.new(), "indice": Portefeuille.new(), "jeanmi": Portefeuille.new()}
+	for k in ["j", "mis", "matelas", "livret", "indice", "jeanmi"]:
 		var serie := []
 		serie.resize(180)
 		serie.fill(0.0)
@@ -90,6 +95,11 @@ func demarrer(config: Dictionary = {}) -> Dictionary:
 	calendrier = _tirer_calendrier()
 	foyer = Foyer.etat_initial(self, config)
 	projets = Projets.etat_initial(self, config)
+	jeanmi = Quartier.jeanmi_initial()
+	quartier = Quartier.quartier_initial()
+	quartier["actif"] = bool(config.get("rue", Donnees.charger("rue").get("actif", false)))
+	quartier["evts"] = []
+	instantane_k = {}
 	# État de départ garni (démonstration) : le joueur a un compte et un livret ; les témoins reçoivent
 	# le même capital en argent (03 §7.8) et le placent selon leur règle. Compté comme épargne.
 	var cc0 := float(config.get("cc_depart", 0.0))
@@ -189,7 +199,7 @@ func produits_achetables() -> Array:
 
 
 func tous() -> Array:
-	return [joueur, temoins["matelas"], temoins["livret"], temoins["indice"]]
+	return [joueur, temoins["matelas"], temoins["livret"], temoins["indice"], temoins["jeanmi"]]
 
 
 func prenom() -> String:
@@ -437,6 +447,9 @@ func acheter(w: Portefeuille, id: String, budget: float) -> Dictionary:
 		stats["ordres"] += 1
 		_noter_frais(w, float(d["frais"]))
 		_noter_utilise(id)
+		if produit(id).get("type", "") == "action" and not bool(quartier.get("achat_action_vu", false)):
+			quartier["achat_action_vu"] = true
+			noter_evt_rue("achat_action")
 		_enregistrer_hist()
 	return d
 
@@ -835,6 +848,9 @@ func _entrer_mois(initial: bool) -> Dictionary:
 		Banquier.messages_du_mois(self, notifs)
 		Banquier.verifier(self)
 
+	# La rue : Jean-Mi vit son mois (calculé dans tous les cas, montré seulement si la rue est allumée)
+	_pas_jeanmi()
+
 	# Les témoins placent leur excédent
 	_allouer_temoins()
 
@@ -850,6 +866,7 @@ func _entrer_mois(initial: bool) -> Dictionary:
 	# P1 : rappel, choix et jour J des projets mis en file ; P2 : cartes de dilemme des créneaux ouverts (rien s'ils sont éteints)
 	if modale.is_empty():
 		Projets.preparer(self, notifs)
+		_preparer_gazette()
 		Foyer.preparer(self)
 
 	# Au plus une modale par mois (démo : Cadence, R-CADENCE de docs/15 §0.1)
@@ -860,6 +877,9 @@ func _entrer_mois(initial: bool) -> Dictionary:
 			file.sort_custom(_avant_dans_file)
 			modale = file.pop_front()
 		res["modale"] = modale
+	if rue_active():
+		_instantane_si_krach()
+		_notifs_rue(notifs, not modale.is_empty())
 	return res
 
 
@@ -1327,14 +1347,19 @@ func contenu_modale() -> Dictionary:
 		return Foyer.contenu(self)
 	if modale["kind"] == "projet":
 		return Projets.contenu(self)
+	if modale["kind"] == "gazette":
+		return _contenu_gazette()
 	if modale["kind"] == "marche":
 		var ev := evenement(modale["id"])
 		var m_avant := maxi(m_depart, m - int(ev.get("fenetre", 1)))
-		return {"kind": "marche", "source": modale["source"], "date": Dates.texte(a, true), "ab": a,
+		var c_marche := {"kind": "marche", "source": modale["source"], "date": Dates.texte(a, true), "ab": a,
 			"date_journal": ev.get("date_journal", Dates.texte(a)), "produit": ev.get("produit", ""),
 			"titre": ev["titre"], "texte": ev["texte"], "gravite": ev.get("gravite", ""), "type": ev["type"],
 			"impact": impact_marche(ev), "detient": valeur_risquee(joueur) > EPS, "choix": choix_marche(ev),
 			"ecart_livret": ecart_livret(), "ecart_livret_avant": ecart_livret(m_avant), "ab_avant": ab_de(m_avant)}
+		if rue_active() and _est_krach(ev):
+			c_marche["jours"] = Krach.jours()
+		return c_marche
 	var e: Dictionary = calendrier[int(modale["idx"])]
 	var t := _type_vie(e["type"])
 	var montant: float = e["montant"]
@@ -1376,8 +1401,13 @@ func resoudre_modale(choix_id: String) -> Dictionary:
 		r = Foyer.resoudre(self, choix_id, vu)
 	elif item["kind"] == "projet":
 		r = Projets.resoudre(self, choix_id, vu)
+	elif item["kind"] == "gazette":
+		quartier["gazette_vue"] = true
+		r = {"choix": choix_id, "kind": "gazette", "notifs": []}
 	elif item["kind"] == "marche":
 		var ev := evenement(item["id"])
+		if rue_active() and _est_krach(ev) and not instantane_k.is_empty():
+			instantane_k = Krach.completer(instantane_k, choix_id)
 		choix.append({"id": ev["id"], "m": item["m"], "choix": choix_id, "indice": indice(int(item["m"])),
 			"titre": ev["titre"], "type": ev["type"], "lecon": ev.get("lecon", "")})
 		if choix_id in ["vendre", "encaisser"]:
@@ -1424,6 +1454,8 @@ func resolution_auto() -> Dictionary:
 		return resoudre_modale(Foyer.choix_auto(self))   # « aucun » si aucun choix n'est payable (D1)
 	if c["kind"] == "projet":
 		return resoudre_modale(Projets.choix_auto(self))
+	if c["kind"] == "gazette":
+		return resoudre_modale("ok")
 	var premier: String = c["choix"][0]["id"]
 	return resoudre_modale("decouvert" if premier == "vendre" else premier)
 
@@ -1514,6 +1546,7 @@ func _enregistrer_hist() -> void:
 	hist["matelas"][m] = patrimoine(temoins["matelas"])
 	hist["livret"][m] = patrimoine(temoins["livret"])
 	hist["indice"][m] = patrimoine(temoins["indice"])
+	hist["jeanmi"][m] = patrimoine_jeanmi()
 
 
 func _journaliser(texte: String) -> void:
@@ -1529,7 +1562,9 @@ func _journaliser(texte: String) -> void:
 # titre, resume (une ligne), choix (libellé du choix fait, "" sinon), montant, a_montant, suffixe,
 # contenu (de quoi rouvrir la pop-up en lecture seule : contenu de modale ou notification) }.
 
-const GENRES_MODALE := {"banquier": "appel", "marche": "journal", "vie": "courrier", "carte": "carte"}
+const GENRES_MODALE := {"banquier": "appel", "marche": "journal", "vie": "courrier", "carte": "carte", "projet": "projet", "gazette": "gazette"}
+## Genre d'historique des notifications de la rue (lot 05-L, contrat §4.3) ; les autres sont des « notif ».
+const GENRES_NOTIF := {"voisin": "voisin", "rang": "voisin", "kiosque": "gazette"}
 ## Genres et sources possibles d'une entrée (V3, docs/15 §8) : « carte », « projet », « voisin », « gazette » et la
 ## source « rue » n'ont encore aucune entrée (lots 03 à 05).
 const GENRES_HISTORIQUE := ["appel", "journal", "courrier", "notif", "carte", "projet", "voisin", "gazette"]
@@ -1546,7 +1581,7 @@ func _ajouter_historique(entree: Dictionary) -> void:
 
 func _historiser_notifs(notifs: Array, mois: int) -> void:
 	for n: Dictionary in notifs:
-		_ajouter_historique({"m": mois, "source": str(n.get("source", "banque")), "genre": "notif", "type": str(n.get("type", "")),
+		_ajouter_historique({"m": mois, "source": str(n.get("source", "banque")), "genre": GENRES_NOTIF.get(str(n.get("type", "")), "notif"), "type": str(n.get("type", "")),
 			"titre": str(n.get("titre", "")), "resume": resume_texte(str(n.get("texte", ""))), "choix": "",
 			"montant": float(n.get("montant", 0.0)), "a_montant": n.has("montant"), "suffixe": "", "contenu": n.duplicate(true)})
 
@@ -1741,12 +1776,178 @@ func plan_vente_projet() -> Array:
 
 
 # =====================================================================
+# P3 « La rue » (lot 05-L, phase B) : Jean-Mi, classement, notifications des voisins ; krach et « un an après »
+# =====================================================================
+# Jean-Mi est un 5e portefeuille (« jeanmi ») qui vit la même vie que Tonton Matelas (salaire, dépenses, vie, cartes de
+# consommation, projets, héritage : R-MIROIR) ; son plan de bourse à crédit (Quartier.pas_mensuel, en francs) est calculé
+# chaque mois dans tous les cas, mais montré seulement si config["rue"] est vrai (D6). Contrat : lot_05.md §4.3.
+
+## La rue est-elle allumée dans cette partie ? (config["rue"], défaut rue.json > actif ; gardé dans la sauvegarde)
+func rue_active() -> bool:
+	return bool(quartier.get("actif", false)) and banquier_actif()
+
+
+## Un mois de la vie de Jean-Mi sur le cours de Peugeot du jeu (montants en francs dans Quartier : conversion ici).
+func _pas_jeanmi() -> void:
+	var w: Portefeuille = temoins["jeanmi"]
+	var c := cours("peugeot")
+	var cp := cours("peugeot", m - 1)
+	if is_nan(c) or is_nan(cp):
+		return
+	var r := Quartier.pas_mensuel(jeanmi, ab_courant(), c, cp, w.cc * Format.TAUX_EURO)
+	jeanmi = r["etat"]
+	w.cc += float(r["mouvement"]) / Format.TAUX_EURO
+	if "liquidation" in (r["evenements"] as Array):
+		quartier["levier"] = (jeanmi["levier"] as Dictionary).duplicate(true)
+
+
+## Patrimoine de Jean-Mi (euros internes) : compte courant + apport gardé + équité du compte de bourse + voiture
+## − crédit − dette de bourse (lot_05.md D3).
+func patrimoine_jeanmi() -> float:
+	var w: Portefeuille = temoins["jeanmi"]
+	var compte_f := (w.cc + Projets.apport(self, w)) * Format.TAUX_EURO
+	return Quartier.patrimoine_jeanmi(jeanmi, compte_f) / Format.TAUX_EURO
+
+
+## Classement de la rue (lot_05.md §4.3) : [] si éteinte ; sinon 4 lignes, patrimoine en francs, égalité : le joueur devant.
+func classement_rue() -> Array:
+	if not rue_active():
+		return []
+	var t := Format.TAUX_EURO
+	return Quartier.classement({"vous": (patrimoine(joueur) + vie_en_attente()) * t, "livret": patrimoine(temoins["livret"]) * t,
+		"matelas": patrimoine(temoins["matelas"]) * t, "jeanmi": patrimoine_jeanmi() * t})
+
+
+func rang_rue() -> int:
+	return Quartier.rang_de(classement_rue()) if rue_active() else 0
+
+
+## {} si éteinte ; {etape, patrimoine (F), dette (F), regle} : la règle affichée de Jean-Mi change à l'ouverture de sa position.
+func jeanmi_resume() -> Dictionary:
+	if not rue_active():
+		return {}
+	var d := Quartier.donnees_jeanmi()
+	var etape := str(jeanmi["etape"])
+	return {"etape": etape, "patrimoine": patrimoine_jeanmi() * Format.TAUX_EURO, "dette": float(jeanmi["dette"]),
+		"regle": str(d["regle"] if etape == "attend" else d["regle_apres"])}
+
+
+## Instantané du krach pris à l'ouverture de sa modale, complété du choix ({} avant, ou rue éteinte).
+func instantane_krach() -> Dictionary:
+	return instantane_k.duplicate(true) if rue_active() else {}
+
+
+## Événement du joueur lu par les bulles réactives de la rue (« achat_action », « projet_realise » + id du projet).
+func noter_evt_rue(declencheur: String, projet := "") -> void:
+	if not quartier.has("evts"):
+		quartier["evts"] = []
+	(quartier["evts"] as Array).append({"d": declencheur, "projet": projet})
+
+
+## Notifications de la rue du mois (voisin, rang, kiosque), à appeler chaque mois (saut compris) : au plus une, aucune un
+## mois qui ouvre une interruption avec pause (pause).
+func _notifs_rue(notifs: Array, pause: bool) -> void:
+	var cl := classement_rue()
+	var decl := []
+	for x: Dictionary in quartier.get("evts", []):
+		decl.append(str(x["d"]))
+		if str(x.get("projet", "")) != "":
+			quartier["dernier_projet"] = str(x["projet"])
+	quartier["evts"] = []
+	var phrase := Quartier.phrase_levier(quartier.get("levier", {}))
+	var ctx := {"pause": pause, "declencheurs": decl, "projet_id": str(quartier.get("dernier_projet", "")),
+		"relation": Quartier.relation_jeanmi(cl), "rang": Quartier.rang_de(cl), "valeurs": {"levier": phrase}}
+	var r := Quartier.notifications_du_mois(ab_courant(), quartier, ctx)
+	quartier = r["etat"]
+	notifs.append_array(r["notifs"])
+
+
+# --- Krach (10/1987) et « un an après » (10/1988) ---
+
+func _est_krach(ev: Dictionary) -> bool:
+	return str(ev.get("type", "")) == "-" and Dates.lire(ev["d"]) == Dates.lire(str(Krach.donnees()["mois_krach"]))
+
+
+## Mois (index) de l'interruption datée « Le krach, un an après » ; -1 si la rue est éteinte ou déjà vue.
+func mois_gazette() -> int:
+	if not rue_active() or bool(quartier.get("gazette_vue", false)):
+		return -1
+	return Dates.lire(str(Krach.donnees()["mois_un_an_apres"])) - mk.ab_debut
+
+
+## Prend l'instantané à l'ouverture de la modale du krach ; sans action ni SICAV : exemple de 10 000 F de SICAV.
+func _instantane_si_krach() -> void:
+	if modale.get("kind", "") != "marche":
+		return
+	var ev := evenement(str(modale["id"]))
+	if ev.is_empty() or not _est_krach(ev):
+		return
+	var inst := Krach.instantane(self)
+	if (inst["lignes"] as Array).is_empty():
+		var sicav := _fonds_indiciel()
+		inst = Krach.instantane_exemple(sicav, cours(sicav), float(Krach.donnees()["un_an_apres"]["exemple"]["montant_f"]) / Format.TAUX_EURO, ab_courant())
+	instantane_k = inst
+
+
+## « Le krach, un an après » : interruption datée mise en file au mois dit.
+func _preparer_gazette() -> void:
+	var mm := mois_gazette()
+	if mm < 0 or m < mm or bool(quartier.get("gazette_ajoutee", false)):
+		return
+	quartier["gazette_ajoutee"] = true
+	file.append({"kind": "gazette", "id": "G1", "m": m, "prio": 1, "source": "media", "historique": true})
+
+
+func _contenu_gazette() -> Dictionary:
+	var inst: Dictionary = instantane_k.duplicate(true)
+	if inst.is_empty():
+		var sicav := _fonds_indiciel()
+		inst = Krach.instantane_exemple(sicav, cours(sicav, mois_krach_index()), float(Krach.donnees()["un_an_apres"]["exemple"]["montant_f"]) / Format.TAUX_EURO,
+			Dates.lire(str(Krach.donnees()["mois_krach"])))
+	return Krach.contenu_gazette(inst, ctx_gazette(inst), ab_courant())
+
+
+func mois_krach_index() -> int:
+	return Dates.lire(str(Krach.donnees()["mois_krach"])) - mk.ab_debut
+
+
+## Cours, taux et dividendes de 10/1988 pour les barres (lot_05.md D10) :
+##  - cours_fin : cours du mois courant (fin 10/1988) ; dividendes : net par titre versé de 11/1987 à 09/1988 (rendement et impôt
+##    du moteur au mois de versement) ; taux_impot, courtage, entrée de la SICAV : ceux de 10/1987 (vente et achat au krach) ;
+##  - facteur_livret : capital au Livret A de 11/1987 à 09/1988 (intérêts mensuels, crédités en décembre comme le moteur).
+func ctx_gazette(inst: Dictionary) -> Dictionary:
+	var ab_k := int(inst["ab"])
+	var a := ab_courant()
+	var fin := {}
+	var div := {}
+	for l: Dictionary in inst["lignes"]:
+		var id := str(l["id"])
+		fin[id] = cours(id)
+		if str(l["type"]) == "action":
+			var s := 0.0
+			for mm in range(ab_k + 1, a):
+				if Dates.mois(mm) == mois_dividende(id):
+					s += cours(id, mm - mk.ab_debut) * taux_dividende(id, Dates.annee(mm)) / 100.0 * (1.0 - float(Marche.impot(mm)["cto"]) / 100.0)
+			div[id] = s
+	var capital := 1.0
+	var acquis := 0.0
+	for mm in range(ab_k + 1, a):
+		acquis += capital * Marche.taux_livret(mm) / 100.0 / 12.0
+		if Dates.mois(mm) == 12:
+			capital += acquis
+			acquis = 0.0
+	return {"cours_fin": fin, "dividendes": div, "taux_impot": float(Marche.impot(ab_k)["cto"]) / 100.0,
+		"courtage": func(brut: float) -> float: return Marche.frais_courtage(ab_k, brut),
+		"entree_sicav": float(regles["sicav"]["entree"]) / 100.0, "facteur_livret": capital + acquis}
+
+
+# =====================================================================
 # Sauvegarde : tout l'état, sans les données (rechargées depuis data/) ni le marché (déterministe)
 # =====================================================================
 
 const CHAMPS_ETAT := ["m", "m_depart", "m_fin", "salaire_base", "calendrier", "file", "modale", "choix", "panique",
 	"epargne_nette", "bag_mis", "decouvert_mois", "enfants", "fin", "hist", "stats", "journal", "banque", "historique",
-	"flux_mois", "foyer", "projets"]
+	"flux_mois", "foyer", "projets", "jeanmi", "quartier", "instantane_k"]
 
 
 func vers_dict() -> Dictionary:
@@ -1775,7 +1976,7 @@ static func defauts_etat(config: Dictionary) -> Dictionary:
 
 
 ## Dictionnaires d'état complétés clé par clé lors d'une migration (les autres sont pris tels quels).
-const CHAMPS_COMPLETES := ["banque", "stats", "hist", "foyer"]
+const CHAMPS_COMPLETES := ["banque", "stats", "hist", "foyer", "quartier"]
 
 
 ## Recrée une partie à partir d'une sauvegarde. Renvoie null si le contenu est inutilisable (autre version
@@ -1792,11 +1993,13 @@ static func depuis_dict(d: Dictionary) -> EtatPartie:
 		e.joueur.depuis_dict(d["joueur"])
 	var tem: Dictionary = d["temoins"] if d.get("temoins", null) is Dictionary else {}
 	e.temoins = {}
-	for k in ["matelas", "livret", "indice"]:
+	for k in ["matelas", "livret", "indice", "jeanmi"]:
 		var w := Portefeuille.new()
 		w.depuis_dict(defaut["temoins"][k])
 		if tem.get(k, null) is Dictionary:
 			w.depuis_dict(tem[k])
+		elif k == "jeanmi" and e.temoins.has("matelas"):
+			w.depuis_dict(e.temoins["matelas"].vers_dict())   # sauvegarde de main : Jean-Mi a le compte de Tonton Matelas
 		e.temoins[k] = w
 	for k in CHAMPS_ETAT:
 		var v: Variant = defaut[k]
@@ -1809,6 +2012,8 @@ static func depuis_dict(d: Dictionary) -> EtatPartie:
 		e.set(k, v.duplicate(true) if (v is Dictionary or v is Array) else v)
 	Foyer.apres_chargement(e, d.get("foyer", null) is Dictionary)
 	Projets.apres_chargement(e, d.get("projets", null) is Dictionary)
+	if not (d.get("quartier", null) is Dictionary):
+		e.quartier["actif"] = false   # sauvegarde de main : rue éteinte (Jean-Mi garde l'état « attend »)
 	e._reparer()
 	return e
 

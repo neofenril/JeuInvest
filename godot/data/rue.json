@@ -24,6 +24,7 @@
     "titre_kiosque": "LA GAZETTE"
   },
 
+  "_persistant": "persistant : la notification reste à l'écran jusqu'au toucher, sans pause (idée du game designer : les 4 passages ★ de Jean-Mi ; l'interface suivra).",
   "_passages": "mois = mois du passage (AAAA-MM) ; qui = lopez | matelas | livret | jeanmi | lefranc ; titre (facultatif) = titre de la notification quand deux voisins parlent ; cle = passage etoile (jamais abandonne, va dans l'historique meme franchi en saut) ; long = a une carte de lecture (texte_long). texte = ce que dit le toast. {levier} (V13) : phrase du levier calculee par Quartier.phrase_levier. V11 et V12 : supprimes de la version jouable. Textes du game designer (docs/27 §2.2).",
   "passages": [
     { "id": "V01", "mois": "1984-02", "qui": "lopez", "cle": true, "long": true,
@@ -39,22 +40,22 @@
       "texte": "La baguette a encore augmenté. Mes billets, eux, n'ont pas bougé…" },
     { "id": "V06", "mois": "1986-06", "qui": "livret", "cle": false, "long": false,
       "texte": "Mon Livret rapporte moins, mais les prix montent moins vite. C'est l'écart qui compte." },
-    { "id": "V07", "mois": "1986-09", "qui": "jeanmi", "cle": true, "long": false,
+    { "id": "V07", "mois": "1986-09", "qui": "jeanmi", "persistant": true, "cle": true, "long": false,
       "texte": "Tuyau du café : Peugeot ne peut que monter. J'ai tout mis, et même plus !" },
     { "id": "V08", "mois": "1986-12", "qui": "lopez", "cle": false, "long": false,
       "texte": "Saint-Gobain, et bientôt Paribas… toute la rue devient actionnaire !" },
-    { "id": "V09", "mois": "1987-04", "qui": "jeanmi", "cle": true, "long": false,
+    { "id": "V09", "mois": "1987-04", "qui": "jeanmi", "persistant": true, "cle": true, "long": false,
       "texte": "Elle est belle, ma Porsche ! Payée par Peugeot… et un peu par la banque." },
     { "id": "V10", "mois": "1987-08", "qui": "jeanmi", "cle": false, "long": false,
       "texte": "J'en ai repris, encore à crédit. Quand ça monte, faut en profiter !" },
-    { "id": "V13", "mois": "1987-12", "qui": "jeanmi", "cle": true, "long": true,
+    { "id": "V13", "mois": "1987-12", "qui": "jeanmi", "persistant": true, "cle": true, "long": true,
       "texte": "Je n'ai plus rien… et je dois encore de l'argent.",
       "texte_long": "Je n'ai plus rien… et je dois encore de l'argent. {levier} Le crédit grossit les gains… et les pertes." },
     { "id": "V14", "mois": "1988-03", "qui": "matelas", "titre": "Tonton Matelas et Tata Livret", "cle": false, "long": false,
       "texte": "M. : « Le krach ? Moi, j'ai rien perdu ! » T. : « Si : l'inflation, un peu chaque année. »" },
     { "id": "V15", "mois": "1988-07", "qui": "jeanmi", "titre": "Jean-Mi et Mme Lopez", "cle": false, "long": false,
       "texte": "J. : « La Bourse, plus jamais ! » L. : « C'est pas la Bourse, Jean-Mi, c'est le crédit. »" },
-    { "id": "V16", "mois": "1988-11", "qui": "jeanmi", "cle": true, "long": false,
+    { "id": "V16", "mois": "1988-11", "qui": "jeanmi", "persistant": true, "cle": true, "long": false,
       "texte": "Peugeot est remonté plus haut qu'avant le krach… sans moi." }
   ],
 

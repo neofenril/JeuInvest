@@ -82,7 +82,7 @@ static func pas_mensuel(etat: Dictionary, ab: int, cours: float, cours_prec: flo
 	# Ouverture de la position : la couverture sort du compte courant ; achat à la clôture du mois.
 	if s["etape"] == "attend":
 		if ab >= Dates.lire(str(p["ouverture"])):
-			var couv := maxf(0.0, float(p["couverture_part"]) * compte_f)
+			var couv := maxf(float(p.get("couverture_min", 0.0)), maxf(0.0, float(p["couverture_part"]) * compte_f))   # plancher : voir temoins.json > _plan
 			s["couverture"] = couv
 			s["equite"] = couv
 			s["position"] = couv * float(p["levier"])
@@ -290,6 +290,8 @@ static func _notif_voisin(c: Dictionary, ctx: Dictionary, r: Dictionary) -> Dict
 	var n := {"type": "voisin", "source": "rue", "cls": "neutre", "id": str(src["id"]), "qui": str(src["qui"]),
 		"titre": str(src.get("titre", voisin(str(src["qui"]), r)["nom"])), "texte": Format.gabarit(texte, vals),
 		"cle": bool(src.get("cle", false)), "long": bool(src.get("long", false))}
+	if bool(src.get("persistant", false)):
+		n["persistant"] = true   # reste à l'écran jusqu'au toucher, sans pause (idée du game designer, lot 05-L B3)
 	if n["long"]:
 		n["texte_long"] = Format.gabarit(str(src.get("texte_long", "")), vals)
 	return n
