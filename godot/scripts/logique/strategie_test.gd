@@ -14,6 +14,11 @@ const PLANCHER_F := 2500.0   # francs gardés sur le compte pour pouvoir acheter
 ## Cartes de dilemme (P2, lot 03-foyer) : politique des deux joueurs, actif comme passif. epargner (défaut, = resolution_auto :
 ## le choix le moins cher payable), depenser (le plus cher payable), alterner (dépenser puis épargner, tour à tour).
 static var politique_cartes := "epargner"
+## Projets (P1, lot 04, D8) : choix de l'option (moins_cher par défaut = resolution_auto, plus_cher, milieu) et jour J
+## (auto = resolution_auto : réaliser si le disponible suffit, sinon reporter, sinon renoncer ; vendre : réaliser en
+## vendant quand c'est possible).
+static var politique_projets := "moins_cher"
+static var politique_echeance := "auto"
 
 
 ## Choix que prend la stratégie pour la modale en attente ("" s'il n'y en a pas). Le choix par défaut est
@@ -25,6 +30,8 @@ static func choix_modale(e: EtatPartie, actif: bool) -> String:
 	var choix: Array = c.get("choix", [])
 	if c["kind"] == "carte":
 		return Foyer.choix_politique(e, politique_cartes)
+	if c["kind"] == "projet":
+		return Projets.choix_politique(e, politique_projets, politique_echeance)
 	if actif:
 		if c["kind"] == "banquier" and not c.get("heritage", false):
 			return "ouvrir"
@@ -52,7 +59,7 @@ static func id_modale(e: EtatPartie) -> String:
 ## passif : resolution_auto), puis, pour le joueur actif, rééquilibre compte courant et Livret A.
 static func jouer_mois(e: EtatPartie, actif: bool) -> void:
 	if not e.modale.is_empty():
-		if e.modale.get("kind", "") == "carte":
+		if e.modale.get("kind", "") in ["carte", "projet"]:
 			e.resoudre_modale(choix_modale(e, actif))
 		elif not actif:
 			e.resolution_auto()
