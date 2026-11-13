@@ -274,3 +274,35 @@ Garder (essentiel) : **I1** carte de dilemme **sans** vol, dépli ni aimant (app
 Réduire **I8** : `test_interface` passe toute la démo cartes allumées (actif et passif) sans blocage ★ ; `test_ecran` couvre la carte ; étapes `carte` (deux choix ; un choix non payable ; conclusion), `mon_foyer`, `banque_fermee`, `integrale_cartes` sur **PC 1080 et 1440 × 648 seulement**. Retirés : `carte_jumeaux`, `etiquette_humeur` relue à ×1 et ×3, `bulle_humeur` en capture (la ligne `UI bulle apres_carte=oui` reste imprimée par `carte`), `integrale_cartes_saut`, formats 1152 × 648 et 1280 × 720.
 Commit, puis compte rendu court : il enchaîne 04-I (`lot_05.md`). Les CA de 03-I2 sont vérifiés dans R-MAISON (`lot_05.md` §7.2).
 
+## 13. Arbitrage des points d'arrêt de 04-L (2026-11-13)
+
+> Prime sur D2, D7, §4.2 et §7.1 là où ils diffèrent. La règle de vente automatique (D7 bis) **ne change pas** (décision du joueur, `feuille_de_route.md` §2.11).
+
+| # | Point | Décision | Pourquoi |
+|---|---|---|---|
+| A1 | CA-L5 : P2B réalisé à la date 39 % (cible ≥ 60 %) | **P2B = 35 000 F**, échéance 02/1988 **inchangée**, toujours « apport comptant ». Mesure du développeur : 87 % (30 000 F = 100 %, trop facile). Cible CA-L5 inchangée (≥ 80 % / ≥ 60 %) et désormais **bloquante** pour les deux. | 35 000 F ≈ 40 % d'un break neuf de 1988 (80-95 000 F, docs/18 §2, C) : un apport plausible, le gros de la voiture reste à crédit. Le joueur le plus sage (tout au Livret A, cartes « epargner ») y arrive presque toujours ; les autres doivent épargner ou vendre : effort réel, pas d'impossibilité. L'échéance reste en 02/1988 : S10 et le krach d'octobre 1987 (vendre après le krach pour réaliser le projet) en dépendent. |
+| A2 | CA-L6 : 2 parties sur 120 à 7 cartes | **Accepté** : critère « **7 à 10 cartes**, au plus **2 parties sur 120 à 7 cartes** » (projets allumés). Projets éteints : 8 à 10 inchangé (CA-FO du lot 03). | Les projets prennent 2 à 6 créneaux ; 7 cartes dans 1,7 % des parties ne se voit pas en jeu. Forcer une 8e carte coûterait une règle de plus dans `Cadence`. |
+| A3 | `MESURE carte_puis_vie=20` (attendu 0) | **Accepté** comme repli de D2 : quand toute la fenêtre d'une carte est bloquée par des événements de vie connus, la carte passe quand même et le coup dur du mois suivant garde sa pause (exception « carte → vie », D2 b). D2 c reste absolu : **aucun** événement de vie rétrogradé en notification (`vie_retrogradee=0`, bloquant). `carte_puis_vie` devient une mesure **informative**, imprimée avec le maximum par partie ; plus d'1 fois dans une même partie = à me signaler (non bloquant). | Abandonner le créneau (lettre de D2 a) ferait tomber des parties à 6-7 cartes ; deux pauses de suite dont un coup dur sont acceptées par le game designer (G3). |
+| A4 | Budget `projets` de `rythme.json` porté de 4 à 6 | **Accepté** : 2 choix + 2 jours J + 2 reports. CA-L6 : « projets ≤ 6 ». | Un report crée un 2e jour J ; 4 était une erreur du plan. |
+| A5 | « RENONCER POUR L'INSTANT » (P2C) gardé, le banquier propose « RENONCER » | **Gardé tel quel** dans ce lot (contrat §4.2). Le libellé fait partie des points à redéfinir avec la règle de vente (`feuille_de_route.md` §2.11) ; c'est une donnée de `projets.json`, changeable sans code ni interface. | Décision du joueur : on ne retouche pas ce bloc maintenant. |
+
+### 13.1 Modifications exactes à faire par dev-logique (`lot/04-logique`, un commit)
+1. `godot/data/projets.json`, option `P2B` : `"montant_F": 40000` → `"montant_F": 35000` ; ajouter `"_montant": "35 000 F : calibrage CA-L5 (chef de projet, 13/11) ; docs/18 §2 donnait 40 000 F. ≈ 40 % d'un break neuf 1988 (80-95 000 F). Certitude C."` ; `_certitude` reste `"C"`. Rien d'autre dans les données (échéance, `sous`, réplique, P2C inchangés ; aucun texte ne doit contenir « 40 000 » en dur : vérifier).
+2. `godot/tests/test_projets.gd`, `_tests_calibrage` : la vérification CA-L5 porte sur `x >= 80.0 and y >= 60.0` (plus seulement `x`) ; retirer la boucle des variantes (lignes 364-380 : elle modifie la donnée en mémoire) ; libellé sans « POINT D'ARRÊT ».
+3. `godot/tests/test_projets.gd`, `_tests_cadence_projets` : vérification = toutes les parties entre 7 et 10 cartes **et** `par_partie.get(7, 0) <= 2` et `nb == 120` ; imprimer `MESURE cartes7=<n>/120` ; retirer le message de point d'arrêt sauf si le critère échoue ; vérifier `Cadence.budget("projets") == 6` et libellé « projets ≤ 6 (2 choix, 2 jours J, 2 reports) ».
+4. Test du coup dur (CA-L3) : garder la vérification bloquante « aucun événement de vie rétrogradé » (imprimer `MESURE vie_retrogradee=0`) ; `MESURE carte_puis_vie=<n> max_par_partie=<k>` informative ; vérifier que chaque cas `carte_puis_vie` est bien « carte au mois m − 1, vie scriptée ou aléatoire au mois m avec sa pause ».
+5. Relancer `tests.ps1 -Recette` (le KO de `test_recette_foyer` FO2 est attendu, voir §13.2), réimprimer les références touchées par le prix de P2B (projets allumés seulement ; les références projets éteints de CA-L7 ne doivent pas bouger), mettre le socle à jour (A1-A4), compte rendu court avec `MESURE projets …`, `MESURE cartes7`, `carte_puis_vie`.
+
+### 13.2 Ce que le testeur adapte (`tests/recette/`, `lot_04_recette.md`)
+- `test_recette_foyer` FO2 : admettre une interruption « vie » au mois qui suit une carte (exception « carte → vie », D2 b) ; tout autre enchaînement de deux mois reste interdit.
+- CA-L3 : vérifier `vie_retrogradee=0` (bloquant) ; `carte_puis_vie` relevé sans seuil (signaler > 1 par partie).
+- CA-L5 : P2B = 35 000 F dans `projets.json` ; `MESURE projets P1C_a_la_date ≥ 80 %` et `P2B_a_la_date ≥ 60 %` (attendu ≈ 87 %) ; les recalculs de vente à la main qui utilisaient 40 000 F pour P2B passent à 35 000 F.
+- CA-L6 : 7 à 10 cartes, au plus 2 parties sur 120 à 7 ; projets ≤ 6 par partie.
+- Libellé P2C « RENONCER POUR L'INSTANT » : attendu tel quel (A5).
+- Toute recette qui suppose `budget projets = 4` passe à 6.
+
+### 13.3 Ordre avec 05-L phase B
+1. dev-logique fait §13.1 sur `lot/04-logique` ; **04-L passe chez le testeur et fusionne dans `main` en premier** (05-L en dépend : contrat des projets, `Cadence`, invariant de la carte).
+2. Phase B de 05-L démarre dès que le commit du §13.1 est remis au testeur : le coordinateur fusionne `lot/04-logique` dans `lot/05-logique` (`lot_05.md` §2). Si la recette de 04-L est KO, les corrections sont faites sur `lot/04-logique` puis refusionnées dans `lot/05-logique` (jamais corrigées sur 05-L).
+3. Avant la recette de 05-L : `main` (avec 04-L) fusionné dans `lot/05-logique`. 05-L entre dans `main` après 04-L ; `lot/04-interface` (R-MAISON) fusionne après 04-L aussi, et indépendamment de 05-L.
+
