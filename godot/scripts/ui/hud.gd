@@ -1799,8 +1799,11 @@ func _notifier_compacte(n: Dictionary) -> void:
 	if not is_instance_valid(p):
 		return
 	_empiler(p, Vector2(-1, -1))
+	if n.get("persistant", false):   # recette R-RUE M5 : une notification persistante reste jusqu'au toucher (ou jusqu'à l'historique)
+		return
 	await get_tree().create_timer(clampf(Partie.duree_mois_s(maxi(1, Partie.vitesse)), 3.0, 8.0) + 0.4).timeout
-	_retirer(p)
+	if is_instance_valid(p):   # recette R-RUE A2 : la 4e notification a pu l'évacuer (queue_free) entre-temps
+		_retirer(p)
 
 
 ## Titre d'une notification compacte : 40 caractères au plus, coupé par « … ».
