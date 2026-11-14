@@ -23,6 +23,7 @@ var _recu: Array = []
 var _ordres_refuses := 0       # lot 05 : refus d'ordres débiteurs constatés pendant une carte ou un projet
 var _projets_choisis := 0
 var _etiquettes_vues := 0
+var _rue_mois := 0
 var _guichets_vus := 0
 var _ventes_conformes := 0
 var _div_vus := {}        # lot 03 (I6) : « reçus » / « versé » -> nombre de fiches d'action vérifiées
@@ -241,6 +242,8 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	var nom := ("joueur actif" if actif else "joueur passif") + (", cartes allumées" if cartes else "")
 	var cartes_vues := 0
 	var ecarts_etiquette: Array = []
+	var ecarts_rue: Array = []
+	_rue_mois = 0
 	_ordres_refuses = 0
 	_projets_choisis = 0
 	_ventes_conformes = 0
@@ -274,6 +277,7 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	if cartes:
 		config_partie["cartes"] = true
 		config_partie["projets"] = true   # lot 05 : le vrai moteur des projets (04-L)
+		config_partie["rue"] = true       # lot 06 : la rue (05-L) : Jean-Mi, classement, notifications, krach
 	Partie.nouvelle_partie(config_partie)
 	var e := Partie.etat
 	var mois_hud := 0
@@ -294,6 +298,17 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 				ecarts_etiquette.append("%s : « %s » au lieu de « %s »" % [Dates.texte_court(e.ab_courant()), vu_p.text, attendu_p])
 			elif attendu_p != "":
 				_etiquettes_vues += 1
+			# Lot 06 : bloc LA RUE et rang de la languette == classement_rue() / rang_rue()
+			var cl := e.classement_rue()
+			var lt := hud.bloc_rue.lignes_texte
+			var ok_rue := cl.size() == 4 and lt.size() == cl.size() and hud.bloc_rue.visible
+			for i in mini(cl.size(), lt.size()):
+				ok_rue = ok_rue and str(lt[i]["id"]) == str(cl[i]["id"]) and int(lt[i]["rang"]) == int(cl[i]["rang"]) and str(lt[i]["montant"]) == BlocRue.texte_patrimoine(float(cl[i]["patrimoine"]), e.ab_courant()) and bool(lt[i]["vous"]) == bool(cl[i]["vous"])
+			ok_rue = ok_rue and (hud._languette_rang.get_child(1) as Label).text == BlocRue.rang_texte(e.rang_rue())
+			if ok_rue:
+				_rue_mois += 1
+			else:
+				ecarts_rue.append("%s : %s / %s" % [Dates.texte_court(e.ab_courant()), str(lt), str(cl)])
 		if not e.modale.is_empty():
 			if e.modale.get("kind", "") == "carte":
 				cartes_vues += 1
@@ -339,6 +354,7 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	StrategieTest.politique_projets = "moins_cher"
 	StrategieTest.politique_echeance = "auto"
 	if cartes:
+		_verifier("%s : classement permanent : bloc LA RUE (4 lignes : id, rang, montant, « vous ») et rang de la languette == classement_rue() / rang_rue() chaque mois (%d mois)" % [nom, _rue_mois], _rue_mois >= 55 and ecarts_rue.is_empty(), str(ecarts_rue.slice(0, 2)))
 		_verifier("%s : vrai moteur des projets : %d choix de projet (projet_en_cours()[id] == option choisie), ventes faites == plan (%d), %d refus d'ordres pendant une carte ou un projet avec la phrase de l'interface, étiquette == projet_en_cours() (%d mois), ligne du guichet == ligne_projet_guichet() (%d fiches)" % [nom, _projets_choisis, _ventes_conformes, _ordres_refuses, _etiquettes_vues, _guichets_vus],
 			_projets_choisis >= 2 and int(vues.get("projet", 0)) >= 3 and _ordres_refuses >= 10 and ecarts_etiquette.is_empty() and ecarts_genre.is_empty() and ecarts_choix.is_empty() and (not actif or _guichets_vus >= 1), "%s %s %s" % [str(ecarts_etiquette), str(ecarts_genre), str(ecarts_choix)])
 	if actif and not cartes:
@@ -560,6 +576,11 @@ func _verifier_projets(nom: String, e: EtatPartie) -> void:
 	var attendu_t := "%s / %s" % [Format.nombre(Format.en_devise(float(pr["disponible"]), Format.devise(e.ab_courant()))), Format.entier(float(pr["montant"]), e.ab_courant())]
 	var sans := hud.maj_projet(e, {"_aucun": true})
 	_verifier("%s : étiquette MA MAISON : 2e ligne « %s » == disponible / montant du projet, absente sans projet" % [nom, attendu_t], texte == attendu_t and sans == "", "%s / %s" % [texte, sans])
+	# Rue éteinte : ni bloc ni rang (le panneau et la languette redeviennent ceux de main) ; puis la rue revient
+	hud.maj_rue_eteinte(null)
+	var eteint_ok := not hud.bloc_rue.visible and not hud._languette_rang.visible and hud.bloc_rue.lignes_texte.is_empty() and not hud.panneau_a_trois_colonnes()
+	hud.maj_rue(e)
+	_verifier("%s : rue éteinte : bloc LA RUE et rang cachés ; rallumée : bloc de retour" % nom, eteint_ok and hud.bloc_rue.visible and hud.bloc_rue.lignes_texte.size() == 4)
 	# BANQUE fermée : bouton grisé et phrase ; rouverte ensuite
 	var ferme := hud.maj_banque_fermee(true)
 	var phrase_ok := hud.l_banque_fermee.text == "Réglez d'abord la carte du foyer." and hud.l_banque_fermee.visible and hud.b_marche.disabled

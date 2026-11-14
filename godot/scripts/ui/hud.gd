@@ -23,7 +23,9 @@ const LARGEUR_PANNEAU := 500.0
 const LARGEUR_PANNEAU_COMPACT := 900.0
 const LARGEUR_LANGUETTE := 104.0
 const PHRASE_BANQUE_FERMEE := "Réglez d'abord la carte du foyer."   # même phrase que le refus du moteur (EtatPartie, lot 04)
-const NOMS_SOURCES := {"maison": "MA MAISON", "banque": "MA BANQUE", "media": "LA GAZETTE"}
+const NOTE_ECART := "Même salaire, mêmes dépenses, mêmes coups durs : seul le placement change."
+const NOTE_ECART_COURTE := "Mêmes règles pour tous."
+const NOMS_SOURCES := {"maison": "MA MAISON", "banque": "MA BANQUE", "media": "LA GAZETTE", "rue": "LA RUE"}
 
 var ville: Node2D = null
 var compact := false
@@ -88,6 +90,16 @@ var l_banque_fermee: Label        # lot 04 (I4)
 var _projet_fab := {}              # projet fabriqué pour une capture (jamais en jeu)
 var b_historique: Button
 var languette: Button
+var col_a: VBoxContainer
+var col_c: VBoxContainer            # lot 06 : colonne LA RUE du panneau (téléphone large)
+var bloc_rue: BlocRue
+var _languette_rang: VBoxContainer  # rang du joueur en tête de la languette (téléphone)
+var _l_rang_valeur: Label
+var _rue_fab: Array = []            # classement fabriqué (captures et tests, jamais en jeu)
+var _jeanmi_fab := {}
+var _rue_affichee := false
+var _style_languette: StyleBox
+var _style_languette_rue: StyleBox
 var notifs: Control
 var etiquettes: Dictionary = {}
 var cadre_gel: Control
@@ -756,7 +768,7 @@ func _creer_panneau() -> void:
 	conteneur = BoxContainer.new()
 	conteneur.add_theme_constant_override("separation", 24)
 	panneau.add_child(conteneur)
-	var col_a := VBoxContainer.new()
+	col_a = VBoxContainer.new()
 	col_a.add_theme_constant_override("separation", 8)
 	col_a.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col_a.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -765,6 +777,12 @@ func _creer_panneau() -> void:
 	col_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	conteneur.add_child(col_a)
 	conteneur.add_child(col_b)
+	# Lot 06 (05-I R2) : bloc LA RUE ; 3e colonne du panneau au téléphone (large), sinon en tête de la colonne A
+	col_c = VBoxContainer.new()
+	col_c.name = "ColonneRue"
+	col_c.add_theme_constant_override("separation", 8)
+	col_c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bloc_rue = BlocRue.new()
 	var tete := HBoxContainer.new()
 	var titre := Style.label("MON ARGENT", 28, Style.capitales(), Style.TEXTE)
 	titre.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -776,6 +794,8 @@ func _creer_panneau() -> void:
 	fermer.name = "Replier"
 	tete.add_child(fermer)
 	col_a.add_child(tete)
+	col_a.add_child(bloc_rue)
+	bloc_rue.visible = false
 	l_bag = Style.label("", 24, Style.ui(), Style.TEXTE_2)
 	col_a.add_child(l_bag)
 	courbe = Courbe.new()
@@ -787,12 +807,15 @@ func _creer_panneau() -> void:
 	legende.add_child(Style.label("Vos choix", 20, Style.ui(), Style.TEXTE))
 	legende.add_child(_trait_legende(Courbe.COULEUR_REF, false))
 	legende.add_child(Style.label("Tout au Livret A", 20, Style.ui(), Style.TEXTE))
+	legende.name = "LegendeCourbe"
 	col_a.add_child(legende)
-	l_ecart_note = Style.label("Même salaire, mêmes dépenses, mêmes coups durs : seul le placement change.", 18, Style.ui(), Style.TEXTE_2)
+	l_ecart_note = Style.label(NOTE_ECART, 18, Style.ui(), Style.TEXTE_2)
 	l_ecart_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l_ecart_note.custom_minimum_size = Vector2(LARGEUR_PANNEAU - 50.0, 0)
 	col_a.add_child(l_ecart_note)
-	col_a.add_child(Style.label("RÉPARTITION", 20, Style.capitales(), Style.TEXTE_2))
+	var titre_rep := Style.label("RÉPARTITION", 20, Style.capitales(), Style.TEXTE_2)
+	titre_rep.name = "TitreRepartition"
+	col_a.add_child(titre_rep)
 	repart = Repartition.new()
 	col_a.add_child(repart)
 	col_b.add_child(Style.label("CE MOIS-CI", 20, Style.capitales(), Style.TEXTE_2))
@@ -850,11 +873,35 @@ func _creer_panneau() -> void:
 	languette.add_theme_font_size_override("font_size", 20)
 	languette.add_theme_font_override("font", Style.petites_capitales())
 	var sl := CadresPixel.style_marges("panneau", 6, 12, 6, 18)
+	_style_languette = sl
+	_style_languette_rue = CadresPixel.style_marges("panneau", 6, 123, 6, 18)   # + 105 px : rang en tête (RUE / 2e / sur 4)
 	languette.add_theme_stylebox_override("normal", sl)
 	languette.add_theme_stylebox_override("hover", sl)
 	languette.add_theme_stylebox_override("pressed", CadresPixel.style_marges("panneau", 6, 15, 6, 15))
 	languette.pressed.connect(func() -> void: basculer_panneau(true))
 	add_child(languette)
+	# Lot 06 (A1) : rang du joueur en tête de la languette (RUE / 2e / sur 4), visible seulement rue allumée
+	_languette_rang = VBoxContainer.new()
+	_languette_rang.name = "RangRue"
+	_languette_rang.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_languette_rang.add_theme_constant_override("separation", 0)
+	_languette_rang.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_languette_rang.offset_left = 6
+	_languette_rang.offset_right = -6
+	_languette_rang.offset_top = 12
+	_languette_rang.visible = false
+	for k in 3:
+		var lab := Style.label("", 20, Style.capitales() if k == 0 else Style.ui(), Style.TEXTE_2)
+		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_languette_rang.add_child(lab)
+		if k == 1:
+			_l_rang_valeur = lab
+			lab.add_theme_font_override("font", Style.ui_gras())
+			lab.add_theme_font_size_override("font_size", 36)
+			lab.add_theme_color_override("font_color", Style.TEXTE)
+	_languette_rang.get_child(0).text = "RUE"
+	languette.add_child(_languette_rang)
 
 
 func _trait_legende(c: Color, pointille: bool) -> Control:
@@ -1120,7 +1167,7 @@ func _disposer() -> void:
 	separateur.custom_minimum_size = Vector2(40 if compact else 56, 60)
 	l_titre_livret.text = "VS LIVRET A" if compact or largeur < 1900.0 else "VS TOUT AU LIVRET A"
 	l_ecart.add_theme_font_size_override("font_size", 26 if compact else 30)
-	l_ecart_note.visible = not compact
+	l_ecart_note.visible = not compact or (_rue_affichee and panneau_a_trois_colonnes())
 	for g in ["pause", "x1", "x2", "x3"]:
 		boutons[g].visible = not compact
 	b_lecture.visible = compact
@@ -1130,6 +1177,8 @@ func _disposer() -> void:
 	courbe.custom_minimum_size = Vector2(0, 64 if compact else 110)
 	_trouver_replier().visible = compact
 	panneau_ouvert = not compact
+	bloc_rue.compact = compact
+	_loger_rue(_rue_affichee)
 	_placer_panneau()
 	placer_etiquettes.call_deferred()
 	_replier_barre()
@@ -1165,7 +1214,15 @@ func _alleger_panneau() -> void:
 	repart.legende = true
 	var sb := panneau.get_theme_stylebox("panel")
 	var dispo := get_viewport_rect().size.y - HAUT - BAS - 24.0 - sb.content_margin_top - sb.content_margin_bottom
-	for etape in 3:
+	courbe.custom_minimum_size.y = 64.0 if compact else 110.0
+	courbe.visible = true
+	l_ecart_note.text = NOTE_ECART
+	var legende_courbe := panneau.find_child("LegendeCourbe", true, false) as Control
+	var titre_repart := panneau.find_child("TitreRepartition", true, false) as Control
+	legende_courbe.visible = true
+	titre_repart.visible = true
+	repart.visible = true
+	for etape in 8:
 		if conteneur.get_combined_minimum_size().y <= dispo + 0.5:
 			break
 		match etape:
@@ -1175,6 +1232,25 @@ func _alleger_panneau() -> void:
 				coussin.visible = false
 			2:
 				repart.legende = false
+			3:
+				# lot 06 (A2) : puis la courbe rapetisse (110 → 81 px), puis la phrase se raccourcit
+				if not compact:
+					courbe.custom_minimum_size.y = 81.0
+			4:
+				if _rue_affichee and l_ecart_note.visible:
+					l_ecart_note.text = NOTE_ECART_COURTE
+			5:
+				if _rue_affichee:
+					legende_courbe.visible = false
+					if compact:
+						courbe.visible = false   # téléphone étroit : la courbe cède la place au classement
+			6:
+				if _rue_affichee:
+					titre_repart.visible = false   # la répartition cède la place, jamais le classement, les frais ni BANQUE
+					repart.visible = false
+			7:
+				if _rue_affichee:
+					courbe.visible = false   # dernier recours (PC 1152 × 648) : la courbe cède sa place
 
 
 ## Vrai si le contenu du panneau dépasse sa place (contrôle « UI panneau … contenu_coupe »).
@@ -1185,6 +1261,8 @@ func panneau_coupe() -> bool:
 
 func _placer_panneau() -> void:
 	var largeur := LARGEUR_PANNEAU_COMPACT if compact else LARGEUR_PANNEAU
+	if panneau_a_trois_colonnes():
+		largeur = minf(Ecran.taille().x - 48.0, 1392.0)   # lot 06 (A2) : 3 colonnes de largeur égale
 	panneau.anchor_left = 1.0
 	panneau.anchor_right = 1.0
 	panneau.anchor_top = 0.0
@@ -1230,6 +1308,82 @@ func maj_banque_fermee(fermee: bool) -> bool:
 		if eb != null:
 			eb.modulate.a = 0.55 if fermee else 1.0
 	return fermee
+
+
+## Classement permanent (lot 06, 05-I R1-R2 ; docs/24 §2.1-2.2) : bloc LA RUE du panneau « Mon argent » (PC : en tête ; téléphone :
+## 3e colonne, ou tête de la colonne A si la zone fait moins de 1300 px) et rang en tête de la languette. `classement` / `jeanmi` :
+## contenus fabriqués (captures et tests) ; sinon `classement_rue()` et `jeanmi_resume()` de l'état. Rue éteinte : rien (cache le bloc,
+## le rang et rend la languette et le panneau identiques à `main`). Renvoie le rang du joueur (0 si éteinte).
+func maj_rue(e: EtatPartie, classement := [], jeanmi := {}) -> int:
+	if not classement.is_empty():
+		_rue_fab = classement   # {"_aucun": …} n'existe pas ici : maj_rue_eteinte() efface
+		_jeanmi_fab = jeanmi
+	var cl: Array = _rue_fab
+	var jm: Dictionary = _jeanmi_fab
+	if cl.is_empty() and e != null and e.has_method("classement_rue"):
+		cl = e.classement_rue()
+		jm = e.jeanmi_resume() if e.has_method("jeanmi_resume") else {}
+	var a := e.ab_courant() if e != null else 0
+	bloc_rue.compact = compact
+	var actif := bloc_rue.maj(cl, jm, a)
+	var rang := 0
+	for l: Dictionary in cl:
+		if bool(l.get("vous", false)):
+			rang = int(l.get("rang", 0))
+	if actif != _rue_affichee:
+		_rue_affichee = actif
+		_placer_panneau()
+	bloc_rue.visible = actif
+	_loger_rue(actif)
+	_languette_rang.visible = actif and compact
+	if actif:
+		_languette_rang.get_child(1).text = BlocRue.rang_texte(rang)
+		_languette_rang.get_child(2).text = "sur %d" % cl.size()
+	var sl: StyleBox = _style_languette_rue if (actif and compact) else _style_languette
+	languette.add_theme_stylebox_override("normal", sl)
+	languette.add_theme_stylebox_override("hover", sl)
+	return rang
+
+
+## Efface le classement fabriqué (rue éteinte pour une capture ou un test).
+func maj_rue_eteinte(e: EtatPartie) -> void:
+	_rue_fab = []
+	_jeanmi_fab = {}
+	maj_rue(e)
+
+
+## Vrai si le panneau a 3 colonnes (téléphone large, rue allumée).
+func panneau_a_trois_colonnes() -> bool:
+	return compact and _rue_affichee and Ecran.taille().x >= 1300.0
+
+
+## Place le bloc LA RUE (et la phrase « Même salaire… » qui l'accompagne) selon le format.
+func _loger_rue(actif: bool) -> void:
+	var trois := panneau_a_trois_colonnes()
+	if trois:
+		if col_c.get_parent() == null:
+			conteneur.add_child(col_c)
+		if bloc_rue.get_parent() != col_c:
+			bloc_rue.reparent(col_c, false)
+	else:
+		if col_c.get_parent() != null:
+			conteneur.remove_child(col_c)
+		if bloc_rue.get_parent() != col_a:
+			bloc_rue.reparent(col_a, false)
+			col_a.move_child(bloc_rue, 1)
+	# La phrase « Même salaire, mêmes dépenses… » suit le bloc quand la rue est allumée (sauf en colonne A du téléphone étroit)
+	var dans_bloc := actif and (not compact or trois)
+	if dans_bloc:
+		if l_ecart_note.get_parent() != bloc_rue:
+			l_ecart_note.reparent(bloc_rue, false)
+		l_ecart_note.custom_minimum_size.x = 60
+		l_ecart_note.visible = true
+	else:
+		if l_ecart_note.get_parent() != col_a:
+			l_ecart_note.reparent(col_a, false)
+			col_a.move_child(l_ecart_note, col_a.get_children().find(courbe) + 2)
+		l_ecart_note.custom_minimum_size.x = LARGEUR_PANNEAU - 50.0
+		l_ecart_note.visible = not compact
 
 
 ## 2e ligne de l'étiquette MA MAISON (lot 05, 04-I P3) : « {disponible} / {montant} » du projet en cours, avec son icône
@@ -1323,6 +1477,7 @@ func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 	date.regler(a, anime)
 	maj_humeur(e)
 	maj_projet(e)
+	maj_rue(e)
 	var cc := e.joueur.cc
 	var patr := e.patrimoine(e.joueur)
 	var d := duree_roule if anime else 0.0
@@ -1497,11 +1652,27 @@ func notifier(n: Dictionary, a: int, depart := Vector2(-1, -1)) -> void:
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var src := Style.label(NOMS_SOURCES.get(source, "") + " · " + Dates.texte(a), 20, Style.capitales(), Style.SOURCES.get(source, Style.ACCENT))
 	v.add_child(src)
-	v.add_child(Style.label(str(n.get("titre", "")), 24, Style.ui_gras()))
-	var texte := Style.label(str(n.get("texte", "")), 20, Style.ui(), Style.TEXTE_2)
+	if n.get("type", "") == "rang":
+		# Lot 06 (A3) : la flèche porte le sens (▲ devant, ▼ derrière), le texte reste crème
+		var lt := HBoxContainer.new()
+		lt.add_theme_constant_override("separation", 9)
+		var fl := CadresPixel.icone("fleche_haut" if n.get("cls", "") == "gain" else "fleche_bas")
+		fl.name = "FlecheRang"
+		fl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		lt.add_child(fl)
+		lt.add_child(Style.label(str(n.get("titre", "")), 24, Style.ui_gras()))
+		v.add_child(lt)
+	else:
+		v.add_child(Style.label(str(n.get("titre", "")), 24, Style.ui_gras()))
+	var texte := Style.label(str(n.get("texte", "")), 20, Style.ui(), Style.TEXTE_2 if source != "rue" else Style.TEXTE)
+	texte.name = "TexteNotif"
 	texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	texte.custom_minimum_size = Vector2(320, 0)
 	v.add_child(texte)
+	if source == "rue" and bool(n.get("long", false)) and str(n.get("texte_long", "")) != "":
+		var lire := Style.label("Lire  ›", 20, Style.ui_gras(), Style.SOURCES["rue"])
+		lire.name = "Lire"
+		v.add_child(lire)
 	h.add_child(v)
 	if n.has("montant"):
 		var mt := float(n["montant"])
@@ -1513,7 +1684,8 @@ func notifier(n: Dictionary, a: int, depart := Vector2(-1, -1)) -> void:
 	var persistant: bool = n.get("persistant", false)
 	if persistant:
 		# m1 : l'indication passe à la ligne et tient dans le cadre de la notification
-		var ind := Style.label("Message de M. Lefranc · touchez pour le fermer (rangé dans l'historique)", 20, Style.ui(), Style.SOURCES["banque"])
+		var ind := Style.label("Message de M. Lefranc · touchez pour le fermer (rangé dans l'historique)" if source != "rue" else "Touchez pour fermer (rangé dans l'historique)", 20, Style.ui(), Style.SOURCES["rue"] if source == "rue" else Style.SOURCES["banque"])
+		ind.name = "IndicationPersistante"
 		ind.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		ind.custom_minimum_size = Vector2(320, 0)
 		v.add_child(ind)
@@ -1532,7 +1704,8 @@ func notifier(n: Dictionary, a: int, depart := Vector2(-1, -1)) -> void:
 		return
 	_empiler(p, depart)
 	if persistant:
-		point_banque(true)
+		if source != "rue":
+			point_banque(true)
 		return
 	# Une notification ordinaire reste un mois à ×1 (13 §5.2), moins en accéléré. Pendant un saut,
 	# duree_mois_s() renvoie la durée du saut (rythme.json > saut, ≈ 1,3 s) : la notification reste 3 s (borne).

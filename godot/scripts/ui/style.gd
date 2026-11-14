@@ -47,9 +47,10 @@ static var SILHOUETTE := PalettePixel.couleur("encre")
 # --- Sources des messages (liseré des notifications, onglets, lignes de l'historique) ---
 static var SOURCES := {
 	"maison": PalettePixel.couleur("orange"), "banque": PalettePixel.couleur("or"), "media": PalettePixel.couleur("neon_rose"),
+	"rue": PalettePixel.couleur("bleu_vif"),   # lot 06 : la plaque de rue (docs/24 §3 écart 6)
 }
 ## Noms de palette des sources (substitution des cadres et des icônes).
-const NOMS_PALETTE_SOURCES := {"maison": "orange", "banque": "or", "media": "neon_rose"}
+const NOMS_PALETTE_SOURCES := {"maison": "orange", "banque": "or", "media": "neon_rose", "rue": "bleu_vif"}
 
 static var _polices: Dictionary = {}
 static var _theme: Theme = null

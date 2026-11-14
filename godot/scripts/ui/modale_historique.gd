@@ -3,7 +3,7 @@ extends RefCounted
 ## Morceau de Modales (T9) : l'historique des pop-ups (retour du joueur du 27/10/2026) et la relecture
 ## d'une notification. Le filtre et le défilement courants restent dans la façade (lus par principal.gd).
 
-const NOMS_SOURCES := {"maison": "MA MAISON", "banque": "MA BANQUE", "media": "LA GAZETTE"}
+const NOMS_SOURCES := {"maison": "MA MAISON", "banque": "MA BANQUE", "media": "LA GAZETTE", "rue": "LA RUE"}
 
 var m: Modales
 var _defile: ScrollContainer = null
@@ -69,7 +69,11 @@ func ouvrir(e: EtatPartie, filtre := "", defilement := 0) -> void:
 	var filtres := HBoxContainer.new()
 	filtres.add_theme_constant_override("separation", 6)
 	var groupe := ButtonGroup.new()
-	for f in ["", "maison", "banque", "media"]:
+	# Lot 06 : l'onglet LA RUE n'existe que si la rue est allumée (ou si l'historique en garde des entrées)
+	var onglets: Array = ["", "maison", "banque", "media"]
+	if e.has_method("rue_active") and (e.rue_active() or not e.historique_recent("rue").is_empty()):
+		onglets.append("rue")
+	for f in onglets:
 		var n := e.historique_recent(f).size()
 		var b := Button.new()
 		b.text = ("TOUT" if f == "" else str(NOMS_SOURCES[f])) + "  " + str(n)

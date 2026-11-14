@@ -11,7 +11,8 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"etiquettes_balayage", "pastille_signe", "bulle",
 	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
 	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
-	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet"]
+	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
+	"rue_bloc", "rue_pastille", "rue_eteinte"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -51,6 +52,8 @@ func jouer(etape: String) -> void:
 			await _banque_fermee(jeu)
 		"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet":
 			await _projet(etape, jeu)
+		"rue_bloc", "rue_pastille", "rue_eteinte":
+			await _rue(etape, jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -626,6 +629,59 @@ func _projet(etape: String, jeu: Node) -> void:
 			_mesurer(etape + "_ordre", modales.courant)
 
 
+# =====================================================================
+# La rue (lot 06, 05-I : R1 à R7 ; contenus fabriqués conformes à lot_05 §4.3)
+# =====================================================================
+
+## classement_rue() fabriqué (patrimoines en francs ; Jean-Mi négatif après sa liquidation).
+static func fabriquer_classement(negatif := true) -> Array:
+	return [{"id": "livret", "nom": "Tata Livret", "initiale": "T", "patrimoine": 165300.0, "rang": 1, "vous": false, "reference": true},
+		{"id": "vous", "nom": "Vous", "initiale": "G", "patrimoine": 160749.0, "rang": 2, "vous": true, "reference": false},
+		{"id": "matelas", "nom": "Tonton Matelas", "initiale": "M", "patrimoine": 139800.0, "rang": 3, "vous": false, "reference": false},
+		{"id": "jeanmi", "nom": "Jean-Mi", "initiale": "J", "patrimoine": -12400.0 if negatif else 98000.0, "rang": 4, "vous": false, "reference": false}]
+
+
+static func fabriquer_jeanmi() -> Dictionary:
+	return {"etape": "liquide", "etape_texte": "Liquidé : la bourse l'a ruiné", "patrimoine": -12400.0, "dette": 26041.0, "regle": "Achète à crédit"}
+
+
+func _rue(etape: String, jeu: Node) -> void:
+	var hud: Hud = jeu.hud
+	sc.partir_de_la_rue(etape)
+	var e := Partie.etat
+	Partie.changer_vitesse(0)
+	await sc.delai(0.6)
+	if etape == "rue_eteinte":
+		hud.maj_rue_eteinte(e)
+		await sc.delai(0.4)
+		print("UI rue eteinte bloc=%s rang=%s languette_texte=« %s »" % ["cache" if not hud.bloc_rue.visible else "VISIBLE incoherences=1", "cache" if not hud._languette_rang.visible else "VISIBLE incoherences=1", hud.languette.text.replace("\n", " ")])
+		_mesurer(etape, hud)
+		return
+	var cl := fabriquer_classement()
+	var rang := hud.maj_rue(e, cl, fabriquer_jeanmi())
+	hud.basculer_panneau(etape == "rue_bloc" or not hud.compact)
+	await sc.delai(0.8)
+	var l := hud.bloc_rue.lignes_texte
+	var signe := false
+	for x: Dictionary in l:
+		if bool(x["negatif"]):
+			signe = str(x["montant"]).begins_with(Format.MOINS)
+	var ordre_ok := l.size() == 4 and l.map(func(x: Dictionary) -> String: return str(x["id"])) == cl.map(func(x: Dictionary) -> String: return str(x["id"]))
+	print("UI rue rang=%d lignes=%d negatif_signe=%s panneau_coupe=%s ordre=%s trois_colonnes=%s" % [rang, l.size(), "oui" if signe else "non", "oui incoherences=1" if hud.panneau_coupe() and hud.panneau.visible else "non", "oui" if ordre_ok else "non incoherences=1", str(hud.panneau_a_trois_colonnes())])
+	for x: Dictionary in l:
+		print("UI rue ligne rang=%s %s montant=%s vous=%s%s" % [BlocRue.rang_texte(int(x["rang"])), x["nom"], x["montant"], str(x["vous"]), (" etape=« %s »" % x["etape"]) if str(x["etape"]) != "" else ""])
+	if etape == "rue_pastille":
+		print("UI rue languette rang=« %s » sous=« %s » visible=%s" % [(hud._languette_rang.get_child(1) as Label).text, (hud._languette_rang.get_child(2) as Label).text, str(hud.languette.is_visible_in_tree())])
+		_mesurer(etape, hud)
+		hud.languette.pressed.emit()
+		await sc.delai(0.5)
+		print("UI rue languette_ouvre_panneau=%s" % ("oui" if hud.panneau.visible else "non incoherences=1"))
+		hud.basculer_panneau(false)
+		await sc.delai(0.3)
+	else:
+		_mesurer(etape, hud)
+
+
 ## « Mon foyer » (lot 04, I3, CA-I4) : après 3 cartes jouées (politique alternée), humeur au choix
 ## (--humeur=contente|neutre|fachee). mon_foyer_eteint : partie sans cartes (bloc du foyer seul).
 func _mon_foyer(etape: String, jeu: Node) -> void:
@@ -889,7 +945,7 @@ func _planche_cadres() -> void:
 			"source_maison", "source_banque", "source_media", "piece", "calendrier", "chevron_gauche", "chevron_droite",
 			"bulle_pointe", "humeur_contente", "humeur_neutre", "humeur_fachee", "aimant",
 			"portrait_sylvie_contente", "portrait_sylvie_neutre", "portrait_sylvie_fachee",
-			"salon", "grece", "voiture", "club_med", "break", "maison"]:
+			"salon", "grece", "voiture", "club_med", "break", "maison", "source_rue"]:
 		var t := CadresPixel.texture(nom)
 		var r := TextureRect.new()
 		r.texture = t
