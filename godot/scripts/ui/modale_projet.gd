@@ -528,7 +528,7 @@ func _construire_confirmation(c: Dictionary, a: int, compact: bool, interieur: f
 	v.add_child(la)
 	var reste := apres - montant
 	# Le reste est toujours dit : le montant s'il y en a un, sinon que les ventes couvrent juste le projet (recette R-MAISON m3)
-	var lr := Style.label("Ce qui reste va sur votre compte%s." % ((" : " + Format.entier(reste, a)) if reste > 0.004 else ""), 22, Style.ui(), Style.ENCRE)
+	var lr := Style.label(("Ce qui reste va sur votre compte : %s." % Format.entier(reste, a)) if reste > 0.004 else "Rien ne reste : les ventes couvrent juste le projet.", 22, Style.ui(), Style.ENCRE)
 	lr.name = "Reste"
 	v.add_child(lr)
 	var hb := HBoxContainer.new()
