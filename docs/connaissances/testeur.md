@@ -180,3 +180,7 @@
 - `vie_retrogradee` littéral (même événement, modale éteinte → notification allumée) peut être non nul sans défaut de cadence : l'argent du joueur actif diffère (une carte déplace une présentation, donc un achat) ; mesurer plutôt « gros événement de vie (montant > seuil) fini en notification ». Zone fragile pour 05-L.
 - Règle de vente : non annualisée (décision joueur, `feuille_de_route.md` §2.11) ; `lot_05.md` D7 bis dit « annualisée » + paramètre `ordre_vente` (absent du code) : écart documentaire.
 - Copie de `main` : `git archive main godot`, `custom_user_dir_name` ; son `--import` est rapide (≈ 1 min) ; nettoyer `%APPDATA%\JeuClaude_recette_*` après usage.
+## 4 septdecies. 05-L (recette 2026-11-14, `lot/05-logique` 9ed6149 : KO, A1 majeure barre « Tout vendu »)
+- Références : 981 avec `-Recette` (main 831) ; mon `test_recette_rue` 42 (39 OK, 3 KO = A1) ; J1 marge min 5 125 F ; passif repasse devant Jean-Mi en 10/1987 (40/40). Sondes : comparer chaque barre au MOTEUR REEL (jouer le choix, lire Livret / lignes / dividendes) et non à une formule : c'est ce qui a révélé le mois d'intérêts manquant (`ctx_gazette` range(ab_k+1, a)).
+- `classement_rue()` est déjà en francs (ne pas re-multiplier par F). Un saut s'arrête à `m == m_fin` sans `fin`. Les `-- <args>` passent par `OS.get_cmdline_user_args()`. Vraie sauvegarde de main : copie `git archive main` + script écrire/lire (`testeur_l05_old.gd`).
+- Zone fragile : couverture_min 30 000 F (écart D4) ; kiosque 42 % de titres absents ; joueur dépensier derrière le miroir avant 10/1986.
