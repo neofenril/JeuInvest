@@ -8,7 +8,9 @@ extends RefCounted
 ##   passe), puis rangement vers arrivee ((-1, -1) : fondu) ; rend la main quand la carte a disparu.
 ## - lecture(h, a) : relecture depuis l'historique (titre, choix pris, montant, conséquence, FERMER).
 
-const DUREE_CONSEQUENCE := 3.0
+## Durée de la ligne de conséquence (carte de dilemme, projet) : 0,8 s (3 s avant le correctif 0.5.1 : « reste trop
+## longtemps à l'écran »). Le résultat reste dans l'historique et l'étiquette MA MAISON.
+const DUREE_CONSEQUENCE := 0.8
 
 var m: Modales
 var phase := ""                       # entree | attente | choisi | conclusion | rangement

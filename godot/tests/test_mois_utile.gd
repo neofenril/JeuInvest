@@ -361,6 +361,8 @@ func _tests_saut() -> void:
 	verifier("Saut : aucun mois sauté sans son traitement (salaire, versements, historique) : partie identique à la partie jouée mois par mois", ok_identique)
 	verifier("Saut : vitesse d'avant gardée pendant le saut et rétablie après la modale (×1 → ×1, pause → pause, ×3 → ×3 ; marché : pause)", ok_vitesse and int(par_vitesse[0]) > 0 and int(par_vitesse[1]) > 0)
 	verifier("Saut : un mois dure saut.duree_mois_s et le trafic vaut saut.trafic, quelle que soit la vitesse", ok_rythme)
+	# Correctif 0.5.1 : le saut n'est plus un simple ×6 (1,33 s par mois) : 24 mois au plus en 3 s (≤ 0,125 s par mois)
+	verifier("Saut : un mois dure au plus 0,125 s (24 mois en 3 s)", float(r["saut"]["duree_mois_s"]) <= 0.125, str(r["saut"]["duree_mois_s"]))
 	verifier("Saut : notifications franchies toutes dans l'historique, dans l'ordre, lu = false, n[\"pendant_saut\"] vrai", ok_notifs and nb_franchies > 0)
 	verifier("Saut : non_lues() exact (au total et par source), marquer_lues() → 0", ok_lues)
 	verifier("Saut : impossible en décembre 1988, pendant un saut et après la fin", ok_dec)
