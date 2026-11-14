@@ -148,9 +148,7 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false) -> void:
 		elif str(b.get("id", "")) == "renforce" and str(c.get("legende_renforce", "")) != "" and float(c.get("mise", 0.0)) > 0.0:
 			var ll := Style.label(Format.gabarit(str(c["legende_renforce"]), {"mise": Format.entier(float(c["mise"]), a)}), 20, Style.ui(), Style.TEXTE_PAPIER_2)
 			ll.name = "LegendeRenforce"
-			ll.autowrap_mode = TextServer.AUTOWRAP_OFF if compact else TextServer.AUTOWRAP_WORD_SMART
-			ll.clip_text = compact
-			ll.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # recette R-RUE M3 : à la ligne plutôt que coupée
 			ll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			ll.custom_minimum_size.x = 60   # la colonne garde sa largeur : les barres des 3 lignes restent alignées
 			ct.add_child(ll)

@@ -106,8 +106,7 @@ func maj(classement: Array, jeanmi: Dictionary, a: int) -> bool:
 		if etape != "":
 			var le := Style.label(etape, 20, Style.ui(), Style.TEXTE_2)
 			le.name = "EtapeJeanMi"
-			le.clip_text = true
-			le.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			le.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # recette R-RUE M3 : à la ligne plutôt que coupée
 			le.custom_minimum_size.x = 60
 			col.add_child(le)
 		ligne.add_child(col)
