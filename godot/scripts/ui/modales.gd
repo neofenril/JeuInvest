@@ -11,6 +11,7 @@ extends Control
 ## outils communs (boutons papier, filets, flèches, croix, pictogrammes) : ModaleOutils.
 
 signal choix_fait(genre: String, id: String)
+signal carte_rangee                 # carte de dilemme : rangement terminé (bulle d'humeur différée, lot 04)
 
 var fond: ColorRect
 var courant: Control = null
@@ -26,13 +27,18 @@ var choix_journal: Array = []       # journal : ids des choix (touches 1, 2, 3)
 var choix_exterieur := "plus_tard"  # carte du banquier : id d'un clic à côté ou d'Échap
 var parler := 0.0                   # carte du banquier : temps de parole restant (bouche du portrait)
 var portrait: Portrait = null
+var carte_en_cours := false         # carte de dilemme affichée (de carte() à la fin du rangement)
 
-var _journal: ModaleJournal
+var _journal: ModaleJournal   # lu par les captures (tableau du Lundi noir)
 var _courrier: ModaleCourrier
 var _banquier: ModaleBanquier
 var _releve_fin: ModaleReleveFin
 var _simples: ModaleSimples
 var _historique: ModaleHistorique
+var _carte: ModaleCarte
+var _foyer: ModaleFoyer
+var _projet: ModaleProjet
+var _gazette: ModaleGazette
 
 
 func _init() -> void:
@@ -42,6 +48,10 @@ func _init() -> void:
 	_releve_fin = ModaleReleveFin.new(self)
 	_simples = ModaleSimples.new(self)
 	_historique = ModaleHistorique.new(self)
+	_carte = ModaleCarte.new(self)
+	_foyer = ModaleFoyer.new(self)
+	_projet = ModaleProjet.new(self)
+	_gazette = ModaleGazette.new(self)
 
 
 func _ready() -> void:
@@ -134,6 +144,76 @@ func _recentrer_banque() -> void:
 
 func confirmer(titre: String, texte: String, oui: String, non: String) -> void:
 	await _simples.confirmer(titre, texte, oui, non)
+
+
+## Carte de dilemme du foyer (lot 04, contrat §4.3) : vole de depart ((-1, -1) : sur place) et se déplie ;
+## émet choix_fait("carte", id) au toucher d'un choix non désactivé (ou touche 1 / 2), et RESTE affichée.
+func carte(c: Dictionary, depart: Vector2) -> void:
+	await _carte.ouvrir(c, depart)
+
+
+## Coroutine : tampon « CHOISI », conséquence 3 s (un toucher passe), rangement vers arrivee ((-1, -1) : fondu).
+func conclure_carte(r: Dictionary, arrivee: Vector2) -> void:
+	await _carte.conclure(r, arrivee)
+
+
+## Relecture d'une carte depuis l'historique (lecture seule).
+func carte_lecture(h: Dictionary, a: int) -> void:
+	await _carte.lecture(h, a)
+
+
+## Projet du foyer (lot 05, 04-I ; contrat lot_05 §4.2) : carte de choix (étape « choix ») ou « Le jour J » (étape « echeance »).
+## Émet choix_fait("projet", id) au toucher d'un choix actif (ou touches 1 à 4) et RESTE affichée ; « realiser_en_vendant »
+## passe d'abord par un écran de confirmation dans la carte. Ni Échap ni clic extérieur (sauf Échap = RETOUR dans la confirmation).
+func projet(c: Dictionary, depart: Vector2) -> void:
+	await _projet.ouvrir(c, depart)
+
+
+## Coroutine : tampon « CHOISI », conséquence 3 s (un toucher passe), disparition.
+func conclure_projet(r: Dictionary, arrivee: Vector2) -> void:
+	await _projet.conclure(r, arrivee)
+
+
+func etat_projet() -> ModaleProjet:
+	return _projet
+
+
+## « Le krach, un an après » (lot 06, contrat lot_05 §4.3) : fiche de la Gazette à 3 barres ; émet choix_fait("gazette", "ok") et RESTE affichée ;
+## ni Échap ni clic extérieur ; touche 1 ou Entrée.
+func gazette(c: Dictionary, depart: Vector2) -> void:
+	await _gazette.ouvrir(c, depart)
+
+
+## Relecture d'« un an après » depuis l'historique (lecture seule : FERMER, Échap et clic extérieur ferment).
+func gazette_lecture(c: Dictionary) -> void:
+	await _gazette.ouvrir(c, Vector2(-1, -1), true)
+
+
+## Coroutine : la fiche disparaît par fondu (≤ 0,2 s).
+func conclure_gazette(r: Dictionary, arrivee: Vector2) -> void:
+	await _gazette.conclure(r, arrivee)
+
+
+func etat_fin() -> ModaleReleveFin:
+	return _releve_fin
+
+
+func etat_gazette() -> ModaleGazette:
+	return _gazette
+
+
+## « Mon foyer » (lot 04, docs/17 §4.4) : lecture seule ; ferme avec « fermer », ou « extra » (historique MA MAISON).
+func foyer(e: EtatPartie, depart := Vector2(-1, -1), fab := {}) -> void:
+	await _foyer.ouvrir(e, depart, fab)
+
+
+func etat_foyer() -> ModaleFoyer:
+	return _foyer
+
+
+## État de la carte affichée (tests et captures) : phase, refus, boutons.
+func etat_carte() -> ModaleCarte:
+	return _carte
 
 
 ## Relevé de décembre ouvert depuis sa notification (13 §3.4) : les 3 piles avec les vrais chiffres du joueur.
@@ -301,6 +381,14 @@ func _on_fond(event: InputEvent) -> void:
 			fermer("non")
 		"banque":
 			banque.fermer_demande.emit()
+		"gazette":
+			_fremir(courant)   # ni Échap ni clic extérieur : la fiche attend J'AI COMPRIS
+		"carte", "projet":
+			var objet_f: ModaleCarte = _projet if genre_courant == "projet" else _carte
+			if objet_f.phase == "conclusion":
+				objet_f.passer()
+			else:
+				_fremir(courant)
 		_:
 			_fremir(courant)
 
@@ -328,7 +416,20 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
 	if k == null or not k.pressed or k.echo or courant == null:
 		return
-	if genre_courant == "journal" and boutons_actifs:
+	if genre_courant == "gazette":
+		if k.keycode == KEY_1 or k.keycode == KEY_ENTER or k.keycode == KEY_KP_ENTER:
+			_gazette.choisir("ok")
+			get_viewport().set_input_as_handled()
+	elif genre_courant == "carte" or genre_courant == "projet":
+		var objet: ModaleCarte = _projet if genre_courant == "projet" else _carte
+		var nc := k.keycode - KEY_1
+		if nc >= 0 and nc < 4 and (genre_courant == "projet" or nc < 2):
+			objet.choisir_rang(nc)
+			get_viewport().set_input_as_handled()
+		elif k.keycode == KEY_ESCAPE and genre_courant == "projet" and _projet.en_confirmation:
+			_projet.echap()
+			get_viewport().set_input_as_handled()
+	elif genre_courant == "journal" and boutons_actifs:
 		var n := k.keycode - KEY_1
 		if n >= 0 and n < choix_journal.size():
 			_on_choix_journal(choix_journal[n])

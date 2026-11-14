@@ -8,7 +8,11 @@ extends RefCounted
 
 const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette",
 	"courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau",
-	"etiquettes_balayage", "pastille_signe", "bulle"]
+	"etiquettes_balayage", "pastille_signe", "bulle",
+	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
+	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
+	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
+	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -38,6 +42,28 @@ func jouer(etape: String) -> void:
 			await _pastille_signe(jeu)
 		"bulle":
 			await _bulle(jeu)
+		"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue":
+			await _carte(etape, jeu)
+		"bulle_humeur", "etiquette_humeur":
+			await _humeur(etape, jeu)
+		"mon_foyer", "mon_foyer_eteint":
+			await _mon_foyer(etape, jeu)
+		"banque_fermee":
+			await _banque_fermee(jeu)
+		"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet":
+			await _projet(etape, jeu)
+		"rue_bloc", "rue_pastille", "rue_eteinte":
+			await _rue(etape, jeu)
+		"rue_notifs":
+			await _rue_notifs(jeu)
+		"historique_rue":
+			await _historique_rue(jeu)
+		"krach_jours", "krach_sans_jours":
+			await _krach_jours(etape, jeu)
+		"un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple":
+			await _un_an_apres(etape, jeu)
+		"fin_rue", "fin_rue_negatif", "fin_sans_rue":
+			await _fin_rue(etape, jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -280,6 +306,805 @@ func _mesure_etiquettes(hud: Hud, ville: Node2D) -> Array:
 
 
 # =====================================================================
+# Carte de dilemme (lot 04, 03-I2 : I1, CA-I2)
+# =====================================================================
+
+## Nouvelle partie de capture (graine fixe) avec les cartes allumées, dans la rue, temps arrêté.
+func partie_cartes(jeu: Node) -> void:
+	var cfg := Donnees.config_demo(-1)
+	cfg["cartes"] = true
+	jeu.nouvelle_partie(cfg)
+	Partie.etat.resolution_auto()   # carte du Livret A
+	jeu.demarrer_direct(0)
+
+
+## Avance (joueur actif, sans animation) jusqu'à la carte « id » ("" : la première) ; false si elle n'arrive pas.
+func jusqu_a_carte(id := "", politique := "epargner") -> bool:
+	var e := Partie.etat
+	StrategieTest.politique_cartes = politique
+	var garde := 0
+	var ok := false
+	while e.fin == "" and garde < 200:
+		garde += 1
+		if e.modale.get("kind", "") == "carte" and (id == "" or str(e.modale.get("id", "")) == id):
+			ok = true
+			break
+		StrategieTest.jouer_mois(e, true)
+		while not e.modale.is_empty():
+			e.resolution_auto()
+		e.avancer()
+	sc.rafraichir_apres_saut()
+	return ok
+
+
+## Ce que fait la séquence de la ville (contrat §4.3) : carte, choix, résolution, conclusion.
+func jouer_carte(jeu: Node, choix_id: String) -> Dictionary:
+	var modales: Modales = jeu.modales
+	var porte: Vector2 = jeu.ville.call("porte_ecran", "maison")
+	modales.carte(Partie.etat.contenu_modale(), porte)
+	await sc.attendre_que(func() -> bool: return modales.etat_carte().phase == "attente", 5.0)
+	var r := {}
+	var attente := func(_g: String, id: String) -> void:
+		r.merge(Partie.resoudre_modale(id))
+	modales.choix_fait.connect(attente, CONNECT_ONE_SHOT)
+	modales.etat_carte().choisir(choix_id)
+	if not r.is_empty():
+		await modales.conclure_carte(r, porte)
+	return r
+
+
+func _carte(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	partie_cartes(jeu)
+	var e := Partie.etat
+	if etape == "carte_jumeaux":
+		e.forcer_naissance(true)   # moteur seul (sans le courrier animé du faire-part)
+		e.resolution_auto()
+	var voulue := "C04" if etape == "carte_jumeaux" else "C01"
+	var ok := jusqu_a_carte(voulue)
+	print("UI carte_etape %s carte=%s ok=%s mois=%s" % [etape, str(e.modale.get("id", "")), "oui" if ok else "non", Dates.texte(e.ab_courant())])
+	if not ok:
+		return
+	if etape == "carte_refus":
+		# Disponible ramené à 5 000 F : le Club Med (9 000 F) n'est plus payable, le camping l'est
+		e.joueur.livret = 0.0
+		e.joueur.cc = Produits.f(5000.0)
+		jeu.hud.maj(e, false)
+	var porte: Vector2 = jeu.ville.call("porte_ecran", "maison")
+	var c := e.contenu_modale()
+	match etape:
+		"carte", "carte_refus", "carte_jumeaux":
+			modales.carte(c, porte)
+			await sc.attendre_que(func() -> bool: return modales.etat_carte().phase == "attente", 5.0)
+			await sc.delai(0.4)
+			var mc := modales.etat_carte()
+			if etape == "carte_refus":
+				var b: Button = mc.boutons.get("a")
+				var ouverte_avant: bool = e.modale.get("kind", "") == "carte"
+				# Toucher (clic simulé) puis touche 1 sur le choix désactivé : sans effet
+				await sc.clic_dehors(sc.position_fenetre(b))
+				await sc.touche(KEY_1)
+				await sc.delai(0.2)
+				print("UI carte refus=%s (touchers comptés %d, modale %s, phase %s, desactive=%s)" % ["ignore" if ouverte_avant and e.modale.get("kind", "") == "carte" and mc.phase == "attente" else "ACCEPTE",
+					mc.refus, str(e.modale.get("id", "")), mc.phase, str(c["choix"][0].get("desactive", false))])
+			# Échap et clic extérieur : sans effet
+			await sc.touche(KEY_ESCAPE)
+			await sc.clic_dehors()
+			await sc.delai(0.4)
+			print("UI carte echap_clic=%s (Échap et clic extérieur sans effet)" % ("ignores" if modales.genre_courant == "carte" else "FERMENT incoherences=1"))
+			print("UI carte titre=« %s » choix=%s disponible=« %s »" % [str(c.get("titre", "")), ", ".join(PackedStringArray(mc.ordre)), (modales.courant.find_child("Disponible", true, false) as Label).text])
+			_mesurer(etape, modales.courant)
+			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+		"carte_conclusion":
+			modales.carte(c, porte)
+			await sc.attendre_que(func() -> bool: return modales.etat_carte().phase == "attente", 5.0)
+			var r := {}
+			var attente := func(_g: String, id: String) -> void:
+				r.merge(Partie.resoudre_modale(id))
+			modales.choix_fait.connect(attente, CONNECT_ONE_SHOT)
+			e.foyer["humeur"] = 1   # le choix « a » (+1) rend Sylvie contente : notification « humeur » → bulle après le rangement
+			await sc.touche(KEY_1)
+			if r.is_empty():
+				print("UI carte conclusion=absente (choix refusé)")
+				return
+			modales.conclure_carte(r, porte)
+			await sc.delai(1.0)
+			var lq := modales.courant.find_child("Consequence", true, false) as Label if modales.courant != null else null
+			print("UI carte consequence=« %s » = r=« %s » egal=%s" % [lq.text if lq != null else "?", str(r.get("consequence", "")), "oui" if lq != null and lq.text == str(r.get("consequence", "")) else "non"])
+			_mesurer(etape, modales.courant)
+			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+			await RenderingServer.frame_post_draw
+			var nom_png := "res://captures/l4_carte_conclusion_vue%s.png" % ("_tel" if Ecran.compact() else "")
+			sc.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path(nom_png))
+			# La bulle d'humeur née de cette carte n'apparaît qu'après le rangement (CA-I3)
+			var avant: Bulle = jeu.derniere_bulle if is_instance_valid(jeu.derniere_bulle) else null
+			await sc.attendre_que(func() -> bool: return not modales.carte_en_cours, 8.0)
+			await sc.delai(0.3)
+			var apres: Bulle = jeu.derniere_bulle if is_instance_valid(jeu.derniere_bulle) else null
+			print("UI bulle apres_carte=%s texte=« %s »" % ["oui" if apres != null and apres != avant else "non", apres.texte_label.text if apres != null else ""])
+		"carte_relue":
+			await jouer_carte(jeu, "a")
+			await sc.delai(0.3)
+			var i := e.historique.size() - 1
+			while i >= 0 and str(e.historique[i]["genre"]) != "carte":
+				i -= 1
+			modales.relire_historique(e, i)
+			await sc.delai(0.8)
+			var lc := modales.courant.find_child("ChoixPris", true, false) as Label if modales.courant != null else null
+			print("UI carte_relue choix=« %s »" % (lc.text if lc != null else "?"))
+			_mesurer(etape, modales.courant)
+
+
+# =====================================================================
+# Projets (lot 05, 04-I : P1 à P5 ; contenus fabriqués sur le contrat lot_04 §4.2)
+# =====================================================================
+
+static func _f(francs: float) -> float:
+	return Produits.f(francs)
+
+
+## Contenu fabriqué de l'étape « choix » (P1, mars 1984). long : « sous » de plus de 2 lignes sur la 3e option (cas P2C).
+static func fabriquer_choix(long := false) -> Dictionary:
+	var sous3 := "Apport comptant, la vieille 4L en reprise"
+	if long:
+		sous3 = "Un PEL ouvert en 1984 verse chaque année une prime d'État et un taux fixe : l'apport vient de ce plan, qu'il faut garder au moins quatre ans."
+	return {"kind": "projet", "etape": "choix", "source": "maison", "date": "MARS 1984", "ab": Dates.lire("1984-03"), "id": "P1",
+		"titre": "Un projet pour 1986", "texte": "Sylvie et vous voulez vous offrir quelque chose d'ici avril 1986. Lequel ?",
+		"choix": [
+			{"id": "P1A", "titre": "Le salon et la chaîne hi-fi", "montant": _f(12000.0), "echeance_txt": "avril 1986", "icone": "salon", "sous": "Canapé, fauteuils et une vraie chaîne"},
+			{"id": "P1B", "titre": "La Grèce pour les 30 ans de Sylvie", "montant": _f(16000.0), "echeance_txt": "avril 1986", "icone": "grece", "sous": "Deux semaines dans les Cyclades, à deux"},
+			{"id": "P1C", "titre": "La Super 5 neuve", "montant": _f(30000.0), "echeance_txt": "avril 1986", "icone": "auto", "sous": sous3}]}
+
+
+static func _vente_sicav() -> Dictionary:
+	return {"id": "sicav", "nom": "SICAV Avenir", "vendu": _f(4145.0), "net": _f(4100.0), "frais": _f(0.0), "impot": _f(45.0), "penalite": 0.0,
+		"texte_penalite": "Impôt sur la plus-value : 45 F.", "ecart_verse": _f(-300.0), "texte_ecart": "SICAV : 4 100 F, soit 300 F de moins que vos versements."}
+
+
+static func _vente_pel() -> Dictionary:
+	return {"id": "pel", "nom": "Plan d'épargne-logement", "vendu": _f(6250.0), "net": _f(5100.0), "frais": 0.0, "impot": 0.0, "penalite": _f(1150.0),
+		"texte_penalite": "Prime d'État perdue : 1 150 F. Le PEL est clos avant 4 ans : seuls les intérêts au taux réduit sont versés.", "ecart_verse": _f(900.0),
+		"texte_ecart": "PEL : 5 100 F, soit 900 F de plus que vos versements."}
+
+
+## Les 3 cas du jour J (docs/24 §1.2) : "a" disponible suffisant, "b" manque couvert par les ventes, "c" rien ne suffit.
+static func fabriquer_jour_j(cas: String) -> Dictionary:
+	var c := {"kind": "projet", "etape": "echeance", "source": "maison", "date": "AVRIL 1986", "ab": Dates.lire("1986-04"), "id": "P1C",
+		"titre": "Le jour J : La Super 5 neuve", "texte": "C'est le moment : La Super 5 neuve, 30 000 F.", "montant": _f(30000.0), "icone": "auto"}
+	var realiser := {"id": "realiser", "titre": "Réaliser", "desactive": false, "sous": ""}
+	var vendre := {"id": "realiser_en_vendant", "titre": "Réaliser en vendant", "desactive": false, "sous": ""}
+	var reporter := {"id": "reporter", "titre": "Reporter de 4 mois", "desactive": false, "sous": "Nouvelle date : août 1986"}
+	var renoncer := {"id": "renoncer", "titre": "Renoncer", "desactive": false, "sous": "Le projet est abandonné"}
+	match cas:
+		"a":
+			c.merge({"disponible": _f(35000.0), "manque": 0.0, "ventes": [], "apres_ventes": _f(35000.0)})
+			realiser["sous"] = "Le compte et le Livret A suffisent"
+			vendre["desactive"] = true
+			vendre["sous"] = "Rien à vendre : tout est disponible"
+		"b":
+			c.merge({"disponible": _f(21400.0), "manque": _f(8600.0), "ventes": [_vente_sicav(), _vente_pel()], "apres_ventes": _f(30600.0)})
+			realiser["desactive"] = true
+			realiser["sous"] = "Il manque 8 600 F sur le compte et le Livret A"
+			vendre["sous"] = "Il faut vendre pour 8 600 F"
+		_:
+			c.merge({"disponible": _f(12000.0), "manque": _f(18000.0), "ventes": [_vente_sicav()], "apres_ventes": _f(16100.0)})
+			realiser["desactive"] = true
+			realiser["sous"] = "Il manque 18 000 F sur le compte et le Livret A"
+			vendre["desactive"] = true
+			vendre["sous"] = "Même en vendant, il manque 13 900 F"
+	c["choix"] = [realiser, vendre, reporter, renoncer]
+	return c
+
+
+static func fabriquer_projet_en_cours() -> Dictionary:
+	return {"id": "P1C", "nom": "La Super 5 neuve", "icone": "auto", "montant": _f(30000.0), "m_echeance": 0, "echeance_txt": "avril 1986", "mois_restants": 14,
+		"report_utilise": false, "reportable": true, "disponible": _f(21400.0), "revendable": _f(4100.0), "atteint": false}
+
+
+static func fabriquer_projets_passes() -> Array:
+	return [{"id": "P1A", "nom": "Le salon et la chaîne hi-fi", "icone": "salon", "montant": _f(12000.0), "statut": "realise", "m": 0, "ab": Dates.lire("1986-04")},
+		{"id": "P2B", "nom": "La Grèce pour les 30 ans de Sylvie", "icone": "grece", "montant": _f(16000.0), "statut": "realise_apres_report", "m": 0, "ab": Dates.lire("1987-08")},
+		{"id": "P2C", "nom": "Le petit T3", "icone": "", "montant": _f(60000.0), "statut": "abandonne", "m": 0, "ab": Dates.lire("1988-02")}]
+
+
+func _projet(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	var hud: Hud = jeu.hud
+	var cas := ScenariosCapture.option("cas")
+	if cas == "":
+		cas = "b"
+	partie_cartes(jeu)
+	var e := Partie.etat
+	if etape in ["foyer_projet", "etiquette_projet", "banque_guichet"]:
+		jusqu_a_carte("C04")
+		while not e.modale.is_empty():
+			e.resolution_auto()
+		sc.rafraichir_apres_saut()
+	var porte: Vector2 = jeu.ville.call("porte_ecran", "maison")
+	match etape:
+		"projet_choix", "projet_conclusion":
+			var c := fabriquer_choix(ScenariosCapture.option("long") == "oui")
+			modales.projet(c, porte)
+			await sc.attendre_que(func() -> bool: return modales.etat_projet().phase == "attente", 5.0)
+			await sc.delai(0.3)
+			var mp := modales.etat_projet()
+			var recu := {}
+			var coup := func(g: String, id: String) -> void: recu["id"] = id; recu["g"] = g
+			modales.choix_fait.connect(coup)
+			await sc.touche(KEY_ESCAPE)
+			await sc.clic_dehors()
+			await sc.delai(0.3)
+			print("UI projet echap_clic=%s (ni Échap ni clic extérieur)" % ("ignores" if modales.genre_courant == "projet" and recu.is_empty() else "FERMENT incoherences=1"))
+			print("UI projet choix options=%d = c=%d egal=%s ids=%s" % [mp.ordre.size(), (c["choix"] as Array).size(), "oui" if mp.ordre.size() == 3 else "non incoherences=1", ", ".join(PackedStringArray(mp.ordre))])
+			var lignes_c: Array = []
+			for id: String in mp.ordre:
+				var b: Button = mp.boutons[id]
+				lignes_c.append("%s | %s | %s" % [(b.find_child("TitreChoix", true, false) as Label).text, (b.find_child("Montant", true, false) as Label).text, (b.find_child("Echeance", true, false) as Label).text])
+			for l in lignes_c:
+				print("UI projet option « %s »" % l)
+			await sc.touche(KEY_2)
+			print("UI projet touche_2=%s" % str(recu.get("id", "AUCUN")))
+			modales.choix_fait.disconnect(coup)
+			if etape == "projet_conclusion":
+				modales.conclure_projet({"choix": "P1B", "kind": "projet", "etape": "choix", "montant": _f(16000.0), "consequence": "C'est décidé : la Grèce, pour avril 1986."}, porte)
+				await sc.delai(1.0)
+			_mesurer(etape, modales.courant)
+			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+		"projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion":
+			var c := fabriquer_jour_j(cas)
+			modales.projet(c, porte)
+			await sc.attendre_que(func() -> bool: return modales.etat_projet().phase == "attente", 5.0)
+			await sc.delai(0.3)
+			var mp := modales.etat_projet()
+			var recu := {}
+			var coup := func(g: String, id: String) -> void: recu["id"] = id
+			modales.choix_fait.connect(coup)
+			for id: String in mp.ordre:
+				var ch: Dictionary = mp.choix[id]
+				if bool(ch.get("desactive", false)):
+					var avant := mp.refus
+					mp.choisir(id)
+					print("UI projet refus=%s (%s désactivé, raison « %s »)" % ["ignore" if mp.refus == avant + 1 and recu.is_empty() else "ACCEPTE incoherences=1", id, str(ch.get("sous", ""))])
+			print("UI projet jour_j cas=%s boutons=%s bandeau=%s" % [cas, ", ".join(PackedStringArray(mp.ordre)),
+				", ".join(PackedStringArray(modales.courant.find_children("Valeur", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)))])
+			if etape == "projet_confirmation":
+				mp.choisir("realiser_en_vendant")
+				await sc.delai(0.4)
+				var noms: Array = modales.courant.find_children("NomVente", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+				var attendu: Array = []
+				for i in (c["ventes"] as Array).size():
+					attendu.append("%d  %s" % [i + 1, str(c["ventes"][i]["nom"])])
+				var tot := modales.courant.find_child("TotalVentes", true, false) as Label
+				print("UI projet confirmation ventes=%s = plan=%s egal=%s total=%s emis_avant_confirmer=%s" % [str(noms), str(attendu), "oui" if noms == attendu else "non incoherences=1",
+					tot.text if tot != null else "?", "OUI incoherences=1" if not recu.is_empty() else "non"])
+				await sc.touche(KEY_ESCAPE)
+				print("UI projet echap_confirmation=%s" % ("retour" if not mp.en_confirmation and modales.genre_courant == "projet" else "AUTRE incoherences=1"))
+				mp.choisir("realiser_en_vendant")
+				await sc.delai(0.3)
+			elif etape == "projet_jour_j_conclusion":
+				mp.choisir("renoncer")
+				modales.conclure_projet({"choix": "renoncer", "kind": "projet", "etape": "echeance", "montant": 0.0, "consequence": "Projet abandonné.", "ventes": []}, porte)
+				await sc.delai(0.8)
+			modales.choix_fait.disconnect(coup)
+			_mesurer(etape, modales.courant)
+			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+		"etiquette_projet":
+			var texte := hud.maj_projet(e, fabriquer_projet_en_cours())
+			await sc.delai(0.6)
+			hud.placer_etiquettes()
+			await sc.delai(0.3)
+			print("UI etiquette_projet texte=« %s » attendu=« %s » chevauchements=%d" % [texte, "%s / %s" % [Format.nombre(Format.en_devise(_f(21400.0), "F")), Format.entier(_f(30000.0), e.ab_courant())], hud.chevauchements_etiquettes()])
+			var sans := hud.maj_projet(e, {"_aucun": true})
+			print("UI etiquette_projet sans_projet_ligne=« %s »" % ("" if sans == "" else sans))
+			hud.maj_projet(e, fabriquer_projet_en_cours())
+			await sc.delai(0.3)
+			print("UI etiquette_projet chevauchements_apres=%d" % hud.chevauchements_etiquettes())
+			_mesurer(etape, hud)
+		"foyer_projet":
+			var fab := {"projet": fabriquer_projet_en_cours(), "passes": fabriquer_projets_passes()}
+			hud.maj_projet(e, fabriquer_projet_en_cours())
+			Partie.changer_vitesse(0)
+			modales.foyer(e, porte, fab)
+			await sc.attendre_que(func() -> bool: return modales.genre_courant == "info" and modales.courant != null, 5.0)
+			await sc.delai(0.8)
+			var mf := modales.etat_foyer()
+			var lp: Array = mf.lignes_projet.map(func(l: Label) -> String: return l.text)
+			var ls: Array = mf.lignes_passes.map(func(l: Label) -> String: return l.text)
+			for l in lp:
+				print("UI foyer projet « %s »" % l)
+			for l in ls:
+				print("UI foyer passe « %s »" % l)
+			var attendu_p: Array = ModaleFoyer.textes_projet(fab["projet"], e.ab_courant())
+			print("UI foyer projet_egal=%s (lignes %d, attendues %d)" % ["oui" if lp == attendu_p else "non incoherences=1", lp.size(), attendu_p.size()])
+			_mesurer(etape, modales.courant)
+			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+		"banque_guichet":
+			# Le moteur 04-L fournit la ligne ; sans lui, une ligne fabriquée vérifie la mise en page
+			jeu.ouvrir_banque("elf", -2.0)
+			await sc.delai(1.0)
+			var pb: PanneauBanque = modales.banque
+			var ligne := pb.ligne_projet()
+			var vue := modales.courant.find_child("LigneProjetGuichet", true, false) as Label
+			print("UI guichet ligne=« %s » visible=%s (moteur : %s)" % [vue.text if vue != null else "?", str(vue.visible) if vue != null else "?", "04-L" if e.has_method("ligne_projet_guichet") else "absent"])
+			if ligne == "":
+				pb.ligne_fab = "Projet : la Super 5, avril 1986 (dans 14 mois) · 30 000 F"
+				pb.call("_maj_carnet")
+				await sc.delai(0.3)
+			_mesurer(etape, modales.courant)
+			pb.call("_afficher_ordre", "elf", "a", -1.0)
+			await sc.delai(0.5)
+			var lo := modales.courant.find_child("LigneProjetOrdre", true, false) as Label
+			print("UI guichet ordre ligne=%s" % (("« %s »" % lo.text) if lo != null else "absente (téléphone ou pas de projet)"))
+			print("UI guichet taille fenetre=%s min=%s ligne_en_tete=%s" % [str(pb.size), str(pb.get_combined_minimum_size()), str(pb._l_projet.visible)])
+			_mesurer(etape + "_ordre", modales.courant)
+
+
+# =====================================================================
+# La rue (lot 06, 05-I : R1 à R7 ; contenus fabriqués conformes à lot_05 §4.3)
+# =====================================================================
+
+## classement_rue() fabriqué (patrimoines en francs ; Jean-Mi négatif après sa liquidation).
+static func fabriquer_classement(negatif := true) -> Array:
+	return [{"id": "livret", "nom": "Tata Livret", "initiale": "T", "patrimoine": 165300.0, "rang": 1, "vous": false, "reference": true},
+		{"id": "vous", "nom": "Vous", "initiale": "G", "patrimoine": 160749.0, "rang": 2, "vous": true, "reference": false},
+		{"id": "matelas", "nom": "Tonton Matelas", "initiale": "M", "patrimoine": 139800.0, "rang": 3, "vous": false, "reference": false},
+		{"id": "jeanmi", "nom": "Jean-Mi", "initiale": "J", "patrimoine": -12400.0 if negatif else 98000.0, "rang": 4, "vous": false, "reference": false}]
+
+
+static func fabriquer_jeanmi() -> Dictionary:
+	return {"etape": "liquide", "etape_texte": "Liquidé : la bourse l'a ruiné", "patrimoine": -12400.0, "dette": 26041.0, "regle": "Achète à crédit"}
+
+
+func _rue(etape: String, jeu: Node) -> void:
+	var hud: Hud = jeu.hud
+	sc.partir_de_la_rue(etape)
+	var e := Partie.etat
+	Partie.changer_vitesse(0)
+	await sc.delai(0.6)
+	if etape == "rue_eteinte":
+		hud.maj_rue_eteinte(e)
+		await sc.delai(0.4)
+		print("UI rue eteinte bloc=%s rang=%s languette_texte=« %s »" % ["cache" if not hud.bloc_rue.visible else "VISIBLE incoherences=1", "cache" if not hud._languette_rang.visible else "VISIBLE incoherences=1", hud.languette.text.replace("\n", " ")])
+		_mesurer(etape, hud)
+		return
+	var cl := fabriquer_classement()
+	var rang := hud.maj_rue(e, cl, fabriquer_jeanmi())
+	hud.basculer_panneau(etape == "rue_bloc" or not hud.compact)
+	await sc.delai(0.8)
+	var l := hud.bloc_rue.lignes_texte
+	var signe := false
+	for x: Dictionary in l:
+		if bool(x["negatif"]):
+			signe = str(x["montant"]).begins_with(Format.MOINS)
+	var ordre_ok := l.size() == 4 and l.map(func(x: Dictionary) -> String: return str(x["id"])) == cl.map(func(x: Dictionary) -> String: return str(x["id"]))
+	print("UI rue rang=%d lignes=%d negatif_signe=%s panneau_coupe=%s ordre=%s trois_colonnes=%s" % [rang, l.size(), "oui" if signe else "non", "oui incoherences=1" if hud.panneau_coupe() and hud.panneau.visible else "non", "oui" if ordre_ok else "non incoherences=1", str(hud.panneau_a_trois_colonnes())])
+	for x: Dictionary in l:
+		print("UI rue ligne rang=%s %s montant=%s vous=%s%s" % [BlocRue.rang_texte(int(x["rang"])), x["nom"], x["montant"], str(x["vous"]), (" etape=« %s »" % x["etape"]) if str(x["etape"]) != "" else ""])
+	if etape == "rue_pastille":
+		print("UI rue languette rang=« %s » sous=« %s » visible=%s" % [(hud._languette_rang.get_child(1) as Label).text, (hud._languette_rang.get_child(2) as Label).text, str(hud.languette.is_visible_in_tree())])
+		_mesurer(etape, hud)
+		hud.languette.pressed.emit()
+		await sc.delai(0.5)
+		print("UI rue languette_ouvre_panneau=%s" % ("oui" if hud.panneau.visible else "non incoherences=1"))
+		hud.basculer_panneau(false)
+		await sc.delai(0.3)
+	else:
+		_mesurer(etape, hud)
+
+
+static func fabriquer_voisin(id: String) -> Dictionary:
+	match id:
+		"court":
+			return {"type": "voisin", "source": "rue", "cls": "neutre", "id": "V02", "qui": "matelas", "titre": "Tonton Matelas", "cle": false, "long": false,
+				"texte": "Une banque ? Et si elle saute ? Moi, c'est sous le matelas."}
+		"long":
+			return {"type": "voisin", "source": "rue", "cls": "neutre", "id": "V01", "qui": "lopez", "titre": "Mme Lopez", "cle": true, "long": true,
+				"texte": "Vous connaissez vos voisins ?",
+				"texte_long": "Vous connaissez vos voisins ? Tata Livret met tout sur son Livret A. Tonton Matelas garde tout sur son compte. Jean-Mi, vendeur chez Peugeot, attend le bon tuyau. Mêmes revenus, mêmes dépenses que vous : seule change la façon de placer."}
+		"persistant":
+			return {"type": "voisin", "source": "rue", "cls": "neutre", "id": "V07", "qui": "jeanmi", "titre": "Jean-Mi", "cle": true, "long": false, "persistant": true,
+				"texte": "Tuyau du café : Peugeot ne peut que monter. J'ai tout mis, et même plus !"}
+		"rang":
+			return {"type": "rang", "source": "rue", "cls": "gain", "titre": "Dans la rue", "texte": "Vous repassez devant Jean-Mi.", "rang": 2}
+		_:
+			return {"type": "kiosque", "source": "media", "cls": "neutre", "titre": "LA GAZETTE", "texte": "Les Bleus sacrés champions d'Europe", "id": "K01"}
+
+
+func _rue_notifs(jeu: Node) -> void:
+	var hud: Hud = jeu.hud
+	var modales: Modales = jeu.modales
+	sc.partir_de_la_rue("rue_notifs")
+	var e := Partie.etat
+	Partie.changer_vitesse(0)
+	await sc.delai(0.5)
+	var a := e.ab_courant()
+	var vus: Array = []
+	for k in ["court", "long", "rang"]:
+		var n := fabriquer_voisin(k)
+		hud.notifier(n, a)
+		vus.append(n)
+		await sc.delai(0.5)
+	# Les plus anciennes partent quand la place manque : chaque toast affiché porte le texte COURT de sa notification
+	var textes: Array = hud.notifs.find_children("TexteNotif", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+	var attendus: Array = vus.map(func(n: Dictionary) -> String: return str(n["texte"]))
+	var inclus := not textes.is_empty()
+	for t: String in textes:
+		inclus = inclus and attendus.has(t)
+	var long_affiche := textes.has(str(fabriquer_voisin("long")["texte"]))
+	print("UI rue_notifs toasts=%d textes_courts=%s lire=%s" % [textes.size(), "egaux" if inclus else "DIFFERENTS incoherences=1", ("oui" if hud.notifs.find_child("Lire", true, false) != null else "NON incoherences=1") if long_affiche else "sans objet (toast long parti)"])
+	hud.notifier(fabriquer_voisin("persistant"), a)
+	await sc.delai(0.5)
+	print("UI rue_notifs source=« %s » liseré_bleu=%s" % [Hud.NOMS_SOURCES["rue"], "oui" if Style.NOMS_PALETTE_SOURCES["rue"] == "bleu_vif" else "non"])
+	# La notification persistante reste affichée, sans pause : on laisse passer plus de 3 mois de temps de jeu (accéléré)
+	Partie.changer_vitesse(3)
+	var t_attente := 0.0
+	while e.ab_courant() - a < 3 and t_attente < 14.0 and e.modale.is_empty():
+		await sc.delai(0.25)
+		t_attente += 0.25
+	var reste := false
+	for p: Control in hud._liste_notifs:
+		if is_instance_valid(p) and p.find_child("IndicationPersistante", true, false) != null:
+			reste = true
+	print("UI rue_notifs persistante=%s mois_ecoules=%d pause=%s" % ["reste" if reste else "PARTIE incoherences=1", e.ab_courant() - a, "oui incoherences=1" if Partie.vitesse == 0 else "non"])
+	Partie.changer_vitesse(0)
+	# Relecture longue : texte ENTIER
+	var nl := fabriquer_voisin("long")
+	jeu.toucher_notif(nl)
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "info" and modales.courant != null, 4.0)
+	await sc.delai(0.6)
+	var lt := modales.courant.find_child("TexteLecture", true, false) as Label
+	print("UI rue_notifs relecture_longue=%s (%d mots) == texte_long egal=%s" % ["lue" if lt != null else "ABSENTE", str(lt.text if lt != null else "").split(" ", false).size(), "oui" if lt != null and lt.text == str(nl["texte_long"]) else "non incoherences=1"])
+	_mesurer("rue_notifs_relecture", modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+	await RenderingServer.frame_post_draw
+	sc.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://captures/l6_rue_relecture%s.png" % ("_tel" if Ecran.compact() else "")))
+	modales.fermer("fermer")
+	await sc.delai(0.4)
+	hud.notifier(fabriquer_voisin("kiosque"), a)
+	await sc.delai(0.8)
+
+
+## Partie de capture (graine fixe) avec cartes, projets et rue allumés, dans la rue, temps arrêté.
+func partie_tout_allume(jeu: Node) -> void:
+	var cfg := Donnees.config_demo(-1)
+	cfg["cartes"] = true
+	cfg["projets"] = true
+	cfg["rue"] = true
+	jeu.nouvelle_partie(cfg)
+	Partie.etat.resolution_auto()
+	jeu.demarrer_direct(0)
+
+
+## Le Lundi noir (CA-U5) : la modale du krach du vrai moteur (rue allumée) avec le tableau des 7 jours ; sans la rue : modale inchangée.
+func _krach_jours(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	if etape == "krach_sans_jours":
+		sc.partir_de_la_rue(etape)
+	else:
+		partie_tout_allume(jeu)
+	var e := Partie.etat
+	StrategieTest.politique_cartes = "epargner"
+	StrategieTest.aller_a_modale(e, "p1e6", true)
+	sc.rafraichir_apres_saut()
+	var c := e.contenu_modale()
+	var jours: Array = c.get("jours", [])
+	modales.donnees_demo["_vente_totale"] = e.devis_vente_totale(e.joueur)
+	modales.donnees_demo["_ab"] = e.ab_courant()
+	modales.journal(c, Vector2(960, 400), false)
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "journal" and modales.courant != null, 5.0)
+	await sc.delai(2.0)
+	var mj: ModaleJournal = modales._journal
+	var attendu: Array = jours.map(func(j: Dictionary) -> String: return "%s|%s|%s" % [ModaleJournal.texte_jour(str(j["jour"])), ModaleJournal.texte_indice(float(j["indice"])), ModaleJournal.texte_variation(float(j.get("variation", 0.0)), j == jours[0])])
+	var lus: Array = mj.lignes_jours.map(func(l: Array) -> String: return "|".join(PackedStringArray(l)))
+	var vue := sc.get_viewport().get_visible_rect()
+	var choix := modales.courant.find_child("Choix", true, false) as Control
+	var visibles := choix != null and vue.grow(1.0).encloses(choix.get_global_rect())
+	for b in choix.find_children("*", "Button", true, false) if choix != null else []:
+		visibles = visibles and vue.grow(1.0).encloses((b as Button).get_global_rect())
+	if jours.is_empty():
+		print("UI krach_jours sans_jours tableau=%s choix_visibles=%s (modale inchangée)" % ["ABSENT" if modales.courant.find_child("TableauJours", true, false) == null else "PRESENT incoherences=1", "oui" if visibles else "non incoherences=1"])
+	else:
+		print("UI krach_jours cases=%d choix_visibles=%s lignes=%d == jours=%d egal=%s cumul=%s certitude=« %s »" % [mj.cases, "oui" if visibles else "non incoherences=1", lus.size(), jours.size(), "oui" if lus == attendu else "non incoherences=1",
+			ModaleJournal.texte_cumul(jours), ModaleJournal.phrase_certitude(jours)])
+		for l in lus:
+			print("UI krach_jours ligne « %s »" % l)
+	_mesurer(etape, modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+
+
+## Contenu fabriqué de « Le krach, un an après » (lot_05 §4.3) : cas "vendu", "rien", "renforce" (le joueur a fait ce choix) ou "exemple".
+static func fabriquer_gazette(cas: String) -> Dictionary:
+	var u := {"vendu": 8400.0, "rien": 10900.0, "renforce": 15600.0}
+	return {"kind": "gazette", "source": "media", "date": "OCTOBRE 1988", "ab": Dates.lire("1988-10"), "titre": "LE KRACH, UN AN APRÈS",
+		"texte": "Un an après, la Bourse de Paris a dépassé son niveau d'avant le krach. Ceux qui pouvaient attendre ont retrouvé leur argent ; Jean-Mi, endetté, a dû vendre en pleine chute. En 1987, personne ne savait combien de temps il faudrait : après 1929, Wall Street a mis vingt-cinq ans.",
+		"garde_fou": "Un seul exemple, pas une règle.", "legende_renforce": "{mise} de plus engagés", "mise": Produits.f(5000.0),
+		"mention": "Exemple : vous n'avez ni actions ni SICAV en octobre 1987." if cas == "exemple" else "", "base": Produits.f(10000.0),
+		"barres": [{"id": "vendu", "titre": "TOUT VENDU", "valeur": Produits.f(u["vendu"]), "choisi": cas == "vendu"},
+			{"id": "rien", "titre": "RIEN FAIT", "valeur": Produits.f(u["rien"]), "choisi": cas == "rien"},
+			{"id": "renforce", "titre": "RENFORCÉ", "valeur": Produits.f(u["renforce"]), "choisi": cas == "renforce"}],
+		"choix": [{"id": "ok", "titre": "J'AI COMPRIS"}]}
+
+
+## « Un an après » (CA-U6) : 3 barres == c["barres"], jamais triées, barre choisie entourée (aucune dans l'exemple), Échap sans effet, touche 1.
+func _un_an_apres(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	var cas := etape.trim_prefix("un_an_apres").trim_prefix("_")
+	if cas == "":
+		cas = "rien"
+	sc.partir_de_la_rue(etape)
+	Partie.changer_vitesse(0)
+	await sc.delai(0.5)
+	var c := fabriquer_gazette(cas)
+	modales.gazette(c, Vector2(960, 300))
+	await sc.attendre_que(func() -> bool: return modales.etat_gazette().phase == "attente", 5.0)
+	await sc.delai(0.4)
+	var mg := modales.etat_gazette()
+	var recu := {}
+	var coup := func(g: String, id: String) -> void: recu["id"] = id; recu["g"] = g
+	modales.choix_fait.connect(coup)
+	await sc.touche(KEY_ESCAPE)
+	await sc.clic_dehors()
+	await sc.delai(0.3)
+	var ferme_pas := modales.genre_courant == "gazette" and recu.is_empty()
+	var ordre_ids: Array = mg.barres_vues.map(func(b: Dictionary) -> String: return str(b["id"]))
+	var vals_ok := true
+	for i in mg.barres_vues.size():
+		vals_ok = vals_ok and str(mg.barres_vues[i]["valeur_txt"]) == Format.entier(float(c["barres"][i]["valeur"]), Dates.lire("1988-10"))
+	var choisie := "aucune"
+	for b: Dictionary in mg.barres_vues:
+		if bool(b["choisi"]):
+			choisie = str(b["id"])
+	print("UI gazette barres=%d entouree=%s ordre=%s valeurs=%s == c[barres] echap_clic=%s mention=%s base=« %s »" % [mg.barres_vues.size(), choisie, ",".join(PackedStringArray(ordre_ids)),
+		str(mg.barres_vues.map(func(b: Dictionary) -> String: return str(b["valeur_txt"]))), "ignores" if ferme_pas else "FERMENT incoherences=1", "oui" if modales.courant.find_child("Mention", true, false) != null else "non", mg.base_txt])
+	if ordre_ids != ["vendu", "rien", "renforce"] or not vals_ok or mg.n_entourees != (0 if cas == "exemple" else 1):
+		print("UI gazette incoherences=1")
+	_mesurer("un_an_apres", modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+	await RenderingServer.frame_post_draw
+	if OS.has_feature("editor"):   # recette R-RUE M2 : res:// n'est pas inscriptible dans l'exe
+		sc.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://captures/l6_un_an_apres_vue_%s%s.png" % [cas, "_tel" if Ecran.compact() else ""]))
+	await sc.touche(KEY_1)
+	await sc.delai(0.2)
+	print("UI gazette touche_1=%s" % str(recu.get("g", "AUCUN")) + "/" + str(recu.get("id", "")))
+	modales.choix_fait.disconnect(coup)
+	modales.conclure_gazette({"choix": "ok", "kind": "gazette", "notifs": []}, Vector2(-1, -1))
+	await sc.delai(0.5)
+	print("UI gazette conclusion=%s" % ("fiche disparue" if modales.genre_courant == "" and not modales.carte_en_cours else "RESTE incoherences=1"))
+
+
+## Écran de fin (CA-U7) : 4 barres == classement_rue() (ou fabriqué : Jean-Mi négatif), rang, réplique ; rue éteinte : écran inchangé (2 barres).
+func _fin_rue(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	if etape == "fin_sans_rue":
+		sc.partir_de_la_rue(etape)
+	else:
+		partie_tout_allume(jeu)
+	var e := Partie.etat
+	StrategieTest.politique_cartes = "epargner"
+	StrategieTest.aller_a(e, Dates.lire("1988-06"), true)
+	sc.rafraichir_apres_saut()
+	Partie.changer_vitesse(0)
+	var mf := modales.etat_fin()
+	var classement: Array = e.classement_rue() if etape != "fin_rue_negatif" else fabriquer_classement()
+	if etape == "fin_rue_negatif":
+		mf.fab_rue = classement
+	modales.fin_demo(e)
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "fin" and modales.courant != null, 6.0)
+	await sc.delai(2.5)
+	if etape == "fin_sans_rue":
+		print("UI fin barres=2 rue=eteinte pastille_rang=%s (écran identique à main)" % ("ABSENTE" if modales.courant.find_child("PastilleRang", true, false) == null else "PRESENTE incoherences=1"))
+	else:
+		var br := mf.barres_fin
+		var lignes: Array = br.lignes if br != null else []
+		var attendu: Array = classement.map(func(l: Dictionary) -> String: return "%d %s|%s" % [int(l["rang"]), str(l["nom"]).to_upper(), Format.entier(float(l["patrimoine"]) / Format.TAUX_EURO, e.ab_courant())])
+		var lus: Array = lignes.map(func(l: Array) -> String: return "%s|%s" % [str(l[0]), Format.entier(float(l[1]), e.ab_courant())])
+		var tr := modales.courant.find_child("TexteRang", true, false) as Label
+		var rep := modales.courant.find_child("TexteReplique", true, false) as Label
+		print("UI fin barres=%d rang=%d replique=%s egal_bilan=%s" % [lignes.size(), int(mf.infos_rue.get("rang", 0)), "oui" if rep != null else "non", "oui" if lus == attendu else "non incoherences=1"])
+		for l in lus:
+			print("UI fin ligne « %s »" % l)
+		print("UI fin pastille=« %s » replique=« %s » projets=%s visage=%s" % [tr.text if tr != null else "?", rep.text if rep != null else "-", str(mf.infos_rue.get("projets", "-")), str(mf.infos_rue.get("visage", false))])
+	_mesurer(etape, modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+
+
+## Historique : onglet LA RUE avec les vraies notifications de la rue (partie menée jusqu'à fin 1986), relecture de la plus longue.
+func _historique_rue(jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	var cfg := Donnees.config_demo(-1)
+	cfg["cartes"] = true
+	cfg["projets"] = true
+	cfg["rue"] = true
+	jeu.nouvelle_partie(cfg)
+	Partie.etat.resolution_auto()
+	jeu.demarrer_direct(0)
+	var e := Partie.etat
+	StrategieTest.politique_cartes = "epargner"
+	var garde := 0
+	while e.fin == "" and e.ab_courant() < Dates.lire("1987-01") and garde < 100:
+		garde += 1
+		StrategieTest.jouer_mois(e, true)
+		while not e.modale.is_empty():
+			e.resolution_auto()
+		e.avancer()
+	sc.rafraichir_apres_saut()
+	var rue := e.historique_recent("rue")
+	var autres := 0
+	for h: Dictionary in rue:
+		if str(h["source"]) != "rue":
+			autres += 1
+	print("UI historique_rue entrees=%d autres_sources=%d non_lues=%d genres=%s" % [rue.size(), autres, e.non_lues("rue"), str(rue.map(func(h: Dictionary) -> String: return str(h["genre"])).slice(0, 4))])
+	jeu.ouvrir_historique("rue")
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "historique", 5.0)
+	await sc.delai(1.0)
+	var filtre := modales.courant.find_child("Filtre_rue", true, false) as Button
+	print("UI historique_rue onglet=%s actif=%s libelle=« %s »" % ["present" if filtre != null else "ABSENT incoherences=1", str(filtre.button_pressed) if filtre != null else "?", filtre.text if filtre != null else ""])
+	_mesurer("historique_rue", modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+
+
+## « Mon foyer » (lot 04, I3, CA-I4) : après 3 cartes jouées (politique alternée), humeur au choix
+## (--humeur=contente|neutre|fachee). mon_foyer_eteint : partie sans cartes (bloc du foyer seul).
+func _mon_foyer(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	var e: EtatPartie
+	if etape == "mon_foyer_eteint":
+		sc.partir_de_la_rue(etape)
+		e = Partie.etat
+		sc.aller_a(Dates.lire("1986-06"), true)
+	else:
+		partie_cartes(jeu)
+		e = Partie.etat
+		var garde := 0
+		StrategieTest.politique_cartes = "alterner"
+		while e.fin == "" and e.cartes_jouees().size() < 4 and garde < 200:
+			garde += 1
+			StrategieTest.jouer_mois(e, true)
+			while not e.modale.is_empty():
+				e.resolution_auto()
+			e.avancer()
+		while not e.modale.is_empty():
+			e.resolution_auto()
+		var voulu: int = {"contente": 2, "neutre": 0, "fachee": -2}.get(ScenariosCapture.option("humeur"), 0)
+		if ScenariosCapture.option("humeur") != "":
+			e.foyer["humeur"] = voulu
+		sc.rafraichir_apres_saut()
+	Partie.changer_vitesse(0)
+	await sc.delai(0.8)
+	jeu.toucher_batiment("maison")
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "info" and modales.courant != null, 5.0)
+	await sc.delai(0.8)
+	var mf := modales.etat_foyer()
+	var jouees: Array = e.cartes_jouees()
+	var attendues: Array = []
+	for k in mini(ModaleFoyer.NB_CARTES, jouees.size()):
+		attendues.append(ModaleFoyer.texte_carte(jouees[jouees.size() - 1 - k], e.ab_de(int(jouees[jouees.size() - 1 - k].get("m", e.m)))))
+	var lues: Array = mf.lignes_cartes.map(func(l: Label) -> String: return l.text)
+	print("UI foyer cartes=%d = attendues=%d egal=%s" % [lues.size(), attendues.size(), "oui" if lues == attendues else "non incoherences=1"])
+	print("UI foyer phrase=« %s » = humeur_phrase=« %s » egal=%s" % [mf.l_phrase.text if mf.l_phrase != null else "-", e.humeur_phrase(), "oui" if (mf.l_phrase == null and not e.cartes_actives()) or (mf.l_phrase != null and mf.l_phrase.text == e.humeur_phrase() + ".") else "non incoherences=1"])
+	print("UI foyer cause=« %s » = derniere_cause=« %s »" % [mf.l_cause.text if mf.l_cause != null else "-", e.derniere_cause_humeur()])
+	for l in lues:
+		print("UI foyer carte « %s »" % l)
+	var nombres := 0
+	for l in modales.courant.find_children("*", "Label", true, false):
+		var t := (l as Label).text
+		if t.begins_with("Sylvie") or t.begins_with("«"):
+			nombres += 1 if RegEx.create_from_string("[0-9]").search(t) != null else 0
+	print("UI foyer chiffres_dans_humeur=%d (attendu 0 : jamais de nombre ni de jauge)" % nombres)
+	_mesurer(etape, modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+	# Fermeture : clic extérieur, Échap, [×]
+	var ferme := {}
+	var coup := func(_g: String, id: String) -> void: ferme["id"] = id
+	modales.choix_fait.connect(coup)
+	await sc.clic_dehors()
+	await sc.delai(0.5)
+	var r1 := str(ferme.get("id", "AUCUNE"))
+	jeu.toucher_batiment("maison")
+	await sc.delai(1.0)
+	await sc.touche(KEY_ESCAPE)
+	await sc.delai(0.5)
+	var r2 := str(ferme.get("id", "AUCUNE"))
+	jeu.toucher_batiment("maison")
+	await sc.delai(1.0)
+	(modales.courant.find_child("Fermer", true, false) as Button).pressed.emit()
+	await sc.delai(0.5)
+	print("UI foyer fermeture clic=%s echap=%s croix=%s" % [r1, r2, str(ferme.get("id", "AUCUNE"))])
+	modales.choix_fait.disconnect(coup)
+	# Réouvrir pour l'image finale
+	jeu.toucher_batiment("maison")
+	await sc.delai(1.0)
+
+
+## Banque fermée pendant une carte (lot 04, I4, CA-I5).
+func _banque_fermee(jeu: Node) -> void:
+	var hud: Hud = jeu.hud
+	var modales: Modales = jeu.modales
+	partie_cartes(jeu)
+	var e := Partie.etat
+	if not jusqu_a_carte("C01"):
+		print("UI banque_fermee carte=absente incoherences=1")
+		return
+	await sc.delai(0.5)
+	var fermee_carte: bool = jeu.banque_fermee()
+	hud.maj_banque_fermee(fermee_carte)
+	var phrase_if := Hud.PHRASE_BANQUE_FERMEE
+	# Le moteur refuse un ordre pendant la carte (04-L) : même phrase ; sans 04-L, l'ordre passe (écart signalé)
+	var refus: Dictionary = e.acheter(e.joueur, "elf", Produits.f(1000.0)) if e.has_method("ordres_bloques") else {}
+	var msg := str(refus.get("msg", "(moteur sans ordres_bloques)"))
+	print("UI banque_fermee grise=%s phrase_visible=%s phrase=« %s » msg_moteur=« %s » egale=%s" % [str(hud.b_marche.disabled), str(hud.l_banque_fermee.visible), phrase_if, msg,
+		"oui" if msg == phrase_if else ("sans objet (04-L absent)" if refus.is_empty() else "NON incoherences=1")])
+	jeu.ouvrir_banque("", -2.0)
+	await sc.delai(0.3)
+	print("UI banque_fermee ouverte=%s (touche ou bâtiment : sans effet)" % ("OUI incoherences=1" if modales.genre_courant == "banque" else "non"))
+	# Après la carte, la BANQUE se rouvre
+	e.resolution_auto()
+	hud.maj_banque_fermee(jeu.banque_fermee())
+	print("UI banque_fermee apres_carte grise=%s" % str(hud.b_marche.disabled))
+	# Image : carte de nouveau en attente
+	if jusqu_a_carte("C03"):
+		hud.maj_banque_fermee(jeu.banque_fermee())
+		await sc.delai(0.6)
+
+
+## Humeur de Sylvie (lot 04, I2, CA-I3) : bulle née d'une carte (après le rangement), picto de l'étiquette.
+## etiquette_humeur : les 3 états (option --humeur=contente|neutre|fachee pour l'image, défaut fâchée).
+func _humeur(etape: String, jeu: Node) -> void:
+	var hud: Hud = jeu.hud
+	partie_cartes(jeu)
+	var e := Partie.etat
+	if not jusqu_a_carte("C01"):
+		print("UI humeur carte=absente incoherences=1")
+		return
+	if etape == "etiquette_humeur":
+		var ecarts := 0
+		for h: int in [2, 0, -2]:
+			e.foyer["humeur"] = h
+			var vu := hud.maj_humeur(e)
+			if vu != e.humeur_visible():
+				ecarts += 1
+			print("UI etiquette humeur=%d picto=%d visible=%d" % [h, vu, e.humeur_visible()])
+		var voulu: int = {"contente": 2, "neutre": 0, "fachee": -2}.get(ScenariosCapture.option("humeur"), -2)
+		e.foyer["humeur"] = voulu
+		hud.maj_humeur(e)
+		e.foyer["actif"] = false
+		var eteint := hud.maj_humeur(e)
+		e.foyer["actif"] = true
+		hud.maj_humeur(e)
+		print("UI etiquette eteintes picto=%d (attendu -1) incoherences=%d" % [eteint, ecarts + (0 if eteint == -1 else 1)])
+		await sc.delai(1.0)
+		_mesurer(etape, hud)
+		return
+	# Bulle : humeur à +1 (neutre) ; le Club Med (+1) la rend contente → notification « humeur »
+	e.foyer["humeur"] = 1
+	hud.maj_humeur(e)
+	jeu.derniere_bulle = null
+	var modales: Modales = jeu.modales
+	var porte: Vector2 = jeu.ville.call("porte_ecran", "maison")
+	modales.carte(e.contenu_modale(), porte)
+	await sc.attendre_que(func() -> bool: return modales.etat_carte().phase == "attente", 5.0)
+	var r := {}
+	var attente := func(_g: String, id: String) -> void:
+		r.merge(Partie.resoudre_modale(id))
+	modales.choix_fait.connect(attente, CONNECT_ONE_SHOT)
+	modales.etat_carte().choisir("a")
+	await sc.get_tree().process_frame
+	var pendant := is_instance_valid(jeu.derniere_bulle)
+	await modales.conclure_carte(r, porte)
+	await sc.get_tree().process_frame
+	await sc.get_tree().process_frame
+	var b: Bulle = jeu.derniere_bulle if is_instance_valid(jeu.derniere_bulle) else null
+	var empilee := hud.notifs.find_children("*", "Label", true, false).any(func(l: Node) -> bool: return (l as Label).text == (b.texte_label.text if b != null else "§"))
+	print("UI bulle apres_carte=%s (pendant la carte : %s) texte=« %s » notif_empilee=%s" % ["oui" if b != null and not pendant else "non", "oui" if pendant else "non",
+		b.texte_label.text if b != null else "", "OUI incoherences=1" if empilee else "aucune"])
+	await sc.delai(0.6)
+	if b != null:
+		var libre := hud.rect_libre().grow(1.0)
+		print("UI bulle_humeur ancre=%s dans_libre=%s duree=%.1f picto=%d humeur=%d" % ["point_sylvie" if jeu.ville.has_method("point_sylvie") else "porte_maison",
+			"oui" if libre.encloses(b.rect_total()) else "non", b.duree, hud.maj_humeur(e), e.humeur_visible()])
+
+
+# =====================================================================
 # Bulle et pictos d'humeur (lot 03, I4, CA-I4)
 # =====================================================================
 
@@ -379,7 +1204,9 @@ func _planche_cadres() -> void:
 	x = 30.0
 	for nom: String in ["pause", "lecture", "x2", "x3", "menu", "historique", "fleche_haut", "fleche_bas", "curseur", "drapeau", "croix",
 			"source_maison", "source_banque", "source_media", "piece", "calendrier", "chevron_gauche", "chevron_droite",
-			"bulle_pointe", "humeur_contente", "humeur_neutre", "humeur_fachee"]:
+			"bulle_pointe", "humeur_contente", "humeur_neutre", "humeur_fachee", "aimant",
+			"portrait_sylvie_contente", "portrait_sylvie_neutre", "portrait_sylvie_fachee",
+			"salon", "grece", "voiture", "club_med", "break", "maison", "source_rue"]:
 		var t := CadresPixel.texture(nom)
 		var r := TextureRect.new()
 		r.texture = t

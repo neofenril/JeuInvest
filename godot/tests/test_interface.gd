@@ -12,7 +12,7 @@ extends Node
 ## Aucun script du jeu n'est modifié ; seules des fonctions publiques (ou déjà appelées par principal.gd) sont utilisées.
 
 const GRAINE := 7
-const MOIS_BANQUE := ["1986-12", "1988-06"]
+const MOIS_BANQUE := ["1986-12", "1987-04", "1988-06"]   # lot 05 : avril 1987 = un projet est en cours (ligne du guichet)
 
 var _ko := 0
 var _n := 0
@@ -20,6 +20,14 @@ var _chemin_test := ""
 var hud: Hud
 var modales: Modales
 var _recu: Array = []
+var _ordres_refuses := 0       # lot 05 : refus d'ordres débiteurs constatés pendant une carte ou un projet
+var _projets_choisis := 0
+var _etiquettes_vues := 0
+var _rue_mois := 0
+var _krach_tableaux := 0
+var _gazettes_vues := 0
+var _guichets_vus := 0
+var _ventes_conformes := 0
 var _div_vus := {}        # lot 03 (I6) : « reçus » / « versé » -> nombre de fiches d'action vérifiées
 
 
@@ -32,6 +40,8 @@ func _ready() -> void:
 	await _test_courrier()
 	await _test_demo_complete(true)
 	await _test_demo_complete(false)
+	await _test_demo_complete(true, true)    # lot 04 : toute la démo avec les cartes du foyer allumées
+	await _test_demo_complete(false, true)
 	_verifier("sauvegarde du joueur (partie_en_cours.sav) intacte à la fin du test", FileAccess.get_sha256(Sauvegarde.CHEMIN) == empreinte_avant)
 	Sauvegarde.effacer(_chemin_test)
 	print("=== test_interface : %d vérifications, %s (%d ms) ===" % [_n, "OK" if _ko == 0 else "%d KO" % _ko, Time.get_ticks_msec() - t0])
@@ -59,6 +69,9 @@ func _test_scene_principale(empreinte_avant: String) -> void:
 		bouton == "JOUER" and hud_cache and Partie.etat != null and Partie.etat.fin == "", "bouton « %s »" % bouton)
 	_verifier("écran titre : aucune sauvegarde écrite (ni celle du joueur, ni celle du test)",
 		FileAccess.get_sha256(Sauvegarde.CHEMIN) == empreinte_avant and not FileAccess.file_exists(_chemin_test) and Partie.chemin_sauvegarde == _chemin_test)
+	# Lot 04-05 (D9, D11, CA-M9) : une nouvelle partie du joueur (hors mode capture) a les cartes et les projets allumés
+	var cfg: Dictionary = scene.call("_config")
+	_verifier("principal._config() hors capture : \"cartes\", \"projets\" et \"rue\" vrais", cfg.get("cartes", false) == true and cfg.get("projets", false) == true and cfg.get("rue", false) == true, str(cfg.keys()))
 	scene.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -227,8 +240,19 @@ func _touche(code: Key) -> void:
 # b) Démo complète affichée par le HUD, les modales et la fenêtre Banque
 # ---------------------------------------------------------------------
 
-func _test_demo_complete(actif: bool) -> void:
-	var nom := "joueur actif" if actif else "joueur passif"
+func _test_demo_complete(actif: bool, cartes := false) -> void:
+	var nom := ("joueur actif" if actif else "joueur passif") + (", cartes allumées" if cartes else "")
+	var cartes_vues := 0
+	var ecarts_etiquette: Array = []
+	var ecarts_rue: Array = []
+	_rue_mois = 0
+	_krach_tableaux = 0
+	_gazettes_vues = 0
+	_ordres_refuses = 0
+	_projets_choisis = 0
+	_ventes_conformes = 0
+	_etiquettes_vues = 0
+	_guichets_vus = 0
 	var calque_hud := CanvasLayer.new()
 	calque_hud.layer = 1
 	add_child(calque_hud)
@@ -250,7 +274,15 @@ func _test_demo_complete(actif: bool) -> void:
 	hud.visible = true
 	hud.afficher(true, false)
 
-	Partie.nouvelle_partie(Donnees.config_demo(GRAINE))
+	var config_partie := Donnees.config_demo(GRAINE)
+	# Lot 05 : le joueur actif choisit le projet le plus cher et vend pour le réaliser (la vente passe par la confirmation)
+	StrategieTest.politique_projets = "plus_cher" if (actif and cartes) else "moins_cher"
+	StrategieTest.politique_echeance = "vendre" if (actif and cartes) else "auto"
+	if cartes:
+		config_partie["cartes"] = true
+		config_partie["projets"] = true   # lot 05 : le vrai moteur des projets (04-L)
+		config_partie["rue"] = true       # lot 06 : la rue (05-L) : Jean-Mi, classement, notifications, krach
+	Partie.nouvelle_partie(config_partie)
 	var e := Partie.etat
 	var mois_hud := 0
 	var vues := {}            # genre attendu -> nombre
@@ -262,7 +294,28 @@ func _test_demo_complete(actif: bool) -> void:
 	while e.fin == "" and garde < 100:
 		hud.maj(e, false)
 		mois_hud += 1
+		if cartes:
+			var pe := e.projet_en_cours()
+			var vu_p := (hud.etiquettes["maison"].find_child("LigneProjet", true, false) as Label)
+			var attendu_p := "" if pe.is_empty() else "%s / %s" % [Format.nombre(Format.en_devise(float(pe["disponible"]), Format.devise(e.ab_courant()))), Format.entier(float(pe["montant"]), e.ab_courant())]
+			if (vu_p.text if vu_p.visible else "") != attendu_p:
+				ecarts_etiquette.append("%s : « %s » au lieu de « %s »" % [Dates.texte_court(e.ab_courant()), vu_p.text, attendu_p])
+			elif attendu_p != "":
+				_etiquettes_vues += 1
+			# Lot 06 : bloc LA RUE et rang de la languette == classement_rue() / rang_rue()
+			var cl := e.classement_rue()
+			var lt := hud.bloc_rue.lignes_texte
+			var ok_rue := cl.size() == 4 and lt.size() == cl.size() and hud.bloc_rue.visible
+			for i in mini(cl.size(), lt.size()):
+				ok_rue = ok_rue and str(lt[i]["id"]) == str(cl[i]["id"]) and int(lt[i]["rang"]) == int(cl[i]["rang"]) and str(lt[i]["montant"]) == BlocRue.texte_patrimoine(float(cl[i]["patrimoine"]), e.ab_courant()) and bool(lt[i]["vous"]) == bool(cl[i]["vous"])
+			ok_rue = ok_rue and (hud._languette_rang.get_child(1) as Label).text == BlocRue.rang_texte(e.rang_rue())
+			if ok_rue:
+				_rue_mois += 1
+			else:
+				ecarts_rue.append("%s : %s / %s" % [Dates.texte_court(e.ab_courant()), str(lt), str(cl)])
 		if not e.modale.is_empty():
+			if e.modale.get("kind", "") == "carte":
+				cartes_vues += 1
 			await _afficher_modale(e, actif, vues, ecarts_genre, ecarts_choix)
 		else:
 			StrategieTest.jouer_mois(e, actif)
@@ -290,15 +343,28 @@ func _test_demo_complete(actif: bool) -> void:
 		ecarts_genre.is_empty() and int(vues.get("appel", 0)) >= 8 and int(vues.get("journal", 0)) >= 1 and int(vues.get("courrier", 0)) >= 1, str(ecarts_genre))
 	_verifier("%s : chaque modale fermée par le choix de la stratégie, choix rangé dans l'historique" % nom, ecarts_choix.is_empty(), str(ecarts_choix))
 	var n_produits := 0
-	var banque_ok := banques.size() == 2
+	var banque_ok := banques.size() == 3
 	for b: Dictionary in banques:
 		n_produits += int(b["produits"])
 		if not b["ok"]:
 			banque_ok = false
-	_verifier("%s : fenêtre Banque (fiche, « chaque mois », formulaire d'ordre) sur chaque produit détenu en déc. 1986 et juin 1988" % nom,
+	_verifier("%s : fenêtre Banque (fiche, « chaque mois », formulaire d'ordre) sur chaque produit détenu en déc. 1986, avril 1987 et juin 1988" % nom,
 		banque_ok and (n_produits >= 8 if actif else n_produits >= 0), str(banques))
-	if actif:
-		_verifier("%s : fiche d'une action : « Dividende versé chaque année en mai » avant le 1er versement, « Dividendes reçus » après (%s)" % [nom, str(_div_vus)],
+	if cartes:
+		_verifier("%s : %d cartes du foyer affichées par Modales.carte, chacune fermée par un choix, rangée dans l'historique, sans blocage" % [nom, cartes_vues],
+			cartes_vues >= 8 and cartes_vues <= 10 and int(vues.get("carte", 0)) == cartes_vues and ecarts_genre.is_empty() and ecarts_choix.is_empty(), "%s %s" % [str(ecarts_genre), str(ecarts_choix)])
+	if cartes:
+		await _verifier_projets(nom, e)
+	StrategieTest.politique_projets = "moins_cher"
+	StrategieTest.politique_echeance = "auto"
+	if cartes:
+		_verifier("%s : « Le krach, un an après » (octobre 1988) par Modales.gazette : 3 barres == c[barres], Échap sans effet, touche 1 (%d)" % [nom, _gazettes_vues], _gazettes_vues == 1)
+		_verifier("%s : le krach (rue allumée) porte le tableau des 7 jours du Lundi noir == c[jours] (%d)" % [nom, _krach_tableaux], _krach_tableaux == 1)
+		_verifier("%s : classement permanent : bloc LA RUE (4 lignes : id, rang, montant, « vous ») et rang de la languette == classement_rue() / rang_rue() chaque mois (%d mois)" % [nom, _rue_mois], _rue_mois >= 55 and ecarts_rue.is_empty(), str(ecarts_rue.slice(0, 2)))
+		_verifier("%s : vrai moteur des projets : %d choix de projet (projet_en_cours()[id] == option choisie), ventes faites == plan (%d), %d refus d'ordres pendant une carte ou un projet avec la phrase de l'interface, étiquette == projet_en_cours() (%d mois), ligne du guichet == ligne_projet_guichet() (%d fiches)" % [nom, _projets_choisis, _ventes_conformes, _ordres_refuses, _etiquettes_vues, _guichets_vus],
+			_projets_choisis >= 2 and int(vues.get("projet", 0)) >= 3 and _ordres_refuses >= 10 and ecarts_etiquette.is_empty() and ecarts_genre.is_empty() and ecarts_choix.is_empty() and (not actif or _guichets_vus >= 1), "%s %s %s" % [str(ecarts_etiquette), str(ecarts_genre), str(ecarts_choix)])
+	if actif and not cartes:
+		_verifier("%s : fiche d'une action : « Dividende : versé en mai… » avant le 1er versement, « Dividendes reçus » après (%s)" % [nom, str(_div_vus)],
 			int(_div_vus.get("versé", 0)) >= 1 and int(_div_vus.get("reçus", 0)) >= 1, str(_div_vus))
 		# Notifications de dividendes (dont dividende_nul, cls « neutre ») : notifications ordinaires de la banque
 		var nul := Banquier.notif_dividende_nul(e, "peugeot")
@@ -307,6 +373,13 @@ func _test_demo_complete(actif: bool) -> void:
 		var textes_nul := hud.notifs.find_children("*", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
 		_verifier("%s : notification « dividende_nul » (cls %s) affichée comme une notification de la banque (« %s »)" % [nom, str(nul["cls"]), str(nul["titre"])],
 			str(nul["titre"]) != "" and textes_nul.has(str(nul["titre"])) and textes_nul.has(str(nul["texte"])), str(textes_nul))
+		# D14 (lot 04) : le montant à droite d'une notification de dividende s'écrit à l'unité, comme son texte
+		var ndiv := {"type": "dividende", "source": "banque", "cls": "gain", "montant": Produits.f(175.92), "titre": "Vos actions vous versent un dividende", "texte": "Vous touchez 176 F."}
+		hud.notifier(ndiv, e.ab_courant())
+		await get_tree().process_frame
+		var attendu_div := Format.ecart(Produits.f(175.92), e.ab_courant())
+		var textes_div := hud.notifs.find_children("*", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+		_verifier("%s : notification de dividende : montant à droite « %s » (à l'unité)" % [nom, attendu_div], textes_div.has(attendu_div), str(textes_div))
 		var frais := float(releve.get("frais_total", 0.0))
 		var releve_ok := false
 		if frais > 0.0:
@@ -326,6 +399,17 @@ func _test_demo_complete(actif: bool) -> void:
 	var bilan := Bilan.calculer(e)
 	modales.fin_demo(e)
 	var fin_ok := await _attendre_genre("fin")
+	# Lot 06 (A7, CA-U7) : rue allumée : 4 barres == bilan["rue"], rang, réplique ; rue éteinte : l'écran de fin de main (aucune pastille de rang)
+	var mfin := modales.etat_fin()
+	var rue_bilan: Array = bilan.get("rue", [])
+	if cartes:
+		var lus_f: Array = mfin.barres_fin.lignes.map(func(l: Array) -> String: return "%s|%s" % [str(l[0]), Format.entier(float(l[1]), e.ab_courant())]) if mfin.barres_fin != null else []
+		var att_f: Array = rue_bilan.map(func(l: Dictionary) -> String: return "%d %s|%s" % [int(l["rang"]), str(l["nom"]).to_upper(), Format.entier(float(l["patrimoine"]) / Format.TAUX_EURO, e.ab_courant())])
+		var rep_ok: bool = (modales.courant.find_child("TexteReplique", true, false) != null) == (not bilan.get("replique_rue", {}).is_empty())
+		_verifier("%s : écran de fin à 4 barres == bilan[rue] (%d lignes, rang %s), réplique == replique_rue, « Projets : n sur 2 », visage de Sylvie" % [nom, lus_f.size(), str(mfin.infos_rue.get("rang", "?"))],
+			rue_bilan.size() == 4 and lus_f == att_f and rep_ok and int(mfin.infos_rue.get("rang", 0)) == e.rang_rue() and mfin.infos_rue.has("projets") and bool(mfin.infos_rue.get("visage", false)), "%s / %s" % [str(lus_f), str(att_f)])
+	else:
+		_verifier("%s : rue éteinte : écran de fin inchangé (2 barres, aucune pastille de rang)" % nom, rue_bilan.is_empty() and mfin.barres_fin == null and modales.courant.find_child("PastilleRang", true, false) == null)
 	_fermer("rejouer")
 	_verifier("%s : écran de fin affiché, bilan calculé (%d rubriques)" % [nom, bilan.size()], fin_ok and not bilan.is_empty())
 	# Nettoyage : le test suivant repart d'une interface neuve
@@ -346,6 +430,17 @@ func _afficher_modale(e: EtatPartie, actif: bool, vues: Dictionary, ecarts_genre
 	var choix := StrategieTest.choix_modale(e, actif)
 	var pos := Vector2(960, 400)
 	var genre := ""
+	if c.get("kind", "") == "carte":
+		_verifier_ordres_bloques(e, ecarts_choix, str(c.get("titre", "")))
+		await _afficher_carte(e, c, choix, vues, ecarts_genre, ecarts_choix)
+		return
+	if c.get("kind", "") == "gazette":
+		await _afficher_gazette(e, c, vues, ecarts_genre, ecarts_choix)
+		return
+	if c.get("kind", "") == "projet":
+		_verifier_ordres_bloques(e, ecarts_choix, str(c.get("titre", "")))
+		await _afficher_projet(e, c, choix, vues, ecarts_genre, ecarts_choix)
+		return
 	if c.get("kind", "") == "banquier":
 		genre = "appel"
 		modales.presentation(c, pos)
@@ -360,6 +455,17 @@ func _afficher_modale(e: EtatPartie, actif: bool, vues: Dictionary, ecarts_genre
 	vues[genre] = int(vues.get(genre, 0)) + 1
 	if not await _attendre_genre(genre):
 		ecarts_genre.append("%s : « %s » affichée comme « %s »" % [Dates.texte_court(e.ab_courant()), str(c.get("titre", "")), modales.genre_courant])
+	if genre == "journal" and c.has("jours"):
+		# Lot 06 (A5, CA-U5) : le tableau du Lundi noir == c["jours"] (7 lignes arrondies à 5 points), absent sans « jours »
+		var jr: Array = c["jours"]
+		var lus: Array = modales._journal.lignes_jours.map(func(l: Array) -> String: return "|".join(PackedStringArray(l)))
+		var att: Array = jr.map(func(j: Dictionary) -> String: return "%s|%s|%s" % [ModaleJournal.texte_jour(str(j["jour"])), ModaleJournal.texte_indice(float(j["indice"])), ModaleJournal.texte_variation(float(j.get("variation", 0.0)), j == jr[0])])
+		if jr.size() == 7 and lus == att and modales._journal.cases in [7, 8]:
+			_krach_tableaux += 1
+		else:
+			ecarts_choix.append("krach : tableau %s au lieu de %s" % [str(lus), str(att)])
+	elif genre == "journal" and modales.courant.find_child("TableauJours", true, false) != null:
+		ecarts_choix.append("%s : tableau du Lundi noir présent sans « jours »" % str(c.get("titre", "")))
 	var ids: Array = c.get("choix", []).map(func(x: Dictionary) -> String: return str(x["id"]))
 	if not (choix in ids):
 		ecarts_choix.append("%s : choix « %s » absent de %s" % [str(c.get("titre", "")), choix, str(ids)])
@@ -370,6 +476,292 @@ func _afficher_modale(e: EtatPartie, actif: bool, vues: Dictionary, ecarts_genre
 	StrategieTest.jouer_mois(e, actif)
 	if not e.modale.is_empty() or e.historique.size() != n_hist + 1 or str(e.historique[n_hist]["choix"]) != e.libelle_choix(c, choix):
 		ecarts_choix.append("%s : historique « %s » au lieu de « %s »" % [str(c.get("titre", "")), str(e.historique[e.historique.size() - 1].get("choix", "")), e.libelle_choix(c, choix)])
+	hud.maj(e, false)
+
+
+## Carte du foyer comme la séquence de la ville : Modales.carte, choix, résolution, conclusion (passée d'un toucher), rangement.
+func _afficher_carte(e: EtatPartie, c: Dictionary, choix: String, vues: Dictionary, ecarts_genre: Array, ecarts_choix: Array) -> void:
+	var titre := str(c.get("titre", ""))
+	modales.carte(c, Vector2(960, 400))
+	var t := 0.0
+	var mc := modales.etat_carte()
+	while mc.phase != "attente" and t < 5.0:
+		await get_tree().process_frame
+		t += get_process_delta_time()
+	vues["carte"] = int(vues.get("carte", 0)) + 1
+	if modales.genre_courant != "carte" or mc.phase != "attente":
+		ecarts_genre.append("%s : « %s » affichée comme « %s » (phase %s)" % [Dates.texte_court(e.ab_courant()), titre, modales.genre_courant, mc.phase])
+		return
+	# Mise en page de la carte : cibles tactiles, polices, dans l'écran (lot 04, I1)
+	var vue := get_viewport().get_visible_rect()
+	for b in modales.courant.find_children("*", "Button", true, false):
+		var bb := b as Button
+		if not bb.disabled and minf(bb.size.x, bb.size.y) < Style.cible_min() - 0.5:
+			ecarts_choix.append("%s : bouton « %s » sous la cible minimale (%s)" % [titre, bb.name, str(bb.size)])
+	for l in modales.courant.find_children("*", "Label", true, false):
+		var lab := l as Label
+		var fnt := lab.get_theme_font("font")
+		var tl := lab.get_theme_font_size("font_size")
+		if (PolicesPixel.est_atkinson(fnt) and tl < 20) or (PolicesPixel.est_pixelify(fnt) and (tl < 28 or Style.a_chiffre(lab.text))):
+			ecarts_choix.append("%s : police de « %s » (%d)" % [titre, lab.text.left(20), tl])
+	if not vue.grow(1.0).encloses(modales.courant.get_global_rect()):
+		ecarts_choix.append("%s : carte hors de l'écran %s" % [titre, str(modales.courant.get_global_rect())])
+	_recu.clear()
+	mc.choisir(choix)
+	var r: Array = _recu.pop_back() if not _recu.is_empty() else []
+	if r != ["carte", choix]:
+		ecarts_choix.append("%s : choix_fait %s au lieu de %s" % [titre, str(r), str(["carte", choix])])
+	var n_hist := e.historique.size()
+	var res := e.resoudre_modale(choix)
+	if res.is_empty() or str(res.get("choix", "")) != choix:
+		ecarts_choix.append("%s : résolution %s" % [titre, str(res)])
+		return
+	if e.historique.size() < n_hist + 1 or str(e.historique[n_hist]["genre"]) != "carte":
+		ecarts_choix.append("%s : carte absente de l'historique" % titre)
+	modales.conclure_carte(res, Vector2(960, 400))
+	t = 0.0
+	while mc.phase != "conclusion" and t < 3.0:
+		await get_tree().process_frame
+		t += get_process_delta_time()
+	var lq := modales.courant.find_child("Consequence", true, false) as Label if modales.courant != null else null
+	if lq != null and str(res.get("consequence", "")) != "" and lq.text != str(res["consequence"]):
+		ecarts_choix.append("%s : conséquence affichée « %s »" % [titre, lq.text])
+	mc.passer()
+	await modales.carte_rangee
+	hud.maj(e, false)
+
+
+## Lot 05 (04-I) : cartes de projet sur contenus fabriqués (contrat lot_04 §4.2) : choix, jour J, confirmation, étiquette,
+## BANQUE fermée, « Mon foyer ». Les captures de la famille interface utilisent les mêmes fabricants.
+func _verifier_projets(nom: String, e: EtatPartie) -> void:
+	var scen: GDScript = load("res://scripts/outils/scenarios/interface.gd")
+	var pos := Vector2(960, 400)
+	var attendre_phase := func(mp: ModaleProjet, phase: String) -> bool:
+		var t := 0.0
+		while mp.phase != phase and t < 5.0:
+			await get_tree().process_frame
+			t += get_process_delta_time()
+		return mp.phase == phase
+	var mp := modales.etat_projet()
+	# Choix : 3 options, touche 2, ni Échap ni clic extérieur, la carte reste affichée
+	var c: Dictionary = scen.call("fabriquer_choix")
+	modales.projet(c, pos)
+	var ok: bool = await attendre_phase.call(mp, "attente")
+	_recu.clear()
+	await _touche(KEY_ESCAPE)
+	var apres_echap := _recu.is_empty() and modales.genre_courant == "projet"
+	var tit: Array = mp.ordre.map(func(id: String) -> String: return str((mp.boutons[id].find_child("TitreChoix", true, false) as Label).text))
+	var attendus: Array = c["choix"].map(func(x: Dictionary) -> String: return str(x["titre"]))
+	await _touche(KEY_2)
+	var r: Array = _recu.pop_back() if not _recu.is_empty() else []
+	_verifier("%s : projet, choix : 3 options (noms == contenu), touche 2 émet [projet, P1B], Échap sans effet, la carte reste affichée" % nom,
+		ok and mp.ordre.size() == 3 and tit == attendus and apres_echap and r == ["projet", "P1B"] and modales.genre_courant == "projet", "%s %s %s" % [str(tit), str(r), modales.genre_courant])
+	modales.conclure_projet({"choix": "P1B", "kind": "projet", "etape": "choix", "montant": 0.0, "consequence": "C'est décidé."}, pos)
+	await attendre_phase.call(mp, "conclusion")
+	var lq := modales.courant.find_child("Consequence", true, false) as Label if modales.courant != null else null
+	var conseq_ok := lq != null and lq.text == "C'est décidé."
+	mp.passer()
+	await modales.carte_rangee
+	_verifier("%s : projet, conclusion : ligne de conséquence affichée, passée d'un toucher, carte rangée" % nom, conseq_ok and modales.genre_courant == "" and not modales.carte_en_cours)
+	# Jour J, cas B : RÉALISER désactivé et sans effet, confirmation de RÉALISER EN VENDANT == plan, Échap = RETOUR, CONFIRMER émet
+	c = scen.call("fabriquer_jour_j", "b")
+	modales.projet(c, pos)
+	ok = await attendre_phase.call(mp, "attente")
+	_recu.clear()
+	var refus_avant := mp.refus
+	mp.choisir("realiser")
+	var refus_ok := mp.refus == refus_avant + 1 and _recu.is_empty()
+	mp.choisir("realiser_en_vendant")
+	var noms: Array = modales.courant.find_children("NomVente", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+	var plan: Array = []
+	for i in (c["ventes"] as Array).size():
+		plan.append("%d  %s" % [i + 1, str(c["ventes"][i]["nom"])])
+	var conf_ok: bool = mp.en_confirmation and noms == plan and _recu.is_empty()
+	await _touche(KEY_ESCAPE)
+	var retour_ok: bool = not mp.en_confirmation and modales.genre_courant == "projet" and _recu.is_empty()
+	mp.choisir("realiser_en_vendant")
+	mp.choisir_rang(0)   # 1 = CONFIRMER
+	r = _recu.pop_back() if not _recu.is_empty() else []
+	_verifier("%s : jour J (cas B) : choix désactivé sans effet, confirmation listant le plan, Échap = RETOUR, CONFIRMER émet realiser_en_vendant (%s)" % [nom, str(r)],
+		ok and refus_ok and conf_ok and retour_ok and r == ["projet", "realiser_en_vendant"], "%s %s %s %s" % [refus_ok, conf_ok, retour_ok, str(noms)])
+	modales.conclure_projet({"choix": "realiser_en_vendant", "kind": "projet", "etape": "echeance", "montant": 0.0, "consequence": "Fait.", "ventes": []}, pos)
+	await attendre_phase.call(mp, "conclusion")
+	mp.passer()
+	await modales.carte_rangee
+	# Jour J, cas A : rien à vendre (pas de 4e case), RÉALISER EN VENDANT désactivé
+	c = scen.call("fabriquer_jour_j", "a")
+	modales.projet(c, pos)
+	await attendre_phase.call(mp, "attente")
+	var sans_ventes: bool = modales.courant.find_child("RienAVendre", true, false) != null and modales.courant.find_child("CaseApresVentes", true, false) == null
+	var vendre_off: bool = bool(mp.choix["realiser_en_vendant"].get("desactive", false)) and mp.boutons["realiser_en_vendant"].disabled
+	_verifier("%s : jour J (cas A) : « Rien à vendre », pas de case APRÈS LES VENTES, RÉALISER EN VENDANT désactivé" % nom, sans_ventes and vendre_off)
+	mp.choisir("renoncer")
+	_recu.clear()
+	modales.conclure_projet({"choix": "renoncer", "kind": "projet", "etape": "echeance", "montant": 0.0, "consequence": "Abandonné.", "ventes": []}, pos)
+	await attendre_phase.call(mp, "conclusion")
+	mp.passer()
+	await modales.carte_rangee
+	# Étiquette MA MAISON : 2e ligne == contrat ; absente sans projet
+	var pr: Dictionary = scen.call("fabriquer_projet_en_cours")
+	var texte := hud.maj_projet(e, pr)
+	var attendu_t := "%s / %s" % [Format.nombre(Format.en_devise(float(pr["disponible"]), Format.devise(e.ab_courant()))), Format.entier(float(pr["montant"]), e.ab_courant())]
+	var sans := hud.maj_projet(e, {"_aucun": true})
+	_verifier("%s : étiquette MA MAISON : 2e ligne « %s » == disponible / montant du projet, absente sans projet" % [nom, attendu_t], texte == attendu_t and sans == "", "%s / %s" % [texte, sans])
+	# Rue éteinte : ni bloc ni rang (le panneau et la languette redeviennent ceux de main) ; puis la rue revient
+	hud.maj_rue_eteinte(null)
+	var eteint_ok := not hud.bloc_rue.visible and not hud._languette_rang.visible and hud.bloc_rue.lignes_texte.is_empty() and not hud.panneau_a_trois_colonnes()
+	hud.maj_rue(e)
+	_verifier("%s : rue éteinte : bloc LA RUE et rang cachés ; rallumée : bloc de retour" % nom, eteint_ok and hud.bloc_rue.visible and hud.bloc_rue.lignes_texte.size() == 4)
+	# Notifications de la rue (lot 06, A3) : toast = texte court, « Lire › » si long, relecture = texte_long, persistante jusqu'au toucher
+	var scen_r: GDScript = scen
+	var nl: Dictionary = scen_r.call("fabriquer_voisin", "long")
+	hud.notifier(nl, e.ab_courant())
+	await get_tree().create_timer(0.7).timeout
+	var tx := hud.notifs.find_children("TexteNotif", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+	var toast_ok: bool = tx.has(str(nl["texte"])) and hud.notifs.find_child("Lire", true, false) != null
+	var np: Dictionary = scen_r.call("fabriquer_voisin", "persistant")
+	hud.notifier(np, e.ab_courant())
+	await get_tree().create_timer(0.7).timeout
+	var pers_ok := hud.notifs.find_child("IndicationPersistante", true, false) != null
+	modales.lecture_notification({"source": "rue", "contenu": nl, "titre": str(nl["titre"])}, e.ab_courant())
+	await _attendre_genre("info")
+	var lt := modales.courant.find_child("TexteLecture", true, false) as Label
+	var lecture_ok := lt != null and lt.text == str(nl["texte_long"])
+	_fermer("fermer")
+	_verifier("%s : notifications de la rue : toast == texte court + « Lire › », relecture == texte_long, notification persistante gardée jusqu'au toucher" % nom, toast_ok and pers_ok and lecture_ok, "%s %s %s" % [toast_ok, pers_ok, lecture_ok])
+	# BANQUE fermée : bouton grisé et phrase ; rouverte ensuite
+	var ferme := hud.maj_banque_fermee(true)
+	var phrase_ok := hud.l_banque_fermee.text == "Réglez d'abord la carte du foyer." and hud.l_banque_fermee.visible and hud.b_marche.disabled
+	hud.maj_banque_fermee(false)
+	_verifier("%s : BANQUE grisée avec « Réglez d'abord la carte du foyer. » pendant une carte, rouverte ensuite" % nom, ferme and phrase_ok and not hud.b_marche.disabled and not hud.l_banque_fermee.visible)
+	# « Mon foyer » : projet en cours et projets passés == contenus
+	var fab := {"projet": pr, "passes": scen.call("fabriquer_projets_passes")}
+	modales.foyer(e, pos, fab)
+	await _attendre_genre("info")
+	var mf := modales.etat_foyer()
+	var lp: Array = mf.lignes_projet.map(func(l: Label) -> String: return l.text)
+	var ls: Array = mf.lignes_passes.map(func(l: Label) -> String: return l.text)
+	var passes_ok := ls.size() == 3 and str(ls[0]).begins_with("abandonné") and str(ls[1]).begins_with("réalisé après report") and str(ls[2]).begins_with("réalisé ·")
+	var sans_jauge := true
+	var chiffres_humeur: Array = []
+	for l in [mf.l_phrase]:   # la cause est une citation du moteur (elle peut citer un montant)
+		if l != null and RegEx.create_from_string("[0-9]").search((l as Label).text) != null:
+			chiffres_humeur.append((l as Label).text)
+	sans_jauge = chiffres_humeur.is_empty()
+	_fermer("fermer")
+	_verifier("%s : « Mon foyer » : projet en cours == contrat (%d lignes), 3 projets passés avec leur mot, aucun nombre d'humeur" % [nom, lp.size()],
+		lp == ModaleFoyer.textes_projet(pr, e.ab_courant()) and passes_ok and sans_jauge, "%s | %s | %s %s" % [str(lp), str(ls), str(passes_ok), str(sans_jauge)])
+	hud.maj_projet(e, {"_aucun": true})
+
+## « Le krach, un an après » comme la séquence de la ville : Modales.gazette, 3 barres == c["barres"] (jamais triées), Échap sans effet,
+## J'AI COMPRIS (touche 1) émet [gazette, ok], résolution du moteur, fondu.
+func _afficher_gazette(e: EtatPartie, c: Dictionary, vues: Dictionary, ecarts_genre: Array, ecarts_choix: Array) -> void:
+	modales.gazette(c, Vector2(960, 400))
+	var mg := modales.etat_gazette()
+	var t := 0.0
+	while mg.phase != "attente" and t < 5.0:
+		await get_tree().process_frame
+		t += get_process_delta_time()
+	vues["gazette"] = int(vues.get("gazette", 0)) + 1
+	if modales.genre_courant != "gazette" or mg.phase != "attente":
+		ecarts_genre.append("gazette : affichée comme « %s »" % modales.genre_courant)
+		return
+	var ab := e.ab_courant()
+	var ids: Array = mg.barres_vues.map(func(b: Dictionary) -> String: return str(b["id"]))
+	var vals: Array = mg.barres_vues.map(func(b: Dictionary) -> String: return str(b["valeur_txt"]))
+	var attendues: Array = c["barres"].map(func(b: Dictionary) -> String: return Format.entier(float(b["valeur"]), ab))
+	var choisies: int = c["barres"].filter(func(b: Dictionary) -> bool: return bool(b["choisi"])).size()
+	if ids != ["vendu", "rien", "renforce"] or vals != attendues or mg.n_entourees != choisies or mg.n_entourees > 1:
+		ecarts_choix.append("gazette : barres %s %s (entourées %d / %d)" % [str(ids), str(vals), mg.n_entourees, choisies])
+	_recu.clear()
+	await _touche(KEY_ESCAPE)
+	if not _recu.is_empty() or modales.genre_courant != "gazette":
+		ecarts_choix.append("gazette : Échap a fermé la fiche")
+	await _touche(KEY_1)
+	var r: Array = _recu.pop_back() if not _recu.is_empty() else []
+	if r != ["gazette", "ok"]:
+		ecarts_choix.append("gazette : choix_fait %s" % str(r))
+	var res := e.resoudre_modale("ok")
+	if res.is_empty():
+		ecarts_choix.append("gazette : résolution refusée")
+	modales.conclure_gazette(res, Vector2(960, 400))
+	await modales.carte_rangee
+	_gazettes_vues += 1
+	hud.maj(e, false)
+
+
+## Carte ou projet ouvert : le moteur refuse les ordres débiteurs (« Réglez d'abord la carte du foyer. ») et l'interface dit la même phrase.
+func _verifier_ordres_bloques(e: EtatPartie, ecarts: Array, titre: String) -> void:
+	var cc0 := e.joueur.cc
+	var r0 := e.acheter(e.joueur, "elf", Produits.f(500.0))
+	if not e.ordres_bloques() or r0.get("ok", true) or str(r0.get("msg", "")) != Hud.PHRASE_BANQUE_FERMEE or str(r0.get("refus", "")) != "carte" or e.joueur.cc != cc0:
+		ecarts.append("%s : ordres_bloques()=%s, achat %s" % [titre, str(e.ordres_bloques()), str(r0)])
+	else:
+		_ordres_refuses += 1
+
+
+## Projet du foyer joué comme la séquence de la ville : Modales.projet, choix, confirmation éventuelle, résolution, conclusion.
+## Vérifie sur le vrai moteur : le choix fixe projet_en_cours()["id"], les ventes faites égalent le plan, le compte ne passe pas sous 0.
+func _afficher_projet(e: EtatPartie, c: Dictionary, choix: String, vues: Dictionary, ecarts_genre: Array, ecarts_choix: Array) -> void:
+	var titre := str(c.get("titre", ""))
+	var pos := Vector2(960, 400)
+	modales.projet(c, pos)
+	var mp := modales.etat_projet()
+	var t := 0.0
+	while mp.phase != "attente" and t < 5.0:
+		await get_tree().process_frame
+		t += get_process_delta_time()
+	vues["projet"] = int(vues.get("projet", 0)) + 1
+	if modales.genre_courant != "projet" or mp.phase != "attente":
+		ecarts_genre.append("%s : « %s » affiché comme « %s »" % [Dates.texte_court(e.ab_courant()), titre, modales.genre_courant])
+		return
+	var plan: Array = e.plan_vente_projet() if str(c.get("etape", "")) == "echeance" else []
+	if str(c.get("etape", "")) == "choix":
+		for ch: Dictionary in c["choix"]:
+			if str(ch["id"]) == "P2B" and absf(float(ch["montant"]) - Produits.f(35000.0)) > 0.01:
+				ecarts_choix.append("P2B à %s au lieu de 35 000 F" % str(ch["montant"]))
+	_recu.clear()
+	mp.choisir(choix)
+	if mp.en_confirmation:
+		var noms: Array = modales.courant.find_children("NomVente", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+		var attendus: Array = []
+		for i in plan.size():
+			attendus.append("%d  %s" % [i + 1, str(plan[i]["nom"])])
+		if noms != attendus or not _recu.is_empty():
+			ecarts_choix.append("%s : confirmation %s au lieu du plan %s" % [titre, str(noms), str(attendus)])
+		mp.choisir_rang(0)
+	var r: Array = _recu.pop_back() if not _recu.is_empty() else []
+	if r != ["projet", choix]:
+		ecarts_choix.append("%s : choix_fait %s au lieu de %s" % [titre, str(r), str(["projet", choix])])
+	var res := e.resoudre_modale(choix)
+	if res.is_empty() or str(res.get("choix", "")) != choix:
+		ecarts_choix.append("%s : résolution %s" % [titre, str(res)])
+		return
+	if str(c.get("etape", "")) == "choix":
+		var pe := e.projet_en_cours()
+		if str(pe.get("id", "")) != choix:
+			ecarts_choix.append("%s : projet_en_cours()[id] = %s au lieu de %s" % [titre, str(pe.get("id", "")), choix])
+		else:
+			_projets_choisis += 1
+	elif choix == "realiser_en_vendant":
+		var faites: Array = res.get("ventes", [])
+		var ok_plan := faites.size() == plan.size()
+		for i in mini(faites.size(), plan.size()):
+			ok_plan = ok_plan and str(faites[i].get("id", "")) == str(plan[i].get("id", "")) and absf(float(faites[i].get("net", 0.0)) - float(plan[i].get("net", 0.0))) < 0.5
+		if not ok_plan or e.joueur.cc < -0.01:
+			ecarts_choix.append("%s : ventes faites %s != plan %s (compte %s)" % [titre, str(faites.size()), str(plan.size()), str(e.joueur.cc)])
+		else:
+			_ventes_conformes += 1
+	modales.conclure_projet(res, pos)
+	t = 0.0
+	while mp.phase != "conclusion" and t < 3.0:
+		await get_tree().process_frame
+		t += get_process_delta_time()
+	var lq := modales.courant.find_child("Consequence", true, false) as Label if modales.courant != null else null
+	if lq != null and str(res.get("consequence", "")) != "" and lq.text != str(res["consequence"]):
+		ecarts_choix.append("%s : conséquence affichée « %s »" % [titre, lq.text])
+	mp.passer()
+	await modales.carte_rangee
 	hud.maj(e, false)
 
 
@@ -393,18 +785,26 @@ func _visiter_banque(e: EtatPartie) -> Dictionary:
 			pb.fermer_demande.emit()
 			break
 		fiche_ok = fiche_ok and droite.get_child_count() > 0 and _textes(droite).size() >= 3
+		var lg := modales.courant.find_child("LigneProjetGuichet", true, false) as Label
+		var attendu_g := e.ligne_projet_guichet()
+		if lg == null or (lg.text if lg.visible else "") != attendu_g:
+			ok = false
+			vus.append("%s KO (ligne du guichet « %s » au lieu de « %s »)" % [pid, lg.text if lg != null else "?", attendu_g])
+		elif attendu_g != "":
+			_guichets_vus += 1
 		# Lot 03 (I6) : ligne des dividendes, seulement pour une action, d'après la logique
 		var ld := droite.find_child("Dividendes", true, false) as Label
 		var attendu := ""
 		if e.mois_dividende(pid) > 0:
-			attendu = ("Dividendes reçus : " + Format.entier(e.dividendes_recus(pid), e.ab_courant())) if e.dividendes_recus(pid) > 0.0 \
-				else "Dividende versé chaque année en " + Dates.MOIS[e.mois_dividende(pid) - 1]
+			# 03-R : le texte de la fiche est écrit par la logique (Banquier.texte_fiche_dividende, CA-I7)
+			attendu = Banquier.texte_fiche_dividende(e, pid)
 		var lu := ld.text if ld != null else ""
 		if lu != attendu:
 			ok = false
 			vus.append("%s KO (dividendes « %s » au lieu de « %s »)" % [pid, lu, attendu])
 		elif attendu != "":
-			_div_vus[attendu.get_slice(" ", 1)] = int(_div_vus.get(attendu.get_slice(" ", 1), 0)) + 1
+			var cle_div := "reçus" if attendu.begins_with("Dividendes reçus") else "versé"
+			_div_vus[cle_div] = int(_div_vus.get(cle_div, 0)) + 1
 		pb.call("_afficher_automatique", pid)
 		await get_tree().process_frame
 		var auto_ok := droite.get_child_count() > 0 and _textes(droite).size() >= 2
@@ -439,6 +839,14 @@ func _verifier_historique(e: EtatPartie, nom: String) -> void:
 		modales.historique(e, f, 0)
 		var ok := await _attendre_genre("historique")
 		ok = ok and modales.historique_filtre == f
+		# Recette R-RUE A1 : le nombre de chaque onglet est entier et visible (texte non coupé)
+		for bt: Button in modales.find_children("Filtre_*", "Button", true, false):
+			var police: Font = bt.get_theme_font("font")
+			var largeur := police.get_string_size(bt.text, HORIZONTAL_ALIGNMENT_LEFT, -1, bt.get_theme_font_size("font_size")).x
+			var place := bt.size.x - 30.0 - (bt.icon.get_width() + 9.0 if bt.icon != null else 0.0)
+			if largeur > place or not bt.text.split(" ")[-1].is_valid_int():
+				ok = false
+				detail += "onglet coupé %s (%d > %d) ; " % [bt.text, int(largeur), int(place)]
 		detail += "%s : %d ; " % [f if f != "" else "tout", e.historique_recent(f).size()]
 		if not ok:
 			filtres_ok = false
@@ -491,7 +899,6 @@ func _attendre_genre(genre: String) -> bool:
 	return modales.ouverte() and modales.genre_courant == genre and is_instance_valid(modales.courant) and modales.courant.visible
 
 
-## Ferme la modale ouverte avec le choix id ; renvoie [genre, id] reçu par choix_fait (signal synchrone).
 ## Chiffres affichés dans la case « nom » de la fenêtre ouverte (grille des frais du relevé), -1 si absente.
 func _chiffres_case(nom: String) -> int:
 	if not is_instance_valid(modales.courant):
@@ -506,6 +913,7 @@ func _chiffres_case(nom: String) -> int:
 	return int(s) if s != "" else -1
 
 
+## Ferme la modale ouverte avec le choix id ; renvoie [genre, id] reçu par choix_fait (signal synchrone).
 func _fermer(id: String) -> Array:
 	_recu.clear()
 	modales.fermer(id)

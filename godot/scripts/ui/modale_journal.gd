@@ -61,6 +61,9 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 	chapo.name = "Defilant"
 	chapo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(chapo)
+	var avec_jours: bool = c.has("jours") and not (c["jours"] as Array).is_empty()
+	if avec_jours:
+		v.add_child(tableau_jours(c, p.custom_minimum_size.x, compact))   # lot 06 (E5, A5) : le Lundi noir jour par jour
 	v.add_child(_impact(c, p.custom_minimum_size.x))
 	if lecture:
 		var hl := HBoxContainer.new()
@@ -83,7 +86,8 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 			manchette.visible_ratio = 1.0
 			m.apparaitre(p)
 		return
-	v.add_child(Style.label("QUE FAITES-VOUS ?", 20, Style.capitales(), Style.ENCRE))
+	if not (avec_jours and compact):   # téléphone : avec le tableau, le libellé cède sa place (les 3 boutons parlent d'eux-mêmes)
+		v.add_child(Style.label("QUE FAITES-VOUS ?", 20, Style.capitales(), Style.ENCRE))
 	var zone_choix := HBoxContainer.new()
 	zone_choix.add_theme_constant_override("separation", 14)
 	zone_choix.name = "Choix"
@@ -128,6 +132,160 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 	t2.tween_interval(1.0)
 	t2.tween_callback(func() -> void: m.boutons_actifs = true)
 	t2.tween_property(zone_choix, "modulate:a", 1.0, 0.2)
+
+
+## « 16 octobre 1987 » → « VEN 16 » (affichage seulement) : « vendredi 16 octobre » → trois lettres + numéro du jour.
+static func texte_jour(jour: String) -> String:
+	var mots := jour.split(" ", false)
+	if mots.size() < 2:
+		return jour.to_upper()
+	return "%s %s" % [str(mots[0]).left(3).to_upper(), mots[1]]
+
+
+## Valeur affichée : indice arrondi à 5 points (« environ »), sans devise.
+static func texte_indice(indice: float) -> String:
+	return Format.nombre(roundf(indice / 5.0) * 5.0, 0)
+
+
+## Variation affichée : au dixième, signe typographique (« −9,7 % », « +3,3 % ») ; « — » pour le 1er jour (variation inconnue).
+static func texte_variation(variation: float, premier: bool) -> String:
+	return "—" if premier else Format.pct(variation / 100.0, 1)
+
+
+## Cumul sur la période (dernier indice / premier − 1), arrondi à l'unité : « −20 % ».
+static func texte_cumul(jours: Array) -> String:
+	var p := float(jours[0]["indice"])
+	return Format.pct(roundf((float(jours[jours.size() - 1]["indice"]) / p - 1.0) * 100.0) / 100.0, 0)
+
+
+## Phrase de certitude construite depuis `certitude` : « Seuls le 16 et le 19 sont des chiffres d'archives. » ; "" si tous sont en A ou aucun.
+static func phrase_certitude(jours: Array) -> String:
+	var a: Array = []
+	for j: Dictionary in jours:
+		if str(j.get("certitude", "C")) == "A":
+			a.append(str(texte_jour(str(j["jour"]))).split(" ")[1])
+	if a.is_empty() or a.size() == jours.size():
+		return ""
+	if a.size() == 1:
+		return "Seul le %s est un chiffre d'archives." % a[0]
+	return "Seuls %s sont des chiffres d'archives." % (("le %s" % " et le ".join(PackedStringArray(a.slice(0, 2)))) if a.size() == 2 else ("les " + ", ".join(PackedStringArray(a.slice(0, a.size() - 1))) + " et " + a[a.size() - 1]))
+
+
+## Tableau du Lundi noir (docs/24 §2.4) : bandeau de cases (8 au PC : 7 jours + cumul ; 7 sur la 2e ligne au téléphone), papier du journal,
+## valeurs « environ ». Lu par les captures : `cases` = nombre de cases, `lignes` = [jour, valeur, variation].
+func tableau_jours(c: Dictionary, largeur_page: float, compact: bool) -> Control:
+	var jours: Array = c["jours"]
+	var v := VBoxContainer.new()
+	v.name = "TableauJours"
+	v.add_theme_constant_override("separation", 3 if compact else 6)
+	var tete := HBoxContainer.new()
+	var titre := Style.label("INDICE DE PARIS, ENVIRON", 20, Style.capitales(), Style.ENCRE)
+	titre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tete.add_child(titre)
+	var cumul := texte_cumul(jours)
+	var baisse_cumul := cumul.begins_with(Format.MOINS)
+	if compact:
+		var lc := Style.label("%s AU %s : " % [str(texte_jour(str(jours[0]["jour"]))).split(" ")[1], texte_jour(str(jours[jours.size() - 1]["jour"])).split(" ")[1] + " OCTOBRE"], 20, Style.capitales(), Style.ENCRE)
+		tete.add_child(lc)
+		tete.add_child(_fleche_variation(baisse_cumul))
+		tete.add_child(Style.label(cumul, 22, Style.ui_gras(), Style.ENCRE_ROUGE if baisse_cumul else Style.GAIN_PAPIER))
+	else:
+		var phrase := phrase_certitude(jours)
+		if phrase != "":
+			var lp := Style.label(phrase, 20, Style.ui(), Style.ENCRE)
+			lp.name = "Certitude"
+			tete.add_child(lp)
+	v.add_child(tete)
+	var rangee := HBoxContainer.new()
+	rangee.name = "Cases"
+	rangee.add_theme_constant_override("separation", 0)
+	var n := 0
+	lignes_jours.clear()
+	for k in jours.size():
+		var j: Dictionary = jours[k]
+		var texte_v := texte_variation(float(j.get("variation", 0.0)), k == 0)
+		var baisse := float(j.get("variation", 0.0)) < 0.0
+		var col := Style.ENCRE_ROUGE if baisse else Style.GAIN_PAPIER
+		var case_ := _case(str(texte_jour(str(j["jour"]))), texte_indice(float(j["indice"])), texte_v, k > 0, baisse, col, compact, false)
+		case_.name = "CaseJour%d" % k
+		rangee.add_child(case_)
+		lignes_jours.append([texte_jour(str(j["jour"])), texte_indice(float(j["indice"])), texte_v])
+		n += 1
+	if not compact:
+		var cc := _case("EN 7 JOURS", "", cumul, true, baisse_cumul, Style.ENCRE_ROUGE if baisse_cumul else Style.GAIN_PAPIER, false, true)
+		cc.name = "CaseCumul"
+		rangee.add_child(cc)
+		n += 1
+	cases = n
+	v.add_child(rangee)
+	return v
+
+
+var cases := 0
+var lignes_jours: Array = []
+
+
+## Une case du tableau : jour (gras 20), valeur (gras 26 PC / 22 téléphone), variation (flèche sprite + texte). cumul : fond pierre claire.
+func _case(jour: String, valeur: String, variation: String, avec_fleche: bool, baisse: bool, couleur: Color, compact: bool, cumul: bool) -> Control:
+	var pc := PanelContainer.new()
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pc.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = PalettePixel.couleur("pierre_claire") if cumul else Color(0, 0, 0, 0)
+	sb.set_border_width_all(0)
+	sb.border_width_top = 3
+	sb.border_width_bottom = 3
+	sb.border_width_left = 3
+	sb.border_width_right = 3 if cumul else 0
+	sb.border_color = Style.ENCRE
+	sb.content_margin_left = 6
+	sb.content_margin_right = 6
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 3
+	pc.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 0)
+	var lj := Style.label(jour, 20, Style.ui_gras(), Style.ENCRE)
+	lj.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lj.name = "Jour"
+	v.add_child(lj)
+	if compact:
+		var h := HBoxContainer.new()
+		h.alignment = BoxContainer.ALIGNMENT_CENTER
+		h.add_theme_constant_override("separation", 3)
+		var lv := Style.label(valeur, 22, Style.ui_gras(), Style.ENCRE)
+		lv.name = "Valeur"
+		h.add_child(lv)
+		if avec_fleche:
+			h.add_child(_fleche_variation(baisse))
+		var lx := Style.label(variation.replace(" %", "").replace(Format.ESPACE + "%", "%"), 20, Style.ui(), couleur if avec_fleche else Style.ENCRE)
+		lx.name = "Variation"
+		h.add_child(lx)
+		v.add_child(h)
+	else:
+		if valeur != "":
+			var lv2 := Style.label(valeur, 26, Style.ui_gras(), Style.ENCRE)
+			lv2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lv2.name = "Valeur"
+			v.add_child(lv2)
+		var h2 := HBoxContainer.new()
+		h2.alignment = BoxContainer.ALIGNMENT_CENTER
+		h2.add_theme_constant_override("separation", 3)
+		if avec_fleche:
+			h2.add_child(_fleche_variation(baisse))
+		var lx2 := Style.label(variation, 20, Style.ui_gras() if cumul else Style.ui(), couleur if avec_fleche else Style.ENCRE)
+		lx2.name = "Variation"
+		h2.add_child(lx2)
+		v.add_child(h2)
+	pc.add_child(v)
+	return pc
+
+
+## ▲ / ▼ : sprites 8 × 8 recolorés pour le papier (les glyphes manquent aux polices) ; la couleur ne porte jamais seule le sens.
+func _fleche_variation(baisse: bool) -> Control:
+	var f := CadresPixel.icone("fleche_bas" if baisse else "fleche_haut", {"perte": "perte_papier"} if baisse else {"gain": "gain_papier"})
+	f.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return f
 
 
 ## Pastille d'impact, toujours sur 2 lignes voulues (encadré aux coins doux, pas une gélule) :

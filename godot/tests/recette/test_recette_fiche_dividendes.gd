@@ -102,13 +102,15 @@ func _textes() -> void:
 	e.acheter(e.joueur, "peugeot", Produits.f(5000.0))
 	e.acheter(e.joueur, "elf", Produits.f(5000.0))
 	var autres := []
-	for pid in ["livret", "sicav", "av", "pel", "loreal"]:
+	for pid in ["livret", "sicav", "av", "pel"]:
 		var t := PanneauBanque.texte_dividendes(e, pid)
 		if t != "":
 			autres.append("%s : %s" % [pid, t])
-	verifier("Aucune ligne de dividende pour un produit qui n'est pas une action, ni pour une action non détenue (L'Oréal)", autres.is_empty(), str(autres))
+	verifier("Aucune ligne de dividende pour un produit qui n'est pas une action", autres.is_empty(), str(autres))
+	var regle := "Dividende : versé en mai, si l'entreprise en distribue cette année-là."
+	verifier("Depuis 03-R (docs/22 §1) : action non détenue (L'Oréal) = la règle, sans « chaque année »", PanneauBanque.texte_dividendes(e, "loreal") == regle, PanneauBanque.texte_dividendes(e, "loreal"))
 	var avant := PanneauBanque.texte_dividendes(e, "peugeot")
-	verifier("Peugeot détenue en avril 1986 : « Dividende versé chaque année en mai »", avant == "Dividende versé chaque année en mai", avant)
+	verifier("Peugeot détenue en avril 1986 : la règle (03-R), jamais « chaque année »", avant == regle and not avant.contains("chaque année"), avant)
 	var nul := false
 	while e.ab_courant() < Dates.lire("1986-06"):
 		while not e.modale.is_empty():
@@ -121,4 +123,4 @@ func _textes() -> void:
 	print("RECETTE peugeot_1986 notif_nul=%s fiche_juin_1986=« %s » elf=« %s »" % [str(nul), apres, PanneauBanque.texte_dividendes(e, "elf")])
 	verifier("Elf détenue en mai 1986 : « Dividendes reçus : … » en juin 1986", PanneauBanque.texte_dividendes(e, "elf").begins_with("Dividendes reçus : "))
 	e.vendre(e.joueur, "elf", 0.0, true)
-	verifier("Elf vendue : plus de ligne de dividende (action non détenue)", PanneauBanque.texte_dividendes(e, "elf") == "")
+	verifier("Elf vendue : la fiche garde le cumul reçu (03-R : dividendes_recus > 0)", PanneauBanque.texte_dividendes(e, "elf").begins_with("Dividendes reçus : "), PanneauBanque.texte_dividendes(e, "elf"))

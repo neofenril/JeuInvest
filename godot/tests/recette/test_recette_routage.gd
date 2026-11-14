@@ -85,7 +85,7 @@ func _test() -> void:
 	Partie.rouvrir_modale()
 	var ouverte := await _attendre(func() -> bool: return modales.ouverte(), 5.0)
 	var duree := (Time.get_ticks_msec() - t0) / 1000.0
-	verifier("carte : la séquence ouvre le courrier (repli) en ≤ 1 s", ouverte and modales.genre_courant == "courrier" and duree <= 1.0, "genre=%s %.2f s" % [modales.genre_courant, duree])
+	verifier("carte : la séquence ouvre la carte de dilemme (Modales.carte, 04-I) en ≤ 1 s", ouverte and modales.genre_courant == "carte" and duree <= 1.0, "genre=%s %.2f s" % [modales.genre_courant, duree])
 	var pris := ""
 	for ch: Dictionary in e.contenu_modale().get("choix", []):
 		if not bool(ch.get("desactive", false)):

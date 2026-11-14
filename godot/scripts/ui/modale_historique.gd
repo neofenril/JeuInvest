@@ -3,7 +3,8 @@ extends RefCounted
 ## Morceau de Modales (T9) : l'historique des pop-ups (retour du joueur du 27/10/2026) et la relecture
 ## d'une notification. Le filtre et le défilement courants restent dans la façade (lus par principal.gd).
 
-const NOMS_SOURCES := {"maison": "MA MAISON", "banque": "MA BANQUE", "media": "LA GAZETTE"}
+const NOMS_SOURCES_COURTS := {"maison": "MAISON", "banque": "BANQUE", "media": "GAZETTE", "rue": "RUE"}
+const NOMS_SOURCES := {"maison": "MA MAISON", "banque": "MA BANQUE", "media": "LA GAZETTE", "rue": "LA RUE"}
 
 var m: Modales
 var _defile: ScrollContainer = null
@@ -69,10 +70,16 @@ func ouvrir(e: EtatPartie, filtre := "", defilement := 0) -> void:
 	var filtres := HBoxContainer.new()
 	filtres.add_theme_constant_override("separation", 6)
 	var groupe := ButtonGroup.new()
-	for f in ["", "maison", "banque", "media"]:
+	# Lot 06 : l'onglet LA RUE n'existe que si la rue est allumée (ou si l'historique en garde des entrées)
+	var onglets: Array = ["", "maison", "banque", "media"]
+	if e.has_method("rue_active") and (e.rue_active() or not e.historique_recent("rue").is_empty()):
+		onglets.append("rue")
+	for f in onglets:
 		var n := e.historique_recent(f).size()
 		var b := Button.new()
-		b.text = ("TOUT" if f == "" else str(NOMS_SOURCES[f])) + "  " + str(n)
+		# Recette R-RUE A1 : au téléphone, 5 onglets : noms courts, sans icône, pour que le nombre reste entier
+		var nom_onglet: String = "TOUT" if f == "" else str(NOMS_SOURCES_COURTS[f] if compact else NOMS_SOURCES[f])
+		b.text = nom_onglet + " " + str(n)
 		b.toggle_mode = true
 		b.button_group = groupe
 		b.focus_mode = Control.FOCUS_NONE
@@ -81,7 +88,7 @@ func ouvrir(e: EtatPartie, filtre := "", defilement := 0) -> void:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.clip_text = true
 		b.add_theme_font_override("font", Style.capitales())
-		b.add_theme_font_size_override("font_size", 28)
+		b.add_theme_font_size_override("font_size", 26 if compact else 28)
 		var inactif := CadresPixel.style_marges("onglet", 15, 12, 15, 12)
 		var actif := CadresPixel.style_marges("onglet_actif", 15, 15, 15, 9)
 		for etat: String in ["normal", "hover", "disabled"]:
@@ -93,7 +100,7 @@ func ouvrir(e: EtatPartie, filtre := "", defilement := 0) -> void:
 			b.add_theme_color_override(k, Style.TEXTE)
 		for k: String in ["font_pressed_color", "font_hover_pressed_color"]:
 			b.add_theme_color_override(k, Style.ENCRE)
-		if f != "":
+		if f != "" and not compact:
 			b.icon = CadresPixel.texture("source_" + f, 2, {"creme": Style.NOMS_PALETTE_SOURCES[f]})
 			b.add_theme_constant_override("h_separation", 9)
 		b.set_pressed_no_signal(f == filtre)
@@ -279,6 +286,13 @@ func relire(e: EtatPartie, i: int) -> bool:
 			m.journal(c, Vector2(-1, -1), false, str(h["choix"]))
 		"courrier":
 			m.courrier(c, Vector2(-1, -1), e, str(h["choix"]), a)
+		"carte", "projet":
+			m.carte_lecture(h, a)
+		"gazette":
+			if c.has("barres"):
+				m.gazette_lecture(c)   # « Le krach, un an après » : les 3 barres relues telles qu'elles sont apparues
+			else:
+				m.lecture_notification(h, a)
 		_:
 			if str(h["type"]) == "releve" and float(c.get("frais_total", 0.0)) > 0.0:
 				m.releve(c, a)
@@ -312,9 +326,25 @@ func lecture_notification(h: Dictionary, a: int) -> void:
 	v.add_child(tete)
 	var titre := Style.label(str(n.get("titre", h.get("titre", ""))), 30 if not compact else 26, Style.ui_gras(), Style.ENCRE)
 	titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(titre)
 	var texte := Style.label(str(n.get("texte", "")), 24 if not compact else 22, Style.ui(), Style.ENCRE)
+	texte.name = "TexteLecture"
 	texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if source == "rue" and str(n.get("type", "")) == "voisin":
+		# Lot 06 (A3) : la rue se relit en carte de lecture : pastille d'initiale 96 × 96, le nom, le texte ENTIER (texte_long si la
+		# notification est longue : l'interface ne coupe jamais un texte)
+		if bool(n.get("long", false)) and str(n.get("texte_long", "")) != "":
+			texte.text = str(n["texte_long"])
+		var cote := 96.0
+		var corps := HBoxContainer.new()
+		corps.add_theme_constant_override("separation", 18)
+		var qui := str(n.get("qui", ""))
+		corps.add_child(BlocRue.pastille(qui, str({"jeanmi": "J", "livret": "T", "matelas": "M", "lopez": "L", "lefranc": "L"}.get(qui, str(n.get("titre", "?")).left(1).to_upper())), cote, 48))
+		titre.add_theme_font_size_override("font_size", 40 if not compact else 32)
+		titre.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		corps.add_child(titre)
+		v.add_child(corps)
+	else:
+		v.add_child(titre)
 	v.add_child(texte)
 	if h.get("a_montant", false):
 		var mt := float(h["montant"])
