@@ -24,6 +24,7 @@ var _confirme := false
 var _principal: Control = null        # tout ce qui est visible hors confirmation
 var _confirm: Control = null          # écran de confirmation
 var _t_entete: Label = null
+var _portrait: Control = null         # masqué dans la confirmation au téléphone : la liste des ventes prend sa place
 
 
 func _init(modales: Modales) -> void:
@@ -85,6 +86,7 @@ func ouvrir(c: Dictionary, depart: Vector2) -> void:
 	tete.add_theme_constant_override("separation", 18 if compact else 24)
 	var portrait := CadresPixel.icone("portrait_sylvie_" + ModaleCarte.nom_humeur(ModaleCarte._humeur_actuelle()))
 	portrait.name = "Portrait"
+	_portrait = portrait
 	portrait.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	tete.add_child(portrait)
 	var colonne := VBoxContainer.new()
@@ -477,7 +479,7 @@ func _construire_confirmation(c: Dictionary, a: int, compact: bool, interieur: f
 	var defile := ScrollContainer.new()
 	defile.name = "Defilant"
 	defile.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	defile.custom_minimum_size = Vector2(interieur, 120.0 if compact else 300.0)
+	defile.custom_minimum_size = Vector2(interieur, 190.0 if compact else 300.0)
 	var liste := VBoxContainer.new()
 	liste.add_theme_constant_override("separation", 6)
 	liste.custom_minimum_size.x = interieur - 24.0
@@ -551,6 +553,8 @@ func _basculer(confirmation: bool) -> void:
 	_confirm.visible = confirmation
 	if _texte != null:
 		_texte.visible = not confirmation
+	if m.compact and _portrait != null:
+		_portrait.visible = not confirmation   # recette R-MAISON m5 : 2 ventes visibles au lieu d'une
 
 
 func _confirmer_ventes() -> void:
