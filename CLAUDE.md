@@ -71,6 +71,12 @@ Chaque agent a une base de connaissances dans `docs/connaissances/<agent>.md` : 
 - Fusionné dans main (e125a5f) : lot 02 complet (02-I bouton COURRIER + badge des non-lus + saut animé + étiquettes sans chevauchement ; 02-V pièces du mois, retour de caméra, arbre en fondu, vitrine PX0 retirée). 551 vérifications au vert. Exports 0.4 faits : `export\windows\JeuClaude.exe` (110 Mo) et `export\android\JeuClaude.apk` (58 Mo, debug).
 - Suite : 03-V (reports : pièces sur l'enseigne, montants longs, seuil test_rue, GrillePixel) et 03-L (dividendes, avoir fiscal) selon `docs/lots/feuille_de_route.md` §2.6.
 
+## État du projet (2026-11-14) : version 0.5 « jouable »
+- Fusionné dans main (a608eb2) : lots 02 à 05 : dividendes (une notification par mois, relevé en 4 cas), cartes de dilemme du foyer + humeur de Sylvie, projets (P1/P2) avec vente automatique (règle à redéfinir plus tard, docs/lots/feuille_de_route.md §2.11), Jean-Mi et classement de la rue (bloc LA RUE dans « Mon argent »), Lundi noir (tableau de 7 jours), « Le krach, un an après » (3 barres), écran de fin 4 barres. 1 105 vérifications (`tests.ps1 -Recette -Delai 700`).
+- Exports 0.5 faits le 2026-11-14 : `export\windows\JeuClaude.exe` (110 Mo) et `export\android\JeuClaude.apk` (59 Mo, debug). Objectif du joueur : juger si ces fonctionnalités rendent le jeu plus amusant AVANT de peaufiner (animations, caméra, humeur visuelle).
+- Décisions du joueur : record = meilleur écart final face à Tata Livret ; pas de sons pour l'instant ; signature de l'exe plus tard (Smart App Control bloque les exe neufs non signés) ; modèles des agents choisis par le joueur (chef-de-projet Opus, certains autres Opus).
+- Suite : 07-L (titres/record, branche lot/07-logique, OK du testeur à obtenir) et 07-I (écran de fin d'époque, titres, collection, après le verdict du joueur), sauvegarde manuelle (non lancée, docs/lots/lot_sauvegarde.md), peaufinage reporté.
+
 ## À faire plus tard
 - APK de publication (keystore de release) et version iOS.
 - Questionnaire de profil de risque au démarrage (idée de l'utilisateur mise de côté le 2026-10-27). D'ici là, le banquier adapte ses propositions à la seule situation de vie.
