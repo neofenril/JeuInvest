@@ -861,7 +861,7 @@ func _un_an_apres(etape: String, jeu: Node) -> void:
 	_mesurer("un_an_apres", modales.courant)
 	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
 	await RenderingServer.frame_post_draw
-	sc.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://captures/l6_un_an_apres_%s%s.png" % [cas, "_tel" if Ecran.compact() else ""]))
+	sc.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://captures/l6_un_an_apres_vue_%s%s.png" % [cas, "_tel" if Ecran.compact() else ""]))
 	await sc.touche(KEY_1)
 	await sc.delai(0.2)
 	print("UI gazette touche_1=%s" % str(recu.get("g", "AUCUN")) + "/" + str(recu.get("id", "")))

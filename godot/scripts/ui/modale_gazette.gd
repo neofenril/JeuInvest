@@ -107,9 +107,9 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false) -> void:
 	var graphique := VBoxContainer.new()
 	graphique.name = "Graphique"
 	graphique.add_theme_constant_override("separation", 6 if compact else 9)
-	var col_titre := 200.0 if compact else 240.0
-	var col_valeur := 170.0 if compact else 180.0
-	var haut_ligne := 54.0 if compact else 60.0
+	var col_titre := 330.0 if compact else 240.0   # téléphone : « VOTRE CHOIX » à côté du titre (une seule ligne par barre)
+	var col_valeur := 150.0 if compact else 180.0
+	var haut_ligne := 48.0 if compact else 60.0
 	for b: Dictionary in barres:
 		var choisi := bool(b.get("choisi", false))
 		var ligne := PanelContainer.new()
@@ -124,10 +124,10 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false) -> void:
 		var h := HBoxContainer.new()
 		h.custom_minimum_size.y = haut_ligne
 		h.add_theme_constant_override("separation", 12)
-		var ct := VBoxContainer.new()
+		var ct: BoxContainer = HBoxContainer.new() if compact else VBoxContainer.new()
 		ct.custom_minimum_size.x = col_titre
 		ct.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		ct.add_theme_constant_override("separation", 0)
+		ct.add_theme_constant_override("separation", 9 if compact else 0)
 		var ltitre := Style.label(str(b.get("titre", "")), 22, Style.ui_gras(), Style.ENCRE)
 		ltitre.name = "TitreBarre"
 		ct.add_child(ltitre)
@@ -148,14 +148,17 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false) -> void:
 		elif str(b.get("id", "")) == "renforce" and str(c.get("legende_renforce", "")) != "" and float(c.get("mise", 0.0)) > 0.0:
 			var ll := Style.label(Format.gabarit(str(c["legende_renforce"]), {"mise": Format.entier(float(c["mise"]), a)}), 20, Style.ui(), Style.TEXTE_PAPIER_2)
 			ll.name = "LegendeRenforce"
-			ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			ll.autowrap_mode = TextServer.AUTOWRAP_OFF if compact else TextServer.AUTOWRAP_WORD_SMART
+			ll.clip_text = compact
+			ll.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			ll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			ll.custom_minimum_size.x = 60   # la colonne garde sa largeur : les barres des 3 lignes restent alignées
 			ct.add_child(ll)
 		h.add_child(ct)
 		var zone := Control.new()
 		zone.name = "Barre"
 		zone.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		zone.custom_minimum_size = Vector2(60, 30)
+		zone.custom_minimum_size = Vector2(60, 27 if compact else 30)
 		zone.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		zone.draw.connect(_dessiner_barre.bind(zone, float(b.get("valeur", 0.0)), maxi, base, choisi))
@@ -204,6 +207,26 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false) -> void:
 	if not is_instance_valid(_p):
 		return
 	_panel.reset_size()
+	# Trop haute pour l'écran (téléphone) : seul le texte du moteur défile, les barres et le bouton restent visibles
+	var trop := _panel.size.y - (vue.y - 12.0)
+	if trop > 0.0:
+		var zt := _panel.find_child("Defilant", true, false) as Control
+		if zt != null and not (zt.get_parent() is ScrollContainer):
+			var defile := ScrollContainer.new()
+			defile.name = "DefilementCorps"
+			defile.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			defile.custom_minimum_size = Vector2(zt.size.x, maxf(66.0, zt.size.y - trop))
+			var parent := zt.get_parent()
+			var indice := zt.get_index()
+			parent.remove_child(zt)
+			defile.add_child(zt)
+			parent.add_child(defile)
+			parent.move_child(defile, indice)
+			await m.get_tree().process_frame
+			await m.get_tree().process_frame
+			if not is_instance_valid(_p):
+				return
+			_panel.reset_size()
 	var s := (_panel.size / 3.0).ceil() * 3.0
 	_panel.size = s
 	_p.size = s
