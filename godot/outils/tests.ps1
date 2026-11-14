@@ -18,7 +18,7 @@
 # une erreur : SCRIPT ERROR, Parse Error, Failed to load script, Invalid call, Invalid access,
 # Cannot call method, ou une ligne « ERROR: » du moteur (T17). Les lignes fautives sont réaffichées.
 # Fichiers user:// : aucun test_*_<pid>.sav des tests lancés ne doit rester ; la sauvegarde du joueur
-# (partie_en_cours.sav) doit être identique avant et après (empreinte SHA-256).
+# (partie_en_cours.sav) et le fichier des records (records.sav, lot 07) doivent être identiques avant et après (empreinte SHA-256 ; absent reste absent).
 # Godot : voir trouver_godot.ps1 (variable JEUCLAUDE_GODOT, dépôt, dépôt principal d'un worktree).
 param(
     [switch]$SansImport,
@@ -35,6 +35,7 @@ if (-not $godot) { exit 3 }   # message déjà affiché par trouver_godot.ps1
 $motifErreur = 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access|Cannot call method|^\s*ERROR:'
 $dossierUser = Join-Path $env:APPDATA "Godot\app_userdata\JeuClaude"
 $sauvegardeJoueur = Join-Path $dossierUser "partie_en_cours.sav"
+$recordsJoueur = Join-Path $dossierUser "records.sav"
 $temp = Join-Path ([System.IO.Path]::GetTempPath()) ("jeuclaude_tests_" + $PID)
 New-Item -ItemType Directory -Force -Path $temp | Out-Null
 
@@ -161,6 +162,7 @@ Write-Host "Godot : $godot ($godotSource)"
 Write-Host "Projet : $projet"
 Write-Host ("Tests : " + (($tests | ForEach-Object { $_.Nom }) -join ", "))
 $empreinteAvant = Get-Empreinte $sauvegardeJoueur
+$empreinteRecordsAvant = Get-Empreinte $recordsJoueur
 $resultats = @()
 
 if (-not $SansImport) {
@@ -186,6 +188,8 @@ foreach ($r in $resultats) {
 }
 $empreinteApres = Get-Empreinte $sauvegardeJoueur
 $sauvegardeIntacte = ($empreinteAvant -eq $empreinteApres)
+$empreinteRecordsApres = Get-Empreinte $recordsJoueur
+$recordsIntacts = ($empreinteRecordsAvant -eq $empreinteRecordsApres)
 
 # ---------------------------------------------------------------------
 # Résumé
@@ -205,10 +209,12 @@ $nbEchecs = @($resultats | Where-Object { -not $_.Propre }).Count
 if ($restes.Count -gt 0) { Write-Host ("ÉCHEC : fichiers de test restés dans user:// : " + ($restes -join ", ")) }
 if (-not $sauvegardeIntacte) { Write-Host "ÉCHEC : la sauvegarde du joueur (partie_en_cours.sav) a changé pendant les tests ($empreinteAvant -> $empreinteApres). Si le jeu était ouvert en même temps, relancer." }
 else { Write-Host "Sauvegarde du joueur : inchangée ($(if ($empreinteAvant -eq '(absente)') { 'absente' } else { 'SHA-256 ' + $empreinteAvant.Substring(0, 12) + '…' }))." }
+if (-not $recordsIntacts) { Write-Host "ÉCHEC : le fichier des records du joueur (records.sav) a changé pendant les tests ($empreinteRecordsAvant -> $empreinteRecordsApres)." }
+else { Write-Host "Records du joueur : inchangés ($(if ($empreinteRecordsAvant -eq '(absente)') { 'absents' } else { 'SHA-256 ' + $empreinteRecordsAvant.Substring(0, 12) + '…' }))." }
 Write-Host ("Total : {0} étape(s), {1} vérifications OK, {2} KO, {3} erreur(s) de script, {4} échec(s), durée {5:N1} s." -f $resultats.Count, $nbOk, $nbKo, $nbErr, $nbEchecs, $dureeTotale)
 Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
 
-$proprete = ($nbEchecs -eq 0 -and $restes.Count -eq 0 -and $sauvegardeIntacte)
+$proprete = ($nbEchecs -eq 0 -and $restes.Count -eq 0 -and $sauvegardeIntacte -and $recordsIntacts)
 if ($Autocontrole) {
     $importPropre = (@($resultats | Where-Object { $_.Nom -eq "import" -and -not $_.Propre }).Count -eq 0)
     $detectees = 0
