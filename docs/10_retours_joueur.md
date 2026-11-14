@@ -111,3 +111,8 @@ Décisions : 3 emplacements ; le joueur choisit l'emplacement à écraser ; la l
 - Signature de l'exe : « peut attendre ».
 - APK : le joueur a essayé la toute première version ; il attend une nouvelle APK avec les nouvelles fonctionnalités majeures (censées ajouter du fun) pour voir si c'est réellement le cas. Donc la 0.5 jouable doit être exportée en exe ET en APK.
 
+
+## 2026-11-14 (retours sur la 0.5)
+- « le bouton d'avance jusqu'au prochain évènement (x6) doit réellement avancer jusqu'au prochain évènement et pas simplement faire x6. Préciser au joueur ce que son action va faire via une pop-up et proposer via une case à cocher de ne pas réafficher la pop-up au prochain clic sur ce bouton. »
+- « La pop-up des choix de projets reste trop longtemps à l'écran après avoir sélectionné l'un des choix. » (« corrige de suite »)
+
