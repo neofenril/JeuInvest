@@ -1,7 +1,7 @@
 extends RefCounted
 ## Étapes de capture : vérifications techniques (polices, F10, partie intégrale, raccourcis de test).
 
-const ETAPES := ["polices", "f10", "integrale", "raccourcis", "integrale_saut", "integrale_cartes", "integrale_maison"]
+const ETAPES := ["polices", "f10", "integrale", "raccourcis", "integrale_saut", "integrale_cartes", "integrale_maison", "integrale_jouable"]
 
 var sc: ScenariosCapture
 
@@ -9,13 +9,15 @@ var sc: ScenariosCapture
 func jouer(etape: String) -> void:
 	var jeu := sc.jeu
 	var hud: Hud = jeu.hud
-	if etape == "integrale_cartes" or etape == "integrale_maison":
+	if etape == "integrale_cartes" or etape == "integrale_maison" or etape == "integrale_jouable":
 		# Lot 04 (I8) : partie complète, cartes du foyer allumées, graine fixe (nouvelle référence) ;
 		# integrale_maison (lot 05, CA-M9) : projets allumés aussi (sans effet tant que le moteur 04-L n'est pas fusionné)
 		var cfg := Donnees.config_demo(-1)
 		cfg["cartes"] = true
-		if etape == "integrale_maison":
+		if etape == "integrale_maison" or etape == "integrale_jouable":
 			cfg["projets"] = true
+		if etape == "integrale_jouable":
+			cfg["rue"] = true   # lot 06 : tout allumé (cartes, projets, rue : Jean-Mi, classement, krach, « un an après »)
 		jeu.nouvelle_partie(cfg)
 	sc.partir_de_la_rue(etape)
 	match etape:
@@ -25,7 +27,7 @@ func jouer(etape: String) -> void:
 			await _integrale(jeu)
 		"integrale_saut":
 			await _integrale(jeu, true)
-		"integrale_cartes", "integrale_maison":
+		"integrale_cartes", "integrale_maison", "integrale_jouable":
 			await _integrale(jeu)
 		"f10":
 			var fen := sc.get_window()
@@ -86,6 +88,11 @@ func _integrale(jeu: Node, saut := false) -> void:
 				modales.call("_on_choix_journal", "rien")
 			"courrier":
 				modales.fermer(str(Partie.etat.contenu_modale()["choix"][0]["id"]))
+			"gazette":
+				# « Le krach, un an après » (Modales.gazette) : J'AI COMPRIS (touche 1)
+				_fiches["gazette"] = int(_fiches.get("gazette", 0)) + 1
+				modales.etat_gazette().choisir("ok")
+				await sc.delai(0.6)
 			"projet":
 				_fiches["projet"] = int(_fiches.get("projet", 0)) + 1
 				# Projet du foyer (Modales.projet) : jour J -> réaliser si possible, sinon le premier choix actif
@@ -118,8 +125,8 @@ func _integrale(jeu: Node, saut := false) -> void:
 	var e := Partie.etat
 	if saut:
 		print("UI saut bilan arrets=%d sans_modale=%d fin=%d vitesses_ok=%d/%d vitesses_ecarts=%d" % [_arrets, _sans_modale, _arret_fin, _vitesses_ok, _vitesses_vues, _vitesses_vues - _vitesses_ok])
-	print("Intégrale : modales vues %s, fin = %s, mois = %s, patrimoine = %s, interruptions = %d, frais = %s, dividendes = %s, cartes jouées = %d, projets réalisés = %d / %d, fiches %s, durée %.0f s à ×3" % [vus, e.fin, Dates.texte(e.ab_courant()),
-		Format.montant(e.patrimoine(e.joueur), e.ab_courant()), int(e.banque.get("interruptions", 0)), Format.montant(e.frais_payes(), e.ab_courant()), Format.montant(e.dividendes_recus(), e.ab_courant()), e.cartes_jouees().size(), e.projets_passes().filter(func(p: Dictionary) -> bool: return str(p["statut"]).begins_with("realise")).size(), e.projets_passes().size(), str(_fiches), (Time.get_ticks_msec() - t0) / 1000.0])
+	print("Intégrale : modales vues %s, fin = %s, mois = %s, patrimoine = %s, interruptions = %d, frais = %s, dividendes = %s, cartes jouées = %d, projets réalisés = %d / %d, notifications de la rue = %d, rang final = %d, fiches %s, durée %.0f s à ×3" % [vus, e.fin, Dates.texte(e.ab_courant()),
+		Format.montant(e.patrimoine(e.joueur), e.ab_courant()), int(e.banque.get("interruptions", 0)), Format.montant(e.frais_payes(), e.ab_courant()), Format.montant(e.dividendes_recus(), e.ab_courant()), e.cartes_jouees().size(), e.projets_passes().filter(func(p: Dictionary) -> bool: return str(p["statut"]).begins_with("realise")).size(), e.projets_passes().size(), e.historique_recent("rue").size(), e.rang_rue(), str(_fiches), (Time.get_ticks_msec() - t0) / 1000.0])
 
 
 var _fiches := {}             # fiches ouvertes par Modales.carte / Modales.projet ("RUE fiche … appel=modales")
