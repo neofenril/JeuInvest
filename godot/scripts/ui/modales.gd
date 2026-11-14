@@ -29,7 +29,7 @@ var parler := 0.0                   # carte du banquier : temps de parole restan
 var portrait: Portrait = null
 var carte_en_cours := false         # carte de dilemme affichée (de carte() à la fin du rangement)
 
-var _journal: ModaleJournal
+var _journal: ModaleJournal   # lu par les captures (tableau du Lundi noir)
 var _courrier: ModaleCourrier
 var _banquier: ModaleBanquier
 var _releve_fin: ModaleReleveFin

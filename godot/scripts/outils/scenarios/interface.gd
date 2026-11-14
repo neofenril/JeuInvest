@@ -12,7 +12,7 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
 	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
-	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue"]
+	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -58,6 +58,8 @@ func jouer(etape: String) -> void:
 			await _rue_notifs(jeu)
 		"historique_rue":
 			await _historique_rue(jeu)
+		"krach_jours", "krach_sans_jours":
+			await _krach_jours(etape, jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -756,6 +758,54 @@ func _rue_notifs(jeu: Node) -> void:
 	await sc.delai(0.4)
 	hud.notifier(fabriquer_voisin("kiosque"), a)
 	await sc.delai(0.8)
+
+
+## Partie de capture (graine fixe) avec cartes, projets et rue allumés, dans la rue, temps arrêté.
+func partie_tout_allume(jeu: Node) -> void:
+	var cfg := Donnees.config_demo(-1)
+	cfg["cartes"] = true
+	cfg["projets"] = true
+	cfg["rue"] = true
+	jeu.nouvelle_partie(cfg)
+	Partie.etat.resolution_auto()
+	jeu.demarrer_direct(0)
+
+
+## Le Lundi noir (CA-U5) : la modale du krach du vrai moteur (rue allumée) avec le tableau des 7 jours ; sans la rue : modale inchangée.
+func _krach_jours(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	if etape == "krach_sans_jours":
+		sc.partir_de_la_rue(etape)
+	else:
+		partie_tout_allume(jeu)
+	var e := Partie.etat
+	StrategieTest.politique_cartes = "epargner"
+	StrategieTest.aller_a_modale(e, "p1e6", true)
+	sc.rafraichir_apres_saut()
+	var c := e.contenu_modale()
+	var jours: Array = c.get("jours", [])
+	modales.donnees_demo["_vente_totale"] = e.devis_vente_totale(e.joueur)
+	modales.donnees_demo["_ab"] = e.ab_courant()
+	modales.journal(c, Vector2(960, 400), false)
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "journal" and modales.courant != null, 5.0)
+	await sc.delai(2.0)
+	var mj: ModaleJournal = modales._journal
+	var attendu: Array = jours.map(func(j: Dictionary) -> String: return "%s|%s|%s" % [ModaleJournal.texte_jour(str(j["jour"])), ModaleJournal.texte_indice(float(j["indice"])), ModaleJournal.texte_variation(float(j.get("variation", 0.0)), j == jours[0])])
+	var lus: Array = mj.lignes_jours.map(func(l: Array) -> String: return "|".join(PackedStringArray(l)))
+	var vue := sc.get_viewport().get_visible_rect()
+	var choix := modales.courant.find_child("Choix", true, false) as Control
+	var visibles := choix != null and vue.grow(1.0).encloses(choix.get_global_rect())
+	for b in choix.find_children("*", "Button", true, false) if choix != null else []:
+		visibles = visibles and vue.grow(1.0).encloses((b as Button).get_global_rect())
+	if jours.is_empty():
+		print("UI krach_jours sans_jours tableau=%s choix_visibles=%s (modale inchangée)" % ["ABSENT" if modales.courant.find_child("TableauJours", true, false) == null else "PRESENT incoherences=1", "oui" if visibles else "non incoherences=1"])
+	else:
+		print("UI krach_jours cases=%d choix_visibles=%s lignes=%d == jours=%d egal=%s cumul=%s certitude=« %s »" % [mj.cases, "oui" if visibles else "non incoherences=1", lus.size(), jours.size(), "oui" if lus == attendu else "non incoherences=1",
+			ModaleJournal.texte_cumul(jours), ModaleJournal.phrase_certitude(jours)])
+		for l in lus:
+			print("UI krach_jours ligne « %s »" % l)
+	_mesurer(etape, modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
 
 
 ## Historique : onglet LA RUE avec les vraies notifications de la rue (partie menée jusqu'à fin 1986), relecture de la plus longue.

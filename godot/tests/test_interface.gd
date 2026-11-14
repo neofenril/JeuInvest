@@ -24,6 +24,7 @@ var _ordres_refuses := 0       # lot 05 : refus d'ordres débiteurs constatés p
 var _projets_choisis := 0
 var _etiquettes_vues := 0
 var _rue_mois := 0
+var _krach_tableaux := 0
 var _guichets_vus := 0
 var _ventes_conformes := 0
 var _div_vus := {}        # lot 03 (I6) : « reçus » / « versé » -> nombre de fiches d'action vérifiées
@@ -244,6 +245,7 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	var ecarts_etiquette: Array = []
 	var ecarts_rue: Array = []
 	_rue_mois = 0
+	_krach_tableaux = 0
 	_ordres_refuses = 0
 	_projets_choisis = 0
 	_ventes_conformes = 0
@@ -354,6 +356,7 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	StrategieTest.politique_projets = "moins_cher"
 	StrategieTest.politique_echeance = "auto"
 	if cartes:
+		_verifier("%s : le krach (rue allumée) porte le tableau des 7 jours du Lundi noir == c[jours] (%d)" % [nom, _krach_tableaux], _krach_tableaux == 1)
 		_verifier("%s : classement permanent : bloc LA RUE (4 lignes : id, rang, montant, « vous ») et rang de la languette == classement_rue() / rang_rue() chaque mois (%d mois)" % [nom, _rue_mois], _rue_mois >= 55 and ecarts_rue.is_empty(), str(ecarts_rue.slice(0, 2)))
 		_verifier("%s : vrai moteur des projets : %d choix de projet (projet_en_cours()[id] == option choisie), ventes faites == plan (%d), %d refus d'ordres pendant une carte ou un projet avec la phrase de l'interface, étiquette == projet_en_cours() (%d mois), ligne du guichet == ligne_projet_guichet() (%d fiches)" % [nom, _projets_choisis, _ventes_conformes, _ordres_refuses, _etiquettes_vues, _guichets_vus],
 			_projets_choisis >= 2 and int(vues.get("projet", 0)) >= 3 and _ordres_refuses >= 10 and ecarts_etiquette.is_empty() and ecarts_genre.is_empty() and ecarts_choix.is_empty() and (not actif or _guichets_vus >= 1), "%s %s %s" % [str(ecarts_etiquette), str(ecarts_genre), str(ecarts_choix)])
@@ -435,6 +438,17 @@ func _afficher_modale(e: EtatPartie, actif: bool, vues: Dictionary, ecarts_genre
 	vues[genre] = int(vues.get(genre, 0)) + 1
 	if not await _attendre_genre(genre):
 		ecarts_genre.append("%s : « %s » affichée comme « %s »" % [Dates.texte_court(e.ab_courant()), str(c.get("titre", "")), modales.genre_courant])
+	if genre == "journal" and c.has("jours"):
+		# Lot 06 (A5, CA-U5) : le tableau du Lundi noir == c["jours"] (7 lignes arrondies à 5 points), absent sans « jours »
+		var jr: Array = c["jours"]
+		var lus: Array = modales._journal.lignes_jours.map(func(l: Array) -> String: return "|".join(PackedStringArray(l)))
+		var att: Array = jr.map(func(j: Dictionary) -> String: return "%s|%s|%s" % [ModaleJournal.texte_jour(str(j["jour"])), ModaleJournal.texte_indice(float(j["indice"])), ModaleJournal.texte_variation(float(j.get("variation", 0.0)), j == jr[0])])
+		if jr.size() == 7 and lus == att and modales._journal.cases in [7, 8]:
+			_krach_tableaux += 1
+		else:
+			ecarts_choix.append("krach : tableau %s au lieu de %s" % [str(lus), str(att)])
+	elif genre == "journal" and modales.courant.find_child("TableauJours", true, false) != null:
+		ecarts_choix.append("%s : tableau du Lundi noir présent sans « jours »" % str(c.get("titre", "")))
 	var ids: Array = c.get("choix", []).map(func(x: Dictionary) -> String: return str(x["id"]))
 	if not (choix in ids):
 		ecarts_choix.append("%s : choix « %s » absent de %s" % [str(c.get("titre", "")), choix, str(ids)])
