@@ -192,8 +192,7 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false) -> void:
 		b.pressed.connect(choisir.bind(str(ch0["id"])))
 	boutons[str(ch0["id"])] = b
 	v.add_child(b)
-	_suite = Label.new()   # pas de « Toucher pour continuer » : la carte se ferme avec son bouton
-	_suite.visible = false
+	_suite = null   # pas de « Toucher pour continuer » : la fiche se ferme avec son bouton
 	_p = Control.new()
 	_p.name = "Carte"
 	_p.mouse_filter = Control.MOUSE_FILTER_STOP
