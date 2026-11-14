@@ -1,0 +1,31 @@
+{
+  "_note": "Lundi noir et « Le krach, un an apres » (lot 05, docs/19 §4.2, docs/15 §5.2, lot_05.md D10). Lu par scripts/logique/krach.gd. Les 7 jours sont l'indice de Paris (echelle CAC 40) : A pour le 16/10 (niveau) et le 19/10 (variation), C (reconstitue) pour les autres ; a afficher « environ », arrondis a 5 points. variation = % depuis la veille (0 le 1er jour). Textes PROVISOIRES (boursier B4 / game designer) ; jamais de « vous auriez du ».",
+  "_provisoire": true,
+  "indice_nom": "Indice de la Bourse de Paris, environ",
+  "arrondi_points": 5,
+  "_jours": "indice stocke a 1 decimale ; la variation (% depuis la veille, 0.0 le 1er jour) est CALCULEE par Krach.jours() sur ces valeurs. Affichage arrondi a 5 points. 16/10 et variation du 19/10 : A ; autres : C (docs/26 §3.2). Jamais « CAC 40 » en 10/1987.",
+  "jours": [
+    { "jour": "vendredi 16 octobre", "indice": 1240.0, "certitude": "A" },
+    { "jour": "lundi 19 octobre", "indice": 1119.7, "certitude": "A" },
+    { "jour": "mardi 20 octobre", "indice": 1050.0, "certitude": "C" },
+    { "jour": "mercredi 21 octobre", "indice": 1085.0, "certitude": "C" },
+    { "jour": "jeudi 22 octobre", "indice": 1045.0, "certitude": "C" },
+    { "jour": "vendredi 23 octobre", "indice": 1020.0, "certitude": "C" },
+    { "jour": "lundi 26 octobre", "indice": 990.0, "certitude": "C" }
+  ],
+  "pied": "Cours retenu pour vos ordres ce mois-ci : environ 1 035 (29 octobre).",
+  "mois_krach": "1987-10",
+  "mois_un_an_apres": "1988-10",
+
+  "_un_an_apres": "Texte de la carte (50 mots au plus). mention : joueur sans action ni SICAV au krach. exemple : montant en F de SICAV et part de renfort (le « Renforcer » proposerait cette part du montant).",
+  "un_an_apres": {
+    "titre": "LE KRACH, UN AN APRÈS",
+    "texte": "Un an après, la Bourse de Paris a dépassé son niveau d'avant le krach. Ceux qui pouvaient attendre ont retrouvé leur argent ; Jean-Mi, endetté, a dû vendre en pleine chute. En 1987, personne ne savait combien de temps il faudrait : après 1929, Wall Street a mis vingt-cinq ans.",
+    "garde_fou": "Un seul exemple, pas une règle.",
+    "legende_renforce": "{mise} de plus engagés",
+    "mention": "Exemple : vous n'aviez ni actions ni SICAV en octobre 1987.",
+    "bouton": "J'AI COMPRIS",
+    "titres_barres": { "vendu": "TOUT VENDU", "rien": "RIEN FAIT", "renforce": "RENFORCÉ" },
+    "exemple": { "montant_f": 10000.0, "renfort_part": 0.5 }
+  }
+}

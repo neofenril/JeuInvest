@@ -115,8 +115,10 @@ func _recalcul_mai_1987() -> void:
 	print("    ", det)
 	print("RECETTE mai1987 total_net=%.2f impot=%.2f notif_montant=%.2f notif_impot=%.2f" % [total, impot, float(_notifs(r, "dividende")[0]["montant"]) * F, float(_notifs(r, "dividende")[0]["impot"]) * F])
 	verifier("Recalcul à la main mai 1987 (JSON bruts, quantités recalculées) = moteur au centime", ok, "total %.2f F, impôt %.2f F" % [total, impot])
-	verifier("Montants attendus du compte rendu : Elf 196,35 / L'Oréal 74,88 / Peugeot 118,66 / Saint-Gobain 142,38, total 532,27, impôt 101,39",
-		absf(total - 532.27) < 0.006 and absf(impot - 101.39) < 0.006)
+	# Lot 05 (D5) : Peugeot ancré à 700 F en 05/1987 (docs/19 §1.2) : 127,01 F nets au lieu de 118,66 F ; total 540,62 F, impôt 102,98 F
+	# (Elf 196,35 / L'Oréal 74,88 / Saint-Gobain 142,38 inchangés ; recalcul à la main ci-dessus = moteur au centime).
+	verifier("Montants attendus (D5 de 05-L) : Elf 196,35 / L'Oréal 74,88 / Peugeot 127,01 / Saint-Gobain 142,38, total 540,62, impôt 102,98",
+		absf(total - 540.62) < 0.006 and absf(impot - 102.98) < 0.006)
 	print("    Texte de la 1re notification : ", str(_notifs(r, "dividende")[0]["texte"]))
 
 

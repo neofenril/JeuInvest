@@ -1,0 +1,100 @@
+{
+  "_note": "La rue (lot 05, docs/15 §4, docs/19 §3, lot_05.md D7-D9) : passages des voisins, bulles reactives, kiosque de la Gazette, textes de rang, gabarit du levier. Lu par scripts/logique/quartier.gd. Tout est editable sans code. Les textes sont PROVISOIRES (a remplacer par le game designer, lot_05.md §8 G5) : notifications de 15 mots au plus, titre = nom du voisin ; texte_long (60 mots au plus) lu par la relecture. Jamais d'ordre d'achat ni de vente, jamais de prevision hors de la bouche de Jean-Mi.",
+  "_provisoire": true,
+  "actif": false,
+
+  "_budgets": "voisin_ecart_mois : au moins 2 mois entre deux notifications de voisin (passages et reactives confondus). decalage_max : une notification de voisin non cle bloquee (mois de pause, budget) est abandonnee apres ce nombre de mois ; les passages cle ne sont jamais abandonnes. kiosque_decalage_max : un titre du kiosque est montre a sa date ou 1 mois apres, sinon abandonne. par_mois : au plus 1 notification rue (voisin ou rang) ou kiosque par mois, jamais un mois qui ouvre une interruption avec pause. rang_ecart_mois : au plus une notification de rang tous les 6 mois ; la premiere au plus tot en rang_premier_mois.",
+  "budgets": {
+    "voisin_ecart_mois": 2,
+    "decalage_max": 2,
+    "kiosque_decalage_max": 1,
+    "par_mois": 1,
+    "rang_ecart_mois": 6,
+    "rang_premier_mois": "1986-10"
+  },
+
+  "_personnages": "Voisins qui ne sont pas des temoins (les autres sont dans temoins.json).",
+  "personnages": {
+    "lopez": { "nom": "Mme Lopez", "initiale": "L" },
+    "lefranc": { "nom": "M. Lefranc", "initiale": "F" }
+  },
+  "classement": {
+    "vous": { "nom": "Vous", "initiale": "V" },
+    "titre_rang": "Classement de la rue",
+    "titre_kiosque": "LA GAZETTE"
+  },
+
+  "_persistant": "persistant : la notification reste à l'écran jusqu'au toucher, sans pause (idée du game designer : les 4 passages ★ de Jean-Mi ; l'interface suivra).",
+  "_passages": "mois = mois du passage (AAAA-MM) ; qui = lopez | matelas | livret | jeanmi | lefranc ; titre (facultatif) = titre de la notification quand deux voisins parlent ; cle = passage etoile (jamais abandonne, va dans l'historique meme franchi en saut) ; long = a une carte de lecture (texte_long). texte = ce que dit le toast. {levier} (V13) : phrase du levier calculee par Quartier.phrase_levier. V11 et V12 : supprimes de la version jouable. Textes du game designer (docs/27 §2.2).",
+  "passages": [
+    { "id": "V01", "mois": "1984-02", "qui": "lopez", "cle": true, "long": true,
+      "texte": "Vous connaissez vos voisins ?",
+      "texte_long": "Vous connaissez vos voisins ? Tata Livret met tout sur son Livret A. Tonton Matelas garde tout sur son compte. Jean-Mi, vendeur chez Peugeot, attend le bon tuyau. Mêmes revenus, mêmes dépenses que vous : seule change la façon de placer. Le classement de la rue est en haut de l'écran." },
+    { "id": "V02", "mois": "1984-05", "qui": "matelas", "cle": false, "long": false,
+      "texte": "Une banque ? Et si elle saute ? Moi, c'est sous le matelas." },
+    { "id": "V03", "mois": "1984-09", "qui": "livret", "cle": false, "long": false,
+      "texte": "Le Livret A, c'est garanti par l'État, et ça rapporte chaque année." },
+    { "id": "V04", "mois": "1985-03", "qui": "jeanmi", "cle": false, "long": false,
+      "texte": "La Bourse ? J'attends le bon tuyau. Au café, ils en ont plein." },
+    { "id": "V05", "mois": "1985-08", "qui": "matelas", "cle": false, "long": false,
+      "texte": "La baguette a encore augmenté. Mes billets, eux, n'ont pas bougé…" },
+    { "id": "V06", "mois": "1986-06", "qui": "livret", "cle": false, "long": false,
+      "texte": "Mon Livret rapporte moins, mais les prix montent moins vite. C'est l'écart qui compte." },
+    { "id": "V07", "mois": "1986-09", "qui": "jeanmi", "persistant": true, "cle": true, "long": false,
+      "texte": "Tuyau du café : Peugeot ne peut que monter. J'ai tout mis, et même plus !" },
+    { "id": "V08", "mois": "1986-12", "qui": "lopez", "cle": false, "long": false,
+      "texte": "Saint-Gobain, et bientôt Paribas… toute la rue devient actionnaire !" },
+    { "id": "V09", "mois": "1987-04", "qui": "jeanmi", "persistant": true, "cle": true, "long": false,
+      "texte": "Elle est belle, ma Porsche ! Payée par Peugeot… et un peu par la banque." },
+    { "id": "V10", "mois": "1987-08", "qui": "jeanmi", "cle": false, "long": false,
+      "texte": "J'en ai repris, encore à crédit. Quand ça monte, faut en profiter !" },
+    { "id": "V13", "mois": "1987-12", "qui": "jeanmi", "persistant": true, "cle": true, "long": true,
+      "texte": "Je n'ai plus rien… et je dois encore de l'argent.",
+      "texte_long": "Je n'ai plus rien… et je dois encore de l'argent. {levier} Le crédit grossit les gains… et les pertes." },
+    { "id": "V14", "mois": "1988-03", "qui": "matelas", "titre": "Tonton Matelas et Tata Livret", "cle": false, "long": false,
+      "texte": "M. : « Le krach ? Moi, j'ai rien perdu ! » T. : « Si : l'inflation, un peu chaque année. »" },
+    { "id": "V15", "mois": "1988-07", "qui": "jeanmi", "titre": "Jean-Mi et Mme Lopez", "cle": false, "long": false,
+      "texte": "J. : « La Bourse, plus jamais ! » L. : « C'est pas la Bourse, Jean-Mi, c'est le crédit. »" },
+    { "id": "V16", "mois": "1988-11", "qui": "jeanmi", "persistant": true, "cle": true, "long": false,
+      "texte": "Peugeot est remonté plus haut qu'avant le krach… sans moi." }
+  ],
+
+  "_reactives": "declencheur = evenement du joueur fourni par le moteur (achat_action : premier achat d'une action ; projet_realise : un projet realise). Une seule fois chacune, meme budget que les passages. par_projet : texte selon l'id du projet realise (defaut : texte). La reaction de M. Lefranc apres le krach est supprimee (game designer, docs/27 §2.3).",
+  "reactives": [
+    { "id": "R01", "qui": "lopez", "declencheur": "achat_action",
+      "texte": "Alors, monsieur Gérard, on est actionnaire ? Comme les patrons !" },
+    { "id": "R02", "qui": "lopez", "declencheur": "projet_realise",
+      "texte": "Bravo pour le projet, toute la rue en parle !",
+      "par_projet": {
+        "P1A": "Un salon tout neuf ? Vous recevez quand ?",
+        "P1B": "Bronzés comme ça, vous rentrez de Grèce !",
+        "P1C": "Belle Super 5 ! La 4L va manquer à la rue.",
+        "P2A": "Bonnes vacances ! Rapportez-moi un collier de coquillages.",
+        "P2B": "Deux voitures ! Il va falloir garer la mienne ailleurs." } }
+  ],
+
+  "_rang": "Notifications de changement de rang face a Jean-Mi (Tata Livret garde sa pastille). jeanmi_devant : Jean-Mi passe devant le joueur ; vous_devant : le joueur repasse devant.",
+  "rang": {
+    "jeanmi_devant": "Jean-Mi passe devant vous dans la rue. Tout le café est au courant.",
+    "vous_devant": "Vous repassez devant Jean-Mi au classement de la rue."
+  },
+
+  "_kiosque": "11 titres, notifications sans pause de la Gazette (docs/26 §4, docs/27 §2.3). cert = certitude de la date (A verifie, B probable, C reconstitue). Pas de titre « LUNDI NOIR » (la modale du krach le dit) ni « CAC 40 » (deja dans periode_p1.json > contexte).",
+  "kiosque": [
+    { "id": "K01", "mois": "1984-06", "texte": "Les Bleus sacrés champions d'Europe", "cert": "A" },
+    { "id": "K02", "mois": "1984-11", "texte": "Canal+ débute à la télévision", "cert": "A" },
+    { "id": "K03", "mois": "1985-12", "texte": "Coluche ouvre les Restos du cœur", "cert": "A" },
+    { "id": "K04", "mois": "1986-03", "texte": "La droite gagne, Chirac à Matignon", "cert": "A" },
+    { "id": "K05", "mois": "1986-05", "texte": "Le nuage radioactif divise l'opinion", "cert": "B" },
+    { "id": "K06", "mois": "1986-10", "texte": "Prost de nouveau champion du monde", "cert": "A" },
+    { "id": "K07", "mois": "1987-04", "texte": "Bouygues retenu pour reprendre TF1", "cert": "B" },
+    { "id": "K08", "mois": "1987-07", "texte": "La corbeille de la Bourse de Paris disparaît", "cert": "A" },
+    { "id": "K09", "mois": "1988-01", "texte": "Fin des agents de change, place aux sociétés de bourse", "cert": "A" },
+    { "id": "K10", "mois": "1988-05", "texte": "Mitterrand réélu pour sept ans", "cert": "A" },
+    { "id": "K11", "mois": "1988-09", "texte": "Séoul : le monde du sport en fête", "cert": "A" }
+  ],
+  "_etapes_jeanmi": "Libellé court de l'étape de Jean-Mi (jeanmi_resume()[etape_texte], docs/27 §3.2 idée 1, lot_05.md B8).",
+  "etapes_jeanmi": { "attend": "attend un tuyau", "position": "tout sur Peugeot", "porsche": "Porsche à crédit", "liquide": "liquidé", "rembourse": "rembourse" },
+  "_levier": "Gabarit de la phrase du levier (V13, docs/19 §2.3). Aucun chiffre en dur : {couverture}, {position}, {perte}, {dette} sont des montants en F, {baisse} un pourcentage, tous calcules. couverture + dette = perte, au franc pres.",
+  "levier": "Avec {couverture}, Jean-Mi en a joué {position} au règlement mensuel (acheter à crédit sur la Bourse). Peugeot a perdu {baisse} : {perte} de perte. Ses {couverture} y sont passés, et il en doit encore {dette}."
+}

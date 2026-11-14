@@ -95,6 +95,8 @@ static func date_connue(e: EtatPartie, mm: int, sauf: Dictionary = {}) -> bool:
 		for id in dates:
 			if int(dates[id]) == mm and str(sauf.get("id", "")) != str(id):
 				return true
+		if mm == e.mois_gazette() and str(sauf.get("kind", "")) != "gazette":
+			return true   # lot 05 : « Le krach, un an après » (10/1988, date historique)
 	for it: Dictionary in e.file:
 		if it == sauf:
 			continue
@@ -123,6 +125,8 @@ static func date_ferme(e: EtatPartie, mm: int, sauf: Dictionary = {}) -> bool:
 		for id in dates:
 			if int(dates[id]) == mm and not (str(id) in ["D01", "D02", "D03", "D04", "D05", "D06"]):
 				return true
+		if mm == e.mois_gazette():
+			return true
 	return str(sauf.get("kind", "")) != "projet" and Projets.echeance_en(e, mm)
 
 
