@@ -1,4 +1,4 @@
-﻿# Lot 05 : recette du testeur
+# Lot 05 : recette du testeur
 
 ## 05-L (rue et krach) : passage 1, 2026-11-14, branche `lot/05-logique`, commit testÃ© 9ed6149
 
@@ -108,3 +108,62 @@ Texte des cas de jour J selon `ventes` vide (anomalie 1) ; carte projet à haute
 ### 8. Total final
 
 tests.ps1 -Recette : 21 étapes développeurs et recette hors 	est_recette_maison = 868 vérifications OK, 0 KO, 0 erreur de script ; plus 	est_recette_maison en défaut (1 partie actif graine 7 avec portefeuille fabriqué, + reprise CA-M9) = 12 OK, 183 s : **total 880, 0 KO**. Variable TESTEUR_TOUT=1 : 4 parties (42 OK, 0 KO, vérifié en fenêtré, ≈ 12 min). 	est_recette_maison demande -Delai 700 (le défaut de 120 s ne suffit pas) ; TESTEUR_IMG / TESTEUR_FMT produisent des captures du viewport.
+
+
+## R-RUE (branche `lot/05-interface`, HEAD 1faa723 = main 6cc9f43 + 03-I2 + 04-I + corrections R-MAISON + 05-I) : 2026-11-14
+
+**Verdict : KO** (2 anomalies majeures, chacune corrigeable en quelques lignes ; tout le reste est vert). Aucune partie bloquée, aucun chiffre de la rue faux, sauvegarde et contrats intacts.
+
+### 1. Tests automatiques
+- `tests.ps1 -Recette -Delai 700` (avant mon nouveau test) : 26 étapes, **1 091 vérifications OK, 0 KO, 0 erreur de script** (test_interface 89, test_projets 44, test_rue_moteur 36, mes tests de recette rue 42, maison 12, routage 11, saut 18, etc.). Sauvegarde du joueur : absente avant / après (aucun `partie_en_cours.sav`, aucun Godot lancé par moi sur la partie du joueur).
+- Nouveau `godot/tests/recette/test_recette_rue_ui.gd` (+ `.tscn`, 14 vérifications) : une partie COMPLÈTE par la vraie `principal.tscn`, tout allumé, pilotée par code (voir §4). **Il est ROUGE en `tests.ps1` : 14 OK, 0 KO mais 3 erreurs de script (anomalie A2).** Je le laisse dans le dépôt : il garde la correction de A2.
+- `capture_interface.ps1 -Serie` COMPLÈTE : **207 lancements, 0 échec, 0 sortie bloquée, 3 021 s** ; `user://` inchangé. `UI … incoherences=1` : aucune ; `sous_seuil`, `debordements`, `recouvre`, `contenu_coupe` : aucun non nul. Les 3 échecs corrigés par le développeur (fiche « un an après » au téléphone) sont verts.
+- `capture_ville.ps1 -Serie` : 84 lancements, « PX1 : tout est vert » (`RUE fiche kind=carte appel=modales`).
+- `integrale_jouable` (log de la série) : 86 213 F, frais 264,80 F, 11 interruptions, dividendes 54,54 F, 10 cartes, 2 / 2 projets, 17 notifications de la rue, rang final 3 : identique au compte rendu. `integrale` = 161 419 F / 806,08 F / 11 (KB 805,93 F : écart de 0,15 F dû au passage 2 de 05-L, même cause que 870,08 F en rue éteinte ; non remesuré sur `main`). Références rue éteinte (tests) : actif graine 7 172 139,25 F / 870,08 F / 11 / dividendes 360,43 F, passif 145 655,67 F : conformes à l'attendu.
+
+### 2. Périmètre (`git diff main...HEAD --stat`)
+Tout est dans la colonne 05-I (scripts/ui, principal.gd, scenarios, capture_interface.ps1, data/pixel/ui, project.godot version 0.5, test_interface) + mes fichiers de recette. Aucun fichier de `scripts/logique/`. `scripts/ville/sequences.gd` : seulement `jouer_modale`, `_sequence_carte` (paramétrée par le kind) et la nouvelle `_sequence_gazette` (CA-U12 OK). **Écart : `godot/data/rue.json`** (1 phrase : `texte_long` de V01 « …est dans le panneau « Mon argent » » au lieu de « …en haut de l'écran »), fichier de la colonne dev-logique. La correction est exacte et sans effet sur la logique (tests verts) ; à faire ratifier par le chef de projet (mineure M1).
+
+### 3. Parties complètes (vraie scène, tout allumé, saut « prochain courrier » sauf mention)
+Neuf parties jouées de bout en bout par `principal.tscn` (graines 7 et 31, actif et passif, PC et téléphone simulé, krach « vendre » / « renforcer » / « rien » / « exemple », une partie à ×1 sans saut ; 8 en saut + 1 à ×1) : **aucune bloquée**, toutes finissent en décembre 1988.
+- Bloc LA RUE du HUD == `classement_rue()` (ordre, noms, rang, montants au format, signe − des négatifs) chaque mois de saut vu (26 mois) ; classement trié, « Vous » = patrimoine + vie en attente, Tata = patrimoine de `temoins["livret"]`, rang de la languette (téléphone) == `rang_rue()` ; Jean-Mi derrière Tata en 12/1988 dans toutes les parties (21 809 F, 32 429 F, 2 429 F contre 95 à 128 k F). Égalité joueur / Tonton Matelas (passif) : le joueur devant, à moins de 0,5 F près.
+- Krach (10/1987) : la fenêtre s'ouvre avec le tableau, 7 lignes == `c["jours"]` == `krach.json` (arrondis à 5 points, variations recalculées à la main : −9,7 ; −6,2 ; +3,3 ; −3,7 ; −2,4 ; −2,9 ; cumul −20 %) ; 3 choix visibles aux deux formats (captures `l6_krach_jours_1080` et `_tel`, relues).
+- « Un an après » : ouverte en 10/1988 dans 9 parties sur 9 ; 3 barres dans l'ordre vendu / rien / renforcé, valeurs == `c["barres"]` ET == **recalcul indépendant** (copie de l'état au krach, même choix, jeu passif jusqu'en 10/1988) à 1 F près dans les 3 variantes ; barre entourée == choix réel du krach (vendre → vendu, renforcer → renforcé, rien → rien, exemple → aucune + mention) ; Échap sans effet. `RUE fiche kind=gazette appel=modales`, `kind=projet`, `kind=carte` imprimées en partie réelle.
+- Notifications : 17 de la rue + 5 à 6 du kiosque par partie (6 notifications persistantes), toutes dans l'historique (source rue / média) ; à ×1, 23 toasts sur 23 affichés avec le texte court exact ; ★ présentes.
+- Écran de fin (partie réelle) : 4 barres == `classement_rue()`, rang « 1er / 2e DE LA RUE SUR 4 » == `rang_rue()`, réplique == `replique_rue` du bilan (vouvoiement), « Projets : n sur 2 réalisés » == `projets_passes()`.
+- **Durée** (temps machine, sans temps de lecture humain) : saut « prochain courrier » **164 à 171 s** par partie ; à ×1 sans saut **516 s** (8,6 min). 25 interruptions avec pause (cartes 10, projets 4, présentations 7, vie 2, marché 1, gazette 1) et 17 + 6 notifications. Estimation avec le bouton COURRIER et ≈ 15 à 20 s de lecture par interruption : ≈ 9 à 11 min (cible ≤ 20 min : tenue, mais **estimée, non mesurée sur un humain**).
+- Ancienne sauvegarde : deux sauvegardes réelles de `main` (06/1986 et 12/1987, avec et sans les clés `foyer` / `projets` / `quartier` / `jeanmi`) se rechargent, restent sans rue (classement vide, 0 notification de rue, 0 gazette) et finissent en 12/1988 (HUD éteint : `l6_rue_eteinte_tel` relue, languette « MON ARGENT 13 k F » identique à `main`).
+- Export : `Exporter_Windows.bat` (copie isolée, `JEUCLAUDE_GODOT`) réussi, 110 517 272 octets. `--main-pack` + `--etape=titre` et `--etape=rue_bloc` : **0 ligne ERROR, 0 GrillePixel** (les 2 ERROR GrillePixel des exe depuis 0.3 ont disparu). `--etape=un_an_apres` : 1 ERROR, `Can't save PNG at path 'captures/l6_un_an_apres_vue_rien.png'` : c'est l'étape de capture du développeur qui écrit une image dans `res://captures/`, impossible dans un paquet ; aucun rapport avec le jeu (M2).
+
+### 4. Critères (CA-U)
+- [~] **CA-U1** tests des développeurs et recette existante verts (1 091 OK) ; mon nouveau test de partie complète rouge (A2) ; `test_interface` passe la démo tout allumé ; ma recette passe 9 parties complètes sans blocage.
+- [x] **CA-U2** (bloc / languette) : `UI rue rang=2 lignes=4 negatif_signe=oui panneau_coupe=non` PC 1080, 1152 × 648, téléphone, 16:9 ; languette « 2e sur 4 » (rang == `rang_rue()` dans mes parties) ; toucher = panneau ouvert ; éteinte : ni bloc ni rang ; `sous_seuil=0`.
+- [x] **CA-U3** bloc == `classement_rue()` (mes parties) ; négatif rouge avec signe (captures) ; `debordements=0`.
+- [x] **CA-U4** notifications : libellé « LA RUE » + liseré bleu ; relecture longue == `texte_long` (`UI rue_notifs relecture_longue … egal=oui`) ; persistante restée 3 mois sans pause ; onglet LA RUE (9 entrées, source rue seule). Réserve : voir M5.
+- [x] **CA-U5** krach : voir §3 (7 lignes, choix visibles aux 2 formats, modale inchangée sans jours, `l6_krach_sans_jours_tel`).
+- [x] **CA-U6** « un an après » : voir §3 (3 barres, entourée, Échap, `RUE fiche kind=gazette appel=modales`).
+- [x] **CA-U7** fin : voir §3 ; rue éteinte : `UI fin barres=2 rue=eteinte pastille_rang=ABSENTE`.
+- [x] **CA-U8** `_config()` hors capture : cartes, projets, rue vrais (OK dans mon test) ; `integrale` = `integrale_saut` (hors capture éteints) ; `integrale_jouable` imprimée.
+- [~] **CA-U9** partie complète « à la main » : remplacée par 9 parties pilotées par code dans la vraie scène (aucun humain) ; téléphone 09/1987 à 11/1987 relu sur captures. **A1 : au téléphone, l'historique a des nombres tronqués.**
+- [~] **CA-U10** export réussi, `--main-pack` titre propre ; `un_an_apres` : 1 ERROR de capture (M2).
+- [x] **CA-U11** périmètre (réserve M1). [x] **CA-U12** `sequences.gd` limité à `jouer_modale` et aux séquences carte / gazette.
+
+### 5. Anomalies
+**A1 (majeure) : historique au téléphone, les nombres des onglets sont tronqués (chiffre faux).** Étapes : rue allumée (cas par défaut de 0.5), ouvrir HISTORIQUE sur le téléphone simulé 1440 × 648 avec ≥ 10 entrées dans MA MAISON / MA BANQUE (`capture_interface.ps1 -Etape historique_rue -Telephone`). Attendu : « MA MAISON 15 », « MA BANQUE 18 ». Constaté : « MA MAISON 1 », « MA BANQUE 1 » (le 2e chiffre est coupé par `clip_text`, `modale_historique.gd` l. 86) ; à 1280 × 720 (`-Telephone169`) les trois nombres MA MAISON / MA BANQUE / LA GAZETTE disparaissent, et à 1440 × 648 LA GAZETTE « 4 » est juste. Cause : le 5e onglet LA RUE réduit la largeur de chacun (avec 4 onglets, `px2_historique_tel169` affichait « 4 », « 26 », « 2 » sans coupure) ; régression propre à l'allumage de la rue. Captures : `l6_historique_rue_tel.png`, `testeur_hist_tel169.png`. Correction attendue : police ou libellé plus courts (ex. « MAISON », « BANQUE ») ou nombre en pastille, sans `clip_text` sur le nombre.
+
+**A2 (majeure) : SCRIPT ERROR en partie normale pendant un saut (test rouge).** Étapes : partie complète tout allumé, bouton COURRIER, plusieurs notifications (rue, kiosque, banque) pendant un même saut. Attendu : aucune erreur. Constaté : `SCRIPT ERROR: Invalid type in function '_retirer' in base 'Control (Hud)'. The Object-derived class of argument 1 (previously freed)…  at: Hud._notifier_compacte (hud.gd:1803)` (3 fois en `tests.ps1`, dans 6 parties sur 8 en mode saut, 2 à 3 erreurs chacune ; jamais à ×1). Cause : la 4e notification compacte évacue la plus ancienne (`_evacuer` → `queue_free`), puis le minuteur de celle-ci appelle `_retirer(p)` sur un nœud libéré ; `notifier()` a la garde `is_instance_valid(p)` (l. 1714) mais pas `_notifier_compacte` (l. 1802-1803). Pas d'effet visible en jeu (le nœud est déjà parti), mais `tests.ps1` traite tout SCRIPT ERROR comme un échec et l'allumage de la rue rend le cas courant. Reproduire : `tests.ps1 -Recette -Filtre rue_ui -Delai 700`. Correction : `if not is_instance_valid(p): return` après le `await` de la l. 1802.
+
+**Mineures**
+- M1 : `data/rue.json` modifié par dev-interface (voir §2).
+- M2 : `un_an_apres` dans un paquet exporté : 1 ERROR (écriture d'une capture dans `res://captures/`) ; idem probable pour `rue_notifs` (`l6_rue_relecture.png`).
+- M3 : téléphone : « Liquidé : la bourse l'a rui… » (étape de Jean-Mi) et « 5 000 F de plus enga… » (légende de la barre « Renforcé ») coupés par des points de suspension.
+- M4 : krach au téléphone : la phrase « Seuls le 16 et le 19 sont des chiffres d'archives » est omise (voulu par `docs/24` §2.4, « ENVIRON » reste) ; le niveau de certitude C n'est alors dit nulle part sur ce format.
+- M5 : pendant un saut, une notification persistante (★ de Jean-Mi, message du banquier) passe par la forme compacte d'une ligne et disparaît après ≈ 3 s comme les autres (`_notifier_compacte` ignore `persistant`) ; elle reste dans l'historique et le badge. À ×1 elle reste jusqu'au toucher (testé). Le contrôle du développeur (`persistante=reste`) porte sur une notification fabriquée hors saut.
+- M6 : écran de fin au téléphone (`l6_fin_rue_negatif_tel`) : la réplique, l'argent mis de côté et la pastille d'écart sont sous la ligne de flottaison (défilement, ligne coupée en bas de la zone) ; défilement tactile non vérifié.
+- M7 : au tout début de partie, les graduations « 20 000 F / 10 000 F » de la courbe de « Mon argent » se superposent (préexistant). Notification kiosque : titre « LA GAZETTE » répété.
+
+### 6. Non vérifié
+Vrai téléphone et défilement tactile ; partie jouée à la main par un humain (durée ressentie, lecture) ; animations en mouvement ; `capture_ville.ps1` sur `main` pour comparer ; référence `integrale` sur `main` (806,08 vs 805,93 F expliqué mais non remesuré) ; exe lancé (Smart App Control) : paquet vérifié par `--main-pack` ; sauvegarde réelle du joueur (inexistante sur cette machine).
+
+### 7. Zones fragiles
+Pile des notifications compactes (A2) ; 5 onglets de l'historique au téléphone (A1) ; textes coupés par points de suspension au téléphone (M3) ; fenêtre du krach sur formats étroits ; scénarios de capture qui écrivent dans `res://`.
