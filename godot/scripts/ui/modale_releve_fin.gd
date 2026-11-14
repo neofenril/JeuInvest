@@ -158,7 +158,7 @@ func fin_demo(e: EtatPartie) -> void:
 	lp.add_theme_constant_override("separation", 20)
 	# Lot 06 (A7, non ★) : le visage de Sylvie de « Mon foyer » (humeur du moment), quand les cartes sont allumées
 	if e.has_method("cartes_actives") and e.cartes_actives():
-		var visage := CadresPixel.icone("portrait_sylvie_" + ModaleCarte.nom_humeur(e.humeur_visible()))
+		var visage := CadresPixel.icone("portrait_sylvie_" + ModaleCarte.nom_humeur(e.humeur_visible()), {}, 2 if compact else 3)   # recette R-RUE M6 : plus petit au téléphone, la réplique remonte
 		visage.name = "VisageSylvie"
 		visage.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		lp.add_child(visage)
