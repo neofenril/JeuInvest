@@ -47,7 +47,7 @@
 | Lundi noir | modale du krach **inchangée** + **tableau des 7 jours** (16 → 26/10/1987, « environ », docs/19 §4.2) dans la modale | séquence de 15 s (file devant la banque, téléphone, Jean-Mi qui court, chiffres qui défilent) | tableau statique |
 | « Le krach, un an après » | interruption datée 10/1988, carte de la Gazette à **3 barres** (Tout vendu / Rien fait / Renforcé, choix réel entouré), cas « sans action » en exemple | sortie animée de la Gazette | carte simple |
 | Enfants qui grandissent, Porsche, panneau | — | tout | — |
-| Titres d'époque (P5), record | — (vague 6, inchangé) | — | rang seul à la fin |
+| Titres d'époque (P5), record | — (sortie **0.6** : `lot_07.md`, 07-L lancé dès le 14/11 empilé sur 05-L, invisible ; entre dans `main` avant R-RUE seulement s'il est validé à temps, pour que les parties 0.5 remplissent déjà `records.sav` ; 07-I après l'envoi de la 0.5) | — | rang seul à la fin |
 
 ## 3. Lot en cours 03-V2 : décision de périmètre (consigne à transmettre à dev-ville tout de suite)
 

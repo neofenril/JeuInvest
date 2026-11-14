@@ -292,8 +292,8 @@ func _tests_eteint() -> void:
 		and e1.ligne_projet_guichet() == "" and e1.projets_passes().is_empty())
 	StrategieTest.aller_a(e1, Dates.lire("1989-01"), true)
 	var patr := e1.patrimoine(e1.joueur) * F
-	verifier("CA-L7 : référence inchangée (graine 7, joueur actif) : 172 139,25 F, frais 869,97 F, 11 interruptions",
-		absf(patr - 172139.25) < 0.005 and absf(e1.frais_payes() * F - 869.97) < 0.005 and int(e1.banque["interruptions"]) == 11, "%.2f F" % patr)
+	verifier("CA-L7 : référence inchangée (graine 7, joueur actif) : 172 139,25 F, frais 870,08 F, 11 interruptions",
+		absf(patr - 172139.25) < 0.005 and absf(e1.frais_payes() * F - 870.08) < 0.005 and int(e1.banque["interruptions"]) == 11, "%.2f F" % patr)
 
 
 # ---------------------------------------------------------------------

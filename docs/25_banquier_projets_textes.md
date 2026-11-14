@@ -164,3 +164,41 @@ Exemple : « Projet : la Super 5, avril 1986 (dans 14 mois) · 30 000 F ». Jama
 4. Afficher la pénalité PEL dans la liste des ventes avant confirmation (R2).
 5. Écrire « Livret A » dans le jeu ; « Livret bleu » seulement en glossaire (§1.2).
 6. Rappeler la bulle « Simplifié : à l'époque, les petites ventes étaient souvent exonérées. » sur les lignes SICAV et actions.
+
+---
+
+## 7. Réponse à K3 point 2 : crédit de la Porsche de Jean-Mi et prix de la baguette (2026-11-13)
+
+Non bloquant : les données sont déjà dans le jeu en certitude C. Recherche web refaite (Fourastié-Sauvy / INSEE, presse et sites de collection) : **aucun prix en francs de 1987 de la Porsche 944 ni aucun relevé INSEE de la baguette 1984 n'est accessible en ligne** ; je ne remonte donc aucune certitude.
+
+### 7.1 Crédit et voiture (docs/19 §2.4)
+
+| Donnée | Valeur du jeu | Verdict | Certitude |
+|---|---|---|---|
+| Mensualité | 2 897 F (110 000 F, 1 %/mois, 48 mois) | Calcul refait : exact. Capital restant dû après 10 mensualités ≈ 91 200 F (jeu : 91 201), exact | A (calcul) |
+| Taux 12 % nominal | Valide comme ordre de grandeur d'un crédit auto à la consommation en 1987 ; fourchette réaliste 11 à 14 % de TEG (mon « 12-14 % » de docs/18 §5 reste valable, 12 % en est le bas). L'inflation était tombée à ≈ 3 % : les taux réels étaient élevés | C (ordre de grandeur plausible, aucune série trouvée en ligne) |
+| Durée 48 mois, apport 21 % | Plausible (36 à 48 mois courants pour une voiture d'occasion ; 60 mois plus rare) | C |
+| Prix d'occasion 140 000 F | Plausible pour une 944 de 4 à 5 ans (lancée en France en 1982) ; **non vérifiable** | C |
+| Prix neuf | Ma fourchette de docs/18 §5 (240-280 000 F) était trop haute pour une 944 de base. Ordre de grandeur plus prudent : **« plus de 200 000 F »** (formule de docs/19), les versions S et Turbo dépassant nettement. Ne jamais afficher un prix neuf précis | C |
+| Décote 140 000 → 91 000 F en 10 mois (-35 %) | **Plus sévère que la réalité** (une voiture de collection perd en pratique 10 à 15 % par an, et la 944 se tenait bien). C'est un choix narratif lié au krach, pas un fait | Convention de jeu |
+
+Décisions pour le jeu :
+- Garder les chiffres (140 000 / 30 000 / 110 000 / 12 % / 2 897 F) : cohérents entre eux et crédibles.
+- Dans toute bulle ou texte, dire « plus de 200 000 F neuve » ou ne rien dire du neuf ; ne pas citer 240-280 000 F.
+- Si une bulle commente la décote, la présenter comme **une revente dans la précipitation** (« vendue vite, donc bradée »), pas comme une règle de marché.
+- Mettre à jour mentalement docs/18 §5 : fourchette de taux inchangée, prix neuf remplacé par « > 200 000 F ».
+
+### 7.2 Prix de la baguette en 1984 et 1985 (variante de V05, docs/27 §2.2)
+
+| Année | Valeur | Certitude | Remarque |
+|---|---|---|---|
+| 1985 | **≈ 2,60 F** (docs/01 §7.3 bis) | B | Série INSEE du prix au kilo convertie en baguette de 250 g ; à ±0,10 F |
+| 1984 | **≈ 2,50 F** | C | Non relevé directement : déduit de 1985 avec une hausse d'environ 4 % (le pain parisien INSEE passe de 8,85 à 9,18 F/kg entre 1984 et 1985, soit +3,7 %, mais c'est un autre produit, donc indicatif) |
+
+Je **ne l'ai pas avec certitude** : le 1985 est B, le 1984 est C. Recommandation :
+- La variante chiffrée peut passer **si elle reste arrondie** : « Avec 100 F, j'avais 40 baguettes en 1984. Aujourd'hui, 38. » (100 / 2,50 = 40 ; 100 / 2,60 ≈ 38). Ces arrondis sont les seuls que je cautionne ; ne pas écrire de décimales.
+- Le sens (hausse d'environ 4 % en un an, davantage que la rémunération nulle d'un billet) est solide ; seul le détail du prix par baguette est incertain.
+- Si le game designer veut éviter un chiffre non garanti, conserver la V05 actuelle sans chiffre : elle ne trahit rien.
+- Mise en garde : le prix du pain avait été libéré en 1978 ; la hausse de 1984 à 1985 est en ligne avec l'inflation générale (≈ 7 % en 1984, ≈ 5,8 % en 1985), le pain montait donc moins vite que l'ensemble des prix.
+
+Sources : [Fourastié-Sauvy (INSEE), pain parisien](https://stats.fourastie-sauvy.org/include/php/prd2pdf.php?prd=1391) (page consultée par moteur de recherche, extrait non revérifié en détail) ; docs/01 §7.3 bis.

@@ -6,7 +6,8 @@ extends SceneTree
 const F := 6.55957
 ## Référence de 03-L (test_dividendes, graine 7, StrategieTest actif) : rien ne doit changer cartes éteintes (CA-FO1).
 const REF_PATRIMOINE_F := 172139.25
-const REF_FRAIS_F := 869.97
+# Lot 05 (D5) : 870,08 F (869,97 F avant les ancrages de Peugeot et de l'indice 1988-10 : les frais de gestion de la SICAV de 1988 suivent la courbe)
+const REF_FRAIS_F := 870.08
 const REF_INTERRUPTIONS := 11
 
 var _ok := 0
@@ -84,7 +85,7 @@ func _tests_eteint() -> void:
 	var cartes := (e.banque["interruptions_liste"] as Array).filter(func(x: Dictionary) -> bool: return x["kind"] == "carte")
 	var humeur := e.historique.filter(func(h: Dictionary) -> bool: return h["type"] in ["humeur", "escargots"] or h["genre"] == "carte")
 	var patr := e.patrimoine(e.joueur) * F
-	verifier("CA-FO1 : partie intégrale (graine 7, joueur actif) identique à la référence de 03-L : patrimoine 172 139,25 F, frais 869,97 F, 11 interruptions",
+	verifier("CA-FO1 : partie intégrale (graine 7, joueur actif) identique à la référence de 03-L : patrimoine 172 139,25 F, frais 870,08 F, 11 interruptions",
 		e.fin == "fin" and absf(patr - REF_PATRIMOINE_F) < 0.005 and absf(e.frais_payes() * F - REF_FRAIS_F) < 0.005
 		and int(e.banque["interruptions"]) == REF_INTERRUPTIONS and cartes.is_empty() and humeur.is_empty(),
 		"%s, frais %s, %d interruptions" % [Format.montant(e.patrimoine(e.joueur), a), Format.montant(e.frais_payes(), a), int(e.banque["interruptions"])])
