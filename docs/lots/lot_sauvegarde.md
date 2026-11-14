@@ -5,7 +5,7 @@
 > Réponses du joueur (06/11, verbatim dans docs/10) : « 3 emplacements possibles. l'utilisateur choisis quel emplacement écraser lors d'une nouvelle sauvegarde. je valide les décisions importantes. Je confirme une recharge de sauvegarde annule la prise en compte de la partie courante dans le record. »
 > Existant (`main` ae19d02) : un seul fichier `user://partie_en_cours.sav` (format 3, migration douce par `EtatPartie.defauts_etat`), écrit à chaque mois, après chaque choix et ordre, à la fermeture ; « Continuer » sur l'écran titre ; la modale en attente est rouverte à la reprise ; le marché est déterministe et tout le hasard vient de `graine_vie` (sauvegardée dans `config`).
 
-> **Mise à jour du 2026-11-13 (audit de préparation)** : `kind` réels relevés dans le code (05-L) : carte `carte` (C06 = `id`), projet `projet` (étapes `choix` / `echeance` dans `c["etape"]`), krach `marche` (id `p1e6`), héritage `D08`, « un an après » `gazette`. `rythme.json > sauvegarde.toujours` devient `["marche", "D08", "projet"]` (+ `"gazette"` si le game designer le veut). Le compteur `retours` et `bilan["record_possible"]` sont **créés par 07-L** (défaut 0 / vrai, `lot_07.md`) : SV-L ne fait plus que l'incrémenter ; 07 ne dépend donc plus de SV. Reste avant lancement : feu vert du joueur, maquette UX (U6 de `audit_preparation.md`), relecture des seuils (G6 point 6).
+> **Mise à jour du 2026-11-13 (audit de préparation)** : `kind` réels relevés dans le code (05-L) : carte `carte` (C06 = `id`), projet `projet` (étapes `choix` / `echeance` dans `c["etape"]`), krach `marche` (id `p1e6`), héritage `D08`, « un an après » `gazette`. `rythme.json > sauvegarde.toujours` devient `["marche", "D08", "projet", "C06"]` (sans `gazette` : game designer, docs/28 §6 ; arbitrages au §10). Le compteur `retours` et `bilan["record_possible"]` sont **créés par 07-L** (défaut 0 / vrai, `lot_07.md`) : SV-L ne fait plus que l'incrémenter ; 07 ne dépend donc plus de SV. Reste avant lancement : feu vert du joueur, maquette UX (U6 de `audit_preparation.md`), relecture des seuils (G6 point 6).
 
 ## 1. Design validé
 
@@ -65,8 +65,9 @@ func marquer_proposition() -> void                     # appelée quand le bande
 ### 4.3 `EtatPartie` (dev-logique)
 - `CHAMPS_ETAT` += `"retours"` (int, 0), `"dernier_point_propose"` (int, −99).
 - `func decision_importante(contenu: Dictionary) -> String` : libellé ou "" selon §1. « Toujours » = `kind` ou `id` dans `rythme.json > sauvegarde.toujours` ; carte = enjeu ≥ `seuil_carte_salaires` × salaire, ou `id == "C06"`. Les `kind` réels des projets et de « un an après » sont relevés dans le code au lancement (les noms ci-dessous sont provisoires).
-- `data/rythme.json > sauvegarde` : `{"intervalle_mois": 6, "seuil_carte_salaires": 1.0, "seuil_ordre_part": 0.20, "seuil_ordre_min": 5000, "toujours": ["marche", "D08", "projet_choix", "projet_echeance"]}`.
-- `Bilan.calculer` : + `"retours": int`, `"record_possible": bool` (= `retours == 0`).
+- `data/rythme.json > sauvegarde` : `{"intervalle_mois": 6, "seuil_carte_salaires": 1.0, "seuil_ordre_part": 0.20, "seuil_ordre_min": 5000, "toujours": ["marche", "D08", "projet", "C06"]}` (**docs/28 §6**, tranché le 14/11 : sans `gazette` ; C06 dans `toujours`). **Enjeu d'une carte = prix du choix le plus cher** (pas l'écart entre les choix). **Espacement de 6 mois compté depuis la dernière proposition, quelle qu'elle soit** (une « toujours » remet aussi le compteur à zéro ; les « toujours » restent proposées sans exception). « Toujours » : ≤ 7 par partie (un report de projet en ajoute une).
+- `func libelle_ordre(genre: String, montant: float, produit: String) -> String` : libellé de la proposition pour un ordre (« Avant : achat de 20 000 F de SICAV Avenir »), **construit par la logique** (docs/30 §8 point 4).
+- `Bilan.calculer` : `"retours"` et `"record_possible"` **existent déjà** (créés par 07-L) ; SV-L ne fait qu'incrémenter `retours`.
 
 ### 4.4 Interface (dev-interface)
 - `class_name Options` (`scripts/ui/options.gd`, statique, `ConfigFile` dans `user://options.cfg`) : `static func proposer_sauvegarde() -> bool`, `static func regler_proposer_sauvegarde(oui: bool)`. Aucun autoload nouveau, `project.godot` intouché.
@@ -114,7 +115,7 @@ Fichiers : `scripts/principal.gd`, façade `ui/modales.gd` et ses morceaux « ba
 - **CA-SI2 (titre)** : sans emplacement : JOUER seul (inchangé) ; avec un emplacement et sans partie en cours : JOUER + CHARGER ; avec partie en cours : CONTINUER + CHARGER + NOUVELLE PARTIE ; capture `titre_charger` PC et téléphone ; NOUVELLE PARTIE n'efface aucun emplacement.
 - **CA-SI3 (chargement)** : en jeu, CHARGER demande confirmation ; après chargement : date, patrimoine, HUD, ville et maison cohérents, modale en attente rouverte, pause, aucun saut actif ; « Continuer » au redémarrage reprend la partie chargée.
 - **CA-SI4 (bandeau)** : capture `krach_bandeau` et D08 : bandeau visible ; un toucher → écran des 3 emplacements, choix du joueur (confirmation si plein), retour à la carte avec « Sauvegardé », emplacement écrit avec le bon libellé ; choisir directement un bouton de la carte sans toucher le bandeau fonctionne (1 toucher) ; touches 1/2/3 inchangées, `S` ouvre l'écran des emplacements ; option à « non » → aucun bandeau ; présentation du banquier → aucun bandeau.
-- **CA-SI5 (ordre)** : feuille d'achat ≥ 20 % du patrimoine : bouton « Sauvegarder d'abord » ; sous le seuil : absent ; capture `ordre_important`.
+- **CA-SI5 (ordre)** : feuille d'achat ≥ 20 % du patrimoine : bouton « Sauvegarder d'abord » ; **tant que le seuil n'a pas été atteint dans cette feuille** : absent ; une fois apparu, il reste jusqu'au changement de produit ou de mode (docs/30 §4, pas de saut de mise en page) ; même hauteur de feuille avec et sans lui ; capture `ordre_important`.
 - **CA-SI6 (option)** : régler « non », quitter, relancer : option restée à « non » (fichier de test unique par processus dans les tests).
 - **CA-SI7 (fin)** : capture `fin_rejouee` : ligne « hors record » présente si `record_possible` est faux, absente sinon.
 - **CA-SI8 (écrans)** : toutes les captures du §5.2 aux 4 formats sans texte hors cadre ni hors écran, chiffres en Atkinson ; aucune `SCRIPT ERROR` ; `tests.ps1` vert.
@@ -125,3 +126,16 @@ Fichiers : `scripts/principal.gd`, façade `ui/modales.gd` et ses morceaux « ba
 ## 9. Décisions du joueur et points restés par défaut
 - Tranché (06/11) : 3 emplacements ; le joueur choisit l'emplacement à écraser à chaque sauvegarde ; liste des décisions importantes validée ; une recharge exclut la partie du record ; à noter, ne pas lancer maintenant.
 - Par défaut (non répondu, pas de nouvelle question tant que le lot n'est pas lancé) : bandeau non bloquant plutôt qu'une question ; titre d'une partie rejouée gardé dans la collection (à confirmer par le client en 07-L).
+
+## 10. Arbitrages du 14/11 (docs/28 §6, docs/30 §8) — maquettes UX : **docs/30** (référence de SV-I)
+| # | Point | Décision |
+|---|---|---|
+| G-1 | Seuils (docs/28 §6) | Repris au §4.3 : `toujours` = `["marche","D08","projet","C06"]`, enjeu = prix du choix le plus cher, espacement depuis la dernière proposition quelle qu'elle soit. CA-SL6 : « toujours » vrai pour C06 sans seuil ni espacement ; 4 à 10 propositions par partie inchangé (mesure). |
+| U-1 | Écran des emplacements au-dessus d'une carte | **Couche à part** (`CanvasLayer` au-dessus des modales, hors `Modales.courant`) ; repli docs/30 §3.5 autorisé si la superposition casse un test, écrit au compte rendu. Les touches 1, 2, 3, Échap, Entrée sont consommées tant qu'il est ouvert (test K2 obligatoire, ajouté à CA-SI4). |
+| U-2 | « Sauvegarder d'abord » qui reste | **Accepté** : CA-SI5 réécrit. |
+| U-3 | Phrase « cette partie ne comptera plus pour le record » dans le mode charger | **Acceptée** : ce n'est pas une règle nouvelle, c'est la règle du joueur (06/11) dite avant le geste (rien de caché). Texte donné par la logique (`Sauvegarde`), le client peut le reformuler. |
+| U-4 | Libellé d'un ordre | Construit par la logique : `libelle_ordre` (§4.3). |
+| U-5 | Fenêtre d'écrasement | **Accepté** : focus sur ANNULER, aucune touche pour REMPLACER. |
+| U-6 | Touches C (charger) et T (titres) de l'écran titre | T **obligatoire** en 07-I (`lot_07.md` D11) ; C **facultative** en SV-I. |
+| — | Captures SV-I | deux formats seulement (PC 1920 × 1080, téléphone 1440 × 648) + 1920 × 1009 pour l'écran des emplacements, règle de `feuille_de_route_jouable.md` §5 ; `test_ecran` pour les autres. |
+Statut inchangé : **NON LANCÉ** (feu vert du joueur attendu).
