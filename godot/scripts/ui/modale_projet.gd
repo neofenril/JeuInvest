@@ -323,7 +323,8 @@ func _construire_echeance(c: Dictionary, a: int, compact: bool, interieur: float
 	bloc.name = "Ventes"
 	bloc.add_theme_constant_override("separation", 2)
 	if ventes.is_empty():
-		var lr := Style.label("Rien à vendre : tout est disponible.", 20, Style.ui(), Style.TEXTE_PAPIER_2)
+		# Le texte dit le vrai cas : tout est disponible, ou il n'y a rien à vendre alors qu'il manque de l'argent (recette R-MAISON m1)
+		var lr := Style.label("Rien à vendre : tout est disponible." if manque <= 0.004 else "Rien à vendre : aucun placement ne peut couvrir ce qui manque.", 20, Style.ui(), Style.TEXTE_PAPIER_2)
 		lr.name = "RienAVendre"
 		bloc.add_child(lr)
 	else:
@@ -526,6 +527,7 @@ func _construire_confirmation(c: Dictionary, a: int, compact: bool, interieur: f
 	la.custom_minimum_size.x = interieur
 	v.add_child(la)
 	var reste := apres - montant
+	# Le reste est toujours dit : le montant s'il y en a un, sinon que les ventes couvrent juste le projet (recette R-MAISON m3)
 	var lr := Style.label("Ce qui reste va sur votre compte%s." % ((" : " + Format.entier(reste, a)) if reste > 0.004 else ""), 22, Style.ui(), Style.ENCRE)
 	lr.name = "Reste"
 	v.add_child(lr)
