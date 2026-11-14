@@ -25,6 +25,7 @@ var _projets_choisis := 0
 var _etiquettes_vues := 0
 var _rue_mois := 0
 var _krach_tableaux := 0
+var _gazettes_vues := 0
 var _guichets_vus := 0
 var _ventes_conformes := 0
 var _div_vus := {}        # lot 03 (I6) : « reçus » / « versé » -> nombre de fiches d'action vérifiées
@@ -246,6 +247,7 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	var ecarts_rue: Array = []
 	_rue_mois = 0
 	_krach_tableaux = 0
+	_gazettes_vues = 0
 	_ordres_refuses = 0
 	_projets_choisis = 0
 	_ventes_conformes = 0
@@ -356,6 +358,7 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	StrategieTest.politique_projets = "moins_cher"
 	StrategieTest.politique_echeance = "auto"
 	if cartes:
+		_verifier("%s : « Le krach, un an après » (octobre 1988) par Modales.gazette : 3 barres == c[barres], Échap sans effet, touche 1 (%d)" % [nom, _gazettes_vues], _gazettes_vues == 1)
 		_verifier("%s : le krach (rue allumée) porte le tableau des 7 jours du Lundi noir == c[jours] (%d)" % [nom, _krach_tableaux], _krach_tableaux == 1)
 		_verifier("%s : classement permanent : bloc LA RUE (4 lignes : id, rang, montant, « vous ») et rang de la languette == classement_rue() / rang_rue() chaque mois (%d mois)" % [nom, _rue_mois], _rue_mois >= 55 and ecarts_rue.is_empty(), str(ecarts_rue.slice(0, 2)))
 		_verifier("%s : vrai moteur des projets : %d choix de projet (projet_en_cours()[id] == option choisie), ventes faites == plan (%d), %d refus d'ordres pendant une carte ou un projet avec la phrase de l'interface, étiquette == projet_en_cours() (%d mois), ligne du guichet == ligne_projet_guichet() (%d fiches)" % [nom, _projets_choisis, _ventes_conformes, _ordres_refuses, _etiquettes_vues, _guichets_vus],
@@ -419,6 +422,9 @@ func _afficher_modale(e: EtatPartie, actif: bool, vues: Dictionary, ecarts_genre
 	if c.get("kind", "") == "carte":
 		_verifier_ordres_bloques(e, ecarts_choix, str(c.get("titre", "")))
 		await _afficher_carte(e, c, choix, vues, ecarts_genre, ecarts_choix)
+		return
+	if c.get("kind", "") == "gazette":
+		await _afficher_gazette(e, c, vues, ecarts_genre, ecarts_choix)
 		return
 	if c.get("kind", "") == "projet":
 		_verifier_ordres_bloques(e, ecarts_choix, str(c.get("titre", "")))
@@ -635,6 +641,43 @@ func _verifier_projets(nom: String, e: EtatPartie) -> void:
 	_verifier("%s : « Mon foyer » : projet en cours == contrat (%d lignes), 3 projets passés avec leur mot, aucun nombre d'humeur" % [nom, lp.size()],
 		lp == ModaleFoyer.textes_projet(pr, e.ab_courant()) and passes_ok and sans_jauge, "%s | %s | %s %s" % [str(lp), str(ls), str(passes_ok), str(sans_jauge)])
 	hud.maj_projet(e, {"_aucun": true})
+
+## « Le krach, un an après » comme la séquence de la ville : Modales.gazette, 3 barres == c["barres"] (jamais triées), Échap sans effet,
+## J'AI COMPRIS (touche 1) émet [gazette, ok], résolution du moteur, fondu.
+func _afficher_gazette(e: EtatPartie, c: Dictionary, vues: Dictionary, ecarts_genre: Array, ecarts_choix: Array) -> void:
+	modales.gazette(c, Vector2(960, 400))
+	var mg := modales.etat_gazette()
+	var t := 0.0
+	while mg.phase != "attente" and t < 5.0:
+		await get_tree().process_frame
+		t += get_process_delta_time()
+	vues["gazette"] = int(vues.get("gazette", 0)) + 1
+	if modales.genre_courant != "gazette" or mg.phase != "attente":
+		ecarts_genre.append("gazette : affichée comme « %s »" % modales.genre_courant)
+		return
+	var ab := e.ab_courant()
+	var ids: Array = mg.barres_vues.map(func(b: Dictionary) -> String: return str(b["id"]))
+	var vals: Array = mg.barres_vues.map(func(b: Dictionary) -> String: return str(b["valeur_txt"]))
+	var attendues: Array = c["barres"].map(func(b: Dictionary) -> String: return Format.entier(float(b["valeur"]), ab))
+	var choisies: int = c["barres"].filter(func(b: Dictionary) -> bool: return bool(b["choisi"])).size()
+	if ids != ["vendu", "rien", "renforce"] or vals != attendues or mg.n_entourees != choisies or mg.n_entourees > 1:
+		ecarts_choix.append("gazette : barres %s %s (entourées %d / %d)" % [str(ids), str(vals), mg.n_entourees, choisies])
+	_recu.clear()
+	await _touche(KEY_ESCAPE)
+	if not _recu.is_empty() or modales.genre_courant != "gazette":
+		ecarts_choix.append("gazette : Échap a fermé la fiche")
+	await _touche(KEY_1)
+	var r: Array = _recu.pop_back() if not _recu.is_empty() else []
+	if r != ["gazette", "ok"]:
+		ecarts_choix.append("gazette : choix_fait %s" % str(r))
+	var res := e.resoudre_modale("ok")
+	if res.is_empty():
+		ecarts_choix.append("gazette : résolution refusée")
+	modales.conclure_gazette(res, Vector2(960, 400))
+	await modales.carte_rangee
+	_gazettes_vues += 1
+	hud.maj(e, false)
+
 
 ## Carte ou projet ouvert : le moteur refuse les ordres débiteurs (« Réglez d'abord la carte du foyer. ») et l'interface dit la même phrase.
 func _verifier_ordres_bloques(e: EtatPartie, ecarts: Array, titre: String) -> void:

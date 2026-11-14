@@ -285,6 +285,11 @@ func relire(e: EtatPartie, i: int) -> bool:
 			m.courrier(c, Vector2(-1, -1), e, str(h["choix"]), a)
 		"carte", "projet":
 			m.carte_lecture(h, a)
+		"gazette":
+			if c.has("barres"):
+				m.gazette_lecture(c)   # « Le krach, un an après » : les 3 barres relues telles qu'elles sont apparues
+			else:
+				m.lecture_notification(h, a)
 		_:
 			if str(h["type"]) == "releve" and float(c.get("frais_total", 0.0)) > 0.0:
 				m.releve(c, a)

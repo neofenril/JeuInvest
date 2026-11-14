@@ -12,7 +12,7 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
 	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
-	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours"]
+	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -60,6 +60,8 @@ func jouer(etape: String) -> void:
 			await _historique_rue(jeu)
 		"krach_jours", "krach_sans_jours":
 			await _krach_jours(etape, jeu)
+		"un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple":
+			await _un_an_apres(etape, jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -806,6 +808,65 @@ func _krach_jours(etape: String, jeu: Node) -> void:
 			print("UI krach_jours ligne « %s »" % l)
 	_mesurer(etape, modales.courant)
 	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+
+
+## Contenu fabriqué de « Le krach, un an après » (lot_05 §4.3) : cas "vendu", "rien", "renforce" (le joueur a fait ce choix) ou "exemple".
+static func fabriquer_gazette(cas: String) -> Dictionary:
+	var u := {"vendu": 8400.0, "rien": 10900.0, "renforce": 15600.0}
+	return {"kind": "gazette", "source": "media", "date": "OCTOBRE 1988", "ab": Dates.lire("1988-10"), "titre": "LE KRACH, UN AN APRÈS",
+		"texte": "Un an après, la Bourse de Paris a dépassé son niveau d'avant le krach. Ceux qui pouvaient attendre ont retrouvé leur argent ; Jean-Mi, endetté, a dû vendre en pleine chute. En 1987, personne ne savait combien de temps il faudrait : après 1929, Wall Street a mis vingt-cinq ans.",
+		"garde_fou": "Un seul exemple, pas une règle.", "legende_renforce": "{mise} de plus engagés", "mise": Produits.f(5000.0),
+		"mention": "Exemple : vous n'avez ni actions ni SICAV en octobre 1987." if cas == "exemple" else "", "base": Produits.f(10000.0),
+		"barres": [{"id": "vendu", "titre": "TOUT VENDU", "valeur": Produits.f(u["vendu"]), "choisi": cas == "vendu"},
+			{"id": "rien", "titre": "RIEN FAIT", "valeur": Produits.f(u["rien"]), "choisi": cas == "rien"},
+			{"id": "renforce", "titre": "RENFORCÉ", "valeur": Produits.f(u["renforce"]), "choisi": cas == "renforce"}],
+		"choix": [{"id": "ok", "titre": "J'AI COMPRIS"}]}
+
+
+## « Un an après » (CA-U6) : 3 barres == c["barres"], jamais triées, barre choisie entourée (aucune dans l'exemple), Échap sans effet, touche 1.
+func _un_an_apres(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	var cas := etape.trim_prefix("un_an_apres").trim_prefix("_")
+	if cas == "":
+		cas = "rien"
+	sc.partir_de_la_rue(etape)
+	Partie.changer_vitesse(0)
+	await sc.delai(0.5)
+	var c := fabriquer_gazette(cas)
+	modales.gazette(c, Vector2(960, 300))
+	await sc.attendre_que(func() -> bool: return modales.etat_gazette().phase == "attente", 5.0)
+	await sc.delai(0.4)
+	var mg := modales.etat_gazette()
+	var recu := {}
+	var coup := func(g: String, id: String) -> void: recu["id"] = id; recu["g"] = g
+	modales.choix_fait.connect(coup)
+	await sc.touche(KEY_ESCAPE)
+	await sc.clic_dehors()
+	await sc.delai(0.3)
+	var ferme_pas := modales.genre_courant == "gazette" and recu.is_empty()
+	var ordre_ids: Array = mg.barres_vues.map(func(b: Dictionary) -> String: return str(b["id"]))
+	var vals_ok := true
+	for i in mg.barres_vues.size():
+		vals_ok = vals_ok and str(mg.barres_vues[i]["valeur_txt"]) == Format.entier(float(c["barres"][i]["valeur"]), Dates.lire("1988-10"))
+	var choisie := "aucune"
+	for b: Dictionary in mg.barres_vues:
+		if bool(b["choisi"]):
+			choisie = str(b["id"])
+	print("UI gazette barres=%d entouree=%s ordre=%s valeurs=%s == c[barres] echap_clic=%s mention=%s base=« %s »" % [mg.barres_vues.size(), choisie, ",".join(PackedStringArray(ordre_ids)),
+		str(mg.barres_vues.map(func(b: Dictionary) -> String: return str(b["valeur_txt"]))), "ignores" if ferme_pas else "FERMENT incoherences=1", "oui" if modales.courant.find_child("Mention", true, false) != null else "non", mg.base_txt])
+	if ordre_ids != ["vendu", "rien", "renforce"] or not vals_ok or mg.n_entourees != (0 if cas == "exemple" else 1):
+		print("UI gazette incoherences=1")
+	_mesurer("un_an_apres", modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+	await RenderingServer.frame_post_draw
+	sc.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://captures/l6_un_an_apres_%s%s.png" % [cas, "_tel" if Ecran.compact() else ""]))
+	await sc.touche(KEY_1)
+	await sc.delai(0.2)
+	print("UI gazette touche_1=%s" % str(recu.get("g", "AUCUN")) + "/" + str(recu.get("id", "")))
+	modales.choix_fait.disconnect(coup)
+	modales.conclure_gazette({"choix": "ok", "kind": "gazette", "notifs": []}, Vector2(-1, -1))
+	await sc.delai(0.5)
+	print("UI gazette conclusion=%s" % ("fiche disparue" if modales.genre_courant == "" and not modales.carte_en_cours else "RESTE incoherences=1"))
 
 
 ## Historique : onglet LA RUE avec les vraies notifications de la rue (partie menée jusqu'à fin 1986), relecture de la plus longue.

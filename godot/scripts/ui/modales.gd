@@ -38,6 +38,7 @@ var _historique: ModaleHistorique
 var _carte: ModaleCarte
 var _foyer: ModaleFoyer
 var _projet: ModaleProjet
+var _gazette: ModaleGazette
 
 
 func _init() -> void:
@@ -50,6 +51,7 @@ func _init() -> void:
 	_carte = ModaleCarte.new(self)
 	_foyer = ModaleFoyer.new(self)
 	_projet = ModaleProjet.new(self)
+	_gazette = ModaleGazette.new(self)
 
 
 func _ready() -> void:
@@ -174,6 +176,26 @@ func conclure_projet(r: Dictionary, arrivee: Vector2) -> void:
 
 func etat_projet() -> ModaleProjet:
 	return _projet
+
+
+## « Le krach, un an après » (lot 06, contrat lot_05 §4.3) : fiche de la Gazette à 3 barres ; émet choix_fait("gazette", "ok") et RESTE affichée ;
+## ni Échap ni clic extérieur ; touche 1 ou Entrée.
+func gazette(c: Dictionary, depart: Vector2) -> void:
+	await _gazette.ouvrir(c, depart)
+
+
+## Relecture d'« un an après » depuis l'historique (lecture seule : FERMER, Échap et clic extérieur ferment).
+func gazette_lecture(c: Dictionary) -> void:
+	await _gazette.ouvrir(c, Vector2(-1, -1), true)
+
+
+## Coroutine : la fiche disparaît par fondu (≤ 0,2 s).
+func conclure_gazette(r: Dictionary, arrivee: Vector2) -> void:
+	await _gazette.conclure(r, arrivee)
+
+
+func etat_gazette() -> ModaleGazette:
+	return _gazette
 
 
 ## « Mon foyer » (lot 04, docs/17 §4.4) : lecture seule ; ferme avec « fermer », ou « extra » (historique MA MAISON).
@@ -355,6 +377,8 @@ func _on_fond(event: InputEvent) -> void:
 			fermer("non")
 		"banque":
 			banque.fermer_demande.emit()
+		"gazette":
+			_fremir(courant)   # ni Échap ni clic extérieur : la fiche attend J'AI COMPRIS
 		"carte", "projet":
 			var objet_f: ModaleCarte = _projet if genre_courant == "projet" else _carte
 			if objet_f.phase == "conclusion":
@@ -388,7 +412,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
 	if k == null or not k.pressed or k.echo or courant == null:
 		return
-	if genre_courant == "carte" or genre_courant == "projet":
+	if genre_courant == "gazette":
+		if k.keycode == KEY_1 or k.keycode == KEY_ENTER or k.keycode == KEY_KP_ENTER:
+			_gazette.choisir("ok")
+			get_viewport().set_input_as_handled()
+	elif genre_courant == "carte" or genre_courant == "projet":
 		var objet: ModaleCarte = _projet if genre_courant == "projet" else _carte
 		var nc := k.keycode - KEY_1
 		if nc >= 0 and nc < 4 and (genre_courant == "projet" or nc < 2):
