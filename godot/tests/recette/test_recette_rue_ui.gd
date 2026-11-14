@@ -21,6 +21,8 @@ var seq: Node
 
 var notifs: Array = []
 var persist_vues := 0
+var persist_saut_vues := 0
+var persist_saut_total := 0
 var bloque := ""
 var ecarts_bloc: Array = []
 var mois_bloc := 0
@@ -236,7 +238,7 @@ func _partie(actif: bool, graine: int) -> void:
 	verifier("%s : krach : fenêtre avec 7 jours == c[jours], choix visibles (%d vue)" % [nom, krach_vu], krach_vu == 1 and krach_ecarts.is_empty(), str(krach_ecarts))
 	verifier("%s : « un an après » ouverte en 10/1988, 3 barres == c[barres] == recalcul indépendant (%d vue)" % [nom, gaz_vu], gaz_vu == 1 and gaz_ecarts.is_empty(), str(gaz_ecarts))
 	verifier("%s : notifications de la rue reçues (voisin, rang, kiosque) : %d rue, %d kiosque" % [nom, nr, nk], nr >= 8 and nk >= 1, "")
-	verifier("%s : toasts lisibles == n[texte] (x1) ou persistantes affichées : %s" % [nom, str(ecarts_toast.slice(0, 4))], ecarts_toast.is_empty(), "toasts vus=%d persistantes vues=%d / %d" % [toasts_vus, persist_vues, np])
+	verifier("%s : toasts lisibles == n[texte] (x1) ou persistantes affichées : %s" % [nom, str(ecarts_toast.slice(0, 4))], ecarts_toast.is_empty(), "toasts vus=%d persistantes vues=%d / %d ; en saut %d / %d" % [toasts_vus, persist_vues, np, persist_saut_vues, persist_saut_total])
 	verifier("%s : historique : toutes les notifications de la rue y sont (source rue / media)" % nom, _controler_historique(e), "")
 	scene.queue_free()
 	await _images(5)
@@ -518,3 +520,20 @@ func _verifier_persistante(texte: String, source: String, ab: int) -> void:
 		persist_vues += 1
 	else:
 		ecarts_toast.append("%s : persistante « %s » non affichée après 0,8 s" % [Dates.texte_court(ab), texte])
+
+
+## R-RUE passage 2 (M5) : pendant un saut, une persistante reste affichée (forme compacte) bien après les 3,4 s d une ordinaire,
+## tant que moins de 3 notifications plus récentes l ont poussée vers l historique.
+func _verifier_persistante_saut(texte: String, ab: int, rang: int) -> void:
+	await get_tree().create_timer(5.0).timeout
+	if hud == null or not is_instance_valid(hud) or notifs.size() - rang >= 3:
+		return
+	var n := 0
+	for p in hud._liste_notifs:
+		if is_instance_valid(p) and p.name == "NotifCompacte":
+			n += 1
+	persist_saut_total += 1
+	if n >= 1:
+		persist_saut_vues += 1
+	else:
+		ecarts_toast.append("%s : persistante « %s » disparue en saut apres 5 s" % [Dates.texte_court(ab), texte])

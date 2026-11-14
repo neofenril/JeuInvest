@@ -167,3 +167,19 @@ Vrai téléphone et défilement tactile ; partie jouée à la main par un humain
 
 ### 7. Zones fragiles
 Pile des notifications compactes (A2) ; 5 onglets de l'historique au téléphone (A1) ; textes coupés par points de suspension au téléphone (M3) ; fenêtre du krach sur formats étroits ; scénarios de capture qui écrivent dans `res://`.
+
+### R-RUE passage 2 : 2026-11-14, branche `lot/05-interface`, HEAD 47a7d7d (5 commits de correction après 0ec70f5)
+
+**Verdict : OK** (0 anomalie bloquante ou majeure ; mineures listées).
+
+- **Tests** : `tests.ps1 -Recette -Delai 700` : 27 étapes, **1 105 vérifications OK, 0 KO, 0 erreur de script** (dont mon `test_recette_rue_ui` 14 OK, maintenant « propre », et `test_interface` 89 avec le nouveau contrôle des onglets).
+- **A2 corrigée** : garde `is_instance_valid(p)` dans `_notifier_compacte` (hud.gd). Mon test en parties COMPLÈTES, mode saut : 4 parties de plus (actif 7 PC krach « vendre », actif 31 téléphone « renforcer », passif 31 PC, passif 7 téléphone) + la partie de `tests.ps1` : **0 SCRIPT ERROR** (avant : 2 à 3 par partie), 14 OK / 0 KO chacune.
+- **A1 corrigée** : onglets courts sans icône au téléphone (« MAISON 15 », « BANQUE 18 », « GAZETTE 4 », « RUE 9 », « TOUT 46 »), police 26. Relu à l'image à 1440 × 648 et 1280 × 720 (`r2_hist_tel`, `r2_hist_tel169`) : nombres entiers, 15 + 18 + 4 + 9 = 46 = TOUT ; au PC 1080 : libellés longs avec icônes (« LA RUE 9 »).
+- **M3** relue : étape de Jean-Mi « Liquidé : la bourse l'a ruiné » passe à la ligne (`r2_bloc_tel`) ; légende « 5 000 F de plus engagés » sur 2 lignes (`r2_anv_tel`), un peu serrée contre la ligne « Un seul exemple, pas une règle » et la fiche garde du papier vide en bas (cosmétique).
+- **M6** relue (`r2_fin_neg_tel`) : visage plus petit, réplique de Tata remontée, visible sans défilement ; « Projets : 2 sur 2 réalisés » visible.
+- **M5** : le code retourne avant le minuteur pour une notification persistante compacte (hud.gd). Vérification en situation **non concluante** : ma sonde « persistante encore affichée 5 s après en saut » ne s'est déclenchée dans aucune partie (≥ 3 notifications plus récentes ou fin de saut) ; reste à vérifier à la main.
+- **M2** : correction lue dans le diff, **export non refait** (un_an_apres en paquet non revérifié).
+- **Captures** : 9 étapes touchées (historique ×3, fin ×2, un_an_apres ×3, rue_bloc, rue_notifs) + 8 d'échantillon (krach_jours, carte, projet_jour_j, mon_foyer, notifs_saut, fin, historique, rue_eteinte) : toutes code 0, aucun `incoherences`, `debordements`, `sous_seuil` non nul. **Série complète non rejouée** (207 lancements, vert au passage 1 sur le même code hors 6 fichiers).
+- **Périmètre des 5 commits** : `scenarios/interface.gd`, `bloc_rue.gd`, `hud.gd`, `modale_gazette.gd`, `modale_historique.gd`, `modale_releve_fin.gd`, `test_interface.gd` : tous colonne 05-I, aucun fichier logique ni ville. M1 (rue.json) inchangée, à ratifier par le chef de projet.
+- Mineures restantes : M1, M4 (certitude C omise au téléphone, voulu), M7 ; légende « Renforcé » serrée ; M5 et M2 non confirmés en situation.
+- Mon test a reçu une sonde de persistantes en saut (`_verifier_persistante_saut`).
