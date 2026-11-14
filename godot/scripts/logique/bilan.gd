@@ -6,6 +6,26 @@ extends RefCounted
 const IDS := ["vous", "matelas", "livret", "indice"]
 
 
+## Projets du foyer pour l'écran de fin : {"realises", "total", "liste": [{"id", "nom", "etat"}]} ; une ligne par projet
+## (option choisie si elle l'a été, sinon le projet lui-même). Projets éteints : 0 sur 0, liste vide.
+static func _projets(e: EtatPartie) -> Dictionary:
+	var out := {"realises": 0, "total": 0, "liste": []}
+	if not Projets.actif(e):
+		return out
+	for p: Dictionary in Projets.donnees()["projets"]:
+		var s: Dictionary = e.projets["projets"][str(p["id"])]
+		var id := str(p["id"])
+		var nom := str(p["titre"])
+		if str(s["option"]) != "":
+			var o: Dictionary = Projets._option(str(s["option"]))["option"]
+			id = str(o["id"])
+			nom = str(o["nom"])
+		out["liste"].append({"id": id, "nom": nom, "etat": str(s["etat"])})
+	out["total"] = (out["liste"] as Array).size()
+	out["realises"] = Titres.projets_realises(e)
+	return out
+
+
 static func calculer(e: EtatPartie) -> Dictionary:
 	var a := e.ab_courant()
 	var nominal := {
@@ -62,9 +82,15 @@ static func calculer(e: EtatPartie) -> Dictionary:
 			lecons.append(c["lecon"])
 
 	var rue := e.classement_rue()
+	var phrases: Dictionary = Titres.donnees()["objectif"]
 	return {
 		"a": a, "fin": e.fin, "nominal": nominal, "auj": auj, "bag": bag, "classement": classement,
-		"objectif": {"atteint": atteint, "bag_patrimoine": bag["vous"], "bag_mis": e.bag_mis},
+		"objectif": {"atteint": atteint, "bag_patrimoine": bag["vous"], "bag_mis": e.bag_mis,
+			"phrase": str(phrases["atteint" if atteint else "non_atteint"])},
+		# Lot 07-L : titre d'époque ({} si abandon ou faillite), écart final face à Tata Livret (le record), humeur, projets
+		"titre": Titres.calculer(e), "ecart_tata_pct": 100.0 * Titres.ecart_tata(e), "prenom": e.prenom(),
+		"humeur_fin": e.humeur_visible(), "humeur_phrase": e.humeur_phrase(), "projets": _projets(e),
+		"retours": e.retours, "record_possible": e.retours == 0 and e.fin == "fin",
 		"battus": battus, "nb_battus": nb_battus, "etoiles": etoiles, "nb_etoiles": nb_etoiles,
 		"replique": replique, "lecons": lecons, "epargne_nette": e.epargne_nette,
 		"frais": e.stats["frais"], "impots": e.stats["impots"], "interets": e.joueur.interets_total,
