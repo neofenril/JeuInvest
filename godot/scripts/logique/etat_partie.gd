@@ -1828,7 +1828,8 @@ func jeanmi_resume() -> Dictionary:
 		return {}
 	var d := Quartier.donnees_jeanmi()
 	var etape := str(jeanmi["etape"])
-	return {"etape": etape, "patrimoine": patrimoine_jeanmi() * Format.TAUX_EURO, "dette": float(jeanmi["dette"]),
+	return {"etape": etape, "etape_texte": str(Quartier.donnees_rue().get("etapes_jeanmi", {}).get(etape, "")),
+		"patrimoine": patrimoine_jeanmi() * Format.TAUX_EURO, "dette": float(jeanmi["dette"]),
 		"regle": str(d["regle"] if etape == "attend" else d["regle_apres"])}
 
 
@@ -1914,7 +1915,7 @@ func mois_krach_index() -> int:
 ## Cours, taux et dividendes de 10/1988 pour les barres (lot_05.md D10) :
 ##  - cours_fin : cours du mois courant (fin 10/1988) ; dividendes : net par titre versé de 11/1987 à 09/1988 (rendement et impôt
 ##    du moteur au mois de versement) ; taux_impot, courtage, entrée de la SICAV : ceux de 10/1987 (vente et achat au krach) ;
-##  - facteur_livret : capital au Livret A de 11/1987 à 09/1988 (intérêts mensuels, crédités en décembre comme le moteur).
+##  - facteur_livret : capital au Livret A de 10/1987 à 09/1988 (intérêts mensuels dès la fin du mois du krach, crédités en décembre comme le moteur).
 func ctx_gazette(inst: Dictionary) -> Dictionary:
 	var ab_k := int(inst["ab"])
 	var a := ab_courant()
@@ -1931,7 +1932,7 @@ func ctx_gazette(inst: Dictionary) -> Dictionary:
 			div[id] = s
 	var capital := 1.0
 	var acquis := 0.0
-	for mm in range(ab_k + 1, a):
+	for mm in range(ab_k, a):   # de 10/1987 (le produit de la vente est au Livret A dès la fin du mois du krach) à 09/1988
 		acquis += capital * Marche.taux_livret(mm) / 100.0 / 12.0
 		if Dates.mois(mm) == 12:
 			capital += acquis

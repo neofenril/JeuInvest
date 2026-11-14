@@ -20,6 +20,7 @@ func _initialize() -> void:
 	_tests_parties()
 	_tests_levier()
 	_tests_krach()
+	_tests_vendu_moteur_reel()
 	_tests_sauvegarde()
 	_tests_bilan_contrat()
 	_tests_textes()
@@ -503,7 +504,7 @@ func _barres_independantes(e: EtatPartie, inst: Dictionary) -> Dictionary:
 		extra += q * (p1 + dv)
 	var capital := 1.0
 	var acquis := 0.0
-	for mm in range(ab_k + 1, a):
+	for mm in range(ab_k, a):
 		acquis += capital * Marche.taux_livret(mm) / 100.0 / 12.0
 		if Dates.mois(mm) == 12:
 			capital += acquis
@@ -568,6 +569,45 @@ func _tests_krach() -> void:
 		bool(inst2["exemple"]) and str(cx["mention"]) != "" and choisis2.is_empty() and ok2 and absf(float(cx["base"]) * F - float(Krach.donnees()["un_an_apres"]["exemple"]["montant_f"])) < 1.0,
 		"%.0f / %.0f / %.0f F" % [float(cx["barres"][0]["valeur"]) * F, float(cx["barres"][1]["valeur"]) * F, float(cx["barres"][2]["valeur"]) * F])
 
+
+## A1 (passage 2) : la barre « Tout vendu » égale ce que donne le moteur réel : choix « vendre » au krach, produit de la vente
+## placé au Livret A, solde lu en 10/1988 (deux parties jumelles, avec et sans le dépôt).
+func _jouer_vente_reelle(g: int, deposer: bool) -> Dictionary:
+	var e := _jusqu_au_krach(g, true)
+	var r := e.resoudre_modale("vendre")
+	var recu := float((r["vente"] as Dictionary)["recu"])
+	if deposer:
+		var d := e.deposer_livret(e.joueur, recu)
+		if not bool(d.get("ok", false)):
+			return {}
+	var garde := 0
+	while e.fin == "" and garde < 200:
+		garde += 1
+		if e.modale.get("kind", "") == "gazette":
+			return {"e": e, "recu": recu, "livret": e.joueur.livret + e.joueur.livret_int, "gazette": e.contenu_modale()}
+		StrategieTest.jouer_mois(e, false)
+		while not e.modale.is_empty() and e.modale.get("kind", "") != "gazette":
+			e.resolution_auto()
+		if e.modale.get("kind", "") == "gazette":
+			continue
+		e.avancer()
+	return {}
+
+
+func _tests_vendu_moteur_reel() -> void:
+	var a := _jouer_vente_reelle(7, true)
+	var b := _jouer_vente_reelle(7, false)
+	if a.is_empty() or b.is_empty():
+		verifier("A1 : barre « Tout vendu » comparée au moteur réel (parties jumelles)", false)
+		return
+	var reel: float = float(a["livret"]) - float(b["livret"])   # le produit de la vente après 12 mois de Livret A
+	var vendu: float = float(a["gazette"]["barres"][0]["valeur"])
+	verifier("A1 : « Tout vendu » = produit de la vente placé au Livret A par le moteur réel, solde en 10/1988, au centime près (%.2f F)" % (reel * F),
+		absf(vendu - reel) * F < 0.01 and reel > float(a["recu"]), "barre %.2f F, moteur %.2f F, produit %.2f F" % [vendu * F, reel * F, float(a["recu"]) * F])
+	# Exemple de 10 000 F : 10 000 F × facteur du Livret (docs/26 ≈ 10 450 F ; moteur réel 10 453,80 F)
+	var x := _jouer_krach_et_gazette(7, "ecart", false)
+	var v_ex := float(x["gazette"]["barres"][0]["valeur"]) * F
+	verifier("A1 : exemple de 10 000 F : « Tout vendu » = 10 453,80 F (moteur réel, docs/26 ≈ 10 450 F)", absf(v_ex - 10453.80) < 0.05, "%.2f F" % v_ex)
 
 # ---------------------------------------------------------------------
 # CA-R10 : sauvegarde
@@ -646,6 +686,20 @@ func _tests_bilan_contrat() -> void:
 		and (cl.filter(func(l: Dictionary) -> bool: return l["reference"]) as Array)[0]["id"] == "livret")
 	verifier("CA-R11 : jeanmi_resume() : {etape, patrimoine, dette} (+ regle) ; l'étape suit le plan (porsche en 06/1987), règle d'après l'ouverture",
 		jr.has_all(["etape", "patrimoine", "dette", "regle"]) and jr["etape"] in ["attend", "position", "porsche", "liquide", "rembourse"] and jr["etape"] == "porsche" and str(jr["regle"]) == str(Donnees.temoins()["jeanmi"]["regle_apres"]))
+	var ok_etapes := true
+	for et in ["attend", "position", "porsche", "liquide", "rembourse"]:
+		if str(Quartier.donnees_rue().get("etapes_jeanmi", {}).get(et, "")) == "":
+			ok_etapes = false
+	var f_et := EtatPartie.new()
+	f_et.demarrer(_config(7))
+	verifier("B8 : jeanmi_resume()[etape_texte] non vide pour les 5 étapes (rue.json > etapes_jeanmi) ; rue éteinte : {} inchangé",
+		ok_etapes and str(jr["etape_texte"]) == "Porsche à crédit" and str(f_et.jeanmi_resume()["etape_texte"]) == "attend un tuyau" and EtatPartie.new().jeanmi_resume().is_empty())
+	var rx_tu := RegEx.create_from_string("(?i)\\b(tu|ton|ta|tes|toi|t'|te)\\b")
+	var tutoie := []
+	for tt: String in _textes_temoins():
+		if rx_tu.search(tt) != null:
+			tutoie.append(tt)
+	verifier("B8 : aucun « tu », « ton », « ta », « tes » isolé dans temoins.json (vouvoiement)", tutoie.is_empty(), str(tutoie))
 	var notif_ok := true
 	var nb_v := 0
 	for h: Dictionary in e.historique:
@@ -707,3 +761,8 @@ func _collecter(x: Variant, out: Array) -> void:
 		for k in x:
 			if not str(k).begins_with("_"):
 				_collecter(x[k], out)
+
+func _textes_temoins() -> Array:
+	var out: Array = []
+	_collecter(Donnees.temoins(), out)
+	return out

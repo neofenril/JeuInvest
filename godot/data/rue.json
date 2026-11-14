@@ -93,6 +93,8 @@
     { "id": "K10", "mois": "1988-05", "texte": "Mitterrand réélu pour sept ans", "cert": "A" },
     { "id": "K11", "mois": "1988-09", "texte": "Séoul : le monde du sport en fête", "cert": "A" }
   ],
+  "_etapes_jeanmi": "Libellé court de l'étape de Jean-Mi (jeanmi_resume()[etape_texte], docs/27 §3.2 idée 1, lot_05.md B8).",
+  "etapes_jeanmi": { "attend": "attend un tuyau", "position": "tout sur Peugeot", "porsche": "Porsche à crédit", "liquide": "liquidé", "rembourse": "rembourse" },
   "_levier": "Gabarit de la phrase du levier (V13, docs/19 §2.3). Aucun chiffre en dur : {couverture}, {position}, {perte}, {dette} sont des montants en F, {baisse} un pourcentage, tous calcules. couverture + dette = perte, au franc pres.",
   "levier": "Avec {couverture}, Jean-Mi en a joué {position} au règlement mensuel (acheter à crédit sur la Bourse). Peugeot a perdu {baisse} : {perte} de perte. Ses {couverture} y sont passés, et il en doit encore {dette}."
 }
