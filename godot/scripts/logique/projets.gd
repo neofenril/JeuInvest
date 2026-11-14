@@ -588,6 +588,13 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 			_:
 				s2["etat"] = "abandonne"
 				s2["m_fin"] = e.m
+				# Lot 07-L : abandon « évitable » = RÉALISER ou RÉALISER EN VENDANT était actif (titre de la fourmi) ;
+				# renoncer faute d'argent n'en est pas un.
+				var evitable := false
+				for x: Dictionary in vu.get("choix", []):
+					if str(x["id"]) in ["realiser", "realiser_en_vendant"] and not bool(x.get("desactive", false)):
+						evitable = true
+				Titres.noter_abandon(e, pid2, evitable)
 				r["consequence"] = str(t["consequence_abandonne_p2c" if bool(o2.get("dans_patrimoine", false)) else "consequence_abandonne"])
 				Foyer._regler_humeur(e, int(e.foyer.get("humeur", 0)) + int(h["abandonne"]), str(r["consequence"]), notifs)
 	r["humeur_apres"] = Foyer.humeur_visible(e)
