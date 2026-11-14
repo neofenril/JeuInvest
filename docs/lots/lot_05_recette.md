@@ -183,3 +183,27 @@ Pile des notifications compactes (A2) ; 5 onglets de l'historique au téléphone
 - **Périmètre des 5 commits** : `scenarios/interface.gd`, `bloc_rue.gd`, `hud.gd`, `modale_gazette.gd`, `modale_historique.gd`, `modale_releve_fin.gd`, `test_interface.gd` : tous colonne 05-I, aucun fichier logique ni ville. M1 (rue.json) inchangée, à ratifier par le chef de projet.
 - Mineures restantes : M1, M4 (certitude C omise au téléphone, voulu), M7 ; légende « Renforcé » serrée ; M5 et M2 non confirmés en situation.
 - Mon test a reçu une sonde de persistantes en saut (`_verifier_persistante_saut`).
+
+---
+
+## Correctifs 0.5.1 (recette courte) : branche `lot/05-correctifs`, commits 3636c8b, c28f4e0, 8d7ce17 (2026-11-14/15)
+
+**Verdict : OK.** Aucune anomalie bloquante ni majeure. Recette allégée comme demandé.
+
+### Vérifications
+- **Tests** : `tests.ps1 -Recette -Delai 700` : **1 126 vérifications OK, 0 KO, 0 erreur de script, 0 échec**, « TOUT EST PROPRE », sauvegarde du joueur inchangée. Pas de `SCRIPT ERROR` ni `Parse Error`.
+- **Intégrales (captures, graine 11)** : `integrale` = `integrale_saut` = **161 419 F, frais 806,08 F, 11 interruptions**, dividendes 670,11 F, mêmes modales vues (appel 8, banque 4, courrier 2, journal 1, fin 1). `integrale_jouable` inchangée : **86 213 F, 264,80 F, 11 interruptions**, 10 cartes, 2/2 projets. Aucune erreur de script, aucune modale sautée.
+- **Durée du saut** : `integrale_saut` dure **69 s** (62 s de partie) contre 173 s pour `integrale` ; 60 mois à 0,1 s = 6 s de défilement, le reste est le traitement scripté des 11 modales. Chaque mois reste traité un par un par le vrai moteur (résultats identiques). Mois du saut non animés (`pendant_saut` lu dans `principal._on_mois`).
+- **Notifications ★ persistantes / test_recette_saut** (18 OK, non_lues exact) : rien de perdu détecté. Non rejoué à la main (voir plus bas).
+- **Pop-up de confirmation** : captures `rec_conf_pc` (PC) et `rec_conf_tel` (téléphone 1440x648) relues : titre « AVANCER JUSQU'AU PROCHAIN ÉVÈNEMENT ? », phrase « Le temps va défiler, mois après mois, jusqu'à la prochaine décision, le prochain courrier ou le prochain journal. Vous pourrez arrêter à tout moment. », case, AVANCER (orange) / ANNULER : aucun débordement ni texte coupé, centrée ; mesures du jeu : `dans_ecran=oui cibles_48=oui temps_fige=oui`, cibles min 56 px (PC) / 84 px (téléphone), 0 sous le seuil. Le texte dit bien ce que fait l'action ; AVANCER est clairement l'action principale.
+- **Préférence** (copie isolée du commit c28f4e0, `custom_user_dir`, fenêtre réelle, jamais la préférence du joueur) : sans fichier, `confirmation_a_montrer=true` ; fenêtre ouverte → `bloquee=true`, `_occupe()=true` ; case cochée + AVANCER → fenêtre fermée, temps débloqué, fichier `[confirmations] saut=true`, `confirmation_a_montrer=false` ensuite ; Échap → fermée, temps débloqué, rien écrit. Le second clic saute directement par lecture du code de `demander_saut` (`if Reglages.confirmation_a_montrer("saut") ... else sauter`) ; **je n'ai pas pu le rejouer de bout en bout en fenêtre** (bouton COURRIER verrouillé par la modale/séquence d'ouverture dans mon harnais). Préférence du joueur (`preferences.cfg`, 9/11 22:16, contenu inchangé) et `partie_en_cours.sav` (SHA-256 B2A79D95…, 14/11 21:59) **identiques avant/après** ; capture et tests n'écrivent jamais la préférence.
+- **Conclusion de carte/projet** : `DUREE_CONSEQUENCE` 0,8 s + fondu 0,2 s (tween) ≈ **1,0 s** (lu dans `modale_carte.gd`, boucle sur le delta ; `modale_projet` hérite par `super.conclure`) ; un toucher passe toujours ; `integrale_jouable` joue 10 cartes et 4 projets sans erreur.
+- **Périmètre** (`git diff main...HEAD --stat`, 13 fichiers) : `rythme.json`, `reglages.gd`, `principal.gd`, `confirmation_saut.gd(.uid)`, `modale_carte.gd`, `modales.gd`, `scenarios/interface.gd`, `test_interface.gd`, `test_mois_utile.gd` : cohérent. Aucun fichier temporaire, capture ou `outils/`.
+
+### Anomalies
+- **A1 (mineure)** : le dev a modifié `godot/tests/recette/test_recette_saut.gd` (délai 1,6 s -> 0,25 s, justifié par le saut à 0,1 s/mois) et ajouté deux `.uid` dans `godot/tests/recette/` : ce dossier est celui du testeur. Changement légitime et vert, je le ratifie ; à signaler au chef de projet pour la règle de propriété.
+- **A2 (mineure, ressenti)** : la ligne de conséquence d'une carte ne reste que 0,8 s : une phrase longue se lit à peine ; voulu par le joueur, le résultat reste dans l'historique et sur l'étiquette MA MAISON.
+- **A3 (mineure)** : le bouton COURRIER est grisé en pause (EN PAUSE) : en pause on ne peut donc pas ouvrir la pop-up ; comportement existant, non modifié.
+
+### Non vérifié
+- Second clic sans pop-up de bout en bout en fenêtre (lu dans le code seulement) ; ressenti réel du défilement à 10 mois/s et lisibilité de la rue pendant le saut ; notifications ★ persistantes en saut (sonde de la recette précédente toujours non concluante) ; téléphone réel.
