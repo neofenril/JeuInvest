@@ -152,7 +152,7 @@ func carte(c: Dictionary, depart: Vector2) -> void:
 	await _carte.ouvrir(c, depart)
 
 
-## Coroutine : tampon « CHOISI », conséquence 3 s (un toucher passe), rangement vers arrivee ((-1, -1) : fondu).
+## Coroutine : tampon « CHOISI », conséquence 0,8 s (un toucher passe), rangement vers arrivee ((-1, -1) : fondu).
 func conclure_carte(r: Dictionary, arrivee: Vector2) -> void:
 	await _carte.conclure(r, arrivee)
 
@@ -169,7 +169,7 @@ func projet(c: Dictionary, depart: Vector2) -> void:
 	await _projet.ouvrir(c, depart)
 
 
-## Coroutine : tampon « CHOISI », conséquence 3 s (un toucher passe), disparition.
+## Coroutine : tampon « CHOISI », conséquence 0,8 s (un toucher passe), disparition.
 func conclure_projet(r: Dictionary, arrivee: Vector2) -> void:
 	await _projet.conclure(r, arrivee)
 
