@@ -622,6 +622,7 @@ func _projet(etape: String, jeu: Node) -> void:
 			await sc.delai(0.5)
 			var lo := modales.courant.find_child("LigneProjetOrdre", true, false) as Label
 			print("UI guichet ordre ligne=%s" % (("« %s »" % lo.text) if lo != null else "absente (téléphone ou pas de projet)"))
+			print("UI guichet taille fenetre=%s min=%s ligne_en_tete=%s" % [str(pb.size), str(pb.get_combined_minimum_size()), str(pb._l_projet.visible)])
 			_mesurer(etape + "_ordre", modales.courant)
 
 

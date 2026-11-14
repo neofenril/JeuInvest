@@ -24,6 +24,8 @@ var _l_cc: Label
 var _b_messages: Button
 var _l_titre: Label
 var _l_projet: Label          # lot 05 (P2)
+var _v_racine: VBoxContainer
+var _ligne_cachee := false      # formulaire d'ordre au téléphone : la ligne de l'en-tête est cachée
 var ligne_fab := ""              # ligne fabriquée (captures et tests, jamais en jeu)
 # Formulaire d'ordre
 var _l_montant: Label
@@ -60,6 +62,7 @@ func construire(etat: EtatPartie, id: String, montant_initial: float) -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6 if compact else 12)
+	_v_racine = v
 	add_child(v)
 	# En-tête : titre, produits découverts, messages, croix
 	var tete := HBoxContainer.new()
@@ -186,7 +189,10 @@ func _maj_carnet() -> void:
 	_l_decouverts.text = "Produits découverts : %d sur %d" % [Banquier.nb_decouverts(e), Banquier.ordre_carnet().size()]
 	_l_cc.text = Format.entier(e.joueur.cc, a) + " · 0 %"
 	_l_projet.text = ligne_projet()
-	_l_projet.visible = _l_projet.text != ""
+	_l_projet.visible = _l_projet.text != "" and not _ligne_cachee
+	if compact and _v_racine != null:
+		# Téléphone : la ligne du projet prend une rangée ; les écarts se resserrent pour que la fenêtre tienne dans 648 px
+		_v_racine.add_theme_constant_override("separation", 2 if _l_projet.visible else 6)
 	_b_messages.text = "HISTORIQUE"
 	_jauge.queue_redraw()
 	for pid in _cartes:
@@ -266,6 +272,7 @@ func _afficher_silhouette(pid: String) -> void:
 
 func _afficher_fiche(pid: String) -> void:
 	_vider()
+	_ligne_projet_en_tete(true)
 	var a := e.ab_courant()
 	var info := Banquier.info_produit(pid)
 	var tete := HBoxContainer.new()
@@ -340,6 +347,19 @@ func _afficher_fiche(pid: String) -> void:
 ## Lot 03 (I6) : ligne des dividendes de la fiche d'une action détenue ; "" pour les autres produits ou une
 ## action non détenue. Jamais de rendement prévisionnel.
 ## Vrai si `Banquier` définit la fonction statique « nom » (appel dynamique : elle peut venir d'une branche non fusionnée).
+## Montre ou cache la ligne du projet de l'en-tête (sans projet, elle reste cachée) ; écarts resserrés au téléphone.
+func _ligne_projet_en_tete(montrer: bool) -> void:
+	if _l_projet == null:
+		return
+	var avant := _l_projet.visible
+	_ligne_cachee = not montrer
+	_l_projet.visible = montrer and _l_projet.text != ""
+	if compact and _v_racine != null:
+		_v_racine.add_theme_constant_override("separation", 2 if _l_projet.visible else 6)
+	if avant != _l_projet.visible:
+		reset_size.call_deferred()   # la fenêtre rapetisse avec son contenu (sinon elle garde la hauteur de la rangée disparue)
+
+
 ## Ligne du guichet (lot 05, P2) : ligne_projet_guichet() du moteur quand un projet est en cours, "" sinon (ou si le moteur ne la fournit pas).
 func ligne_projet() -> String:
 	if ligne_fab != "":
@@ -528,6 +548,7 @@ func _afficher_ordre(pid: String, m: String, montant_initial := -1.0) -> void:
 	produit = pid
 	mode = m
 	_vider()
+	_ligne_projet_en_tete(false)   # le formulaire a sa propre ligne (PC) ; au téléphone il occupe les 648 px : la ligne reste dans la fiche et le carnet
 	var a := e.ab_courant()
 	var tete := HBoxContainer.new()
 	tete.add_theme_constant_override("separation", 12)
