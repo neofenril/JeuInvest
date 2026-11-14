@@ -14,6 +14,7 @@ var hud: Hud
 var modales: Modales
 var titre: EcranTitre
 var sequences: Sequences
+var confirmation_saut: ConfirmationSaut = null   # fenêtre « Avancer jusqu'au prochain événement ? » (0.5.1)
 var calque_hud: CanvasLayer
 var en_titre := true
 var pluie_jusqua := -1            # la pluie du krach dure jusqu'à ce mois (Sequences)
@@ -295,7 +296,7 @@ func banque_fermee() -> bool:
 
 ## Écran titre, fenêtre ou modale ouverte, séquence animée : le joueur ne peut pas lancer de saut.
 func _occupe() -> bool:
-	return en_titre or modales.ouverte() or sequences.occupe
+	return en_titre or modales.ouverte() or sequences.occupe or confirmation_saut != null
 
 
 ## Bouton COURRIER ou touche N (D1, D4) : lance le saut « jusqu'au prochain courrier », ou l'arrête.
@@ -304,7 +305,34 @@ func demander_saut() -> void:
 	if Partie.saut_actif:
 		Partie.arreter_saut()
 	elif hud.etat_courrier_pour(Partie.etat, _occupe()) == "repos":
-		Partie.sauter_jusqu_au_prochain_arret()
+		if Reglages.confirmation_a_montrer("saut"):
+			_confirmer_saut()
+		else:
+			Partie.sauter_jusqu_au_prochain_arret()
+
+
+## Correctif 0.5.1 : au premier appui, une fenêtre dit ce que va faire le bouton (case « Ne plus afficher »).
+## Le temps est figé derrière ; AVANCER lance le saut, ANNULER / Échap ne change rien.
+func _confirmer_saut() -> void:
+	if confirmation_saut != null:
+		return
+	var c := ConfirmationSaut.new()
+	confirmation_saut = c
+	hud.add_child(c)
+	Partie.bloquee = true
+	c.valide.connect(func(ne_plus: bool) -> void:
+		if ne_plus:
+			Reglages.ne_plus_confirmer("saut")
+		_fermer_confirmation_saut()
+		Partie.sauter_jusqu_au_prochain_arret())
+	c.annule.connect(_fermer_confirmation_saut)
+
+
+func _fermer_confirmation_saut() -> void:
+	if confirmation_saut != null:
+		confirmation_saut.queue_free()
+		confirmation_saut = null
+	Partie.bloquee = false
 
 
 ## Une fenêtre s'ouvre (D4) : le saut s'arrête, puis le temps est figé derrière elle.
@@ -316,7 +344,7 @@ func _bloquer() -> void:
 ## Touches de jeu (toujours actives). Les raccourcis de test (F6-F8) sont dans RaccourcisTest, F10 dans Ecran.
 func _unhandled_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
-	if k == null or not k.pressed or k.echo or en_titre or modales.ouverte() or sequences.occupe:
+	if k == null or not k.pressed or k.echo or en_titre or modales.ouverte() or sequences.occupe or confirmation_saut != null:
 		return
 	match k.keycode:
 		KEY_SPACE, KEY_P:
@@ -355,7 +383,7 @@ func _on_mois(res: Dictionary) -> void:
 	var e := Partie.etat
 	if e == null:
 		return
-	var anime: bool = not res.get("saut", false) and not en_titre
+	var anime: bool = not res.get("saut", false) and not res.get("pendant_saut", false) and not en_titre
 	var a := e.ab_courant()
 	ville.call("regler_mois", Dates.mois(a), Dates.annee(a))
 	hud.maj(e, anime)

@@ -831,10 +831,41 @@ func _visiter_banque(e: EtatPartie) -> Dictionary:
 	return {"mois": Dates.texte_court(e.ab_courant()), "produits": vus.filter(func(x: String) -> bool: return not x.contains(" ")).size(), "ok": ok, "detail": vus}
 
 
+## Fenêtre de confirmation du saut (0.5.1) : case, AVANCER, ANNULER, Échap ; la préférence ne s'écrit jamais en test.
+func _verifier_confirmation_saut() -> void:
+	var recu: Array = []
+	var c := ConfirmationSaut.new()
+	add_child(c)
+	c.valide.connect(func(ne_plus: bool) -> void: recu.append("valide:%s" % ne_plus))
+	c.annule.connect(func() -> void: recu.append("annule"))
+	c.cocher(true)
+	c.b_avancer.pressed.emit()
+	c.b_avancer.pressed.emit()   # un seul signal malgré le double appui
+	_verifier("Confirmation du saut : AVANCER avec la case cochée émet valide(true), une seule fois", recu == ["valide:true"], str(recu))
+	c.queue_free()
+	recu.clear()
+	var c2 := ConfirmationSaut.new()
+	add_child(c2)
+	c2.valide.connect(func(ne_plus: bool) -> void: recu.append("valide:%s" % ne_plus))
+	c2.annule.connect(func() -> void: recu.append("annule"))
+	var esc := InputEventKey.new()
+	esc.keycode = KEY_ESCAPE
+	esc.pressed = true
+	c2._input(esc)
+	_verifier("Confirmation du saut : Échap = ANNULER, sans lancer le saut", recu == ["annule"], str(recu))
+	c2.queue_free()
+	_verifier("Confirmation du saut : en test, la préférence locale n'est jamais lue (pas de fenêtre) ni écrite", not Reglages.confirmation_a_montrer("saut"))
+	var avant := FileAccess.get_modified_time(Reglages.PREFERENCES)
+	Reglages.ne_plus_confirmer("saut")
+	_verifier("Confirmation du saut : ne_plus_confirmer sans écran n'écrit rien", FileAccess.get_modified_time(Reglages.PREFERENCES) == avant and not Reglages.confirmation_a_montrer("saut"))
+	_verifier("Conclusion d'une carte ou d'un projet : ligne de conséquence 0,8 s au plus", ModaleCarte.DUREE_CONSEQUENCE <= 0.8, str(ModaleCarte.DUREE_CONSEQUENCE))
+
+
 ## Historique : chaque filtre, puis 5 entrées relues comme Modales.relire_historique.
 func _verifier_historique(e: EtatPartie, nom: String) -> void:
 	var filtres_ok := true
 	var detail := ""
+	_verifier_confirmation_saut()
 	for f in ["", "maison", "banque", "media"]:
 		modales.historique(e, f, 0)
 		var ok := await _attendre_genre("historique")

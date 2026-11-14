@@ -7,7 +7,7 @@ extends RefCounted
 ## - polices_jeu : planche des polices du jeu (accents français, tnum d'Atkinson).
 
 const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette",
-	"courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau",
+	"courrier_confirmation", "courrier_repos", "courrier_saut", "courrier_saut_pause", "courrier_inactif", "courrier_bulle", "notifs_saut", "badge_non_lus", "historique_nouveau",
 	"etiquettes_balayage", "pastille_signe", "bulle",
 	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
 	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
@@ -140,6 +140,21 @@ func _courrier(etape: String, jeu: Node) -> void:
 					var nouveaux := modales.courant.find_children("Nouveau", "Label", true, false).size() if modales.ouverte() else 0
 					var pastilles := modales.courant.find_children("Nouveautes", "Control", true, false).size() if modales.ouverte() else 0
 					print("UI historique_nouveau etiquettes=%d pastilles=%d non_lues=%d" % [nouveaux, pastilles, e.non_lues()])
+		"courrier_confirmation":
+			Partie.changer_vitesse(0)
+			jeu._confirmer_saut()   # forcée : la préférence locale n'est jamais lue en capture
+			await sc.delai(0.8)
+			var cf := jeu.confirmation_saut as Control
+			var cases := cf.find_child("Case", true, false) as Control
+			var bs := [cf.get("b_avancer"), cf.get("b_annuler")]
+			var ech := sc.get_viewport().get_final_transform().get_scale().x
+			var cibles_ok := true
+			for bt: Control in bs:
+				var rr := bt.get_global_rect()
+				cibles_ok = cibles_ok and rr.size.y * ech >= 48.0 and rr.size.x * ech >= 48.0
+			var vp := Rect2(Vector2.ZERO, sc.get_viewport().get_visible_rect().size).grow(1.0)
+			var dedans_cf := vp.encloses((cf.find_child("Titre", true, false) as Control).get_global_rect()) and vp.encloses((bs[0] as Control).get_global_rect()) and vp.encloses((bs[1] as Control).get_global_rect()) and vp.encloses(cases.get_global_rect())
+			print("UI confirmation saut fenetre dans_ecran=%s cibles_48=%s temps_fige=%s" % ["oui" if dedans_cf else "non", "oui" if cibles_ok else "non", "oui" if Partie.bloquee else "non"])
 		"courrier_inactif":
 			jeu.ouvrir_banque("", -2.0)
 			await sc.delai(1.2)
