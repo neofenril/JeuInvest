@@ -69,7 +69,7 @@ func _test_scene_principale(empreinte_avant: String) -> void:
 		FileAccess.get_sha256(Sauvegarde.CHEMIN) == empreinte_avant and not FileAccess.file_exists(_chemin_test) and Partie.chemin_sauvegarde == _chemin_test)
 	# Lot 04-05 (D9, D11, CA-M9) : une nouvelle partie du joueur (hors mode capture) a les cartes et les projets allumés
 	var cfg: Dictionary = scene.call("_config")
-	_verifier("principal._config() hors capture : \"cartes\": true et \"projets\": true", cfg.get("cartes", false) == true and cfg.get("projets", false) == true, str(cfg.keys()))
+	_verifier("principal._config() hors capture : \"cartes\", \"projets\" et \"rue\" vrais", cfg.get("cartes", false) == true and cfg.get("projets", false) == true and cfg.get("rue", false) == true, str(cfg.keys()))
 	scene.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -581,6 +581,23 @@ func _verifier_projets(nom: String, e: EtatPartie) -> void:
 	var eteint_ok := not hud.bloc_rue.visible and not hud._languette_rang.visible and hud.bloc_rue.lignes_texte.is_empty() and not hud.panneau_a_trois_colonnes()
 	hud.maj_rue(e)
 	_verifier("%s : rue éteinte : bloc LA RUE et rang cachés ; rallumée : bloc de retour" % nom, eteint_ok and hud.bloc_rue.visible and hud.bloc_rue.lignes_texte.size() == 4)
+	# Notifications de la rue (lot 06, A3) : toast = texte court, « Lire › » si long, relecture = texte_long, persistante jusqu'au toucher
+	var scen_r: GDScript = scen
+	var nl: Dictionary = scen_r.call("fabriquer_voisin", "long")
+	hud.notifier(nl, e.ab_courant())
+	await get_tree().create_timer(0.7).timeout
+	var tx := hud.notifs.find_children("TexteNotif", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+	var toast_ok: bool = tx.has(str(nl["texte"])) and hud.notifs.find_child("Lire", true, false) != null
+	var np: Dictionary = scen_r.call("fabriquer_voisin", "persistant")
+	hud.notifier(np, e.ab_courant())
+	await get_tree().create_timer(0.7).timeout
+	var pers_ok := hud.notifs.find_child("IndicationPersistante", true, false) != null
+	modales.lecture_notification({"source": "rue", "contenu": nl, "titre": str(nl["titre"])}, e.ab_courant())
+	await _attendre_genre("info")
+	var lt := modales.courant.find_child("TexteLecture", true, false) as Label
+	var lecture_ok := lt != null and lt.text == str(nl["texte_long"])
+	_fermer("fermer")
+	_verifier("%s : notifications de la rue : toast == texte court + « Lire › », relecture == texte_long, notification persistante gardée jusqu'au toucher" % nom, toast_ok and pers_ok and lecture_ok, "%s %s %s" % [toast_ok, pers_ok, lecture_ok])
 	# BANQUE fermée : bouton grisé et phrase ; rouverte ensuite
 	var ferme := hud.maj_banque_fermee(true)
 	var phrase_ok := hud.l_banque_fermee.text == "Réglez d'abord la carte du foyer." and hud.l_banque_fermee.visible and hud.b_marche.disabled

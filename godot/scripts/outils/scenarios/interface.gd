@@ -12,7 +12,7 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
 	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
-	"rue_bloc", "rue_pastille", "rue_eteinte"]
+	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -54,6 +54,10 @@ func jouer(etape: String) -> void:
 			await _projet(etape, jeu)
 		"rue_bloc", "rue_pastille", "rue_eteinte":
 			await _rue(etape, jeu)
+		"rue_notifs":
+			await _rue_notifs(jeu)
+		"historique_rue":
+			await _historique_rue(jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -680,6 +684,113 @@ func _rue(etape: String, jeu: Node) -> void:
 		await sc.delai(0.3)
 	else:
 		_mesurer(etape, hud)
+
+
+static func fabriquer_voisin(id: String) -> Dictionary:
+	match id:
+		"court":
+			return {"type": "voisin", "source": "rue", "cls": "neutre", "id": "V02", "qui": "matelas", "titre": "Tonton Matelas", "cle": false, "long": false,
+				"texte": "Une banque ? Et si elle saute ? Moi, c'est sous le matelas."}
+		"long":
+			return {"type": "voisin", "source": "rue", "cls": "neutre", "id": "V01", "qui": "lopez", "titre": "Mme Lopez", "cle": true, "long": true,
+				"texte": "Vous connaissez vos voisins ?",
+				"texte_long": "Vous connaissez vos voisins ? Tata Livret met tout sur son Livret A. Tonton Matelas garde tout sur son compte. Jean-Mi, vendeur chez Peugeot, attend le bon tuyau. Mêmes revenus, mêmes dépenses que vous : seule change la façon de placer."}
+		"persistant":
+			return {"type": "voisin", "source": "rue", "cls": "neutre", "id": "V07", "qui": "jeanmi", "titre": "Jean-Mi", "cle": true, "long": false, "persistant": true,
+				"texte": "Tuyau du café : Peugeot ne peut que monter. J'ai tout mis, et même plus !"}
+		"rang":
+			return {"type": "rang", "source": "rue", "cls": "gain", "titre": "Dans la rue", "texte": "Vous repassez devant Jean-Mi.", "rang": 2}
+		_:
+			return {"type": "kiosque", "source": "media", "cls": "neutre", "titre": "LA GAZETTE", "texte": "Les Bleus sacrés champions d'Europe", "id": "K01"}
+
+
+func _rue_notifs(jeu: Node) -> void:
+	var hud: Hud = jeu.hud
+	var modales: Modales = jeu.modales
+	sc.partir_de_la_rue("rue_notifs")
+	var e := Partie.etat
+	Partie.changer_vitesse(0)
+	await sc.delai(0.5)
+	var a := e.ab_courant()
+	var vus: Array = []
+	for k in ["court", "long", "rang"]:
+		var n := fabriquer_voisin(k)
+		hud.notifier(n, a)
+		vus.append(n)
+		await sc.delai(0.5)
+	# Les plus anciennes partent quand la place manque : chaque toast affiché porte le texte COURT de sa notification
+	var textes: Array = hud.notifs.find_children("TexteNotif", "Label", true, false).map(func(l: Node) -> String: return (l as Label).text)
+	var attendus: Array = vus.map(func(n: Dictionary) -> String: return str(n["texte"]))
+	var inclus := not textes.is_empty()
+	for t: String in textes:
+		inclus = inclus and attendus.has(t)
+	var long_affiche := textes.has(str(fabriquer_voisin("long")["texte"]))
+	print("UI rue_notifs toasts=%d textes_courts=%s lire=%s" % [textes.size(), "egaux" if inclus else "DIFFERENTS incoherences=1", ("oui" if hud.notifs.find_child("Lire", true, false) != null else "NON incoherences=1") if long_affiche else "sans objet (toast long parti)"])
+	hud.notifier(fabriquer_voisin("persistant"), a)
+	await sc.delai(0.5)
+	print("UI rue_notifs source=« %s » liseré_bleu=%s" % [Hud.NOMS_SOURCES["rue"], "oui" if Style.NOMS_PALETTE_SOURCES["rue"] == "bleu_vif" else "non"])
+	# La notification persistante reste affichée, sans pause : on laisse passer plus de 3 mois de temps de jeu (accéléré)
+	Partie.changer_vitesse(3)
+	var t_attente := 0.0
+	while e.ab_courant() - a < 3 and t_attente < 14.0 and e.modale.is_empty():
+		await sc.delai(0.25)
+		t_attente += 0.25
+	var reste := false
+	for p: Control in hud._liste_notifs:
+		if is_instance_valid(p) and p.find_child("IndicationPersistante", true, false) != null:
+			reste = true
+	print("UI rue_notifs persistante=%s mois_ecoules=%d pause=%s" % ["reste" if reste else "PARTIE incoherences=1", e.ab_courant() - a, "oui incoherences=1" if Partie.vitesse == 0 else "non"])
+	Partie.changer_vitesse(0)
+	# Relecture longue : texte ENTIER
+	var nl := fabriquer_voisin("long")
+	jeu.toucher_notif(nl)
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "info" and modales.courant != null, 4.0)
+	await sc.delai(0.6)
+	var lt := modales.courant.find_child("TexteLecture", true, false) as Label
+	print("UI rue_notifs relecture_longue=%s (%d mots) == texte_long egal=%s" % ["lue" if lt != null else "ABSENTE", str(lt.text if lt != null else "").split(" ", false).size(), "oui" if lt != null and lt.text == str(nl["texte_long"]) else "non incoherences=1"])
+	_mesurer("rue_notifs_relecture", modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+	await RenderingServer.frame_post_draw
+	sc.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://captures/l6_rue_relecture%s.png" % ("_tel" if Ecran.compact() else "")))
+	modales.fermer("fermer")
+	await sc.delai(0.4)
+	hud.notifier(fabriquer_voisin("kiosque"), a)
+	await sc.delai(0.8)
+
+
+## Historique : onglet LA RUE avec les vraies notifications de la rue (partie menée jusqu'à fin 1986), relecture de la plus longue.
+func _historique_rue(jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	var cfg := Donnees.config_demo(-1)
+	cfg["cartes"] = true
+	cfg["projets"] = true
+	cfg["rue"] = true
+	jeu.nouvelle_partie(cfg)
+	Partie.etat.resolution_auto()
+	jeu.demarrer_direct(0)
+	var e := Partie.etat
+	StrategieTest.politique_cartes = "epargner"
+	var garde := 0
+	while e.fin == "" and e.ab_courant() < Dates.lire("1987-01") and garde < 100:
+		garde += 1
+		StrategieTest.jouer_mois(e, true)
+		while not e.modale.is_empty():
+			e.resolution_auto()
+		e.avancer()
+	sc.rafraichir_apres_saut()
+	var rue := e.historique_recent("rue")
+	var autres := 0
+	for h: Dictionary in rue:
+		if str(h["source"]) != "rue":
+			autres += 1
+	print("UI historique_rue entrees=%d autres_sources=%d non_lues=%d genres=%s" % [rue.size(), autres, e.non_lues("rue"), str(rue.map(func(h: Dictionary) -> String: return str(h["genre"])).slice(0, 4))])
+	jeu.ouvrir_historique("rue")
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "historique", 5.0)
+	await sc.delai(1.0)
+	var filtre := modales.courant.find_child("Filtre_rue", true, false) as Button
+	print("UI historique_rue onglet=%s actif=%s libelle=« %s »" % ["present" if filtre != null else "ABSENT incoherences=1", str(filtre.button_pressed) if filtre != null else "?", filtre.text if filtre != null else ""])
+	_mesurer("historique_rue", modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
 
 
 ## « Mon foyer » (lot 04, I3, CA-I4) : après 3 cartes jouées (politique alternée), humeur au choix

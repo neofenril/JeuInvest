@@ -318,9 +318,25 @@ func lecture_notification(h: Dictionary, a: int) -> void:
 	v.add_child(tete)
 	var titre := Style.label(str(n.get("titre", h.get("titre", ""))), 30 if not compact else 26, Style.ui_gras(), Style.ENCRE)
 	titre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(titre)
 	var texte := Style.label(str(n.get("texte", "")), 24 if not compact else 22, Style.ui(), Style.ENCRE)
+	texte.name = "TexteLecture"
 	texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if source == "rue" and str(n.get("type", "")) == "voisin":
+		# Lot 06 (A3) : la rue se relit en carte de lecture : pastille d'initiale 96 × 96, le nom, le texte ENTIER (texte_long si la
+		# notification est longue : l'interface ne coupe jamais un texte)
+		if bool(n.get("long", false)) and str(n.get("texte_long", "")) != "":
+			texte.text = str(n["texte_long"])
+		var cote := 96.0
+		var corps := HBoxContainer.new()
+		corps.add_theme_constant_override("separation", 18)
+		var qui := str(n.get("qui", ""))
+		corps.add_child(BlocRue.pastille(qui, str({"jeanmi": "J", "livret": "T", "matelas": "M", "lopez": "L", "lefranc": "L"}.get(qui, str(n.get("titre", "?")).left(1).to_upper())), cote, 48))
+		titre.add_theme_font_size_override("font_size", 40 if not compact else 32)
+		titre.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		corps.add_child(titre)
+		v.add_child(corps)
+	else:
+		v.add_child(titre)
 	v.add_child(texte)
 	if h.get("a_montant", false):
 		var mt := float(h["montant"])

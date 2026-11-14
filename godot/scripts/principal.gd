@@ -124,6 +124,7 @@ func _config() -> Dictionary:
 	if not ScenariosCapture.mode_capture():
 		c["cartes"] = true
 		c["projets"] = true
+		c["rue"] = true       # lot 06 (E8, A1) : Jean-Mi, classement, notifications de la rue, krach détaillé
 	return c
 
 
@@ -418,6 +419,13 @@ func _bulle_humeur(n: Dictionary) -> void:
 
 ## Toucher une notification : le relevé de décembre ouvre le détail des frais (13 §3.4).
 func toucher_notif(n: Dictionary) -> void:
+	if str(n.get("source", "")) == "rue" and str(n.get("type", "")) in ["voisin", "rang"] and not sequences.occupe and not modales.ouverte() and not en_titre:
+		# Lot 06 (A3) : la rue se relit en lecture seule (voisin long : texte entier) ; le temps est en pause derrière la carte
+		_bloquer()
+		modales.lecture_notification({"source": "rue", "contenu": n, "titre": str(n.get("titre", ""))}, Partie.etat.ab_courant())
+		await modales.choix_fait
+		Partie.bloquee = false
+		return
 	if n.get("type", "") != "releve" or float(n.get("frais_total", 0.0)) <= 0.0 or sequences.occupe or modales.ouverte() or en_titre:
 		return
 	_bloquer()
