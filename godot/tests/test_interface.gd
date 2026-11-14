@@ -839,6 +839,14 @@ func _verifier_historique(e: EtatPartie, nom: String) -> void:
 		modales.historique(e, f, 0)
 		var ok := await _attendre_genre("historique")
 		ok = ok and modales.historique_filtre == f
+		# Recette R-RUE A1 : le nombre de chaque onglet est entier et visible (texte non coupé)
+		for bt: Button in modales.find_children("Filtre_*", "Button", true, false):
+			var police: Font = bt.get_theme_font("font")
+			var largeur := police.get_string_size(bt.text, HORIZONTAL_ALIGNMENT_LEFT, -1, bt.get_theme_font_size("font_size")).x
+			var place := bt.size.x - 30.0 - (bt.icon.get_width() + 9.0 if bt.icon != null else 0.0)
+			if largeur > place or not bt.text.split(" ")[-1].is_valid_int():
+				ok = false
+				detail += "onglet coupé %s (%d > %d) ; " % [bt.text, int(largeur), int(place)]
 		detail += "%s : %d ; " % [f if f != "" else "tout", e.historique_recent(f).size()]
 		if not ok:
 			filtres_ok = false

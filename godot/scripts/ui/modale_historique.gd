@@ -3,6 +3,7 @@ extends RefCounted
 ## Morceau de Modales (T9) : l'historique des pop-ups (retour du joueur du 27/10/2026) et la relecture
 ## d'une notification. Le filtre et le défilement courants restent dans la façade (lus par principal.gd).
 
+const NOMS_SOURCES_COURTS := {"maison": "MAISON", "banque": "BANQUE", "media": "GAZETTE", "rue": "RUE"}
 const NOMS_SOURCES := {"maison": "MA MAISON", "banque": "MA BANQUE", "media": "LA GAZETTE", "rue": "LA RUE"}
 
 var m: Modales
@@ -76,7 +77,9 @@ func ouvrir(e: EtatPartie, filtre := "", defilement := 0) -> void:
 	for f in onglets:
 		var n := e.historique_recent(f).size()
 		var b := Button.new()
-		b.text = ("TOUT" if f == "" else str(NOMS_SOURCES[f])) + "  " + str(n)
+		# Recette R-RUE A1 : au téléphone, 5 onglets : noms courts, sans icône, pour que le nombre reste entier
+		var nom_onglet: String = "TOUT" if f == "" else str(NOMS_SOURCES_COURTS[f] if compact else NOMS_SOURCES[f])
+		b.text = nom_onglet + " " + str(n)
 		b.toggle_mode = true
 		b.button_group = groupe
 		b.focus_mode = Control.FOCUS_NONE
@@ -85,7 +88,7 @@ func ouvrir(e: EtatPartie, filtre := "", defilement := 0) -> void:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.clip_text = true
 		b.add_theme_font_override("font", Style.capitales())
-		b.add_theme_font_size_override("font_size", 28)
+		b.add_theme_font_size_override("font_size", 26 if compact else 28)
 		var inactif := CadresPixel.style_marges("onglet", 15, 12, 15, 12)
 		var actif := CadresPixel.style_marges("onglet_actif", 15, 15, 15, 9)
 		for etat: String in ["normal", "hover", "disabled"]:
@@ -97,7 +100,7 @@ func ouvrir(e: EtatPartie, filtre := "", defilement := 0) -> void:
 			b.add_theme_color_override(k, Style.TEXTE)
 		for k: String in ["font_pressed_color", "font_hover_pressed_color"]:
 			b.add_theme_color_override(k, Style.ENCRE)
-		if f != "":
+		if f != "" and not compact:
 			b.icon = CadresPixel.texture("source_" + f, 2, {"creme": Style.NOMS_PALETTE_SOURCES[f]})
 			b.add_theme_constant_override("h_separation", 9)
 		b.set_pressed_no_signal(f == filtre)
