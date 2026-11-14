@@ -134,7 +134,7 @@ func ouvrir(e: EtatPartie, depart: Vector2, fab := {}) -> void:
 		droite.add_child(_bloc_projet(e, fab, a, col, compact))
 		droite.add_child(_bloc_passes(e, fab, a, compact))
 	if cartes:
-		droite.add_child(_bloc_cartes(e, a, compact))
+		droite.add_child(_bloc_cartes(e, a, compact, col))
 	haut.add_child(_bloc_foyer(e, compact))
 	corps.add_child(onglet_foyer)
 	if not compact:
@@ -324,7 +324,7 @@ func _dessiner_glyphe(c: Control, statut: String) -> void:
 			c.draw_line(Vector2(9, 18), Vector2(21, 5), col, 3.0)
 
 
-func _bloc_cartes(e: EtatPartie, a: int, compact: bool) -> Control:
+func _bloc_cartes(e: EtatPartie, a: int, compact: bool, col: float) -> Control:
 	var v := VBoxContainer.new()
 	v.name = "BlocCartes"
 	v.add_theme_constant_override("separation", 8)
@@ -344,11 +344,10 @@ func _bloc_cartes(e: EtatPartie, a: int, compact: bool) -> Control:
 		rang.add_child(am)
 		var lc := Style.label(texte_carte(c, e.ab_de(int(c.get("m", e.m)))), 22 if compact else 24, Style.ui(), Style.ENCRE)
 		lc.name = "Carte_%d" % k
-		lc.clip_text = true
-		lc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		# Jamais de montant coupé (recette R-MAISON m2) : le titre long passe à la ligne, le montant reste lisible en fin de ligne
+		lc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		lc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lc.custom_minimum_size.x = 60
-		lc.tooltip_text = lc.text
+		lc.custom_minimum_size.x = maxf(60.0, col - 24.0 - 48.0 - 24.0)   # la colonne garde sa largeur : le texte ne se replie qu'à son bord
 		rang.add_child(lc)
 		rang.add_child(CadresPixel.icone("humeur_" + str(c.get("picto", "neutre"))))
 		v.add_child(rang)
