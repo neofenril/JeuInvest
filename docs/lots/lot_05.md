@@ -207,5 +207,15 @@ Format 3, migration douce. 05-L : `config["rue"]`, état `jeanmi` (position, cou
 ## 9. Comptes rendus attendus
 Fichiers modifiés (comparés au §3), décisions prises dans les règles, écarts d'interface (aucun attendu), non vérifié, vérifications avant / après, captures à relire en priorité, base à jour. Phase A : API de `Quartier` / `Krach`, trajectoire de Jean-Mi obtenue. Phase B : `MESURE J1`, références changées par D5, nombre de passages abandonnés, répartition des notifications par mois. 04-I : référence `integrale_maison`, défauts appliqués faute d'avis UX.
 
+## 9 bis. Arbitrages du 2026-11-13 (après les avis docs/24 à 27 et le compte rendu de la phase B)
+
+- **Écart de 05-L validé** : `temoins.json > jeanmi.plan.couverture_min` = 30 000 F (couverture = max(80 % du compte, 30 000 F)). Raison : sans plancher, J1 tombait dans 26 parties passives sur 40 ; avec, J1 tenu 120/120 (marge mini 5 125 F en 09/1987), J2 tenu. C'est une donnée, cohérente avec docs/19 (C).
+- **Ajouts au contrat §4.3 constatés et acceptés** (ajouts seulement) : notification `voisin` + `texte_long` (si `long`) et `persistant` (passages ★ de Jean-Mi) ; `jeanmi_resume()["regle"]`. 05-I les consomme (`lot_06.md` §10 A3).
+- **B8 (dev-logique, petit ajout avant la recette de 05-L ; sinon dans le passage 2 ou un correctif, non bloquant)** :
+  1. `rue.json > etapes_jeanmi` = `{"attend": "attend un tuyau", "position": "tout sur Peugeot", "porsche": "Porsche à crédit", "liquide": "liquidé", "rembourse": "rembourse"}` (game designer, docs/27 §3.2 idée 1) et `jeanmi_resume()["etape_texte"]` (ajout ; `{}` inchangé rue éteinte).
+  2. Vouvoiement (docs/27 §2.2, fin) : `temoins.json > livret.derriere` et `indice.derriere` → « Vous avez pris des risques… et ça a payé. Bravo ! » (et toute autre réplique au tutoiement).
+  3. Test : `etape_texte` non vide pour les 5 étapes ; aucun « tu » / « ton » / « ta » isolé dans `temoins.json`.
+- La recette 05-L vérifie en plus (non ★) : `etape_texte` présent, `texte_long` de V01 / V13 conforme à docs/27 §2.2.
+
 ## 10. Validation (rempli par le chef de projet)
 - [ ] 05-L : CA-R1 à R12 · [ ] R-MAISON : CA-M1 à M12 · [ ] captures relues · [ ] bases à jour
