@@ -22,6 +22,12 @@ var vitesse := 0            # 0 = pause, 1 à 3 = ×1 à ×3
 var bloquee := false        # l'interface peut figer le temps (formulaire d'achat ouvert, menu…)
 var sauvegarde_auto := false
 var chemin_sauvegarde := Sauvegarde.CHEMIN
+## Record et collection des titres (lot 07-L, D8) : écrits à la fin d'une partie, seulement si sauvegarde_auto est vrai
+## (vraie partie du joueur ; faux en capture et dans les tests, qui peuvent aussi rediriger ce chemin).
+var chemin_records := Records.CHEMIN
+## Identifiant de la partie en cours (graine + date et heure réelles de création) : sauvegardé avec les réglages de
+## l'interface (pas dans l'état du jeu : deux parties identiques restent identiques) ; une fin n'est comptée qu'une fois.
+var id_partie := ""
 var _progression := 0.0     # avancement du mois en cours (0 → 1)
 var _vitesse_avant_modale := 1   # 0 possible : pause → saut → modale → pause
 ## Saut « jusqu'au prochain courrier » (P4, docs/15 §1.2) : le temps passe à rythme.json > saut jusqu'au mois
@@ -38,6 +44,7 @@ func nouvelle_partie(config: Dictionary = {}) -> void:
 		config["graine_vie"] = randi_range(1, 2147483646)  # seul tirage non déterministe
 	_finir_saut()
 	etat = EtatPartie.new()
+	id_partie = _nouvel_id_partie(int(config["graine_vie"]))
 	var res := etat.demarrer(config)
 	_progression = 0.0
 	vitesse = 0
@@ -58,6 +65,10 @@ func reprendre(d: Dictionary) -> bool:
 	_progression = clampf(float(p.get("progression", 0.0)), 0.0, 0.999)
 	_vitesse_avant_modale = clampi(int(p.get("vitesse_avant_modale", 1)), 0, 3)
 	vitesse = 0
+	id_partie = str(p.get("id_partie", ""))
+	if id_partie == "":   # sauvegarde d'avant le lot 07 : identifiant créé, puis sauvegardé
+		id_partie = _nouvel_id_partie(etat.graine_vie)
+		sauvegarder()
 	partie_commencee.emit()
 	mois_passe.emit({"notifs": [], "modale": {}, "fin": etat.fin, "m": etat.m, "saut": true})
 	return true
@@ -77,7 +88,7 @@ func sauvegarder() -> bool:
 	if etat.fin != "":
 		Sauvegarde.effacer(chemin_sauvegarde)
 		return false
-	return Sauvegarde.ecrire(etat, {"progression": _progression, "vitesse_avant_modale": _vitesse_avant_modale}, chemin_sauvegarde)
+	return Sauvegarde.ecrire(etat, {"progression": _progression, "vitesse_avant_modale": _vitesse_avant_modale, "id_partie": id_partie}, chemin_sauvegarde)
 
 
 func en_cours() -> bool:
@@ -235,7 +246,7 @@ func _diffuser(res: Dictionary) -> void:
 		modale_ouverte.emit(etat.contenu_modale())
 	if res.get("fin", "") != "":
 		_regler_vitesse(0)
-		partie_finie.emit(Bilan.calculer(etat))
+		_emettre_fin()
 
 
 func resoudre_modale(choix_id: String) -> Dictionary:
@@ -346,4 +357,21 @@ func abandonner() -> void:
 		arreter_saut()
 		etat.abandonner()
 		_regler_vitesse(0)
-		partie_finie.emit(Bilan.calculer(etat))
+		_emettre_fin()
+
+
+## Identifiant d'une partie : graine, date et heure réelles de création, millisecondes écoulées (unicité entre deux parties).
+func _nouvel_id_partie(graine: int) -> String:
+	return "%d-%s-%d" % [graine, Time.get_datetime_string_from_system(), Time.get_ticks_msec()]
+
+
+## Bilan de fin + record et collection (lot 07-L, D8) : écrits seulement pour une vraie partie du joueur (sauvegarde_auto),
+## une fois par partie (id_partie). bilan["record"] : résultat de Records.enregistrer, ou, sans écriture,
+## {"ecrit": false, "hors_record", "nouveau": false, "nouveau_titre": false}.
+func _emettre_fin() -> void:
+	var b := Bilan.calculer(etat)
+	if sauvegarde_auto and not (b["titre"] as Dictionary).is_empty():
+		b["record"] = Records.enregistrer(b, id_partie, chemin_records)
+	else:
+		b["record"] = {"ecrit": false, "hors_record": not bool(b["record_possible"]), "nouveau": false, "nouveau_titre": false}
+	partie_finie.emit(b)
