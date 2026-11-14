@@ -399,6 +399,17 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	var bilan := Bilan.calculer(e)
 	modales.fin_demo(e)
 	var fin_ok := await _attendre_genre("fin")
+	# Lot 06 (A7, CA-U7) : rue allumée : 4 barres == bilan["rue"], rang, réplique ; rue éteinte : l'écran de fin de main (aucune pastille de rang)
+	var mfin := modales.etat_fin()
+	var rue_bilan: Array = bilan.get("rue", [])
+	if cartes:
+		var lus_f: Array = mfin.barres_fin.lignes.map(func(l: Array) -> String: return "%s|%s" % [str(l[0]), Format.entier(float(l[1]), e.ab_courant())]) if mfin.barres_fin != null else []
+		var att_f: Array = rue_bilan.map(func(l: Dictionary) -> String: return "%d %s|%s" % [int(l["rang"]), str(l["nom"]).to_upper(), Format.entier(float(l["patrimoine"]) / Format.TAUX_EURO, e.ab_courant())])
+		var rep_ok: bool = (modales.courant.find_child("TexteReplique", true, false) != null) == (not bilan.get("replique_rue", {}).is_empty())
+		_verifier("%s : écran de fin à 4 barres == bilan[rue] (%d lignes, rang %s), réplique == replique_rue, « Projets : n sur 2 », visage de Sylvie" % [nom, lus_f.size(), str(mfin.infos_rue.get("rang", "?"))],
+			rue_bilan.size() == 4 and lus_f == att_f and rep_ok and int(mfin.infos_rue.get("rang", 0)) == e.rang_rue() and mfin.infos_rue.has("projets") and bool(mfin.infos_rue.get("visage", false)), "%s / %s" % [str(lus_f), str(att_f)])
+	else:
+		_verifier("%s : rue éteinte : écran de fin inchangé (2 barres, aucune pastille de rang)" % nom, rue_bilan.is_empty() and mfin.barres_fin == null and modales.courant.find_child("PastilleRang", true, false) == null)
 	_fermer("rejouer")
 	_verifier("%s : écran de fin affiché, bilan calculé (%d rubriques)" % [nom, bilan.size()], fin_ok and not bilan.is_empty())
 	# Nettoyage : le test suivant repart d'une interface neuve

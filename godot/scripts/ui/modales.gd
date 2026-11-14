@@ -194,6 +194,10 @@ func conclure_gazette(r: Dictionary, arrivee: Vector2) -> void:
 	await _gazette.conclure(r, arrivee)
 
 
+func etat_fin() -> ModaleReleveFin:
+	return _releve_fin
+
+
 func etat_gazette() -> ModaleGazette:
 	return _gazette
 

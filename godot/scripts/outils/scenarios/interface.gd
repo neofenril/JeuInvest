@@ -12,7 +12,7 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
 	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
-	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple"]
+	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -62,6 +62,8 @@ func jouer(etape: String) -> void:
 			await _krach_jours(etape, jeu)
 		"un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple":
 			await _un_an_apres(etape, jeu)
+		"fin_rue", "fin_rue_negatif", "fin_sans_rue":
+			await _fin_rue(etape, jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -867,6 +869,42 @@ func _un_an_apres(etape: String, jeu: Node) -> void:
 	modales.conclure_gazette({"choix": "ok", "kind": "gazette", "notifs": []}, Vector2(-1, -1))
 	await sc.delai(0.5)
 	print("UI gazette conclusion=%s" % ("fiche disparue" if modales.genre_courant == "" and not modales.carte_en_cours else "RESTE incoherences=1"))
+
+
+## Écran de fin (CA-U7) : 4 barres == classement_rue() (ou fabriqué : Jean-Mi négatif), rang, réplique ; rue éteinte : écran inchangé (2 barres).
+func _fin_rue(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	if etape == "fin_sans_rue":
+		sc.partir_de_la_rue(etape)
+	else:
+		partie_tout_allume(jeu)
+	var e := Partie.etat
+	StrategieTest.politique_cartes = "epargner"
+	StrategieTest.aller_a(e, Dates.lire("1988-06"), true)
+	sc.rafraichir_apres_saut()
+	Partie.changer_vitesse(0)
+	var mf := modales.etat_fin()
+	var classement: Array = e.classement_rue() if etape != "fin_rue_negatif" else fabriquer_classement()
+	if etape == "fin_rue_negatif":
+		mf.fab_rue = classement
+	modales.fin_demo(e)
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "fin" and modales.courant != null, 6.0)
+	await sc.delai(2.5)
+	if etape == "fin_sans_rue":
+		print("UI fin barres=2 rue=eteinte pastille_rang=%s (écran identique à main)" % ("ABSENTE" if modales.courant.find_child("PastilleRang", true, false) == null else "PRESENTE incoherences=1"))
+	else:
+		var br := mf.barres_fin
+		var lignes: Array = br.lignes if br != null else []
+		var attendu: Array = classement.map(func(l: Dictionary) -> String: return "%d %s|%s" % [int(l["rang"]), str(l["nom"]).to_upper(), Format.entier(float(l["patrimoine"]) / Format.TAUX_EURO, e.ab_courant())])
+		var lus: Array = lignes.map(func(l: Array) -> String: return "%s|%s" % [str(l[0]), Format.entier(float(l[1]), e.ab_courant())])
+		var tr := modales.courant.find_child("TexteRang", true, false) as Label
+		var rep := modales.courant.find_child("TexteReplique", true, false) as Label
+		print("UI fin barres=%d rang=%d replique=%s egal_bilan=%s" % [lignes.size(), int(mf.infos_rue.get("rang", 0)), "oui" if rep != null else "non", "oui" if lus == attendu else "non incoherences=1"])
+		for l in lus:
+			print("UI fin ligne « %s »" % l)
+		print("UI fin pastille=« %s » replique=« %s » projets=%s visage=%s" % [tr.text if tr != null else "?", rep.text if rep != null else "-", str(mf.infos_rue.get("projets", "-")), str(mf.infos_rue.get("visage", false))])
+	_mesurer(etape, modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
 
 
 ## Historique : onglet LA RUE avec les vraies notifications de la rue (partie menée jusqu'à fin 1986), relecture de la plus longue.
