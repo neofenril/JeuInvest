@@ -39,6 +39,7 @@ var _carte: ModaleCarte
 var _foyer: ModaleFoyer
 var _projet: ModaleProjet
 var _gazette: ModaleGazette
+var _titres: ModaleTitres
 var dernier_bilan: Dictionary = {}   # bilan de la dernière fin de partie (Partie.partie_finie), lu par l'écran de fin
 
 
@@ -53,6 +54,7 @@ func _init() -> void:
 	_foyer = ModaleFoyer.new(self)
 	_projet = ModaleProjet.new(self)
 	_gazette = ModaleGazette.new(self)
+	_titres = ModaleTitres.new(self)
 
 
 func _ready() -> void:
@@ -223,6 +225,15 @@ func releve(n: Dictionary, a: int) -> void:
 	await _releve_fin.releve(n, a)
 
 
+## Collection des titres d'époque (lecture seule ; Échap, clic extérieur et FERMER la ferment).
+func titres(records: Dictionary, tous: Array) -> void:
+	await _titres.ouvrir(records, tous)
+
+
+func etat_titres() -> ModaleTitres:
+	return _titres
+
+
 func fin_demo(e: EtatPartie) -> void:
 	await _releve_fin.fin_demo(e)
 
@@ -375,7 +386,7 @@ func _on_fond(event: InputEvent) -> void:
 	match genre_courant:
 		"appel":
 			fermer(choix_exterieur)
-		"info", "historique":
+		"info", "historique", "titres":
 			fermer("fermer")
 		"menu":
 			fermer("reprendre")
@@ -439,7 +450,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		elif k.keycode == KEY_ESCAPE:
 			_on_choix_journal("rien" if choix_journal.has("rien") else "ecart")
 			get_viewport().set_input_as_handled()
-	elif k.keycode == KEY_ESCAPE and genre_courant in ["appel", "info", "menu", "banque", "confirmer", "historique"]:
+	elif k.keycode == KEY_ESCAPE and genre_courant in ["appel", "info", "menu", "banque", "confirmer", "historique", "titres"]:
 		if genre_courant == "banque":
 			banque.fermer_demande.emit()
 		else:

@@ -35,6 +35,7 @@ func _ready() -> void:
 	var t0 := Time.get_ticks_msec()
 	_chemin_test = "user://test_interface_%d.sav" % OS.get_process_id()
 	Partie.chemin_sauvegarde = _chemin_test   # avant toute instanciation : jamais la sauvegarde du joueur
+	Partie.chemin_records = "user://test_interface_records_%d.sav" % OS.get_process_id()   # ni ses records (lot 07)
 	var empreinte_avant := FileAccess.get_sha256(Sauvegarde.CHEMIN)
 	await _test_scene_principale(empreinte_avant)
 	await _test_courrier()
@@ -401,6 +402,17 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 	var fin_ok := await _attendre_genre("fin")
 	# Lot 06 (A7, CA-U7) : rue allumée : 4 barres == bilan["rue"], rang, réplique ; rue éteinte : l'écran de fin de main (aucune pastille de rang)
 	var mfin := modales.etat_fin()
+	# Lot 07-I (CA-T14) : le titre d'époque affiché == bilan["titre"] (nom et « pourquoi »), aucune étoile ni « Cousin Indice »
+	var t_bilan: Dictionary = bilan.get("titre", {})
+	var nl_t := modales.courant.find_child("NomTitre", true, false) as Label
+	var pl_t := modales.courant.find_child("PourquoiTitre", true, false) as Label
+	var etoile_t := false
+	for lb: Node in modales.courant.find_children("*", "Label", true, false):
+		var tl := (lb as Label).text.to_lower()
+		etoile_t = etoile_t or tl.contains("étoile") or tl.contains("cousin indice")
+	_verifier("%s : écran de fin : titre affiché == bilan[titre] (« %s »), pourquoi == bilan, aucune étoile" % [nom, str(t_bilan.get("nom", ""))],
+		((nl_t == null and t_bilan.is_empty()) or (nl_t != null and nl_t.text == str(t_bilan["nom"]).to_upper() and pl_t != null and pl_t.text == "« %s »" % str(t_bilan["pourquoi"]))) and not etoile_t,
+		"%s / %s" % [nl_t.text if nl_t != null else "-", str(t_bilan.get("nom", "-"))])
 	var rue_bilan: Array = bilan.get("rue", [])
 	if cartes:
 		var lus_f: Array = mfin.barres_fin.lignes.map(func(l: Array) -> String: return "%s|%s" % [str(l[0]), Format.entier(float(l[1]), e.ab_courant())]) if mfin.barres_fin != null else []
