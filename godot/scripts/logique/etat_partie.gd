@@ -69,6 +69,10 @@ var projets: Dictionary = {}
 var jeanmi: Dictionary = {}
 var quartier: Dictionary = {}
 var instantane_k: Dictionary = {}
+## Lot 07-L : titre d'époque et record. stats_titre = mesures de la partie (Titres.stats_initiales) ; retours = nombre de
+## retours en arrière du joueur (sauvegarde manuelle, lot SV : toujours 0 avant) ; une partie avec retours ne bat pas le record.
+var stats_titre: Dictionary = {}
+var retours := 0
 
 
 # =====================================================================
@@ -100,6 +104,8 @@ func demarrer(config: Dictionary = {}) -> Dictionary:
 	quartier["actif"] = bool(config.get("rue", Donnees.charger("rue").get("actif", false)))
 	quartier["evts"] = []
 	instantane_k = {}
+	stats_titre = Titres.stats_initiales()
+	retours = 0
 	# État de départ garni (démonstration) : le joueur a un compte et un livret ; les témoins reçoivent
 	# le même capital en argent (03 §7.8) et le placent selon leur règle. Compté comme épargne.
 	var cc0 := float(config.get("cc_depart", 0.0))
@@ -524,6 +530,7 @@ func vendre(w: Portefeuille, id: String, montant: float, tout := false, forcee :
 			stats["ventes_forcees"].append({"m": m, "id": id, "perf": d["perf"]})
 		else:
 			_noter_vente_panique(float(d["brut"]))
+			Titres.noter_vente(self, id, float(d["brut"]))
 		_enregistrer_hist()
 	return d
 
@@ -877,8 +884,8 @@ func _entrer_mois(initial: bool) -> Dictionary:
 			file.sort_custom(_avant_dans_file)
 			modale = file.pop_front()
 		res["modale"] = modale
+	_instantane_si_krach()   # lot 07-L : pris même rue éteinte (titres) ; instantane_krach() reste vide pour l'interface
 	if rue_active():
-		_instantane_si_krach()
 		_notifs_rue(notifs, not modale.is_empty())
 	return res
 
@@ -1406,7 +1413,7 @@ func resoudre_modale(choix_id: String) -> Dictionary:
 		r = {"choix": choix_id, "kind": "gazette", "notifs": []}
 	elif item["kind"] == "marche":
 		var ev := evenement(item["id"])
-		if rue_active() and _est_krach(ev) and not instantane_k.is_empty():
+		if _est_krach(ev) and not instantane_k.is_empty():
 			instantane_k = Krach.completer(instantane_k, choix_id)
 		choix.append({"id": ev["id"], "m": item["m"], "choix": choix_id, "indice": indice(int(item["m"])),
 			"titre": ev["titre"], "type": ev["type"], "lecon": ev.get("lecon", "")})
@@ -1536,6 +1543,7 @@ func _stats_mois() -> void:
 		stats["somme_part_cc"] += maxf(0.0, joueur.cc) / patr
 		stats["somme_part_livret"] += joueur.livret / patr
 		stats["nb_mois"] += 1
+	Titres.noter_mois(self, patr)
 
 
 func _enregistrer_hist() -> void:
@@ -1887,6 +1895,7 @@ func _instantane_si_krach() -> void:
 	if (inst["lignes"] as Array).is_empty():
 		var sicav := _fonds_indiciel()
 		inst = Krach.instantane_exemple(sicav, cours(sicav), float(Krach.donnees()["un_an_apres"]["exemple"]["montant_f"]) / Format.TAUX_EURO, ab_courant())
+	inst["patrimoine"] = patrimoine(joueur)   # patrimoine du joueur au même moment (part risquée, titres)
 	instantane_k = inst
 
 
@@ -1948,7 +1957,7 @@ func ctx_gazette(inst: Dictionary) -> Dictionary:
 
 const CHAMPS_ETAT := ["m", "m_depart", "m_fin", "salaire_base", "calendrier", "file", "modale", "choix", "panique",
 	"epargne_nette", "bag_mis", "decouvert_mois", "enfants", "fin", "hist", "stats", "journal", "banque", "historique",
-	"flux_mois", "foyer", "projets", "jeanmi", "quartier", "instantane_k"]
+	"flux_mois", "foyer", "projets", "jeanmi", "quartier", "instantane_k", "retours", "stats_titre"]
 
 
 func vers_dict() -> Dictionary:
@@ -1977,7 +1986,7 @@ static func defauts_etat(config: Dictionary) -> Dictionary:
 
 
 ## Dictionnaires d'état complétés clé par clé lors d'une migration (les autres sont pris tels quels).
-const CHAMPS_COMPLETES := ["banque", "stats", "hist", "foyer", "quartier"]
+const CHAMPS_COMPLETES := ["banque", "stats", "hist", "foyer", "quartier", "stats_titre"]
 
 
 ## Recrée une partie à partir d'une sauvegarde. Renvoie null si le contenu est inutilisable (autre version

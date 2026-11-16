@@ -1,4 +1,4 @@
-extends Node
+﻿extends Node
 ## Recette R-MAISON (testeur), CA-M1, M3, M5, M6, M7, M8, M10 : parties COMPLETES jouées par la vraie scène principale
 ## (principal.tscn, vraies séquences : porte puis carte, saut « prochain courrier »), cartes et projets allumés.
 ## Le « joueur » : stratégie de test pour les choix (comme un joueur qui clique), clics par l'API des modales (choisir,
@@ -48,10 +48,12 @@ func _ready() -> void:
 		Ecran.basculer_telephone()
 		await get_tree().create_timer(0.5).timeout
 	Partie.chemin_sauvegarde = "user://recette_maison_%d.sav" % OS.get_process_id()
+	Partie.chemin_records = "user://recette_maison_%d_records.sav" % OS.get_process_id()   # lot 07 : jamais le vrai records.sav
 	await _partie(true, 7, "plus_cher", "vendre", true)
 	_reprise_ancienne()
 	if OS.get_environment("TESTEUR_UNE") != "":
 		Sauvegarde.effacer(Partie.chemin_sauvegarde)
+		Records.effacer(Partie.chemin_records)
 		print("=== recette maison (une partie) : %d OK, %d KO ===" % [ok, ko])
 		get_tree().quit(1 if ko > 0 else 0)
 		return
@@ -60,7 +62,8 @@ func _ready() -> void:
 		await _partie(true, 31, "milieu", "vendre")
 		await _partie(false, 31, "plus_cher", "vendre")
 	Sauvegarde.effacer(Partie.chemin_sauvegarde)
-	print("=== recette maison : %d OK, %d KO ===" % [ok, ko])
+	Records.effacer(Partie.chemin_records)
+	print("=== recette maison :%d OK, %d KO ===" % [ok, ko])
 	get_tree().quit(1 if ko > 0 else 0)
 
 

@@ -29,6 +29,8 @@ static func jours(k: Dictionary = {}) -> Array:
 ## {"ab", "cc", "montant_renforcer" (part proposée par « Renforcer » du compte courant), "choix" ("" jusqu'à la
 ## résolution), "exemple": false, "lignes": [{"id", "nom", "type" ("action"|"sicav"), "qte", "cout", "cours"}]}.
 ## cours = cours du mois du krach (fin 10/1987). Si "lignes" est vide : utiliser instantane_exemple.
+## Lot 07-L : "patrimoine" = patrimoine du joueur au même moment (EtatPartie l'ajoute aussi à l'exemple) ; part risquée des
+## titres = base(inst) / patrimoine, 0 pour un exemple.
 static func instantane(e: EtatPartie) -> Dictionary:
 	var lignes: Array = []
 	for id in e.joueur.lignes:
@@ -39,7 +41,7 @@ static func instantane(e: EtatPartie) -> Dictionary:
 			"qte": e.joueur.qte(id), "cout": e.joueur.cout(id), "cours": p})
 	var part := float(Donnees.regles()["partSuggeree"])
 	return {"ab": e.ab_courant(), "cc": e.joueur.cc, "montant_renforcer": maxf(0.0, part * e.joueur.cc),
-		"choix": "", "exemple": false, "lignes": lignes}
+		"choix": "", "exemple": false, "lignes": lignes, "patrimoine": e.patrimoine(e.joueur)}
 
 
 ## Exemple pour un joueur sans action ni SICAV : montant (unité de l'appelant, ex. 10 000 F convertis) de SICAV
