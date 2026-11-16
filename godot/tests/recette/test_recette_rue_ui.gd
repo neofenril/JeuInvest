@@ -54,6 +54,7 @@ func verifier(nom: String, cond: bool, detail := "") -> void:
 
 
 func _ready() -> void:
+	Partie.chemin_records = "user://recette_records_%d.sav" % OS.get_process_id()   # records.sav du joueur jamais touche (07-I)
 	if OS.get_environment("TESTEUR_FMT") == "tel":
 		Ecran.basculer_telephone()
 		await get_tree().create_timer(0.5).timeout

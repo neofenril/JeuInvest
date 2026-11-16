@@ -23,6 +23,7 @@ func verifier(nom: String, cond: bool, detail := "") -> void:
 
 
 func _ready() -> void:
+	Partie.chemin_records = "user://recette_records_%d.sav" % OS.get_process_id()   # records.sav du joueur jamais touche (07-I)
 	Partie.chemin_sauvegarde = "user://recette_routage_%d.sav" % OS.get_process_id()
 	await _test()
 	Sauvegarde.effacer(Partie.chemin_sauvegarde)
