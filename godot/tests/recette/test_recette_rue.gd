@@ -24,6 +24,7 @@ func verifier(nom: String, cond: bool, detail := "") -> void:
 
 func _ready() -> void:
 	Partie.chemin_sauvegarde = "user://recette_rue_%d.sav" % OS.get_process_id()
+	Partie.chemin_records = "user://recette_rue_%d_records.sav" % OS.get_process_id()   # lot 07 : jamais le vrai records.sav
 	_t_eteint()
 	_t_parties()
 	_t_jeanmi()
@@ -33,6 +34,7 @@ func _ready() -> void:
 	await _t_saut()
 	_t_bilan()
 	Sauvegarde.effacer(Partie.chemin_sauvegarde)
+	Records.effacer(Partie.chemin_records)
 	Sauvegarde.effacer(_chemin())
 	StrategieTest.strategie = ""
 	print("=== recette rue : %d OK, %d KO ===" % [ok, ko])

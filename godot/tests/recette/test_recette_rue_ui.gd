@@ -58,12 +58,14 @@ func _ready() -> void:
 		Ecran.basculer_telephone()
 		await get_tree().create_timer(0.5).timeout
 	Partie.chemin_sauvegarde = "user://recette_rue_ui_%d.sav" % OS.get_process_id()
+	Partie.chemin_records = "user://recette_rue_ui_%d_records.sav" % OS.get_process_id()   # lot 07 : jamais le vrai records.sav
 	var cas := OS.get_environment("TESTEUR_CAS")
 	if cas == "":
 		cas = "actif:7"
 	var p := cas.split(":")
 	await _partie(p[0] == "actif", int(p[1]))
 	Sauvegarde.effacer(Partie.chemin_sauvegarde)
+	Records.effacer(Partie.chemin_records)
 	print("=== recette rue ui : %d OK, %d KO ===" % [ok, ko])
 	get_tree().quit(1 if ko > 0 else 0)
 

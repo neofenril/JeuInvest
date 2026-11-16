@@ -18,8 +18,10 @@ func verifier(nom: String, cond: bool, detail := "") -> void:
 
 func _ready() -> void:
 	Partie.chemin_sauvegarde = "user://recette_decoupage_%d.sav" % OS.get_process_id()
+	Partie.chemin_records = "user://recette_decoupage_%d_records.sav" % OS.get_process_id()   # lot 07 : jamais le vrai records.sav
 	await _test()
 	Sauvegarde.effacer(Partie.chemin_sauvegarde)
+	Records.effacer(Partie.chemin_records)
 	print("=== recette découpage (raccourcis_test=%s) : %d OK, %d KO ===" % [Reglages.raccourcis_test(), ok, ko])
 	get_tree().quit(1 if ko > 0 else 0)
 
