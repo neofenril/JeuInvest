@@ -120,3 +120,7 @@ Décisions : 3 emplacements ; le joueur choisit l'emplacement à écraser ; la l
 ## 2026-11-16 (verdict sur la 0.5.1)
 - « les projets sont pas mal et je ne trouve pas les pauses trop nombreuses. La vitesse du saut est bonne. » Demande : lancer le testeur sur les titres et le record face à Tata Livret, vite, pour tester rapidement.
 
+
+## 2026-11-17 (verdict sur la 0.6)
+- « Sur smartphone l'écran de fin est un petit [peu petit] on a du mal à voir le récap des infos, cette version est pas mal, je la fais essayer par d'autres personnes et je te donnerai leur retour. »
+
