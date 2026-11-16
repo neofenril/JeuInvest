@@ -116,3 +116,7 @@ Décisions : 3 emplacements ; le joueur choisit l'emplacement à écraser ; la l
 - « le bouton d'avance jusqu'au prochain évènement (x6) doit réellement avancer jusqu'au prochain évènement et pas simplement faire x6. Préciser au joueur ce que son action va faire via une pop-up et proposer via une case à cocher de ne pas réafficher la pop-up au prochain clic sur ce bouton. »
 - « La pop-up des choix de projets reste trop longtemps à l'écran après avoir sélectionné l'un des choix. » (« corrige de suite »)
 
+
+## 2026-11-16 (verdict sur la 0.5.1)
+- « les projets sont pas mal et je ne trouve pas les pauses trop nombreuses. La vitesse du saut est bonne. » Demande : lancer le testeur sur les titres et le record face à Tata Livret, vite, pour tester rapidement.
+
