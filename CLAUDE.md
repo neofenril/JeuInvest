@@ -81,6 +81,10 @@ Chaque agent a une base de connaissances dans `docs/connaissances/<agent>.md` : 
 - Correctifs demandés par le joueur après essai de la 0.5, fusionnés dans main (2c9b8bd) : le bouton COURRIER avance réellement jusqu'au prochain événement (0,1 s par mois, mois non animés) avec pop-up de confirmation (case « Ne plus afficher », préférence locale) ; la conclusion des cartes et projets dure ~1 s. 1 126 vérifications. Exports 0.5.1 : `export\windows\JeuClaude.exe` et `export\android\JeuClaude.apk` (15/11).
 - Branche `lot/07-logique` (titres, record face à Tata Livret) : développée, fusionnée avec main, recette du testeur à passer ; interface 07-I et sauvegarde manuelle après le verdict du joueur.
 
+## État du projet (2026-11-16) : version 0.6 « titres et record »
+- Verdict du joueur sur la 0.5.1 : projets « pas mal », pauses non trop nombreuses, vitesse du saut bonne. Fusionnés dans main (ad180f3) : 07-L (9 titres, record = meilleur écart final face à Tata Livret, `user://records.sav`, jamais écrit en test/capture : `Partie.chemin_records` isolé) et 07-I (écran de fin d'époque, rangée « Meilleur résultat » + bouton TITRES à l'écran titre, collection 3×3). 1 334 vérifications (`tests.ps1 -Recette -Delai 700`, à lancer sans autre Godot en parallèle). Exports 0.6 : `export\windows\JeuClaude.exe` et `export\android\JeuClaude.apk` (16/11).
+- Reste : sauvegarde manuelle (non lancée), peaufinage reporté (animations, caméra, humeur visuelle…), signature de l'exe, APK de release, iOS, sons (pas pour l'instant).
+
 ## À faire plus tard
 - APK de publication (keystore de release) et version iOS.
 - Questionnaire de profil de risque au démarrage (idée de l'utilisateur mise de côté le 2026-10-27). D'ici là, le banquier adapte ses propositions à la seule situation de vie.
