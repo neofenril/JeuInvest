@@ -74,6 +74,7 @@ function Lancer([string]$etape, [string]$nom, [string]$taille, [string]$tel, [st
     # Lot 03 (D6, m9) : le total du relevé = somme des valeurs affichées
     foreach ($l in ($ui | Where-Object { $_ -match '^UI releve frais=(\d+) manque=(\d+) total=(\d+)' })) { $m = [regex]::Match($l, 'frais=(\d+) manque=(\d+) total=(\d+)'); if ([int]$m.Groups[1].Value + [int]$m.Groups[2].Value -ne [int]$m.Groups[3].Value) { $fautes += "relevé : total différent de la somme affichée" } }
     foreach ($l in ($ui | Where-Object { $_ -match '^UI releve frais=\?' })) { $fautes += "relevé : grille des frais introuvable" }
+    foreach ($l in ($ui | Where-Object { $_ -match 'UI (rue eteinte .*INCOH|rue ligne .*incoherences=1|rue languette_ouvre_panneau=non|rue_notifs .*incoherences=1|rue_notifs persistante=PARTIE|krach_jours .*incoherences=1|gazette .*incoherences=1|fin .*incoherences=1|historique_rue onglet=ABSENT|projet refus=ACCEPTE|projet echap_clic=FERMENT|projet echap_confirmation=AUTRE|projet confirmation .*incoherences=1|guichet ordre ligne=absente \(sans|etiquette_projet chevauchements(_apres)?=[1-9]|carte refus=ACCEPTE|carte echap_clic=FERMENT|bulle apres_carte=non|banque_fermee ouverte=OUI|foyer chiffres_dans_humeur=[1-9])' })) { $fautes += $l }
     foreach ($l in ($ui | Where-Object { $_ -match 'atkinson_min=(\d+)' })) { if ([int]([regex]::Match($l, 'atkinson_min=(\d+)').Groups[1].Value) -lt 20) { $fautes += "atkinson_min < 20" } }
     foreach ($l in ($ui | Where-Object { $_ -match '^Images par seconde.*: ([\d.,]+)' })) { if ([double]([regex]::Match($l, ': ([\d.,]+)').Groups[1].Value.Replace(',','.')) -lt 55) { $fautes += "moins de 55 images par seconde" } }
     $pix = $ui | Where-Object { $_ -match 'pixelify_min=(\d+)' } | ForEach-Object { [int]([regex]::Match($_, 'pixelify_min=(\d+)').Groups[1].Value) }
@@ -168,6 +169,29 @@ foreach ($e in @("fiche_dividendes", "fiche_dividendes_avant")) {
         $plan.Add(@($e, ("l3_" + $e + "_" + $t[0]), $t[1], $t[2]))
     }
 }
+# Lot 04 (03-I2, version jouable) : carte de dilemme, « Mon foyer », banque fermée ; PC 1080 et téléphone 1440 × 648 seulement
+foreach ($e in @("carte", "carte_refus", "carte_conclusion", "carte_relue", "mon_foyer", "mon_foyer_eteint", "banque_fermee")) {
+    foreach ($t in @(@("1080", "1920x1080", ""), @("tel", "1440x648", "1"))) {
+        $plan.Add(@($e, ("l4_" + $e + "_" + $t[0]), $t[1], $t[2]))
+    }
+}
+$plan.Add(@("integrale_cartes", "l4_integrale_cartes", "1280x720", ""))
+# Lot 05 (04-I, version jouable) : projets, étiquette, Mon foyer, guichet ; PC 1080 et téléphone 1440 × 648
+foreach ($e in @("projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet")) {
+    foreach ($t in @(@("1080", "1920x1080", ""), @("tel", "1440x648", "1"))) {
+        $plan.Add(@($e, ("l5_" + $e + "_" + $t[0]), $t[1], $t[2]))
+    }
+}
+$plan.Add(@("integrale_maison", "l5_integrale_maison", "1280x720", ""))
+# Lot 06 (05-I, version jouable) : la rue et le krach ; PC 1080 et téléphone 1440 × 648
+foreach ($e in @("rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue")) {
+    foreach ($t in @(@("1080", "1920x1080", ""), @("tel", "1440x648", "1"))) {
+        $plan.Add(@($e, ("l6_" + $e + "_" + $t[0]), $t[1], $t[2]))
+    }
+}
+$plan.Add(@("rue_bloc", "l6_rue_bloc_1152", "1152x648", ""))
+$plan.Add(@("rue_bloc", "l6_rue_bloc_tel169", "1280x720", "169"))
+$plan.Add(@("integrale_jouable", "l6_integrale_jouable", "1280x720", ""))
 $echecs = 0
 $script:sorties_bloquees = 0
 $i = 0

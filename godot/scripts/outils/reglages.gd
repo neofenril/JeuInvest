@@ -48,3 +48,22 @@ static func marquer_bulle_vue(nom: String) -> void:
 	cfg.load(PREFERENCES)   # absent la première fois : on part d'un fichier vide
 	cfg.set_value("bulles", nom, true)
 	cfg.save(PREFERENCES)
+
+## Fenêtre de confirmation du saut (« jusqu'au prochain événement ») : vraie tant que le joueur n'a pas coché
+## « Ne plus afficher ». Hors jeu normal (capture, tests sans écran) : jamais, sauf option --confirmation-<nom>.
+static func confirmation_a_montrer(nom: String) -> bool:
+	if not _preferences_actives():
+		return ("--confirmation-" + nom) in OS.get_cmdline_user_args()
+	var cfg := ConfigFile.new()
+	if cfg.load(PREFERENCES) != OK:
+		return true
+	return not bool(cfg.get_value("confirmations", nom, false))
+
+
+static func ne_plus_confirmer(nom: String) -> void:
+	if not _preferences_actives():
+		return
+	var cfg := ConfigFile.new()
+	cfg.load(PREFERENCES)
+	cfg.set_value("confirmations", nom, true)
+	cfg.save(PREFERENCES)

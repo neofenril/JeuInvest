@@ -329,7 +329,8 @@ image courrier_b 16x16
 # --- Lot 03 : pictos d'humeur 16 × 16 (docs/17 §4.1) : tête de Sylvie, seules les lignes 4 à 10 changent ---
 # Lisibles sans couleur : yeux en ^ et grand sourire (contente), yeux ouverts et bouche droite (neutre),
 # sourcils en V, paupières et bouche tombante (fâchée). Sourcils de la fâchée en V symétrique (colonnes 4-5
-# et 10-11) plutôt que les deux traits verticaux du tableau de docs/17.
+# et 10-11) plutôt que les deux traits verticaux du tableau de docs/17. Lot 04 (D12, docs/23) : V doux, extrémité
+# intérieure 1 px plus bas que l'extérieure ; pupilles décalées d'1 px vers la droite (elle regarde ailleurs).
 : h bois
 : p peau_claire
 : o peau_ombre
@@ -375,10 +376,10 @@ image humeur_fachee 16x16
 ..hhhhhhhhhhhh..
 .hhhhhhhhhhhhhh.
 .hhhpppppppphhh.
-hhhpkppppppkphhh
+hhhkkppppppkkhhh
 hhpppkppppkppphh
-hhppooppppoopphh
-hhppkkppppkkpphh
+hhpppooppppoophh
+hhpppkkppppkkphh
 hhppppppoppppphh
 hhppppkkkkpppphh
 hhpppkppppkppphh
@@ -387,3 +388,160 @@ hhpppkppppkppphh
 hhhh.poooop.hhhh
 .hhjjjjjjjjjjhh.
 jjjjjjjjjjjjjjjj
+
+# --- Lot 04 : aimant rouge du pense-bête (carte de dilemme, « Mon foyer »), 8 × 8 (docs/17 §4.1) ---
+: e encre
+: t tuile
+: l terre_cuite_claire
+: b brique
+image aimant 8x8
+..eeee..
+.etttte.
+etllttte
+etltttte
+etttttte
+ebbbbbbe
+.ebbbbe.
+..eeee..
+
+# --- Lot 05 (04-I) : icones des projets du foyer, 16 x 16, affichees x3 (docs/24 : carte de choix, etiquette MA MAISON, Mon foyer) ---
+: k encre
+: t brique_vive
+: T brique
+: b tuile
+: d bois_sombre
+: c ciel_clair
+: m bleu_vif
+: M bleu_ardoise
+: w blanc_chaud
+: l lumiere
+: s terre_cuite_claire
+: v vert
+: V vert_sombre
+: r rouge_auvent
+: R brique_sombre
+: o orange
+: a bleu_ardoise
+: A bleu_nuit
+image salon 16x16
+................
+................
+....kkkkkkkk....
+...kttttttttk...
+.kkkttttttttkkk.
+kttttttttttttttk
+ktttbbbbbbbbtttk
+ktttbbbbbbbbtttk
+ktttTTTTTTTTtttk
+ktttTTTTTTTTtttk
+ktttTTTTTTTTtttk
+.kkdkkkkkkkkdkk.
+...k........k...
+................
+................
+................
+image grece 16x16
+................
+.kkkkkkkkkkkkkk.
+kcccccccccclccck
+kccccccccclllcck
+kcccwwwcclllllck
+kccwwwwwcclllcck
+kccwmwwwccclccck
+kccwwmwwccccccck
+kccwwmwwccccccck
+kmmwwwwwmmmmmmmk
+kmmmmmmmmmmmmmmk
+kmmMMMMMMMMMMMMk
+kmmmmmmmmmmmmmmk
+kmmmmmMMMMMMMmmk
+.kkkkkkkkkkkkkk.
+................
+image voiture 16x16
+................
+................
+................
+................
+....kkkkkkkk....
+...krrrrrrrrk...
+...krccccccrk...
+.kkkrccccccrkkk.
+krrrrccccccrrrrk
+korrrrrrrrrrrrlk
+kRRRRRRRRRRRRRRk
+krrrkrrrrrrkrrrk
+.kkkwkkkkkkwkkk.
+...kkk....kkk...
+....k......k....
+................
+image club_med 16x16
+............k...
+.....kkkkkkklk..
+...kkVVVVVVlllk.
+..kvvvvkkvvvvllk
+..kvvvvkkvvvvlk.
+.kvkvvvddvvvlvk.
+..k.kkdddkkkkk..
+......kddk......
+......kddk......
+......kddk......
+.kkkkkkddkkkkkk.
+kssssssddssssssk
+kssssssssssssssk
+kmmmmmmmmmmmmmmk
+.kkkkkkkkkkkkkk.
+................
+image break 16x16
+................
+................
+................
+...kkkkkkkkkkkk.
+..kaaaaaaaaaaaak
+..kaccccccccccak
+..kaccccccccccak
+kkkaccccccccccak
+aaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaal
+AAAAAAAAAAAAAAAA
+aaaakaaaaaaakaaa
+kkkkwkkkkkkkwkkk
+...kkk.....kkk..
+....k.......k...
+................
+image maison 16x16
+.......kk.......
+.....kkrrkk.....
+...kkrrrrrrkk...
+.kkrrrrrrrrrrkk.
+krrrrrrrrrrrrrrk
+krrrrrrrrrrrrrrk
+.kkwwwwwwwwwwkk.
+..kwwwwwwwwwwk..
+..kwcccwwwccck..
+..kwcccdddccck..
+..kwcccdddccck..
+..kwwwwdddwwwk..
+..kwwwwdddwwwk..
+..kwwwwdddwwwk..
+...kkkkkkkkkk...
+................
+
+# --- Lot 06 : source « rue » (plaque de rue sur son poteau) : liseré bleu vif, onglet LA RUE, notifications ---
+: i creme
+image source_rue 16x16
+................
+................
+................
+..iiiiiiiiiiii..
+..i..........i..
+..i.ii.ii.ii.i..
+..i..........i..
+..iiiiiiiiiiii..
+.......ii.......
+.......ii.......
+.......ii.......
+.......ii.......
+.......ii.......
+.......ii.......
+.....iiiiii.....
+................

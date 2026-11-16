@@ -88,8 +88,10 @@ func jouer_modale(c: Dictionary) -> void:
 		vedette(_sequence_journal.bind(c))
 	elif c.get("effet", "") == "naissance":
 		vedette(_sequence_naissance.bind(c))
-	elif c.get("kind", "") == "carte":
+	elif c.get("kind", "") in ["carte", "projet"]:   # carte du foyer et projet : même sortie de la maison (lot 05, 04-I)
 		vedette(_sequence_carte.bind(c))
+	elif c.get("kind", "") == "gazette":           # « Le krach, un an après » : la caméra va au bâtiment média, pas de porte
+		vedette(_sequence_gazette.bind(c))
 	else:
 		vedette(_sequence_courrier.bind(c))
 
@@ -394,14 +396,16 @@ func _sequence_carte(c: Dictionary) -> void:
 	maison.set("porte_ouverte", 3)
 	var sortie := _maintenant() - t0
 	_fin_animation("carte", t0, "%s->%s" % [cam0, _camera()])
-	_trace("RUE carte sortie=%.2f porte=3 carte=%s" % [sortie, "modales" if modales.has_method("carte") else "courrier"])
+	var kind := str(c.get("kind", "carte"))
+	_trace("RUE carte sortie=%.2f porte=3 carte=%s" % [sortie, "modales" if modales.has_method(kind) else "courrier"])
+	_trace("RUE fiche kind=%s appel=%s" % [kind, "modales" if modales.has_method(kind) else "courrier"])
 	var porte := _point_porte_maison()
-	var avec_carte := modales.has_method("carte")
+	var avec_carte := modales.has_method(kind)
 	var res := {}
 	while res.is_empty():
 		if avec_carte:
 			if res.is_empty() and not modales.ouverte():
-				modales.call("carte", Partie.etat.contenu_modale(), porte)
+				modales.call(kind, Partie.etat.contenu_modale(), porte)
 		else:
 			modales.courrier(Partie.etat.contenu_modale(), porte, e)
 		var r: Array = await modales.choix_fait
@@ -409,11 +413,41 @@ func _sequence_carte(c: Dictionary) -> void:
 		if Partie.etat.modale.is_empty() and res.is_empty():
 			break                                      # carte fermée ailleurs (filet du moteur) : rien à rouvrir
 	_trace("RUE carte choix=%s montant=%s" % [str(res.get("choix", "")), str(res.get("montant", ""))])
-	if avec_carte and modales.has_method("conclure_carte") and not res.is_empty():
-		await modales.call("conclure_carte", res, porte)
+	if avec_carte and modales.has_method("conclure_" + kind) and not res.is_empty():
+		await modales.call("conclure_" + kind, res, porte)
 	for k in [2, 1, 0]:
 		maison.set("porte_ouverte", k)
 		await get_tree().create_timer(PORTE_IMAGE_S).timeout
+	ville.call("revenir")
+	hud.maj(e, true, 0.5)
+
+
+## Fiche de la Gazette (kind « gazette », lot 05 §4.1) : la caméra glisse sur le bâtiment média, puis Modales.gazette si elle
+## existe (sinon le courrier), tant que le moteur refuse le choix ; conclure_gazette si elle existe.
+func _sequence_gazette(c: Dictionary) -> void:
+	var e := Partie.etat
+	var media: Node2D = ville.get("media")
+	var t0 := _maintenant()
+	var cam0 := _camera()
+	_debut_animation(media, 0.45)
+	await _attendre(0.45)
+	_fin_animation("gazette", t0, "%s->%s" % [cam0, _camera()])
+	var avec := modales.has_method("gazette")
+	_trace("RUE fiche kind=gazette appel=%s" % ("modales" if avec else "courrier"))
+	var depart := _depart(media, Vector2(0, -150))
+	var res := {}
+	while res.is_empty():
+		if avec:
+			if not modales.ouverte():
+				modales.call("gazette", Partie.etat.contenu_modale(), depart)
+		else:
+			modales.courrier(Partie.etat.contenu_modale(), depart, e)
+		var r: Array = await modales.choix_fait
+		res = Partie.resoudre_modale(str(r[1]))
+		if Partie.etat.modale.is_empty() and res.is_empty():
+			break
+	if avec and modales.has_method("conclure_gazette") and not res.is_empty():
+		await modales.call("conclure_gazette", res, depart)
 	ville.call("revenir")
 	hud.maj(e, true, 0.5)
 

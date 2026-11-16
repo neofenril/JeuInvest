@@ -14,10 +14,12 @@ var hud: Hud
 var modales: Modales
 var titre: EcranTitre
 var sequences: Sequences
+var confirmation_saut: ConfirmationSaut = null   # fenêtre « Avancer jusqu'au prochain événement ? » (0.5.1)
 var calque_hud: CanvasLayer
 var en_titre := true
 var pluie_jusqua := -1            # la pluie du krach dure jusqu'à ce mois (Sequences)
 var dernier_releve: Dictionary = {}
+var derniere_bulle: Bulle = null   # dernière bulle d'humeur (captures et tests)
 var _max_patr := 0.0
 var _tween_titre: Tween
 var _ignorer_modales := false     # pendant la mise en place d'une partie : la modale en attente sera rouverte
@@ -117,7 +119,14 @@ func modales_init() -> void:
 
 ## Configuration d'une nouvelle partie : graine de vie tirée au hasard (graine fixe pour les captures).
 func _config() -> Dictionary:
-	return Donnees.config_demo(-1 if ScenariosCapture.mode_capture() else randi_range(1, 2147483646))
+	var c := Donnees.config_demo(-1 if ScenariosCapture.mode_capture() else randi_range(1, 2147483646))
+	# Lot 04 (D9, I5) et lot 05 (D11, P6) : les cartes du foyer et les projets sont allumés pour toute nouvelle partie du
+	# joueur ; éteints en capture (aucune étape existante ne change : `integrale` reste la référence), sauf étape qui les demande.
+	if not ScenariosCapture.mode_capture():
+		c["cartes"] = true
+		c["projets"] = true
+		c["rue"] = true       # lot 06 (E8, A1) : Jean-Mi, classement, notifications de la rue, krach détaillé
+	return c
 
 
 ## config : partie imposée (tests : graine fixe) ; vide : graine de vie tirée au hasard.
@@ -271,11 +280,23 @@ func _process(delta: float) -> void:
 		ville.get("banque").set("aiguille", Partie.progression_mois())
 		ville.get("banque").queue_redraw()
 	hud.maj_courrier(hud.etat_courrier_pour(e, _occupe()))
+	hud.maj_banque_fermee(banque_fermee())
+
+
+## Une carte du foyer ou un projet attend : la BANQUE est fermée (lot 04, I4). Le moteur
+## (EtatPartie.ordres_bloques, 04-L) fait foi quand il existe ; sinon, une modale de kind « carte ».
+func banque_fermee() -> bool:
+	var e := Partie.etat
+	if e == null or e.fin != "":
+		return false
+	if e.has_method("ordres_bloques"):
+		return bool(e.call("ordres_bloques"))
+	return e.modale.get("kind", "") in ["carte", "projet"]
 
 
 ## Écran titre, fenêtre ou modale ouverte, séquence animée : le joueur ne peut pas lancer de saut.
 func _occupe() -> bool:
-	return en_titre or modales.ouverte() or sequences.occupe
+	return en_titre or modales.ouverte() or sequences.occupe or confirmation_saut != null
 
 
 ## Bouton COURRIER ou touche N (D1, D4) : lance le saut « jusqu'au prochain courrier », ou l'arrête.
@@ -284,7 +305,34 @@ func demander_saut() -> void:
 	if Partie.saut_actif:
 		Partie.arreter_saut()
 	elif hud.etat_courrier_pour(Partie.etat, _occupe()) == "repos":
-		Partie.sauter_jusqu_au_prochain_arret()
+		if Reglages.confirmation_a_montrer("saut"):
+			_confirmer_saut()
+		else:
+			Partie.sauter_jusqu_au_prochain_arret()
+
+
+## Correctif 0.5.1 : au premier appui, une fenêtre dit ce que va faire le bouton (case « Ne plus afficher »).
+## Le temps est figé derrière ; AVANCER lance le saut, ANNULER / Échap ne change rien.
+func _confirmer_saut() -> void:
+	if confirmation_saut != null:
+		return
+	var c := ConfirmationSaut.new()
+	confirmation_saut = c
+	hud.add_child(c)
+	Partie.bloquee = true
+	c.valide.connect(func(ne_plus: bool) -> void:
+		if ne_plus:
+			Reglages.ne_plus_confirmer("saut")
+		_fermer_confirmation_saut()
+		Partie.sauter_jusqu_au_prochain_arret())
+	c.annule.connect(_fermer_confirmation_saut)
+
+
+func _fermer_confirmation_saut() -> void:
+	if confirmation_saut != null:
+		confirmation_saut.queue_free()
+		confirmation_saut = null
+	Partie.bloquee = false
 
 
 ## Une fenêtre s'ouvre (D4) : le saut s'arrête, puis le temps est figé derrière elle.
@@ -296,7 +344,7 @@ func _bloquer() -> void:
 ## Touches de jeu (toujours actives). Les raccourcis de test (F6-F8) sont dans RaccourcisTest, F10 dans Ecran.
 func _unhandled_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
-	if k == null or not k.pressed or k.echo or en_titre or modales.ouverte() or sequences.occupe:
+	if k == null or not k.pressed or k.echo or en_titre or modales.ouverte() or sequences.occupe or confirmation_saut != null:
 		return
 	match k.keycode:
 		KEY_SPACE, KEY_P:
@@ -335,7 +383,7 @@ func _on_mois(res: Dictionary) -> void:
 	var e := Partie.etat
 	if e == null:
 		return
-	var anime: bool = not res.get("saut", false) and not en_titre
+	var anime: bool = not res.get("saut", false) and not res.get("pendant_saut", false) and not en_titre
 	var a := e.ab_courant()
 	ville.call("regler_mois", Dates.mois(a), Dates.annee(a))
 	hud.maj(e, anime)
@@ -367,6 +415,9 @@ func _on_notif(n: Dictionary) -> void:
 	if n.get("source", "") == "media":
 		sequences.petite_news(n)
 		return
+	if type == "humeur":
+		_bulle_humeur(n)   # lot 04 (I2) : une bulle à la fenêtre de Sylvie, pas de carte de notification
+		return
 	var depart := Vector2(-1, -1)
 	if n.get("source", "") == "maison":
 		depart = ville.call("ecran_batiment", ville.get("maison"), Vector2(0, -150))
@@ -384,8 +435,25 @@ func _on_notif(n: Dictionary) -> void:
 	hud.notifier(n, a, depart)
 
 
+## Humeur de Sylvie (notification type « humeur ») : bulle de 4 s ancrée sur sa fenêtre (03-V2 : point_sylvie,
+## sinon la porte de la maison) ; née d'une carte, elle attend la fin du rangement. Le picto de l'étiquette suit.
+func _bulle_humeur(n: Dictionary) -> void:
+	if modales.carte_en_cours:
+		await modales.carte_rangee
+	var ancre := func() -> Vector2: return ville.call("point_sylvie") if ville.has_method("point_sylvie") else ville.call("porte_ecran", "maison")
+	derniere_bulle = Bulle.montrer(Juice.calque_effets, str(n.get("titre", "")), ancre, 4.0)
+	hud.maj_humeur(Partie.etat)
+
+
 ## Toucher une notification : le relevé de décembre ouvre le détail des frais (13 §3.4).
 func toucher_notif(n: Dictionary) -> void:
+	if str(n.get("source", "")) == "rue" and str(n.get("type", "")) in ["voisin", "rang"] and not sequences.occupe and not modales.ouverte() and not en_titre:
+		# Lot 06 (A3) : la rue se relit en lecture seule (voisin long : texte entier) ; le temps est en pause derrière la carte
+		_bloquer()
+		modales.lecture_notification({"source": "rue", "contenu": n, "titre": str(n.get("titre", ""))}, Partie.etat.ab_courant())
+		await modales.choix_fait
+		Partie.bloquee = false
+		return
 	if n.get("type", "") != "releve" or float(n.get("frais_total", 0.0)) <= 0.0 or sequences.occupe or modales.ouverte() or en_titre:
 		return
 	_bloquer()
@@ -428,26 +496,13 @@ func toucher_batiment(id: String) -> void:
 	if en_titre or sequences.occupe or modales.ouverte():
 		return
 	var e := Partie.etat
-	var a := e.ab_courant()
 	match id:
 		"banque":
 			ouvrir_banque("", -2.0)
 		"maison":
-			var dep: Dictionary = e.depenses()
-			var coussin := (maxf(0.0, e.joueur.cc) + e.joueur.livret) / float(dep["total"])
-			var lignes_foyer := [
-				"Salaire du mois : " + Format.montant(e.salaire_base, a),
-				"Loyer : " + Format.montant(float(dep["loyer"]), a) + "   ·   Vie courante : " + Format.montant(float(dep["vie"]), a),
-				"Il reste chaque mois : " + Format.montant(e.epargne_du_mois(), a),
-				"Coussin de sécurité : %s mois de dépenses (on conseille 3 mois)." % Format.nombre(coussin, 1),
-				"Prix de la baguette : " + Format.montant(Marche.baguette(a), a, true)]
-			if e.enfants > 0:
-				lignes_foyer.insert(2, "Enfants : %d (compris dans la vie courante : %s par mois)" % [e.enfants, Format.montant(float(dep["enfants"]), a)])
-			var auto := Versements.total_mensuel(e) if e.banquier_actif() else 0.0
-			if auto > 0.005:
-				lignes_foyer.insert(lignes_foyer.size() - 2, "Versements automatiques : %s par mois, partis le 1er, avant les dépenses." % Format.entier(auto, a))
+			# Lot 04 (I3) : « Mon foyer », la porte du frigo (ModaleFoyer)
 			_bloquer()
-			modales.info("MON FOYER · " + e.prenom().to_upper(), lignes_foyer, ville.call("ecran_batiment", ville.get("maison"), Vector2(0, -150)), "COURRIERS REÇUS  ›")
+			modales.foyer(e, ville.call("ecran_batiment", ville.get("maison"), Vector2(0, -150)))
 			var r: Array = await modales.choix_fait
 			Partie.bloquee = false
 			if r[1] == "extra":
@@ -482,6 +537,9 @@ func expliquer_comparaison() -> void:
 
 ## La fenêtre Banque (13 §2) : carnet, fiche, ordre. montant < -1,5 : ouvrir sur la fiche (pas sur l'ordre).
 func ouvrir_banque(produit: String, montant: float, depuis_sequence := false) -> void:
+	if banque_fermee() and not depuis_sequence and not en_titre:
+		_dire_banque_fermee()   # lot 04 (I4) : touche, bouton ou bâtiment : sans effet, la phrase est montrée
+		return
 	if modales.ouverte() or (sequences.occupe and not depuis_sequence):
 		return
 	var e := Partie.etat
@@ -502,6 +560,13 @@ func ouvrir_banque(produit: String, montant: float, depuis_sequence := false) ->
 		await ouvrir_historique("banque", 0, true)
 	hud.maj(e, true, 0.4)
 	Partie.sauvegarder()
+
+
+## La phrase de la banque fermée, en bulle au-dessus de l'étiquette MA BANQUE (3 s).
+func _dire_banque_fermee() -> void:
+	var eb: Control = hud.etiquettes["banque"]
+	var ancre := func() -> Vector2: return eb.get_global_rect().get_center() + Vector2(0, -eb.size.y / 2.0)
+	derniere_bulle = Bulle.montrer(Juice.calque_effets, Hud.PHRASE_BANQUE_FERMEE, ancre, 3.0)
 
 
 ## Relire une présentation passée depuis la fiche du carnet (12 §2.4) : la carte en lecture seule.

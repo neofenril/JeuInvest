@@ -71,7 +71,62 @@ static func arrondi_affiche(eur: float, a: int) -> float:
 	return -r if v < 0.0 else r
 
 
+## Écran de fin à 4 barres (lot 06, 05-I R7 ; docs/24 §2.6, lot_06 A7) quand la rue est allumée : classement_rue() à la place des barres
+## « Vous et Tata Livret » ; barres de Vous (ambre), Tata (couleur de sa courbe, soulignée référence), Tonton et Jean-Mi (zinc clair) ;
+## valeur négative : pas de barre ; rang en pastille neutre « 2e DE LA RUE SUR 4 » ; réplique du voisin le plus proche (replique_rue).
+## `fab_rue` : classement fabriqué (captures et tests) ; `infos_rue` : ce que l'écran affiche (lu par les captures et les tests).
+var fab_rue: Array = []
+var infos_rue := {}
+var barres_fin: Barres = null
+
+
+func _bloc_rue(bloc: VBoxContainer, barres: Barres, classement: Array, compact: bool, a: int) -> void:
+	var tete := HBoxContainer.new()
+	tete.add_theme_constant_override("separation", 12)
+	var lt := Style.label("LA RUE : VOUS ET VOS VOISINS", 20, Style.capitales(), Style.TEXTE_2)
+	lt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	lt.clip_text = true
+	lt.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	lt.custom_minimum_size.x = 60
+	tete.add_child(lt)
+	var rang := BlocRue._rang_de(classement)
+	var pc := PanelContainer.new()
+	pc.name = "PastilleRang"
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.set_border_width_all(3)
+	sb.border_color = Style.TEXTE_2
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 3
+	pc.add_theme_stylebox_override("panel", sb)
+	var lr := Style.label("%s DE LA RUE SUR %d" % [BlocRue.rang_texte(rang), classement.size()], 28 if not compact else 24, Style.ui_gras(), Style.TEXTE)
+	lr.name = "TexteRang"
+	pc.add_child(lr)
+	tete.add_child(pc)
+	bloc.add_child(tete)
+	var lignes: Array = []
+	var ref := -1
+	for i in classement.size():
+		var l: Dictionary = classement[i]
+		var id := str(l.get("id", ""))
+		var col: Color = Style.ACCENT if bool(l.get("vous", false)) else (Courbe.COULEUR_REF if id == "livret" else PalettePixel.couleur("zinc_clair"))
+		lignes.append(["%d %s" % [int(l.get("rang", 0)), str(l.get("nom", "")).to_upper()], float(l.get("patrimoine", 0.0)) / Format.TAUX_EURO, col])
+		if bool(l.get("reference", false)):
+			ref = i
+	barres.taille_libelle = 20
+	barres.largeur_libelle = 250.0
+	barres.ligne_reference = ref
+	barres.custom_minimum_size = Vector2(bloc.custom_minimum_size.x, 4.0 * (42.0 if compact else 48.0))
+	barres.regler(lignes, a)
+	barres_fin = barres
+
+
 func fin_demo(e: EtatPartie) -> void:
+	infos_rue = {}
+	barres_fin = null
 	m.compact = Ecran.compact()
 	var compact := m.compact
 	m.genre_courant = "fin"
@@ -101,6 +156,13 @@ func fin_demo(e: EtatPartie) -> void:
 	var lp := HBoxContainer.new()
 	lp.alignment = BoxContainer.ALIGNMENT_CENTER
 	lp.add_theme_constant_override("separation", 20)
+	# Lot 06 (A7, non ★) : le visage de Sylvie de « Mon foyer » (humeur du moment), quand les cartes sont allumées
+	if e.has_method("cartes_actives") and e.cartes_actives():
+		var visage := CadresPixel.icone("portrait_sylvie_" + ModaleCarte.nom_humeur(e.humeur_visible()), {}, 2 if compact else 3)   # recette R-RUE M6 : plus petit au téléphone, la réplique remonte
+		visage.name = "VisageSylvie"
+		visage.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		lp.add_child(visage)
+		infos_rue["visage"] = true
 	var lpt := Style.label("VOTRE PATRIMOINE", 20, Style.capitales(), Style.TEXTE_2)
 	lpt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	lp.add_child(lpt)
@@ -117,12 +179,32 @@ func fin_demo(e: EtatPartie) -> void:
 	bloc.add_theme_constant_override("separation", 6)
 	bloc.custom_minimum_size.x = interieur if compact else interieur * 0.5
 	ligne.add_child(bloc)
-	bloc.add_child(Style.label("VOUS ET TATA LIVRET (TOUT AU LIVRET A)", 18, Style.capitales(), Style.TEXTE_2))
-	var tata := e.patrimoine(e.temoins["livret"])
 	var barres := Barres.new()
-	barres.custom_minimum_size = Vector2(bloc.custom_minimum_size.x, 96 if compact else 110)
-	barres.regler([["VOUS", patr, Style.ACCENT], ["TATA LIVRET", tata, Courbe.COULEUR_REF]], a)
+	var classement: Array = fab_rue if not fab_rue.is_empty() else (e.classement_rue() if e.has_method("classement_rue") else [])
+	var tata := e.patrimoine(e.temoins["livret"])
+	if classement.is_empty():
+		bloc.add_child(Style.label("VOUS ET TATA LIVRET (TOUT AU LIVRET A)", 18, Style.capitales(), Style.TEXTE_2))
+		barres.custom_minimum_size = Vector2(bloc.custom_minimum_size.x, 96 if compact else 110)
+		barres.regler([["VOUS", patr, Style.ACCENT], ["TATA LIVRET", tata, Courbe.COULEUR_REF]], a)
+	else:
+		_bloc_rue(bloc, barres, classement, compact, a)
 	bloc.add_child(barres)
+	if not classement.is_empty():
+		var rep: Dictionary = Quartier.replique_rue(classement)
+		if not rep.is_empty() and str(rep.get("texte", "")) != "":
+			var hr := HBoxContainer.new()
+			hr.name = "RepliqueRue"
+			hr.add_theme_constant_override("separation", 9)
+			hr.add_child(BlocRue.pastille(str(rep.get("qui", "")), str({"jeanmi": "J", "livret": "T", "matelas": "M"}.get(str(rep.get("qui", "")), str(rep.get("nom", "?")).left(1))), 30.0))
+			var lr := Style.label("%s : « %s »" % [str(rep["nom"]), str(rep["texte"])], 22, Style.ui(), Style.TEXTE)
+			lr.name = "TexteReplique"
+			lr.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			lr.custom_minimum_size.x = bloc.custom_minimum_size.x - 50.0
+			lr.max_lines_visible = 2
+			lr.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			hr.add_child(lr)
+			bloc.add_child(hr)
+		infos_rue.merge({"rang": BlocRue._rang_de(classement), "total": classement.size(), "replique": not rep.is_empty()}, true)
 	bloc.add_child(Style.label("Argent mis de côté en cinq ans : " + Format.montant(e.epargne_nette, a), 18, Style.ui(), Style.TEXTE_2))
 	bloc.add_child(_bloc_comparaison_livret(e, a))
 	if not compact:
@@ -137,6 +219,16 @@ func fin_demo(e: EtatPartie) -> void:
 	var utilises: Array = e.stats.get("utilises", [])
 	infos.add_child(Style.label("Produits découverts %d/%d · utilisés %d/%d" % [Banquier.nb_decouverts(e), Banquier.ordre_carnet().size(), utilises.size(), Banquier.ordre_carnet().size()], 22 if compact else 24, Style.ui(), Style.TEXTE))
 	v.add_child(infos)
+	# Lot 06 (A7, non ★) : « Projets : n sur 2 réalisés » (projets_passes), quand les projets sont allumés
+	if e.has_method("projets_actifs") and bool(e.call("projets_actifs")):
+		var realises := 0
+		for pp: Dictionary in e.projets_passes():
+			if str(pp.get("statut", "")).begins_with("realise"):
+				realises += 1
+		var lproj := Style.label("Projets : %d sur %d réalisés" % [realises, Projets.donnees()["projets"].size()], 22 if compact else 24, Style.ui(), Style.TEXTE)
+		lproj.name = "ProjetsRealises"
+		v.add_child(lproj)
+		infos_rue["projets"] = realises
 	if frais <= 0.005:
 		var ex := Banquier.piles("sicav", Produits.f(10000.0), a)
 		var lx := Style.label("Exemple : 10 000 F placés 20 ans à 7 %% par an (une hypothèse, pas une promesse) : %s sans frais, %s avec une SICAV à 2 %% + 1,5 %%/an, %s avec une plus chargée." % [

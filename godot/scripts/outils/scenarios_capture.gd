@@ -42,7 +42,7 @@ func preparer(etape: String) -> void:
 
 ## Départ commun des étapes hors écran titre : la rue, sans la carte du Livret A (sauf si l'étape la veut).
 func partir_de_la_rue(etape: String) -> void:
-	if etape not in ["presentation_livret", "presentation_livret_plus", "integrale", "integrale_saut"]:
+	if etape not in ["presentation_livret", "presentation_livret_plus", "integrale", "integrale_saut", "integrale_cartes", "integrale_maison"]:
 		Partie.etat.resolution_auto()
 	jeu.demarrer_direct(0)
 

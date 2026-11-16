@@ -29,7 +29,7 @@
   "passages": [
     { "id": "V01", "mois": "1984-02", "qui": "lopez", "cle": true, "long": true,
       "texte": "Vous connaissez vos voisins ?",
-      "texte_long": "Vous connaissez vos voisins ? Tata Livret met tout sur son Livret A. Tonton Matelas garde tout sur son compte. Jean-Mi, vendeur chez Peugeot, attend le bon tuyau. Mêmes revenus, mêmes dépenses que vous : seule change la façon de placer. Le classement de la rue est en haut de l'écran." },
+      "texte_long": "Vous connaissez vos voisins ? Tata Livret met tout sur son Livret A. Tonton Matelas garde tout sur son compte. Jean-Mi, vendeur chez Peugeot, attend le bon tuyau. Mêmes revenus, mêmes dépenses que vous : seule change la façon de placer. Le classement de la rue est dans le panneau « Mon argent »." },
     { "id": "V02", "mois": "1984-05", "qui": "matelas", "cle": false, "long": false,
       "texte": "Une banque ? Et si elle saute ? Moi, c'est sous le matelas." },
     { "id": "V03", "mois": "1984-09", "qui": "livret", "cle": false, "long": false,

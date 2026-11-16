@@ -132,7 +132,7 @@ func _test() -> void:
 	# Sauvegarde pendant un saut puis reprise : pas de saut à la reprise, même mois
 	Partie.changer_vitesse(0)
 	scene.call("demander_saut")
-	await get_tree().create_timer(1.6).timeout
+	await get_tree().create_timer(0.25).timeout   # le saut 0.5.1 file à 0,1 s par mois : on sauvegarde en plein saut
 	var en_saut := Partie.saut_actif
 	var m := Partie.etat.m
 	Partie.sauvegarde_auto = true
