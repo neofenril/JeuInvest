@@ -39,6 +39,7 @@ var _carte: ModaleCarte
 var _foyer: ModaleFoyer
 var _projet: ModaleProjet
 var _gazette: ModaleGazette
+var dernier_bilan: Dictionary = {}   # bilan de la dernière fin de partie (Partie.partie_finie), lu par l'écran de fin
 
 
 func _init() -> void:
@@ -65,6 +66,7 @@ func _ready() -> void:
 	fond.gui_input.connect(_on_fond)
 	add_child(fond)
 	get_tree().node_added.connect(_garde_cible)
+	Partie.partie_finie.connect(func(b: Dictionary) -> void: dernier_bilan = b)
 
 
 ## Garde-fou des fenêtres (PX2 §2.3) : tout bouton posé sous les modales (fenêtre Banque comprise) a
