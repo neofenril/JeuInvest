@@ -62,6 +62,8 @@ func _ready() -> void:
 		var etape := ScenariosCapture.option("etape")
 		var duo := etape in ["sauver_fermer", "reprise"]
 		Partie.chemin_sauvegarde = ("user://capture_reprise_%s.sav" % ProjectSettings.globalize_path("res://").md5_text().left(12)) if duo else ("user://capture_%d.sav" % OS.get_process_id())
+		Partie.chemin_records = "user://capture_records_%d.sav" % OS.get_process_id()   # lot 07 : records.sav du joueur jamais touché en capture
+		tree_exiting.connect(func() -> void: Records.effacer(Partie.chemin_records))
 		print("Capture : sauvegarde de la partie dans %s" % Partie.chemin_sauvegarde)
 		if etape != "reprise":
 			Sauvegarde.effacer(Partie.chemin_sauvegarde)
@@ -100,6 +102,7 @@ func modales_init() -> void:
 	add_child(calque_titre)
 	titre = EcranTitre.new()
 	titre.construire(demo)
+	titre.titres_demande.connect(ouvrir_titres)
 	calque_titre.add_child(titre)
 	var calque_modales := CanvasLayer.new()
 	calque_modales.layer = 5
@@ -190,6 +193,16 @@ func _entrer_titre() -> void:
 ## Boutons de l'écran titre selon la présence d'une sauvegarde.
 func maj_titre() -> void:
 	titre.maj(Sauvegarde.lire(Partie.chemin_sauvegarde), Partie.etat != null and Partie.etat.fin == "")
+	titre.maj_palmares(Records.lire(Partie.chemin_records), Titres.tous().size())
+
+
+## Collection des titres (écran titre : bouton TITRES, touche T). Lecture seule.
+func ouvrir_titres() -> void:
+	if not en_titre or modales.ouverte():
+		return
+	modales.titres(Records.lire(Partie.chemin_records), Titres.tous())
+	await modales.choix_fait
+	titre.donner_focus()
 
 
 func demander_nouvelle_partie() -> void:

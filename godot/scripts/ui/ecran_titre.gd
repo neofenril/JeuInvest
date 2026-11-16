@@ -6,11 +6,15 @@ extends Control
 
 signal jouer_demande
 signal nouvelle_partie_demandee
+signal titres_demande   # bouton TITRES ou touche T (lot 07-I)
 
 var bouton_jouer: Button
 var bouton_nouvelle: Button
 var l_reprise: Label
 var l_aide: Label
+var rangee_palmares: HBoxContainer   # « Meilleur résultat… » + bouton TITRES ; absente sans records.sav
+var l_palmares: Label
+var bouton_titres: Button
 
 
 ## Construit l'écran (à appeler avant de l'ajouter à l'arbre). demo : data/demo.json.
@@ -87,6 +91,29 @@ func construire(demo: Dictionary) -> void:
 	l_reprise = Style.label("", 22, Style.chiffres(), Style.TEXTE)
 	l_reprise.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(l_reprise)
+	# Palmarès (lot 07-I, docs/29 §2) : phrase du meilleur résultat sur une plaque + bouton TITRES « n / 9 »
+	rangee_palmares = HBoxContainer.new()
+	rangee_palmares.name = "Palmares"
+	rangee_palmares.alignment = BoxContainer.ALIGNMENT_CENTER
+	rangee_palmares.add_theme_constant_override("separation", 18)
+	rangee_palmares.visible = false
+	var plaque_p := CadresPixel.panneau("panneau")
+	plaque_p.name = "PlaquePalmares"
+	plaque_p.add_theme_stylebox_override("panel", CadresPixel.style_marges("panneau", 18, 9, 18, 9))
+	plaque_p.self_modulate = Color(1, 1, 1, 0.94)
+	plaque_p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l_palmares = Style.label("", 22, Style.ui_gras(), Style.TEXTE)
+	l_palmares.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l_palmares.custom_minimum_size.x = 900
+	plaque_p.add_child(l_palmares)
+	rangee_palmares.add_child(plaque_p)
+	bouton_titres = Style.bouton("TITRES", false, 81)
+	bouton_titres.name = "BoutonTitres"
+	bouton_titres.custom_minimum_size = Vector2(230, 81)
+	bouton_titres.add_theme_font_size_override("font_size", 28)
+	bouton_titres.pressed.connect(func() -> void: titres_demande.emit())
+	rangee_palmares.add_child(bouton_titres)
+	v.add_child(rangee_palmares)
 	# Aide des raccourcis de test : jamais dans la version du joueur, jamais sur mobile
 	l_aide = Style.label("F10 : format téléphone   ·   F8 : moment suivant   ·   F6 / F7 : naissance / jumeaux", 20, Style.ui(), Color(Style.TEXTE_2, 0.8))
 	l_aide.add_theme_color_override("font_outline_color", Style.PANNEAU_OPAQUE)
@@ -116,6 +143,32 @@ func maj(sauvee: Dictionary, en_cours: bool) -> void:
 		else:
 			l_reprise.text = "Partie en cours : partie sauvegardée"
 			l_reprise.visible = false
+
+
+## Palmarès selon Records.lire() : absent sans collection ; phrase seule si un record existe ; TITRES « n / 9 » toujours.
+func maj_palmares(records: Dictionary, nb_titres: int) -> void:
+	var coll: Dictionary = records.get("collection", {})
+	var rec: Dictionary = records.get("record", {})
+	rangee_palmares.visible = not coll.is_empty() or not rec.is_empty()
+	l_palmares.get_parent().visible = not rec.is_empty()
+	if not rec.is_empty():
+		var x := float(rec.get("ecart_pct", 0.0))
+		var rang := int(rec.get("rang", 0))
+		var t := "Meilleur résultat : %s face à Tata Livret" % ModaleReleveFin.pct_texte(x)
+		if rang > 0:
+			t += " · %s de la rue" % BlocRue.rang_texte(rang)
+		t += " · %s" % str(rec.get("titre_nom", ""))
+		l_palmares.text = t
+	else:
+		l_palmares.text = ""
+	bouton_titres.text = "TITRES  %d / %d" % [coll.size(), nb_titres]
+
+
+func _unhandled_input(ev: InputEvent) -> void:
+	var k := ev as InputEventKey
+	if k != null and k.pressed and not k.echo and k.keycode == KEY_T and is_visible_in_tree() and rangee_palmares != null and rangee_palmares.visible:
+		titres_demande.emit()
+		get_viewport().set_input_as_handled()
 
 
 ## Texte de la partie en cours, sans le préfixe (pour la confirmation d'effacement).

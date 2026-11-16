@@ -4,6 +4,8 @@ extends RefCounted
 ## démonstration (13 §4.3 : patrimoine, Tata Livret, courbe des cinq ans, frais, phrase de synthèse).
 
 var m: Modales
+var bilan_force: Dictionary = {}   # captures : champs du bilan fabriqués, fusionnés sur le bilan réel
+var infos_fin: Dictionary = {}     # contrôles : titre, pourquoi, record, projets, humeur
 
 
 func _init(modales: Modales) -> void:
@@ -117,75 +119,82 @@ func _bloc_rue(bloc: VBoxContainer, barres: Barres, classement: Array, compact: 
 		if bool(l.get("reference", false)):
 			ref = i
 	barres.taille_libelle = 20
-	barres.largeur_libelle = 250.0
+	barres.largeur_libelle = 250.0 if not compact else 200.0
 	barres.ligne_reference = ref
 	barres.custom_minimum_size = Vector2(bloc.custom_minimum_size.x, 4.0 * (42.0 if compact else 48.0))
 	barres.regler(lignes, a)
 	barres_fin = barres
 
 
+## Bilan de la fin : celui de Partie.partie_finie (avec le record écrit), sinon calculé ; bilan_force (captures) fusionné dessus.
+func _bilan(e: EtatPartie) -> Dictionary:
+	var b: Dictionary = m.dernier_bilan.duplicate(true) if not m.dernier_bilan.is_empty() else Bilan.calculer(e)
+	if not b.has("record"):
+		b["record"] = {"ecrit": false, "hors_record": not bool(b.get("record_possible", false)), "nouveau": false, "nouveau_titre": false}
+	b.merge(bilan_force.duplicate(true), true)
+	return b
+
+
+## « + 12 % » / « − 3 % » (entier, signe) ; « 0 % » sans signe.
+static func pct_texte(x: float) -> String:
+	var n := roundi(x)
+	if n == 0:
+		return "0 %"
+	return ("+ %d %%" % n) if n > 0 else ("− %d %%" % absi(n))
+
+
+## Fin de partie (docs/29 §1) : titre d'époque, foyer, 4 barres, comparaison avec Tata Livret, record, détail.
 func fin_demo(e: EtatPartie) -> void:
 	infos_rue = {}
+	infos_fin = {}
 	barres_fin = null
 	m.compact = Ecran.compact()
 	var compact := m.compact
 	m.genre_courant = "fin"
 	m.assombrir(0.65)
 	var a := e.ab_courant()
+	var b := _bilan(e)
+	var titre_b: Dictionary = b.get("titre", {})
+	var rec: Dictionary = b.get("record", {})
+	var pct := float(b.get("ecart_tata_pct", 0.0))
 	var vue := m.get_viewport_rect().size
 	var p := PanelContainer.new()
 	var sf := Style.panneau(22)
 	sf.content_margin_left = 28 if compact else 40
 	sf.content_margin_right = 28 if compact else 40
-	sf.content_margin_top = 16 if compact else 30
-	sf.content_margin_bottom = 16 if compact else 30
+	sf.content_margin_top = 12 if compact else 30
+	sf.content_margin_bottom = 12 if compact else 30
 	p.add_theme_stylebox_override("panel", sf)
 	var largeur := minf(1500.0, vue.x - 60.0)
-	p.custom_minimum_size = Vector2(largeur, 0)
+	p.custom_minimum_size = Vector2(largeur, (vue.y - 20.0) if compact else 0.0)
 	var interieur := largeur - (56.0 if compact else 80.0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6 if compact else 12)
 	p.add_child(v)
-	var titre := Style.label("%s · CINQ ANS DE LA VIE DE %s" % [Dates.texte(a).to_upper(), e.prenom().to_upper()], 28 if compact else 38, Style.neon(), Style.ACCENT)
+	# En-tête : Atkinson gras (il contient un chiffre : jamais Pixelify)
+	var titre := Style.label("%s · CINQ ANS DE LA VIE DE %s" % [Dates.texte(a).to_upper(), e.prenom().to_upper()], 28 if compact else 36, Style.ui_gras(), Style.ACCENT)
 	titre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	titre.add_theme_color_override("font_shadow_color", Color(Style.ACCENT, 0.5))
-	titre.add_theme_constant_override("shadow_outline_size", 10)
-	titre.add_theme_constant_override("shadow_offset_x", 0)
-	titre.add_theme_constant_override("shadow_offset_y", 0)
 	v.add_child(titre)
-	var lp := HBoxContainer.new()
-	lp.alignment = BoxContainer.ALIGNMENT_CENTER
-	lp.add_theme_constant_override("separation", 20)
-	# Lot 06 (A7, non ★) : le visage de Sylvie de « Mon foyer » (humeur du moment), quand les cartes sont allumées
-	if e.has_method("cartes_actives") and e.cartes_actives():
-		var visage := CadresPixel.icone("portrait_sylvie_" + ModaleCarte.nom_humeur(e.humeur_visible()), {}, 2 if compact else 3)   # recette R-RUE M6 : plus petit au téléphone, la réplique remonte
-		visage.name = "VisageSylvie"
-		visage.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		lp.add_child(visage)
-		infos_rue["visage"] = true
-	var lpt := Style.label("VOTRE PATRIMOINE", 20, Style.capitales(), Style.TEXTE_2)
-	lpt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	lp.add_child(lpt)
+	var val := Style.label(Format.montant(0.0, a), 44 if compact else 60, Style.chiffres(), Style.TEXTE)
+	val.name = "Patrimoine"
 	var patr := e.patrimoine(e.joueur)
-	var val := Style.label(Format.montant(0.0, a), 52 if compact else 68, Style.chiffres(), Style.TEXTE)
-	lp.add_child(val)
-	v.add_child(lp)
-	# Vous et Tata Livret : 2 barres, l'écart en pastille ; à droite, la courbe des cinq ans (PC)
+	var foyer := _bloc_foyer(e, b, compact, 640.0 - 40.0 - 158.0)
+	var plaque: Control = _plaque_titre(b, rec, compact, foyer, 870.0 if not compact else 640.0) if not titre_b.is_empty() else null
+	infos_fin = {"titre": str(titre_b.get("nom", "")), "pourquoi": plaque != null and str(titre_b.get("pourquoi", "")) != ""}
 	var ligne := HBoxContainer.new()
-	ligne.name = "Defilant"
 	ligne.add_theme_constant_override("separation", 24)
-	v.add_child(ligne)
 	var bloc := VBoxContainer.new()
 	bloc.add_theme_constant_override("separation", 6)
-	bloc.custom_minimum_size.x = interieur if compact else interieur * 0.5
-	ligne.add_child(bloc)
+	var gauche := 870.0 if not compact else 640.0
+	var droite_l := interieur - gauche - 24.0   # PC : colonne de droite ; téléphone : la rue
+	bloc.custom_minimum_size.x = gauche if not compact else droite_l
 	var barres := Barres.new()
 	var classement: Array = fab_rue if not fab_rue.is_empty() else (e.classement_rue() if e.has_method("classement_rue") else [])
-	var tata := e.patrimoine(e.temoins["livret"])
+	var details_rue: Array = []   # réplique et argent mis de côté : sous les barres au PC, dans la zone qui défile au téléphone
 	if classement.is_empty():
 		bloc.add_child(Style.label("VOUS ET TATA LIVRET (TOUT AU LIVRET A)", 18, Style.capitales(), Style.TEXTE_2))
 		barres.custom_minimum_size = Vector2(bloc.custom_minimum_size.x, 96 if compact else 110)
-		barres.regler([["VOUS", patr, Style.ACCENT], ["TATA LIVRET", tata, Courbe.COULEUR_REF]], a)
+		barres.regler([["VOUS", patr, Style.ACCENT], ["TATA LIVRET", e.patrimoine(e.temoins["livret"]), Courbe.COULEUR_REF]], a)
 	else:
 		_bloc_rue(bloc, barres, classement, compact, a)
 	bloc.add_child(barres)
@@ -199,59 +208,108 @@ func fin_demo(e: EtatPartie) -> void:
 			var lr := Style.label("%s : « %s »" % [str(rep["nom"]), str(rep["texte"])], 22, Style.ui(), Style.TEXTE)
 			lr.name = "TexteReplique"
 			lr.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			lr.custom_minimum_size.x = bloc.custom_minimum_size.x - 50.0
+			lr.custom_minimum_size.x = (interieur - 20.0 - 50.0) if compact else gauche - 50.0
 			lr.max_lines_visible = 2
 			lr.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 			hr.add_child(lr)
-			bloc.add_child(hr)
+			details_rue.append(hr)
 		infos_rue.merge({"rang": BlocRue._rang_de(classement), "total": classement.size(), "replique": not rep.is_empty()}, true)
-	bloc.add_child(Style.label("Argent mis de côté en cinq ans : " + Format.montant(e.epargne_nette, a), 18, Style.ui(), Style.TEXTE_2))
-	bloc.add_child(_bloc_comparaison_livret(e, a))
-	if not compact:
-		ligne.add_child(_courbe_cinq_ans(e))
-	# Frais, produits découverts et utilisés
-	var frais := e.frais_payes()
-	var infos := HBoxContainer.new()
-	infos.add_theme_constant_override("separation", 30)
-	var lf := Style.label("Frais payés : %s  ·  Tata Livret : 0 F" % Format.entier(frais, a), 22 if compact else 24, Style.chiffres(), Style.CUIVRE)
-	lf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	infos.add_child(lf)
-	var utilises: Array = e.stats.get("utilises", [])
-	infos.add_child(Style.label("Produits découverts %d/%d · utilisés %d/%d" % [Banquier.nb_decouverts(e), Banquier.ordre_carnet().size(), utilises.size(), Banquier.ordre_carnet().size()], 22 if compact else 24, Style.ui(), Style.TEXTE))
-	v.add_child(infos)
-	# Lot 06 (A7, non ★) : « Projets : n sur 2 réalisés » (projets_passes), quand les projets sont allumés
-	if e.has_method("projets_actifs") and bool(e.call("projets_actifs")):
-		var realises := 0
-		for pp: Dictionary in e.projets_passes():
-			if str(pp.get("statut", "")).begins_with("realise"):
-				realises += 1
-		var lproj := Style.label("Projets : %d sur %d réalisés" % [realises, Projets.donnees()["projets"].size()], 22 if compact else 24, Style.ui(), Style.TEXTE)
-		lproj.name = "ProjetsRealises"
-		v.add_child(lproj)
-		infos_rue["projets"] = realises
-	if frais <= 0.005:
-		var ex := Banquier.piles("sicav", Produits.f(10000.0), a)
-		var lx := Style.label("Exemple : 10 000 F placés 20 ans à 7 %% par an (une hypothèse, pas une promesse) : %s sans frais, %s avec une SICAV à 2 %% + 1,5 %%/an, %s avec une plus chargée." % [
-			Format.entier(ex["sans"], a), Format.entier(ex["produit"], a), Format.entier(ex["charge"], a)], 18 if compact else 20, Style.ui(), Style.TEXTE_2)
-		lx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lx.custom_minimum_size.x = interieur
-		v.add_child(lx)
-	var phrase := Style.label(_phrase_synthese(e, a), 20 if compact else 24, Style.ui(), Style.TEXTE)
-	phrase.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	phrase.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	phrase.custom_minimum_size.x = interieur
-	v.add_child(phrase)
-	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 16)
+	details_rue.append(Style.label("Argent mis de côté en cinq ans : " + Format.montant(e.epargne_nette, a), 20 if compact else 18, Style.ui(), Style.TEXTE_2))
+	var comparaison := _bloc_comparaison_livret(e, a, pct, 600.0 if compact else droite_l - 110.0)
+	var ligne_record := _ligne_record(rec, compact, (interieur - 40.0) if compact else droite_l)
+	var courbe := _courbe_cinq_ans(e)
+	# Détail : frais, produits, exemple, phrase de synthèse
+	var detail: Array = _lignes_detail(e, a, compact, interieur)
+	var boutons := HBoxContainer.new()
+	boutons.add_theme_constant_override("separation", 16)
 	var rejouer := Style.bouton("REJOUER AUTREMENT", true, 72 if compact else 80)
 	rejouer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rejouer.pressed.connect(m.fermer.bind("rejouer"))
 	var quitter := Style.bouton("QUITTER", false, 72 if compact else 80)
 	quitter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quitter.pressed.connect(m.fermer.bind("quitter"))
-	hb.add_child(rejouer)
-	hb.add_child(quitter)
-	v.add_child(hb)
+	boutons.add_child(rejouer)
+	boutons.add_child(quitter)
+	if not compact:
+		# PC : bande titre + foyer, puis deux colonnes (la rue | le patrimoine, la comparaison, le record, la courbe), puis le détail
+		var bande := HBoxContainer.new()
+		bande.add_theme_constant_override("separation", 18)
+		v.add_child(bande)
+		if plaque != null:
+			plaque.custom_minimum_size.x = 870.0
+			bande.add_child(plaque)
+		foyer.custom_minimum_size.x = interieur - 18.0 - 870.0 if plaque != null else interieur
+		bande.add_child(foyer)
+		ligne.name = "Defilant"
+		v.add_child(ligne)
+		for c: Control in details_rue:
+			bloc.add_child(c)
+		ligne.add_child(bloc)
+		var droite := VBoxContainer.new()
+		droite.add_theme_constant_override("separation", 8)
+		droite.custom_minimum_size.x = droite_l
+		var lp := HBoxContainer.new()
+		lp.add_child(Style.label("VOTRE PATRIMOINE", 20, Style.capitales(), Style.TEXTE_2))
+		val.add_theme_font_size_override("font_size", 52)
+		val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		lp.add_child(val)
+		droite.add_child(lp)
+		droite.add_child(comparaison)
+		if ligne_record != null:
+			droite.add_child(ligne_record)
+		droite.add_child(courbe)
+		ligne.add_child(droite)
+		for c: Control in detail:
+			v.add_child(c)
+		v.add_child(boutons)
+	else:
+		# Téléphone : plaque (portrait, titre, foyer en une ligne) + rue, patrimoine + comparaison, record, zone qui défile
+		var haut := HBoxContainer.new()
+		haut.add_theme_constant_override("separation", 24)
+		v.add_child(haut)
+		if plaque != null:
+			plaque.custom_minimum_size.x = gauche
+			haut.add_child(plaque)
+		else:
+			foyer.custom_minimum_size.x = gauche
+			haut.add_child(foyer)
+		bloc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		haut.add_child(bloc)
+		var lp := HBoxContainer.new()
+		lp.add_theme_constant_override("separation", 14)
+		var lpt := Style.label("VOTRE PATRIMOINE", 20, Style.capitales(), Style.TEXTE_2)
+		lpt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		lp.add_child(lpt)
+		lp.add_child(val)
+		lp.add_child(comparaison)
+		v.add_child(lp)
+		if ligne_record != null:
+			v.add_child(ligne_record)
+		var defile := ScrollContainer.new()
+		defile.name = "Defilant"
+		defile.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		defile.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		defile.custom_minimum_size = Vector2(0, 96)
+		var dv := VBoxContainer.new()
+		dv.add_theme_constant_override("separation", 6)
+		dv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		defile.add_child(dv)
+		for c: Control in details_rue:
+			dv.add_child(c)
+		var liste := _liste_projets(b, true)
+		if liste != null:
+			dv.add_child(liste)
+		for c: Control in detail:
+			dv.add_child(c)
+		dv.add_child(courbe)
+		v.add_child(defile)
+		v.add_child(boutons)
+	infos_fin["record"] = _etat_record(rec)
+	infos_fin["projets"] = "%d/%d" % [int((b.get("projets", {}) as Dictionary).get("realises", 0)), int((b.get("projets", {}) as Dictionary).get("total", 0))]
+	infos_fin["humeur"] = int(b.get("humeur_fin", 1))
+	infos_fin["collection"] = bool(rec.get("nouveau_titre", false))
+	infos_fin["pct"] = pct_texte(pct)
 	m.poser(p)
 	await m.centrer(p)
 	if not is_instance_valid(p):
@@ -265,13 +323,256 @@ func fin_demo(e: EtatPartie) -> void:
 	barres.animer(0.6)
 
 
+## Frais, produits découverts, exemple (frais nuls), phrase d'inflation et phrase de synthèse.
+func _lignes_detail(e: EtatPartie, a: int, compact: bool, interieur: float) -> Array:
+	var out: Array = []
+	var frais := e.frais_payes()
+	var infos := HBoxContainer.new()
+	infos.add_theme_constant_override("separation", 30)
+	var lf := Style.label("Frais payés : %s  ·  Tata Livret : 0 F" % Format.entier(frais, a), 22 if compact else 24, Style.chiffres(), Style.CUIVRE)
+	lf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	infos.add_child(lf)
+	var utilises: Array = e.stats.get("utilises", [])
+	var lprod := Style.label("Produits découverts %d/%d · utilisés %d/%d" % [Banquier.nb_decouverts(e), Banquier.ordre_carnet().size(), utilises.size(), Banquier.ordre_carnet().size()], 22 if compact else 24, Style.ui(), Style.TEXTE)
+	infos.add_child(lprod)
+	out.append(infos)
+	if frais <= 0.005:
+		var ex := Banquier.piles("sicav", Produits.f(10000.0), a)
+		var lx := Style.label("Exemple : 10 000 F placés 20 ans à 7 %% par an (une hypothèse, pas une promesse) : %s sans frais, %s avec une SICAV à 2 %% + 1,5 %%/an, %s avec une plus chargée." % [
+			Format.entier(ex["sans"], a), Format.entier(ex["produit"], a), Format.entier(ex["charge"], a)], 18 if compact else 20, Style.ui(), Style.TEXTE_2)
+		lx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lx.custom_minimum_size.x = interieur - (30.0 if compact else 0.0)
+		out.append(lx)
+	var phrase := Style.label(_phrase_synthese(e, a), 20 if compact else 24, Style.ui(), Style.TEXTE)
+	phrase.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	phrase.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	phrase.custom_minimum_size.x = interieur - (30.0 if compact else 0.0)
+	out.append(phrase)
+	return out
+
+
+## Plaque du titre d'époque : nom, « pourquoi » ; au téléphone, le portrait et la ligne du foyer y sont repliés.
+func _plaque_titre(b: Dictionary, rec: Dictionary, compact: bool, foyer: Control, largeur: float) -> Control:
+	var t: Dictionary = b["titre"]
+	var pc := PanelContainer.new()
+	pc.name = "PlaqueTitre"
+	pc.add_theme_stylebox_override("panel", Style.carte())
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 14)
+	pc.add_child(h)
+	if compact and foyer.has_meta("portrait"):
+		var portrait: Control = foyer.get_meta("portrait")
+		portrait.get_parent().remove_child(portrait)
+		portrait.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		h.add_child(portrait)
+	var col_w := largeur - 54.0 - (158.0 if compact else 0.0)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.custom_minimum_size.x = col_w
+	h.add_child(col)
+	var ligne1: BoxContainer = VBoxContainer.new() if compact else HBoxContainer.new()
+	var l1 := Style.label("VOTRE TITRE D'ÉPOQUE", 20, Style.capitales(), Style.ACCENT)
+	l1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ligne1.add_child(l1)
+	ligne1.custom_minimum_size.x = col_w
+	if bool(rec.get("nouveau_titre", false)):
+		var nv := PanelContainer.new()
+		nv.name = "NouveauCollection"
+		nv.add_theme_stylebox_override("panel", _plaque_ambre(4))
+		nv.add_child(Style.label("NOUVEAU DANS LA COLLECTION", 20, Style.capitales(), Style.ENCRE))
+		ligne1.add_child(nv)
+	col.add_child(ligne1)
+	var nom := Style.label(str(t.get("nom", "")).to_upper(), 30 if compact else 48, Style.neon(), Style.TEXTE)
+	nom.name = "NomTitre"
+	nom.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nom.custom_minimum_size.x = col_w
+	nom.max_lines_visible = 2
+	col.add_child(nom)
+	var pq := Style.label("« %s »" % str(t.get("pourquoi", "")), 20 if compact else 24, Style.ui(), Style.TEXTE)
+	pq.name = "PourquoiTitre"
+	pq.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pq.custom_minimum_size.x = col_w
+	col.add_child(pq)
+	if compact:
+		var lf := foyer.get_meta("ligne") as Label
+		if lf != null:
+			lf.get_parent().remove_child(lf)
+			lf.custom_minimum_size.x = col_w
+			col.add_child(lf)
+	return pc
+
+
+## Le foyer : portrait de Sylvie (humeur de fin), phrase d'humeur, projets réalisés, une ligne par projet (PC).
+## Au téléphone : le portrait et une ligne « humeur · projets » sont repris par la plaque du titre (méta « portrait », « ligne »).
+func _bloc_foyer(e: EtatPartie, b: Dictionary, compact: bool, larg_ligne: float) -> Control:
+	var pc := PanelContainer.new()
+	pc.name = "BlocFoyer"
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.set_border_width_all(3)
+	sb.border_color = PalettePixel.couleur("zinc_clair")
+	sb.set_content_margin_all(12)
+	pc.add_theme_stylebox_override("panel", sb)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 14)
+	pc.add_child(h)
+	var proj: Dictionary = b.get("projets", {})
+	var total := int(proj.get("total", 0))
+	var realises := int(proj.get("realises", 0))
+	var visage: Control = null
+	if e.has_method("cartes_actives") and e.cartes_actives():
+		visage = CadresPixel.icone("portrait_sylvie_" + ModaleCarte.nom_humeur(int(b.get("humeur_fin", e.humeur_visible()))), {}, 3)
+		visage.name = "VisageSylvie"
+		visage.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		infos_rue["visage"] = true
+	var phrase_projets := ""
+	if total > 0:
+		phrase_projets = "Projets : %d sur %d réalisé%s" % [realises, total, "" if realises <= 1 else "s"]
+		infos_rue["projets"] = realises
+	var humeur := str(b.get("humeur_phrase", ""))
+	if compact:
+		var ligne := Style.label(" · ".join(PackedStringArray([humeur, phrase_projets].filter(func(s: String) -> bool: return s != ""))), 20, Style.ui(), Style.TEXTE)
+		ligne.name = "LigneFoyer"
+		ligne.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ligne.custom_minimum_size.x = larg_ligne
+		pc.set_meta("ligne", ligne)
+		if visage != null:
+			pc.set_meta("portrait", visage)
+			h.add_child(visage)
+		var col0 := VBoxContainer.new()
+		col0.add_child(ligne)
+		var lp := _liste_projets(b, false)
+		if lp != null:
+			col0.add_child(lp)
+		h.add_child(col0)
+		return pc
+	if visage != null:
+		h.add_child(visage)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(col)
+	col.add_child(Style.label("LE FOYER", 20, Style.capitales(), Style.TEXTE_2))
+	if humeur != "":
+		var lh := Style.label(humeur, 22, Style.ui(), Style.TEXTE)
+		lh.name = "HumeurFin"
+		col.add_child(lh)
+	if phrase_projets != "":
+		var lpj := Style.label(phrase_projets, 22, Style.ui_gras(), Style.TEXTE)
+		lpj.name = "ProjetsRealises"
+		col.add_child(lpj)
+	var liste := _liste_projets(b, true)
+	if liste != null:
+		col.add_child(liste)
+	return pc
+
+
+## Pastille pleine ambre (texte encre) : récompense, jamais une cible.
+static func _plaque_ambre(marge_v: int) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Style.ACCENT
+	sb.content_margin_left = 15
+	sb.content_margin_right = 15
+	sb.content_margin_top = marge_v
+	sb.content_margin_bottom = marge_v
+	return sb
+
+
+## Une ligne par projet : nom court et état en mots (réalisé, reporté, abandonné), jamais par la couleur seule.
+func _liste_projets(b: Dictionary, avec: bool) -> Control:
+	var proj: Dictionary = b.get("projets", {})
+	var liste: Array = proj.get("liste", [])
+	if liste.is_empty() or not avec:
+		return null
+	var col := VBoxContainer.new()
+	col.name = "ListeProjets"
+	for it: Dictionary in liste:
+		var etat := str(it.get("etat", ""))
+		var mot := "réalisé" if etat.begins_with("realise") else ("abandonné" if etat.begins_with("abandon") else "pas réalisé")
+		var l := Style.label("%s : %s" % [str(it.get("nom", "")), mot], 20, Style.ui(), Style.TEXTE_2)
+		l.clip_text = true
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		l.custom_minimum_size.x = 60
+		col.add_child(l)
+	return col
+
+
+func _etat_record(rec: Dictionary) -> String:
+	if bool(rec.get("hors_record", false)):
+		return "hors"
+	if bool(rec.get("nouveau", false)):
+		return "nouveau"
+	if not (rec.get("record", {}) as Dictionary).is_empty():
+		return "ancien"
+	return "aucun"
+
+
+## Ligne du record (docs/29 §1.4), états exclusifs ; null quand il n'y a rien à dire.
+func _ligne_record(rec: Dictionary, compact: bool, larg: float) -> Control:
+	var etat := _etat_record(rec)
+	if etat == "aucun":
+		return null
+	var r: Dictionary = rec.get("record", {})
+	var h: BoxContainer = HBoxContainer.new() if compact else VBoxContainer.new()   # PC : colonne étroite, la pastille puis le texte
+	h.name = "LigneRecord"
+	h.add_theme_constant_override("separation", 12 if compact else 4)
+	var t := 22 if compact else 24
+	if etat == "hors":
+		var pc := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0, 0, 0, 0)
+		sb.set_border_width_all(3)
+		sb.border_color = PalettePixel.couleur("zinc_clair")
+		sb.set_content_margin_all(8)
+		pc.add_theme_stylebox_override("panel", sb)
+		var lh := Style.label("Partie rejouée depuis une sauvegarde : hors record", 22, Style.ui(), Style.TEXTE)
+		lh.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lh.custom_minimum_size.x = larg - 50.0
+		pc.add_child(lh)
+		h.add_child(pc)
+		return h
+	var x := float(r.get("ecart_pct", 0.0))
+	var positif := roundi(x) > 0
+	var c := Style.TEXTE
+	if etat == "nouveau":
+		var nv := PanelContainer.new()
+		nv.name = "NouveauRecord"
+		nv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		nv.add_theme_stylebox_override("panel", _plaque_ambre(6))
+		nv.add_child(Style.label("NOUVEAU RECORD !", 28, Style.neon(), Style.ENCRE))
+		h.add_child(nv)
+	else:
+		c = Style.TEXTE_2
+		h.add_child(Style.label("Votre record :", t - 2, Style.ui(), Style.TEXTE_2))
+	if roundi(x) != 0:
+		h.add_child(ModaleOutils.fleche(positif, c))
+	var texte := "%s face à Tata Livret" % pct_texte(x)
+	if etat == "nouveau":
+		var ancien: Dictionary = rec.get("ancien", {})
+		if ancien.is_empty():
+			texte += " · votre premier résultat enregistré"
+		else:
+			texte += " (ancien : %s)" % pct_texte(float(ancien.get("ecart_pct", 0.0)))
+	else:
+		if int(r.get("rang", 0)) > 0:
+			texte += " (%s de la rue, %s)" % [BlocRue.rang_texte(int(r["rang"])), str(r.get("titre_nom", ""))]
+		else:
+			texte += " (%s)" % str(r.get("titre_nom", ""))
+	var l := Style.label(texte, t - (2 if etat != "nouveau" else 0), Style.ui_gras() if etat == "nouveau" else Style.ui(), c)
+	l.name = "TexteRecord"
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size.x = (larg - 60.0 - 300.0) if compact else larg - 20.0
+	h.add_child(l)
+	return h
+
+
 ## « Cinq ans en un coup d'œil » (PC seulement) : la courbe du joueur et celle de Tata Livret.
 func _courbe_cinq_ans(e: EtatPartie) -> VBoxContainer:
 	var droite := VBoxContainer.new()
 	droite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	droite.add_child(Style.label("CINQ ANS EN UN COUP D'ŒIL", 18, Style.capitales(), Style.TEXTE_2))
 	var courbe := Courbe.new()
-	courbe.custom_minimum_size = Vector2(0, 250)
+	courbe.custom_minimum_size = Vector2(0, 150)
 	courbe.total_mois = e.m_fin - e.m_depart
 	var vals: Array = e.hist["j"].slice(e.m_depart, e.m + 1)
 	var ref: Array = e.hist["livret"].slice(e.m_depart, e.m + 1)
@@ -298,7 +599,7 @@ func _phrase_synthese(e: EtatPartie, a: int) -> String:
 
 
 ## Fin de démo (12 §3.5) : une seule comparaison, avec « tout au Livret A » (Tata Livret).
-func _bloc_comparaison_livret(e: EtatPartie, a: int) -> PanelContainer:
+func _bloc_comparaison_livret(e: EtatPartie, a: int, pct := 0.0, larg := 400.0) -> PanelContainer:
 	var ecart := e.ecart_livret()
 	var sens := 0
 	if Format.en_devise(ecart, Format.devise(a)) >= 0.5:
@@ -315,9 +616,12 @@ func _bloc_comparaison_livret(e: EtatPartie, a: int) -> PanelContainer:
 		h.add_child(ModaleOutils.fleche(sens > 0, c))
 	var verdict := "VOUS : à égalité avec Tata Livret"
 	if sens > 0:
-		verdict = "VOUS : %s de plus que Tata Livret" % Format.ecart(ecart, a).trim_prefix("+")
+		verdict = "VOUS : %s de plus que Tata Livret (%s)" % [Format.ecart(ecart, a).trim_prefix("+"), pct_texte(pct)]
 	elif sens < 0:
-		verdict = "VOUS : %s de moins que Tata Livret" % Format.ecart(-ecart, a).trim_prefix("+")
-	h.add_child(Style.label(verdict, 24 if m.compact else 28, Style.chiffres(), c))
+		verdict = "VOUS : %s de moins que Tata Livret (%s)" % [Format.ecart(-ecart, a).trim_prefix("+"), pct_texte(pct)]
+	var lv := Style.label(verdict, 22 if m.compact else 24, Style.chiffres(), c)
+	lv.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lv.custom_minimum_size.x = larg
+	h.add_child(lv)
 	p.add_child(h)
 	return p

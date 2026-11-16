@@ -12,7 +12,7 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
 	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
-	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue"]
+	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue", "fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre", "titre_record", "titre_sans_records", "titres_collection"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -64,6 +64,10 @@ func jouer(etape: String) -> void:
 			await _un_an_apres(etape, jeu)
 		"fin_rue", "fin_rue_negatif", "fin_sans_rue":
 			await _fin_rue(etape, jeu)
+		"fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre":
+			await _fin_titre(etape, jeu)
+		"titre_record", "titre_sans_records", "titres_collection":
+			await _titre_palmares(etape, jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -922,6 +926,124 @@ func _fin_rue(etape: String, jeu: Node) -> void:
 	_mesurer(etape, modales.courant)
 	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
 
+
+## Écran de fin de 07-I (docs/29 §1, CA-T11) : bilan réel (partie tout allumé jusqu'en 06/1988) avec titre et record fabriqués.
+func _fin_titre(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	partie_tout_allume(jeu)
+	var e := Partie.etat
+	StrategieTest.politique_cartes = "epargner"
+	StrategieTest.aller_a(e, Dates.lire("1988-06"), true)
+	sc.rafraichir_apres_saut()
+	Partie.changer_vitesse(0)
+	var mf := modales.etat_fin()
+	var titre := {"id": "marin", "nom": "Le marin par gros temps", "pourquoi": "Vous avez traversé la tempête sans quitter le bateau.", "ordre": 6}
+	var fab := {"titre": titre}
+	match etape:
+		"fin_titre":
+			fab["record"] = {"ecrit": true, "deja_compte": false, "hors_record": false, "nouveau": false, "ancien": {}, "nouveau_titre": false,
+				"record": {"ecart_pct": 12.0, "rang": 2, "titre_id": "marin", "titre_nom": titre["nom"], "prenom": "Gérard", "patrimoine": 160749.0, "date_reelle": "2026-11-13"}}
+		"fin_record":
+			fab["record"] = {"ecrit": true, "deja_compte": false, "hors_record": false, "nouveau": true, "nouveau_titre": true,
+				"ancien": {"ecart_pct": 7.0, "rang": 3, "titre_nom": "L'écureuil"},
+				"record": {"ecart_pct": 12.0, "rang": 2, "titre_id": "marin", "titre_nom": titre["nom"], "prenom": "Gérard", "patrimoine": 160749.0, "date_reelle": "2026-11-16"}}
+			fab["ecart_tata_pct"] = 12.0
+		"fin_hors_record":
+			fab["record"] = {"ecrit": true, "deja_compte": false, "hors_record": true, "nouveau": false, "ancien": {}, "record": {}, "nouveau_titre": false}
+		"fin_sans_titre":
+			fab["titre"] = {}
+			fab["record"] = {"ecrit": false, "hors_record": false, "nouveau": false, "nouveau_titre": false}
+	mf.bilan_force = fab
+	modales.fin_demo(e)
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "fin" and modales.courant != null, 6.0)
+	await sc.delai(2.5)
+	var f: Dictionary = mf.infos_fin
+	var nom_titre := str((fab["titre"] as Dictionary).get("nom", ""))
+	var ok_titre := str(f.get("titre", "")) == nom_titre
+	var vu := ""
+	var nl := modales.courant.find_child("NomTitre", true, false) as Label
+	var pl := modales.courant.find_child("PourquoiTitre", true, false) as Label
+	if nl != null:
+		vu = nl.text
+	var coherent := (nl == null and nom_titre == "") or (nl != null and vu == nom_titre.to_upper() and pl != null and pl.text == "« %s »" % str((fab["titre"] as Dictionary)["pourquoi"]))
+	var bd := modales.courant.find_child("Defilant", true, false) as Control
+	var defilant := 0
+	if bd is ScrollContainer:
+		var vis := (bd as Control).get_global_rect().intersection(modales.courant.get_global_rect())
+		defilant = int(vis.size.y)
+	var bt := modales.courant.find_children("*", "Button", true, false)
+	var vp := Rect2(Vector2.ZERO, sc.get_viewport().get_visible_rect().size).grow(1.0)
+	var boutons_ok := not bt.is_empty()
+	for x: Node in bt:
+		boutons_ok = boutons_ok and vp.encloses((x as Control).get_global_rect())
+	var etoile := false
+	for l: Node in modales.courant.find_children("*", "Label", true, false):
+		var tx := (l as Label).text.to_lower()
+		if tx.contains("étoile") or tx.contains("cousin indice"):
+			etoile = true
+	var panneau_ok := vp.encloses(modales.courant.get_global_rect())
+	print("UI fin titre=« %s » pourquoi=%s record=%s projets=%s humeur=%d pct=%s collection=%s coherent_bilan=%s etoile=%s" % [str(f.get("titre", "")), "oui" if f.get("pourquoi", false) else "non", str(f.get("record", "?")),
+		str(f.get("projets", "?")), int(f.get("humeur", -1)), str(f.get("pct", "")), "oui" if f.get("collection", false) else "non", "oui" if coherent and ok_titre else "non incoherences=1", "OUI incoherences=1" if etoile else "non"])
+	print("UI fin defilant_visible=%d boutons_visibles=%s panneau_dans_ecran=%s" % [defilant, "oui" if boutons_ok else "non", "oui" if panneau_ok else "non"])
+	_mesurer(etape, modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+
+## Écran titre avec palmarès et collection (07-I, CA-T12, CA-T13) : records fabriqués dans un fichier isolé (jamais records.sav).
+func _titre_palmares(etape: String, jeu: Node) -> void:
+	var chemin := "user://records_capture_%d.sav" % OS.get_process_id()
+	Records.effacer(chemin)
+	Partie.chemin_records = chemin
+	var tous := Titres.tous()
+	if etape != "titre_sans_records":
+		var base := {"prenom": "Gérard", "record_possible": true, "nominal": {"vous": 160749.0}, "rue": []}
+		var lots := [[0, 12.0, "2026-11-12", "a"], [0, 7.0, "2026-11-14", "b"], [2, 3.0, "2026-11-13", "c"], [5, 1.0, "2026-11-15", "d"]]
+		for l: Array in lots:
+			var b := base.duplicate(true)
+			b["titre"] = {"id": str(tous[int(l[0])]["id"]), "nom": str(tous[int(l[0])]["nom"])}
+			b["ecart_tata_pct"] = float(l[1])
+			Records.enregistrer(b, str(l[3]), chemin, str(l[2]))
+	jeu.maj_titre()
+	await sc.delai(3.0)
+	var titre: EcranTitre = jeu.titre
+	var rec := Records.lire(chemin)
+	var vp := Rect2(Vector2.ZERO, sc.get_viewport().get_visible_rect().size).grow(1.0)
+	var etat := "absent"
+	if titre.rangee_palmares.visible:
+		etat = "complet" if titre.l_palmares.get_parent().visible else "bouton"
+	var cible_ok := true
+	if titre.rangee_palmares.visible:
+		var rb := titre.bouton_titres.get_global_rect()
+		var ech := sc.get_viewport().get_final_transform().get_scale().x
+		cible_ok = rb.size.y * ech >= 48.0 and vp.encloses(rb) and vp.encloses(titre.rangee_palmares.get_global_rect())
+	var attendu := ""
+	if not (rec["record"] as Dictionary).is_empty():
+		attendu = str(rec["record"]["titre_nom"])
+	print("UI titre palmares=%s texte=« %s » titres=%d/%d phrase_egale_fichier=%s cibles_ok=%s" % [etat, titre.l_palmares.text, (rec["collection"] as Dictionary).size(), tous.size(),
+		"oui" if attendu == "" or titre.l_palmares.text.contains(attendu) else "non incoherences=1", "oui" if cible_ok else "non incoherences=1"])
+	if etape == "titres_collection":
+		jeu.ouvrir_titres()
+		await sc.attendre_que(func() -> bool: return jeu.modales.genre_courant == "titres" and jeu.modales.courant != null, 4.0)
+		await sc.delai(0.8)
+		var mt: ModaleTitres = jeu.modales.etat_titres()
+		var c: Control = jeu.modales.courant
+		var inconnus := 0
+		var conditions := false
+		for l: Node in c.find_children("*", "Label", true, false):
+			var tx := (l as Label).text
+			if tx == "???":
+				inconnus += 1
+			if tx.to_lower().contains("condition") or tx.to_lower().contains("si vous"):
+				conditions = true
+		var tuiles_dans := true
+		for tl: Node in c.find_children("Tuile_*", "PanelContainer", true, false):
+			tuiles_dans = tuiles_dans and c.get_global_rect().grow(1.0).encloses((tl as Control).get_global_rect())
+		print("UI titres tuiles=%d obtenus=%d inconnus=%d condition_visible=%s tuiles_dans_panneau=%s panneau_dans_ecran=%s" % [int(mt.infos["tuiles"]), int(mt.infos["obtenus"]), inconnus,
+			"OUI incoherences=1" if conditions else "non", "oui" if tuiles_dans else "non incoherences=1", "oui" if vp.encloses(c.get_global_rect()) else "non incoherences=1"])
+		_mesurer(etape, c)
+		print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+	else:
+		_mesurer(etape, titre)
+	Records.effacer(chemin)
 
 ## Historique : onglet LA RUE avec les vraies notifications de la rue (partie menée jusqu'à fin 1986), relecture de la plus longue.
 func _historique_rue(jeu: Node) -> void:
