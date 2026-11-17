@@ -1,0 +1,12 @@
+# Backlog issu des retours du joueur sur la 0.6.x (2026-11-17)
+
+Source : docs/10_retours_joueur.md (section 2026-11-17, retours utilisateur). Statut : À PRÉVOIR, non planifié ; à arbitrer par le chef de projet avec le game designer, le banquier et l'UX avant tout lot. Le joueur n'a pas fixé d'ordre.
+
+| # | Fonctionnalité | Lien avec l'existant | Premières remarques du coordinateur |
+|---|---|---|---|
+| 1 | Étapes avec récompenses sous forme de trophées (positionnement selon le choix fait, comme après le Lundi noir) | « Un an après » (3 barres), titres et collection (07-L/07-I), projets réalisés | Généraliser le mécanisme « étape + comparaison » : bilans d'étape (fin d'année, projets, krach). À cadrer avec le game designer (quelles étapes, quelles récompenses, lien avec les 9 titres). |
+| 2 | Profils d'investisseur au début : débutant (explications détaillées, utilité dans le cas du joueur), intermédiaire (explications actuelles), expert (presque rien) | Idée « questionnaire de profil de risque » mise de côté le 2026-10-27 (CLAUDE.md) ; textes du banquier (docs/18, 21, 22, 25) | Trois niveaux de textes à écrire (banquier, game designer) ; un réglage « niveau d'explication » lu par l'interface. Contenu lourd, code léger. |
+| 3 | Bâtiment « s'amuser » entre les événements : casino, bureau de tabac (tickets à gratter) | Rue large (bâtiments), argent du compte courant | Attention au garde-fou pédagogique (jamais de gain récompensé, ni de conseil) : les jeux de hasard ont une espérance négative, ce qui peut servir à enseigner (comparaison avec l'investissement). À cadrer avec le game designer et le banquier ; nouveaux bâtiments pour dev-ville. |
+| 4 | Évolution du décor selon l'époque, tous les 10 ans | Rue pixel art ; plage 1950 → aujourd'hui pas encore jouable (démo 1984-1988) | Prévu pour quand toute la plage temporelle sera disponible. Prérequis : plage temporelle étendue ; style par décennie dans la bible graphique. |
+| 5 | Création de partie : (a) mini questionnaire (âge, année de début, nombre d'enfants…) ou (b) choix de l'année + 3 profils types de l'époque | Aujourd'hui : personnage fixe (Gérard, 1984, Sylvie). Non prévu jusqu'ici | Dépend de la plage temporelle (plusieurs années de départ) et des profils par époque (banquier/boursier). |
+| 6 | Pop-up de début : qui on est et quel est l'objectif (quel que soit le choix de début) | Écran titre, nouvelle partie | Petit, utile tout de suite : peut être fait sur la démo actuelle (Gérard, 1984, objectif). Candidat à un correctif rapide. |

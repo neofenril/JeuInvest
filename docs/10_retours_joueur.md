@@ -128,3 +128,12 @@ Décisions : 3 emplacements ; le joueur choisit l'emplacement à écraser ; la l
 ## 2026-11-17 (méthode de recette)
 - Décision du joueur : pour gagner du temps, (2) la série de captures complète n'est lancée qu'avant chaque export, avec des étapes ciblées entre-temps ; (4) recettes courtes quand le changement est petit. (Non retenus : réduire les formats de test à PC + un téléphone ; simplifier les écrans à mise en page fragile.)
 
+
+## 2026-11-17 (retours utilisateur sur la 0.6.1 : fonctionnalités à prévoir)
+Verbatim du joueur :
+1) mettre des sortes d'étapes avec des récompenses sous forme de trophées (comme fait après le Lundi noir avec un positionnement en fonction du choix qui a été fait)
+2) prévoir des profils d'investisseurs en début de partie : a) débutant : on explique tous les produits avec plus de détail, à quoi ça peut servir dans le cas de l'utilisateur, etc. ; b) intermédiaire : explications actuelles ; c) expert : on explique presque rien
+3) prévoir un bâtiment pour « s'amuser » entre les événements, genre des casinos, des bureaux de tabac pour acheter des tickets à gratter entre autres
+4) prévoir une évolution du décor en fonction de l'époque (quand toute la plage temporelle sera disponible), tous les 10 ans ça pourrait être bien
+5) je ne sais plus si c'est déjà prévu, mais laisser le choix à l'utilisateur soit : a) un mini questionnaire pour demander à l'utilisateur son âge, l'année à laquelle il souhaite commencer, nombre d'enfants, etc. ; b) simplement sélection de l'année, et proposer 3 profils types de l'époque choisie
+6) peu importe le choix de début, prévoir une pop-up de début pour expliquer qui on est et quel est notre objectif
