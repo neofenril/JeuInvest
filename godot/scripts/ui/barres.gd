@@ -7,6 +7,7 @@ var lignes: Array = []      # [libellé, valeur (euros), couleur]
 var ab := 0
 var avance := 1.0
 var taille_libelle := 18     # lot 06 (A9) : 20 pour l'écran de fin à 4 barres (minimum d'Atkinson)
+var taille_valeur := 24       # taille des montants (28 au téléphone, écran de fin)
 var largeur_libelle := 170.0   # lot 06 : 250 pour les libellés « 3 TONTON MATELAS » de l'écran de fin
 var ligne_reference := -1    # lot 06 : indice de la ligne soulignée d'un pointillé ambre (Tata Livret, la référence)
 
@@ -61,9 +62,9 @@ func _draw() -> void:
 		if negatif:
 			# Valeur négative : pas de barre, un trait à l'axe et le montant en perte, avec le signe, juste après
 			draw_rect(Rect2(gauche, y, 3, epaisseur), Style.TEXTE)
-			draw_string(police, Vector2(gauche + 12.0, y + epaisseur * 0.78), Format.entier(float(l[1]) * avance, ab), HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Style.PERTE)
+			draw_string(police, Vector2(gauche + 12.0, y + epaisseur * 0.78), Format.entier(float(l[1]) * avance, ab), HORIZONTAL_ALIGNMENT_LEFT, -1, taille_valeur, Style.PERTE)
 		else:
-			draw_string(police, Vector2(gauche + w + 12.0, y + epaisseur * 0.78), Format.entier(float(l[1]) * avance, ab), HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Style.TEXTE)
+			draw_string(police, Vector2(gauche + w + 12.0, y + epaisseur * 0.78), Format.entier(float(l[1]) * avance, ab), HORIZONTAL_ALIGNMENT_LEFT, -1, taille_valeur, Style.TEXTE)
 		if i == ligne_reference:
 			var xr := gauche
 			while xr < gauche + place:

@@ -985,6 +985,19 @@ func _fin_titre(etape: String, jeu: Node) -> void:
 	print("UI fin titre=« %s » pourquoi=%s record=%s projets=%s humeur=%d pct=%s collection=%s coherent_bilan=%s etoile=%s" % [str(f.get("titre", "")), "oui" if f.get("pourquoi", false) else "non", str(f.get("record", "?")),
 		str(f.get("projets", "?")), int(f.get("humeur", -1)), str(f.get("pct", "")), "oui" if f.get("collection", false) else "non", "oui" if coherent and ok_titre else "non incoherences=1", "OUI incoherences=1" if etoile else "non"])
 	print("UI fin defilant_visible=%d boutons_visibles=%s panneau_dans_ecran=%s" % [defilant, "oui" if boutons_ok else "non", "oui" if panneau_ok else "non"])
+	# Recette 0.6 (écran de fin lisible au téléphone) : taille minimale des textes à chiffres du récap
+	var min_chiffres := 999
+	var min_texte := 999
+	for lb: Node in modales.courant.find_children("*", "Label", true, false):
+		var lab := lb as Label
+		if lab.text.strip_edges() == "":
+			continue
+		var fs := lab.get_theme_font_size("font_size")
+		min_texte = mini(min_texte, fs)
+		if Style.a_chiffre(lab.text):
+			min_chiffres = mini(min_chiffres, fs)
+	var seuil := 24 if Ecran.compact() else 20
+	print("UI fin texte_min=%d chiffres_min=%d seuil=%d%s" % [min_texte, min_chiffres, seuil, "" if min_chiffres >= seuil else " incoherences=1"])
 	_mesurer(etape, modales.courant)
 	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
 
