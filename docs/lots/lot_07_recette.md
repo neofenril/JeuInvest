@@ -62,3 +62,17 @@ Vrai téléphone et défilement tactile de la zone de fin ; courbe défilée au 
 
 ### Fichiers de recette
 `godot/tests/recette/test_recette_fin_titres.{gd,tscn}` (nouveau), redirection de `chemin_records` dans les 5 autres tests de recette. Captures : `godot/captures/tst_*` (ignoré par Git) et scratchpad.
+
+
+## Passage « écran de fin smartphone » (2026-11-17, branche lot/07-correctifs, commit ca45daa)
+
+**Verdict : OK** (recette allégée).
+
+- Tests : `tests.ps1 -Recette -Delai 700` : 1 334 vérifications OK, 0 KO, 0 erreur ; partie_en_cours.sav inchangée, records.sav absent avant et après.
+- Périmètre : modale_releve_fin.gd, barres.gd, scenarios/interface.gd, tests/recette/test_recette_fin_titres.gd.uid (fichier du testeur, uid seul) : conforme. Barres n'est utilisé que par l'écran de fin ; valeur par défaut 24 inchangée (le krach / un an après ne l'utilise pas).
+- Contrôle `UI fin texte_min` : téléphone 1440x648 et 1280x720 (-Telephone, -Telephone169) : chiffres_min=24, seuil 24, OK ; PC 1280x720 et 1920x1080 : 20/20, OK. 4 cas (fin_titre, fin_record, fin_hors_record, fin_sans_titre) : tous identiques. boutons_visibles=oui, panneau_dans_ecran=oui, zone défilante présente au téléphone (499 / 559 px), aucune étoile, aucune incohérence signalée.
+- Captures relues (téléphone, 16:9, PC) : récap en tête (titre + pourquoi, patrimoine, comparaison Tata Livret, record, barres), rien de coupé ni chevauché ; les barres 4 et suivantes sont sous le pli et accessibles par défilement ; boutons toujours visibles en bas. Partie réelle (étape `fin`, téléphone) : titre, record (« premier résultat enregistré »), patrimoine 173 035 F, Tata 163 131 F, écart 9 903 F (+ 6 %) cohérents entre eux.
+- PC inchangé : captures main vs branche aux formats 1280x720 (fin_record relue côte à côte : identiques à l'oeil, mêmes positions et textes) ; les hachages de fichier diffèrent mais aussi entre deux captures de la même branche (animation), donc non concluant en octets.
+- Note scénario : fin_record affiche « + 12 % » à côté de « 3 891 F » (valeur fabriquée par le scénario, pas un bug du jeu).
+
+Non vérifié : vrai téléphone, défilement tactile, ressenti ; le format 2400x1080 n'a pas pu être distinct de -Telephone (la résolution est imposée par l'option) ; une seule partie réelle complète jouée (pas 2-3) ; portrait 1080x2340 sans objet (paysage seul). Mineur : sur les captures téléphone du cas réel, les libellés des 2 barres (« VOUS », « TATA LIVRET ») sont nettement plus petits que les montants (20 px), mais lisibles.
