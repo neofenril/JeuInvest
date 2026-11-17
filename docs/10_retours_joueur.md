@@ -124,3 +124,7 @@ Décisions : 3 emplacements ; le joueur choisit l'emplacement à écraser ; la l
 ## 2026-11-17 (verdict sur la 0.6)
 - « Sur smartphone l'écran de fin est un petit [peu petit] on a du mal à voir le récap des infos, cette version est pas mal, je la fais essayer par d'autres personnes et je te donnerai leur retour. »
 
+
+## 2026-11-17 (méthode de recette)
+- Décision du joueur : pour gagner du temps, (2) la série de captures complète n'est lancée qu'avant chaque export, avec des étapes ciblées entre-temps ; (4) recettes courtes quand le changement est petit. (Non retenus : réduire les formats de test à PC + un téléphone ; simplifier les écrans à mise en page fragile.)
+
