@@ -86,6 +86,10 @@ Chaque agent a une base de connaissances dans `docs/connaissances/<agent>.md` : 
 - Verdict du joueur sur la 0.5.1 : projets « pas mal », pauses non trop nombreuses, vitesse du saut bonne. Fusionnés dans main (ad180f3) : 07-L (9 titres, record = meilleur écart final face à Tata Livret, `user://records.sav`, jamais écrit en test/capture : `Partie.chemin_records` isolé) et 07-I (écran de fin d'époque, rangée « Meilleur résultat » + bouton TITRES à l'écran titre, collection 3×3). 1 334 vérifications (`tests.ps1 -Recette -Delai 700`, à lancer sans autre Godot en parallèle). Exports 0.6 : `export\windows\JeuClaude.exe` et `export\android\JeuClaude.apk` (16/11).
 - Reste : sauvegarde manuelle (non lancée), peaufinage reporté (animations, caméra, humeur visuelle…), signature de l'exe, APK de release, iOS, sons (pas pour l'instant).
 
+## État du projet (2026-11-17) : version 0.6.1
+- Correctif de l'écran de fin sur smartphone (verdict du joueur sur la 0.6), fusionné dans main (d195290) : récap en tête, une seule zone défilante, polices du récap ≥ 24 px au téléphone, PC inchangé. 1 334 vérifications. Exports 0.6.1 : `export\windows\JeuClaude.exe` et `export\android\JeuClaude.apk` (17/11). Le joueur fait essayer la 0.6 par d'autres personnes et transmettra leurs retours.
+- Série de captures complète non rejouée pour ce correctif (changement d'un seul écran, vérifié par les étapes ciblées).
+
 ## À faire plus tard
 - APK de publication (keystore de release) et version iOS.
 - Questionnaire de profil de risque au démarrage (idée de l'utilisateur mise de côté le 2026-10-27). D'ici là, le banquier adapte ses propositions à la seule situation de vie.
