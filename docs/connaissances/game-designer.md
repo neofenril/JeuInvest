@@ -1,7 +1,7 @@
 # Base de connaissances du game designer
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `docs/10_retours_joueur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-10-29 (spécification V3, docs/15).
+> Dernière mise à jour : 2026-11-13 (G6, docs/28 titres et sauvegarde).
 
 ## 1. Faits vérifiés sur le jeu (démo V2, 2026-10-28)
 
@@ -30,6 +30,15 @@ Spectateur ; tunnels vides ; ≈ 8 décisions dont 1 forte ; résultat à ±4 % 
   - 16 passages de voisins (5 clés historisés), kiosque d'époque, bulles ≤ 1 tous les 2 mois.
   - 9 titres de fin (ordre d'évaluation ; « Ne rien faire » et « Renforcer » comptent ensemble).
   - Durée estimée : ≈ 22 min à ×1 pur, ≈ 19 min avec le bouton de temps en temps ; ordre de retrait des créneaux S1, S3, S5, S9.
+
+- **Doc 23 (12/11)** : répliques de Sylvie, usure de l'humeur positive seulement (validée), coup dur garde sa pause. **Doc 27 (13/11)** : textes des projets et de la rue, Jean-Mi visible (★ persistantes, étape), fiche de retour 0.5.
+- **Doc 28 (13/11, G6)** : titres de fin. Ordre corrigé (neveu 7 avant écureuil 8, sinon le titre 8 est inatteignable) ; seuils cartes = ≥ 5 et écart ≥ 3 (et non 6 / 7) ; nature par choix (C06, C07 neutres ; C14a épargne, C14b neutre ; C00b, C10b SPA épargne) ; abandon « évitable » seulement ; part risquée = 0 si instantané exemple ; étoiles retirées (étoile Cousin Indice contraire à CA-3.1) ; collection « ??? » sans indice ; SV : `toujours` = marche, D08, projet, C06 (pas la gazette), espacement de 6 mois compté depuis toute proposition.
+
+## 3 bis. Faits vérifiés dans le code (13/11, lot/05-logique)
+- `Foyer.humeur_visible` : **0 = contente, 1 = neutre, 2 = fâchée** (piège : lot_07 D2 l'avait inversé).
+- `foyer.json` : `sens` vaut `depense` même à 0 F, inutilisable pour épargne / dépense. Prix réels ≠ docs/15 (C02 5 500, C07 2 500, C09 b 600, C04 2 200 / 3 800).
+- Instantané du krach : `lignes` = actions + SICAV seulement ; `exemple: true` si le joueur n'en a pas ; choix `vendre | rien | renforcer`. Héritage versé en argent à tous (`recevoir_tous`). Bilan : 5 étoiles dont « battre Cousin Indice ».
+- Produits de la démo : livret, pel, emprunt, av, sicav, elf, loreal, peugeot, saintgobain.
 
 ## 4. Décisions du joueur et du client
 
