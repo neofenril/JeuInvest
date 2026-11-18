@@ -172,6 +172,59 @@ const PROFILS_TITRES := {
 }
 
 
+## Clés facultatives ajoutées au lot 08b : bourse.produit "sicav" | "elf" | "une_action" (avec bourse.action = id de l'action,
+## toute la part risquée sur ce seul titre ; absent = SICAV puis Elf comme avant) ; vente_apres : true = vend toutes les actions
+## et SICAV en 12/1987 par ordre, puis n'y retouche plus.
+
+## Tirage pondéré : poids = liste de [valeur, poids].
+static func _tirer(rng: RandomNumberGenerator, poids: Array) -> Variant:
+	var total := 0.0
+	for p: Array in poids:
+		total += float(p[1])
+	var x := rng.randf() * total
+	for p: Array in poids:
+		x -= float(p[1])
+		if x < 0.0:
+			return p[0]
+	return (poids[poids.size() - 1] as Array)[0]
+
+
+## Profil de joueur « plausible » (population de référence P-REF, lot 08b §4.1), tiré de façon déterministe de la graine g
+## par un générateur propre (jamais le hasard de la partie). Lois de tirage : certitude C.
+static func profil_reference(g: int) -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = g * 7919 + 13
+	var cartes: String = _tirer(rng, [["epargner", 30], ["alterner", 40], ["depenser", 30]])
+	var escargots: String = _tirer(rng, [["preter", 15], ["refuser", 85]])
+	var projets: String = _tirer(rng, [["moins_cher", 40], ["milieu", 20], ["plus_cher", 40]])
+	var jour_j := {}
+	for pid in ["P1", "P2"]:
+		jour_j[pid] = _tirer(rng, [["auto", 70], ["vendre", 15], ["renoncer", 15]])
+	var ouvrir: Array = []
+	if rng.randf() < 0.9:
+		ouvrir.append("D01")
+	for d in ["D02", "D03", "D04", "D05", "D06", "D07"]:
+		if rng.randf() < 0.5:
+			ouvrir.append(d)
+	var livret := rng.randf() < 0.8
+	var part: float = _tirer(rng, [[0.0, 30], [0.15, 25], [0.30, 20], [0.45, 15], [0.60, 10]])
+	var depuis_ab := Dates.lire("1984-06") + rng.randi_range(0, Dates.lire("1986-06") - Dates.lire("1984-06"))
+	var depuis := "%d-%02d" % [Dates.annee(depuis_ab), Dates.mois(depuis_ab)]
+	var produit: String = _tirer(rng, [["sicav", 50], ["elf", 20], ["une_action", 30]])
+	var action: String = ["elf", "loreal", "peugeot"][rng.randi_range(0, 2)]
+	var krach: String = _tirer(rng, [["rien", 55], ["vendre", 30], ["renforcer", 15]])
+	var vente_apres := rng.randf() < 0.1
+	var p := {"cartes": cartes, "escargots": escargots, "projets": projets, "jour_j": jour_j, "krach": krach,
+		"ouvrir": ouvrir, "livret": livret, "vente_apres": vente_apres}
+	if part > 0.0:
+		p["bourse"] = {"part": part, "depuis": depuis, "produit": produit, "action": action}
+		# un joueur ne peut acheter que ce qu'on lui a présenté : il a accepté la présentation de son produit
+		var d_prod := "D05" if produit == "sicav" else "D06"
+		if not ouvrir.has(d_prod):
+			ouvrir.append(d_prod)
+	return p
+
+
 ## Joue la partie entière selon le profil (mois par mois, jusqu'à la fin).
 static func jouer_partie_profil(e: EtatPartie, profil: Dictionary) -> void:
 	var garde := 0
@@ -230,9 +283,24 @@ static func _ordres_profil(e: EtatPartie, profil: Dictionary) -> void:
 	if j.cc < 0.0 and j.livret > 0.0:
 		e.retirer_livret(j, minf(j.livret, -j.cc + e.salaire_base))
 	var b: Dictionary = profil.get("bourse", {})
-	if not b.is_empty() and e.ab_courant() >= Dates.lire(str(b["depuis"])):
+	var vendu := false
+	if bool(profil.get("vente_apres", false)) and e.ab_courant() >= Dates.lire("1987-12"):
+		vendu = true
+		if e.ab_courant() == Dates.lire("1987-12"):
+			for id in j.lignes.keys():
+				if j.qte(str(id)) > 0.0:
+					e.vendre(j, str(id), 0.0, true)
+	if not b.is_empty() and not vendu and e.ab_courant() >= Dates.lire(str(b["depuis"])):
 		var produit := ""
-		for id in ["sicav", "elf"]:
+		var candidats: Array = ["sicav", "elf"]
+		match str(b.get("produit", "")):
+			"sicav":
+				candidats = ["sicav"]
+			"elf":
+				candidats = ["elf"]
+			"une_action":
+				candidats = [str(b.get("action", "elf"))]
+		for id in candidats:
 			if Banquier.presente(e, id) and not is_nan(e.cours(id)):
 				produit = id
 				break

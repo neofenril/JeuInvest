@@ -131,8 +131,8 @@ func _tests_donnees() -> void:
 	verifier("CA-T6 : natures == tableau de docs/28 §2 (C06 et C07 neutres ; C14 a = épargne, b = neutre)", egal, detail)
 	var p := Titres.parametres()
 	verifier("D2 : paramètres de docs/28 §1.2 (cartes_min est celui de la mesure D3 : 5, ou 4 si elle l'exige)",
-		is_equal_approx(float(p["ecart_min"]), 0.02) and is_equal_approx(float(p["part_risquee"]), 0.30) and int(p["cartes_ecart"]) == 3
-		and is_equal_approx(float(p["cc_moyen_min"]), 0.30) and p["produits_surs"] == ["livret", "pel"] and is_equal_approx(float(p["vente_apres_krach"]), 0.50)
+		is_equal_approx(float(p["ecart_min"]), 0.075) and is_equal_approx(float(p["part_risquee"]), 0.30) and int(p["cartes_ecart"]) == 3
+		and is_equal_approx(float(p["cc_moyen_min"]), 0.60) and is_equal_approx(float(p["marin_ligne_max"]), 0.60) and p["produits_surs"] == ["livret", "pel"] and is_equal_approx(float(p["vente_apres_krach"]), 0.50)
 		and int(p["cartes_min"]) in [4, 5])
 
 
@@ -155,24 +155,42 @@ func _titre(m := {}) -> String:
 func _tests_conditions() -> void:
 	verifier("Base fabriquée : aucune condition vraie -> apprenti", _titre() == "apprenti")
 	# 1 bon père
-	var bp := {"ecart_tata": 0.03, "projets_realises": 2, "humeur_fin": 1}
-	verifier("1 bon_pere : écart 3 %, 2 projets, humeur neutre", _titre(bp) == "bon_pere")
-	verifier("1 bon_pere : écart 0,02 pile = non (strictement supérieur)", _titre({"ecart_tata": 0.02, "projets_realises": 2}) != "bon_pere")
-	verifier("1 bon_pere : 0,0201 = oui", _titre({"ecart_tata": 0.0201, "projets_realises": 2}) == "bon_pere")
+	var bp := {"ecart_tata": 0.10, "projets_realises": 2, "humeur_fin": 1}
+	verifier("1 bon_pere : écart 10 %, 2 projets, humeur neutre", _titre(bp) == "bon_pere")
+	verifier("1 bon_pere : écart 0,075 pile = non (strictement supérieur)", _titre({"ecart_tata": 0.075, "projets_realises": 2}) != "bon_pere")
+	verifier("1 bon_pere : 0,0751 = oui", _titre({"ecart_tata": 0.0751, "projets_realises": 2}) == "bon_pere")
 	verifier("1 bon_pere : un seul projet = non ; humeur fâchée (2) = non ; contente (0) = oui",
-		_titre({"ecart_tata": 0.05, "projets_realises": 1}) != "bon_pere" and _titre({"ecart_tata": 0.05, "projets_realises": 2, "humeur_fin": 2}) != "bon_pere"
-		and _titre({"ecart_tata": 0.05, "projets_realises": 2, "humeur_fin": 0}) == "bon_pere")
+		_titre({"ecart_tata": 0.10, "projets_realises": 1}) != "bon_pere" and _titre({"ecart_tata": 0.10, "projets_realises": 2, "humeur_fin": 2}) != "bon_pere"
+		and _titre({"ecart_tata": 0.10, "projets_realises": 2, "humeur_fin": 0}) == "bon_pere")
 	# 2 golden boy, 6 marin : le même seuil de 30 %
 	verifier("2 golden_boy : part 0,30 pile et vente = oui ; 0,2999 = non",
 		_titre({"part_risquee_krach": 0.30, "a_vendu_krach": true}) == "golden_boy" and _titre({"part_risquee_krach": 0.2999, "a_vendu_krach": true}) != "golden_boy")
 	verifier("2 golden_boy : a vendu mais n'avait pas 30 % -> pas golden_boy, pas marin",
 		_titre({"part_risquee_krach": 0.10, "a_vendu_krach": true, "ecart_tata": 0.05}) == "apprenti")
 	verifier("2 > 1 : « bon père » l'emporte sur « golden boy » (le titre juge la partie entière)",
-		_titre({"ecart_tata": 0.05, "projets_realises": 2, "part_risquee_krach": 0.5, "a_vendu_krach": true}) == "bon_pere")
+		_titre({"ecart_tata": 0.10, "projets_realises": 2, "part_risquee_krach": 0.5, "a_vendu_krach": true}) == "bon_pere")
 	verifier("6 marin : 0,30 pile, n'a pas vendu, écart > 0 ; écart 0 pile = non",
 		_titre({"part_risquee_krach": 0.30, "ecart_tata": 0.001}) == "marin" and _titre({"part_risquee_krach": 0.30, "ecart_tata": 0.0}) != "marin")
 	verifier("6 marin : vendre ne le donne jamais (a_vendu_krach -> golden_boy, pas marin)",
 		_titre({"part_risquee_krach": 0.5, "a_vendu_krach": true, "ecart_tata": 0.1}) == "golden_boy")
+	# lot 08b : marin_ligne_max (concentration), cigale_min / cigale_ecart, bon_pere_humeur (paramètres facultatifs)
+	var m := {"part_risquee_krach": 0.5, "ecart_tata": 0.01}
+	verifier("6 marin (08b) : plus grosse ligne 0,60 pile = oui ; 0,61 = non (tout sur une action) ; 0 (SICAV seule) = oui",
+		_titre(m.merged({"ligne_max_krach": 0.60})) == "marin" and _titre(m.merged({"ligne_max_krach": 0.61})) != "marin" and _titre(m.merged({"ligne_max_krach": 0.0})) == "marin")
+	var p := Titres.parametres()
+	var sauve := p.duplicate(true)
+	p["cigale_min"] = 4
+	p["cigale_ecart"] = 2
+	var cig := _titre({"nb_depense": 4, "nb_epargne": 2, "humeur_fin": 0}) == "cigale"
+	p.erase("cigale_min")
+	p.erase("cigale_ecart")
+	var cig_avant := _titre({"nb_depense": 4, "nb_epargne": 2, "humeur_fin": 0}) != "cigale"
+	p["bon_pere_humeur"] = "contente"
+	var bp_c := _titre({"ecart_tata": 0.10, "projets_realises": 2, "humeur_fin": 1}) != "bon_pere" and _titre({"ecart_tata": 0.10, "projets_realises": 2, "humeur_fin": 0}) == "bon_pere"
+	p.erase("bon_pere_humeur")
+	for k in sauve:
+		p[k] = sauve[k]
+	verifier("08b : cigale_min / cigale_ecart propres à la cigale (absents = cartes_min / cartes_ecart) ; bon_pere_humeur « contente » exige l'humeur contente", cig and cig_avant and bp_c)
 	# 3 escargots
 	verifier("3 escargots : prêté et écart < 0 = oui ; écart 0 pile = non ; écart > 0 = non",
 		_titre({"escargots": true, "ecart_tata": -0.001}) == "escargots" and _titre({"escargots": true, "ecart_tata": 0.0}) != "escargots"
@@ -192,7 +210,7 @@ func _tests_conditions() -> void:
 		and _titre({"nb_depense": 6, "nb_epargne": 1, "humeur_fin": 1}) != "cigale"
 		and _titre({"nb_epargne": 6, "nb_depense": 1, "humeur_fin": 2}) == "fourmi" and _titre({"nb_epargne": 6, "nb_depense": 1, "humeur_fin": 0}) != "fourmi")
 	# 7 neveu, 8 écureuil
-	verifier("7 neveu : cc_moyen 0,30 pile = oui ; 0,2999 = non", _titre({"cc_moyen": 0.30}) == "neveu_matelas" and _titre({"cc_moyen": 0.2999}) != "neveu_matelas")
+	verifier("7 neveu : cc_moyen 0,60 pile = oui ; 0,5999 = non", _titre({"cc_moyen": 0.60}) == "neveu_matelas" and _titre({"cc_moyen": 0.5999}) != "neveu_matelas")
 	verifier("7 avant 8 : compte courant seul (aucun produit) -> neveu_matelas, pas écureuil",
 		_titre({"cc_moyen": 0.95, "produits_detenus": []}) == "neveu_matelas")
 	verifier("8 écureuil : livret et PEL seuls = oui ; avec un autre produit = non",

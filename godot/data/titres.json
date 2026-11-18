@@ -1,16 +1,17 @@
 {
   "_note": "Lot 07-L : titre d'époque de fin de partie (docs/28 §1 à §3, lot_07.md D1 à D3). Lu par scripts/logique/titres.gd. Les titres sont évalués une fois, à la fin (partie menée à son terme), DANS L'ORDRE de la liste « titres » : le premier dont la condition est vraie l'emporte ; « apprenti » est le titre par défaut. Les conditions sont écrites dans titres.gd (Titres.evaluer), leurs seuils ici. Noms sans chiffre ; « pourquoi » de 15 mots au plus, au vous, sans « achetez », « vendez », « c'est le moment », « auriez dû » (contrôlé par test_titres). Marques et termes d'époque (Club Med, Caisse d'épargne, golden boy) : certitude A, à valider par le client ; remplaçables ici sans toucher au code.",
 
-  "_parametres": "ecart_min : écart nominal minimal avec Tata Livret pour « bon père » (2 %, strictement supérieur). part_risquee : part du patrimoine en actions et SICAV au krach (golden boy, marin). cartes_min / cartes_ecart : nombre minimal de choix de la nature voulue et avance sur l'autre nature (fourmi, cigale ; abaissé à 4 par la mesure NATURES si la politique « depenser » donne moins de 5 dépenses sur plus de 10 % des graines, docs/28 §2). cc_moyen_min : part moyenne du compte courant dans le patrimoine (neveu de Tonton Matelas). produits_surs : si tous les produits détenus sont dans cette liste, « écureuil ». vente_apres_krach : part de la valeur des actions et SICAV au krach vendue par ordre du joueur entre fenetre_vente_krach (inclus) pour compter comme « a vendu au krach » ; 0 = éteint.",
+  "_parametres": "ecart_min : écart nominal minimal avec Tata Livret pour « bon père » (7,5 % depuis le lot 08b, strictement supérieur ; 2 % avant : bon père obtenu par plus de la moitié des joueurs actifs). part_risquee : part du patrimoine en actions et SICAV au krach (golden boy, marin). cartes_min / cartes_ecart : nombre minimal de choix de la nature voulue et avance sur l'autre nature (fourmi, cigale ; abaissé à 4 par la mesure NATURES si la politique « depenser » donne moins de 5 dépenses sur plus de 10 % des graines, docs/28 §2). cc_moyen_min : part moyenne du compte courant dans le patrimoine (neveu de Tonton Matelas ; 0,60 depuis le lot 08b : un joueur qui investit une grande part de son argent n'est plus « neveu »). Paramètres facultatifs du lot 08b (absents = comportement antérieur) : marin_ligne_max : « marin » exige que la plus grosse ligne d'action au krach pèse au plus cette part des lignes risquées (une SICAV ne compte pas) ; cigale_min / cigale_ecart : seuils propres à la cigale (défaut cartes_min / cartes_ecart) ; bon_pere_humeur : « pas_fachee » (défaut) ou « contente ». produits_surs : si tous les produits détenus sont dans cette liste, « écureuil ». vente_apres_krach : part de la valeur des actions et SICAV au krach vendue par ordre du joueur entre fenetre_vente_krach (inclus) pour compter comme « a vendu au krach » ; 0 = éteint.",
   "parametres": {
-    "ecart_min": 0.02,
+    "ecart_min": 0.075,
     "part_risquee": 0.30,
     "cartes_min": 5,
     "cartes_ecart": 3,
-    "cc_moyen_min": 0.30,
+    "cc_moyen_min": 0.60,
     "produits_surs": ["livret", "pel"],
     "vente_apres_krach": 0.50,
-    "fenetre_vente_krach": ["1987-11", "1988-04"]
+    "fenetre_vente_krach": ["1987-11", "1988-04"],
+    "marin_ligne_max": 0.60
   },
 
   "titres": [
@@ -31,7 +32,7 @@
     { "id": "ecureuil", "nom": "L'écureuil de la Caisse d'épargne",
       "pourquoi": "Sûr et sans frais, comme Tata Livret : sans risque, mais sans surprise." },
     { "id": "apprenti", "nom": "L'apprenti épargnant",
-      "pourquoi": "Un peu de tout, sans excès : rejouez pour tenter une autre voie." }
+      "pourquoi": "Aucun style marqué cette fois : rejouez pour tenter une autre voie." }
   ],
 
   "_objectif": "Phrase factuelle sur l'inflation de l'écran de fin (docs/28 §5), sans étoile : bilan[\"objectif\"][\"phrase\"]. Deux cas : objectif atteint ou non.",

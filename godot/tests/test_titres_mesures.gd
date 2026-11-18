@@ -21,6 +21,7 @@ func _initialize() -> void:
 	var inachevees := 0
 	var alertes_combo := []
 	var combos := []
+	var comptes := {}
 	for actif in [true, false]:
 		for cartes in ["epargner", "depenser", "alterner"]:
 			for projets in ["moins_cher", "plus_cher"]:
@@ -51,6 +52,7 @@ func _initialize() -> void:
 				if nb_combo > 0 and float(compte[id2]) / float(nb_combo) > 0.5:
 					alertes_combo.append("%s %s %s%s : %s = %d / %d" % ["actif" if c["actif"] else "passif", c["cartes"], c["projets"],
 						" " + str(c["strategie"]) if c["strategie"] != "" else "", id2, int(compte[id2]), nb_combo])
+		comptes[_nom(c)] = {"compte": compte, "nb": nb_combo}
 		print("REPARTITION %s cartes=%s projets=%s%s : %s" % ["actif" if c["actif"] else "passif", c["cartes"], c["projets"],
 			" strategie=" + str(c["strategie"]) if c["strategie"] != "" else "", _ligne(compte, ids)])
 	StrategieTest.politique_cartes = "epargner"
@@ -72,6 +74,8 @@ func _initialize() -> void:
 		alertes += 1
 		print("ALERTE : « bon_pere » n'est jamais obtenu hors stratégie dédiée (sur %d parties)" % nb_tout)
 	print("MESURE alertes=%d titres_obtenus=%d/9" % [alertes, total_tout.size()])
+	_verifier_combinaisons(comptes)
+	_reference_pref(ids)
 	verifier("Toutes les parties vont à leur terme (aucune inachevée)", inachevees == 0, "%d inachevées" % inachevees)
 	verifier("Toutes les parties menées à terme reçoivent un titre", sans_titre == 0, "%d sans titre (faillite)" % sans_titre)
 	print("")
@@ -93,6 +97,71 @@ func _ligne(compte: Dictionary, ids: Array) -> String:
 	for id: String in ids:
 		s += "%s=%d " % [id, int(compte.get(id, 0))]
 	return s.strip_edges()
+
+
+const NB_PREF := 200
+
+
+## Lot 08b : population de référence P-REF (StrategieTest.profil_reference, graines 1 à NB_PREF).
+func _reference_pref(ids: Array) -> void:
+	var compte := {}
+	var inachevees: Array = []
+	var sans_titre: Array = []
+	for g in range(1, NB_PREF + 1):
+		var cfg := Donnees.config_demo(g)
+		cfg["cartes"] = true
+		cfg["projets"] = true
+		cfg["rue"] = true
+		var e := EtatPartie.new()
+		e.demarrer(cfg)
+		StrategieTest.jouer_partie_profil(e, StrategieTest.profil_reference(g))
+		if e.fin != "fin":
+			inachevees.append(g)
+		var t := Titres.calculer(e)
+		if t.is_empty():
+			sans_titre.append(g)
+			continue
+		compte[str(t["id"])] = int(compte.get(str(t["id"]), 0)) + 1
+	print("REFERENCE_PREF (%d parties) : %s" % [NB_PREF, _ligne(compte, ids)])
+	var ok_min := true
+	var ok_max := true
+	for id: String in ids:
+		if int(compte.get(id, 0)) < 6:
+			ok_min = false
+		if int(compte.get(id, 0)) > 50:
+			ok_max = false
+	var bp := int(compte.get("bon_pere", 0))
+	verifier("CA-R2 : P-REF : chacun des 9 titres ≥ 3 % (6 / 200)", ok_min, _ligne(compte, ids))
+	verifier("CA-R2 : P-REF : aucun titre > 25 % (50 / 200)", ok_max, _ligne(compte, ids))
+	verifier("CA-R2 : P-REF : bon_pere entre 8 % et 25 % (16 à 50 sur 200)", bp >= 16 and bp <= 50, "%d / 200" % bp)
+	verifier("P-REF : toutes les parties vont à leur terme et reçoivent un titre", inachevees.is_empty() and sans_titre.is_empty(),
+		"inachevées %s, sans titre %s" % [str(inachevees), str(sans_titre)])
+
+
+func _nom(c: Dictionary) -> String:
+	return "%s %s %s%s" % ["actif" if c["actif"] else "passif", c["cartes"], c["projets"], " peugeot" if c["strategie"] == "peugeot" else ""]
+
+
+## Lot 08b, CA-R3 : bloquant. Le plafond de 50 % ne vaut que pour les joueurs actifs hors « tout sur Peugeot » : un joueur
+## passif (rien que le compte courant) est le neveu de Tonton Matelas par définition, et une stratégie unique (tout sur
+## Peugeot) donne le même titre à toutes les graines.
+func _verifier_combinaisons(comptes: Dictionary) -> void:
+	var pire := ""
+	var pire_part := 0.0
+	for nom: String in comptes:
+		if not nom.begins_with("actif alterner") or nom.ends_with("peugeot"):
+			continue
+		for id: String in comptes[nom]["compte"]:
+			var part := float(comptes[nom]["compte"][id]) / float(comptes[nom]["nb"])
+			if part > pire_part:
+				pire_part = part
+				pire = "%s : %s %.0f %%" % [nom, id, 100.0 * part]
+	verifier("CA-R3 : aucun titre au-dessus de 50 % d'une combinaison « alterner » active (hors Peugeot)", pire_part <= 0.5, pire)
+	for nom in ["actif alterner moins_cher", "passif alterner moins_cher"]:
+		var n := int((comptes[nom]["compte"] as Dictionary).get("bon_pere", 0))
+		verifier("CA-R3 : bon_pere <= 40 %% en « %s »" % nom, n <= 16, "%d / 40" % n)
+	var m := int((comptes["actif alterner moins_cher peugeot"]["compte"] as Dictionary).get("marin", 0))
+	verifier("CA-R3 : « tout sur Peugeot » : marin <= 4 / 40", m <= 4, "%d / 40" % m)
 
 
 func _partie(g: int, c: Dictionary) -> EtatPartie:
