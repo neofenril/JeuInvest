@@ -40,3 +40,4 @@ Source verbatim : `docs/10_retours_joueur.md`, section « 2026-11-18 (décisions
 - **D-J7** : mort **liée à l'âge, traitée sobrement**, avec une **note informative** adaptée à la situation : assurance-vie présente ou non, enfants ou conjoint ; expliquer ce qui aurait été transmis et comment si le personnage avait eu (ou non) une assurance-vie.
 - **Q-R1** : le dosage actuel de Jean-Mi est bon, **ne pas le modifier**.
 - Experts (boursier, banquier, game designer, UX) : à lancer **en parallèle des développements** pour la période 1989-1993.
+- **Mariage du personnage** (réponse au point 1 du game designer, docs/39 §15) : il **n'est pas imposé en 06/1990** ; il **dépend de l'âge du personnage, selon le profil saisi** (règle à définir par le game designer : tranches d'âge, situation de départ marié / couple non marié / célibataire R-SEUL). Gérard (31 ans en 1989) reste le cas de référence à recaler.
