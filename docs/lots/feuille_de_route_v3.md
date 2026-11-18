@@ -15,6 +15,13 @@
 
 Ordre strict : 10a → (10b ∥ 10c-L) → 10c-I → **export 0.7** → 11 → 12 → **export 0.8** → 13 → **export 0.9** → 14+. Série de captures complète avant chaque export (règle du 17/11).
 
+## 0 bis. Lot 10 : plans écrits (18/11, après docs/46 et docs/47)
+
+- `lot_10a.md` (moteur ≈ 11 j puis contenu ≈ 7 j), `lot_10b.md` (ville ≈ 5 j ; interface ≈ 11 j en 2 étapes), `lot_10c.md` (pilote carrière ≈ 4,5 j, recette finale, export 0.7).
+- Lancement à la fusion de 09-I : **10a-moteur ∥ 10b-ville ∥ 10b-interface étape 1** ; puis 10a-contenu ∥ 10b-interface étape 2 ; puis 10c-logique, 10c-interface ; recette finale sur la fusion complète.
+- Arbitrages (`lot_10a.md` §1) : vitrine du Golfe selon docs/47 (étape 1 sans pause en 08/1990, modale en 09/1990, « un an après » en 09/1991) ; SCPI en 1989-1993 seulement (1984-1988 au lot 11) ; jumeaux 1/6 **par chapitre** (1984-1988 garde 1/4 jusqu'au re-gel du lot 11) ; PEP = message + « En savoir plus » ; K4/K5 toujours présentées. Valeurs C (boursier : 08/1990, 09/1991 ; banquier : SCPI) **non bloquantes**, à confirmer avant l'export 0.7. Tabac : lot 13 (prix et retour des tickets à valider par le banquier avant).
+- Durée du lot 10 révisée : ≈ 38 j (au lieu de ≈ 40).
+
 ## 1. Décisions déjà prises (rappel, pour les plans de lots)
 
 - Partie qui traverse les chapitres, fin à la dernière année implémentée ou à la mort ; **un seul bilan final** ; carte de passage de chapitre **version A** (docs/40) ; un titre par chapitre traversé ; records par chapitre de départ **et** sur la période totale (double record).
