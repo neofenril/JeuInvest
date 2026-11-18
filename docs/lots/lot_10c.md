@@ -27,6 +27,10 @@ Worktrees : `C:\Users\arthu\Documents\temp\JeuClaude_lots\lot10c-logique`, `lot1
 | D5 | Plafond : 3 moments de carrière par chapitre (K4, promotion CNAM, K5), au moins 4 mois entre deux (docs/47 §6). |
 | D6 | Version 0.7 / code Android 11 : `project.godot` (`config/version`) et `export_presets.cfg` (4 lignes) **prêtés à dev-logique** dans 10c-L (précédent du lot 03-R). |
 
+## 1 bis. Textes sans genre en dur
+
+Règle de `lot_10a.md` §1 bis : les textes de K4 et K5 (titres, répliques, ligne « Métier ») sont en gabarits (`{proche}`, `{e}`, `metier` avec forme féminine : « Technicienne », « Technico-commerciale itinérante ») ; **CA-C9 ★** : rendus corrects pour Gérard, Christine et une joueuse d'essai (aucun gabarit résiduel).
+
 ## 2. Fichiers attribués
 
 | Fichier | 10c-logique | 10c-interface |

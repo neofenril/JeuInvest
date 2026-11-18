@@ -34,6 +34,13 @@ outils\git\cmd\git.exe -C C:\Users\arthu\Documents\temp\JeuClaude worktree add C
 | D7 | Double record (docs/40 §3) : écran titre = rangée « Meilleur résultat » par chapitre de départ (record de chapitre et record de partie) ; bilan final = 2 lignes ; collection = un onglet par chapitre. |
 | D8 | `principal.gd` reste du câblage (≤ 650 lignes) ; tout nouvel écran = un nouveau fichier `ui/`. |
 
+## 1 bis. Règle « textes sans genre en dur » (exigence du joueur du 18/11)
+
+- Aucun texte affiché ne contient « Sylvie », « Gérard », « il / elle », « Monsieur », un accord ou un prénom de profil en dur : l'interface affiche les textes **déjà rendus** par la logique (`Gabarits`, `lot_10a.md` §1 bis) et lit les prénoms dans `foyer_visuel()` / `infos_chapitre()`.
+- **10b-interface, étape 1 (tâche I4 élargie, ≈ +1,5 j)** : les ≈ 12 lignes d'affichage en dur relevées dans `hud.gd`, `modale_foyer.gd`, `modale_projet.gd`, `modale_releve_fin.gd`, `modale_carte.gd`, `bulle.gd` (inventaire I3 de 09-I) passent par les données ; les noms de méthodes et commentaires (`regler_humeur_sylvie`, `FENETRE_SYLVIE`) peuvent rester. **Portraits** (`portrait.gd`) : joueuse et conjoint homme, 3 humeurs, PC et téléphones (≈ +1 j, étape 2) ; Christine et Patrick en ont besoin dès ce lot.
+- **10b-ville (V1 élargie, ≈ +1 j)** : le personnage du joueur et le conjoint à la fenêtre suivent `sexe` de `foyer_visuel()` (cas d'essai obligatoire : joueuse « Sylvie » et conjoint « Gérard ») ; les ≈ 50 occurrences de `maison.gd`, `ville.gd`, `rue.gd`, `sequences.gd` sont surtout des identifiants : les renommer n'est **pas** demandé.
+- **CA-I10 ★** : avec un profil d'essai féminin, captures `mon_foyer`, carte du foyer, projet, passage, fin, intro : aucun « Sylvie » ni accord masculin visibles pour la joueuse ; pour Gérard, images identiques à `main`. **CA-V5 ★** : `RUE foyer=joueuse_conjoint_h` correct.
+
 ## 2. Fichiers attribués
 
 | Fichier | 10b-ville | 10b-interface |
