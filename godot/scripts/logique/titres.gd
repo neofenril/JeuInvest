@@ -137,6 +137,22 @@ static func part_risquee_krach(e: EtatPartie) -> float:
 	return Krach.base(inst) / patr
 
 
+## Concentration au krach (lot 08b) : valeur de la plus grosse ligne d'action (une SICAV est diversifiée : elle ne compte
+## pas) divisée par la valeur de toutes les lignes risquées ; 0 si exemple, sans ligne ou instantané absent.
+static func ligne_max_krach(e: EtatPartie) -> float:
+	var inst := e.instantane_k
+	if inst.is_empty() or bool(inst.get("exemple", false)) or (inst.get("lignes", []) as Array).is_empty():
+		return 0.0
+	var base := Krach.base(inst)
+	if base <= EPS:
+		return 0.0
+	var m := 0.0
+	for l: Dictionary in inst["lignes"]:
+		if str(l.get("type", "")) != "sicav":
+			m = maxf(m, float(l["qte"]) * float(l["cours"]))
+	return m / base
+
+
 ## Choix « vendre » au krach, ou ventes par ordre dans la fenêtre dépassant vente_apres_krach × la valeur au krach.
 static func a_vendu_krach(e: EtatPartie) -> bool:
 	var inst := e.instantane_k
@@ -171,7 +187,7 @@ static func grandeurs(e: EtatPartie) -> Dictionary:
 			escargots = true
 	var n := int(s.get("nb_mois", 0))
 	return {"ecart_tata": ecart_tata(e), "projets_realises": projets_realises(e), "humeur_fin": e.humeur_visible(),
-		"abandon_evitable": evitable, "part_risquee_krach": part_risquee_krach(e), "a_vendu_krach": a_vendu_krach(e),
+		"abandon_evitable": evitable, "part_risquee_krach": part_risquee_krach(e), "ligne_max_krach": ligne_max_krach(e), "a_vendu_krach": a_vendu_krach(e),
 		"escargots": escargots, "nb_epargne": int(nat["epargne"]), "nb_depense": int(nat["depense"]),
 		"produits_detenus": produits, "cc_moyen": float(s.get("somme_cc", 0.0)) / float(n) if n > 0 else 0.0}
 
@@ -200,7 +216,8 @@ static func _condition(id: String, g: Dictionary, p: Dictionary) -> bool:
 	var part := float(g["part_risquee_krach"])
 	match id:
 		"bon_pere":
-			return ecart > float(p["ecart_min"]) and int(g["projets_realises"]) == 2 and humeur != 2
+			var h_ok := humeur != 2 if str(p.get("bon_pere_humeur", "pas_fachee")) == "pas_fachee" else humeur == 0
+			return ecart > float(p["ecart_min"]) and int(g["projets_realises"]) == 2 and h_ok
 		"golden_boy":
 			return part >= float(p["part_risquee"]) and bool(g["a_vendu_krach"])
 		"escargots":
@@ -209,9 +226,11 @@ static func _condition(id: String, g: Dictionary, p: Dictionary) -> bool:
 			return epargne >= int(p["cartes_min"]) and epargne - depense >= int(p["cartes_ecart"]) \
 				and (humeur == 2 or bool(g["abandon_evitable"]))
 		"cigale":
-			return depense >= int(p["cartes_min"]) and depense - epargne >= int(p["cartes_ecart"]) and humeur == 0
+			return depense >= int(p.get("cigale_min", p["cartes_min"])) \
+				and depense - epargne >= int(p.get("cigale_ecart", p["cartes_ecart"])) and humeur == 0
 		"marin":
-			return part >= float(p["part_risquee"]) and not bool(g["a_vendu_krach"]) and ecart > 0.0
+			return part >= float(p["part_risquee"]) and not bool(g["a_vendu_krach"]) and ecart > 0.0 \
+				and float(g.get("ligne_max_krach", 0.0)) <= float(p.get("marin_ligne_max", 1.0)) + 1e-9
 		"neveu_matelas":
 			return float(g["cc_moyen"]) >= float(p["cc_moyen_min"])
 		"ecureuil":
