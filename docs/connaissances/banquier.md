@@ -274,6 +274,17 @@ Priorité si le client demande une fiabilisation : d'abord les données **utilis
 
 | 2026-11-12 | Lot 03 : dividendes (avoir fiscal 50 %, 16 % = convention de jeu, docs/21) ; textes bis : fiche action sans « chaque année », relevé sans contradiction intérêts/dividendes, C03/C10/C02 sans montant en dur (docs/22) | `docs/21_...`, `docs/22_...` |
 
+| 2026-11-18 | Extension des années : K2 catalogue 2019-2023 (10 produits, taux datés, textes ≤ 30 mots, héritage neveu 40 000 €, forme du banquier), K1 décennies 1950-2025 | `docs/34_banquier_extension_annees.md` |
+
+### Faits ajoutés le 2026-11-18 (détail dans docs/34)
+- PEL par date d'ouverture : 1 % (08/2016-12/2022), 2 % (2023), 2,25 % (2024), 1,75 % (2025), 2 % (2026) ; prime d'État supprimée pour PEL ouverts dès 2018 (A, La Finance pour tous). CEL 0,5 % -> 0,25 % (02/2020) -> 2 % (02/2023).
+- Fonds euros : 1,83 % (2018), 1,46 % (2019, ACPR), ≈ 1,3 % (2020, 2021 : B), 1,9 % (2022), 2,6 % (2023). Une valeur de 1,1 % pour 2021 n'est pas étayée.
+- PEA : 150 000 €, PEA-PME 225 000 € cumulés, PEA jeune 20 000 € (2019), retraits partiels après 5 ans sans clôture (PACTE).
+- Salaire net moyen privé EQTP : 2 424 (2019), 2 630 (2022), 2 735 (2023) ; médian 1 940 (2019), 2 183 (2023). La ligne 2025 de salaires.json (2 750) est probablement basse (C).
+- Livret A 1950-1959 : ≈ 2,75 % (B) et non 2,5 % ; plafond ≈ 300 000 puis 400 000 AF (C, une source) : le « 1 000 000 AF » de docs/01 est douteux.
+- Écart : courtage 0,1 %/1 € de regles.json 2019+ = néo-courtiers ; réseau 0,5 %+ min ≈ 10 € (B/C).
+- Leçon 2019-2023 : PEL à taux fixe contre Livret A variable (0,75 -> 3 %), LEP 6,1 % (02/2023).
+
 ### Prix d'époque 1984-1988 (V3, détail dans docs/18)
 - Canal+ : lancé le 04/11/1984 (A) ; abonnement 120 F/mois (B, Larousse 1985 ; une source en dit 140) ; caution décodeur ≈ 420 F (B).
 - Tous les autres prix de détail (magnétoscope, Club Med, Super 5, caméscope, T3...) : C, introuvables en ligne ; recoupement par ordres de grandeur. À corriger si le joueur ou une archive (L'Argus 1986, catalogues) les contredit.
