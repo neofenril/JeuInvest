@@ -29,3 +29,14 @@ Source verbatim : `docs/10_retours_joueur.md`, section « 2026-11-18 (décisions
 2. **Socle des chapitres (lot 09)**.
 3. Puis seulement : **période 1989-1993** et **sauvegarde manuelle** (après le socle).
 4. Tabac, célibataire, étoiles/trophées, ETF/PEA/PER, canaux de frais : à planifier par le chef de projet dans cet ordre général, selon les dépendances.
+
+## 5. Réponses du joueur aux décisions D-J1 à D-J7 (2026-11-18, verbatim dans docs/10)
+- **D-J1** : une partie commencée en 1984 **continue jusqu'en 1993** (marché continu d'un chapitre à l'autre). **Un seul bilan final** suffit (à la fin de la dernière période développée) ; un bilan d'étape par chapitre est facultatif.
+- **D-J2** : **un titre par chapitre traversé**. Records : **double record** envisagé, par chapitre de départ **et** sur la période totale ; garder les records par chapitre pour le moment.
+- **D-J3** : décor par **tranche de 2 chapitres** (1984-1993 : un seul décor).
+- **D-J4** : 1977-1983 = **un chapitre unique de 7 ans**.
+- **D-J5** : Gérard gardé, **vieillit** au fil des chapitres.
+- **D-J6** : tabac **et** casino sont **suspendus à une confirmation juridique** que le joueur ira chercher ; ne rien concevoir ni développer tant qu'il n'a pas confirmé (le lot « tabac » est donc en attente).
+- **D-J7** : mort **liée à l'âge, traitée sobrement**, avec une **note informative** adaptée à la situation : assurance-vie présente ou non, enfants ou conjoint ; expliquer ce qui aurait été transmis et comment si le personnage avait eu (ou non) une assurance-vie.
+- **Q-R1** : le dosage actuel de Jean-Mi est bon, **ne pas le modifier**.
+- Experts (boursier, banquier, game designer, UX) : à lancer **en parallèle des développements** pour la période 1989-1993.
