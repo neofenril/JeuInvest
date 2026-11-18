@@ -121,6 +121,13 @@ Bloquants (★) sauf mention. « P-REF » = 200 parties de §4.1.
 - Recette **courte** (décision du joueur du 17/11) : tests + CA ci-dessus + périmètre ; aucune capture (aucun écran touché). Rapport : `docs/lots/lot_08b_recette.md`.
 - OK du testeur → push de `lot/08b-logique` → ma validation → fusion `--no-ff` dans `main`, tests relancés sur `main`, push. **Le lot 09-L part de `main` après cette fusion** (il déplace `titres.json` et `rue.json`).
 
+## 8 bis. Validation (chef de projet, 18/11)
+
+- Recette OK (`lot_08b_recette.md`, 2c84a43, 1 417 vérifications, + 28,7 s) : **fusion dans `main` validée**.
+- A1 entérinée : la correction de `tests/recette/test_recette_titres.gd` (seuil 0,075) a été faite par le chef de projet à la demande du coordinateur, exception de périmètre ponctuelle ; le testeur reprend la main sur ce fichier. G-R2 appliqué (« pourquoi » d'apprenti de docs/39).
+- A2 acceptée : CA-R3 se lit « aucun titre > 50 % d'une combinaison **active** alterner hors tout-Peugeot » ; un joueur passif qui laisse tout sur son compte reçoit à bon droit « neveu de Tonton Matelas », et tout-Peugeot reçoit « apprenti » (voulu).
+- A3 (« liquidé » jamais notifié) : préexistant, reporté au lot 10 sans changer le dosage (Q-R1). A4 : noté, apprenti 18 % ≤ 25 %.
+
 ## 9. Compte rendu attendu
 
 Fichiers modifiés (comparés au §3) ; lignes `REFERENCE_PREF` et `REPARTITION` avant / après ; valeurs retenues des paramètres et pourquoi ; lignes `RUE` et `JEANMI` ; ajustements de `rue.json` (le cas échéant) ; durée de `test_titres_mesures` et `test_rue_mesures` ; non vérifié ; base à jour.

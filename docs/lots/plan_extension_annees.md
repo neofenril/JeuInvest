@@ -30,6 +30,17 @@
 | Saisie d'une année précise | option (a) reportée | La création de partie accepte un départ à n'importe quel mois de janvier ; le contenu déjà passé du chapitre est sauté (mesuré au lot 09, `MESURE debut_libre`). |
 | Ordre : rééquilibrage, socle, puis 1989-1993 et sauvegarde | lot 09 puis 10 création, 11 produits, 12 chapitre 2019 | Nouvelle séquence du §3. |
 
+## 0 ter. Réponses du joueur aux D-J (18/11 soir, `decisions_extension_annees.md` §5, priment sur le reste de ce plan)
+
+- D-J1 : la partie continue jusqu'en 1993 ; **un seul bilan final** ; pas de bilan d'étape obligatoire → carte de passage de chapitre **version A** (docs/40). Les mentions « bilan d'étape » des §2.3, §3 et §4 sont remplacées par cette carte.
+- D-J2 : un titre par chapitre traversé ; records par chapitre de départ (record sur la période totale : plus tard).
+- D-J3 : décor par tranche de 2 chapitres (1984-1993 = un seul décor : **aucun thème neuf au lot 10**). D-J4 : 1977-1983 = un chapitre de 7 ans. D-J5 : Gérard vieillit.
+- D-J6 : **tabac et casino suspendus** à une confirmation juridique du joueur : le lot 12 (tabac) est **en attente**, rien n'est conçu ni développé.
+- D-J7 : mort liée à l'âge, sobre, avec une note sur la transmission (assurance-vie ou non, enfants, conjoint).
+- Q-R1 : dosage de Jean-Mi gardé tel quel.
+- Lot 10 : **un seul profil de départ** en 1989 (Christine, docs/39) ; mariage selon l'âge et le profil (règle du game designer) ; PEP tranché par le game designer ; reste ouvert : Jean-Mi et le studio à crédit 1990-1993 (docs/39 §15).
+- Reports du lot 08b vers le lot 10 : étape « liquidé » de Jean-Mi jamais notifiée (0/320 parties mesurées, préexistant ; à vérifier quand `Quartier` est repris pour 1989-1993, sans changer le dosage).
+
 ---
 
 ## 1. Audit technique (inchangé depuis la v1, sauf notes « v2 »)
