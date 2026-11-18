@@ -40,6 +40,7 @@ var _foyer: ModaleFoyer
 var _projet: ModaleProjet
 var _gazette: ModaleGazette
 var _titres: ModaleTitres
+var _intro: ModaleIntro
 var dernier_bilan: Dictionary = {}   # bilan de la dernière fin de partie (Partie.partie_finie), lu par l'écran de fin
 
 
@@ -55,6 +56,7 @@ func _init() -> void:
 	_projet = ModaleProjet.new(self)
 	_gazette = ModaleGazette.new(self)
 	_titres = ModaleTitres.new(self)
+	_intro = ModaleIntro.new(self)
 
 
 func _ready() -> void:
@@ -223,6 +225,15 @@ func etat_carte() -> ModaleCarte:
 ## Relevé de décembre ouvert depuis sa notification (13 §3.4) : les 3 piles avec les vrais chiffres du joueur.
 func releve(n: Dictionary, a: int) -> void:
 	await _releve_fin.releve(n, a)
+
+
+## Pop-up de début de nouvelle partie (texte : data/intro.json). Émet choix_fait("intro", "commencer").
+func intro(e: EtatPartie) -> void:
+	await _intro.ouvrir(e)
+
+
+func etat_intro() -> ModaleIntro:
+	return _intro
 
 
 ## Collection des titres d'époque (lecture seule ; Échap, clic extérieur et FERMER la ferment).
@@ -428,6 +439,11 @@ func _process(delta: float) -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	var k := event as InputEventKey
 	if k == null or not k.pressed or k.echo or courant == null:
+		return
+	if genre_courant == "intro":
+		if k.keycode == KEY_1 or k.keycode == KEY_ENTER or k.keycode == KEY_KP_ENTER or k.keycode == KEY_SPACE:
+			fermer("commencer")
+			get_viewport().set_input_as_handled()
 		return
 	if genre_courant == "gazette":
 		if k.keycode == KEY_1 or k.keycode == KEY_ENTER or k.keycode == KEY_KP_ENTER:

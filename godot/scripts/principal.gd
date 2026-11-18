@@ -133,7 +133,10 @@ func _config() -> Dictionary:
 
 
 ## config : partie imposée (tests : graine fixe) ; vide : graine de vie tirée au hasard.
+var _reprise := false   # partie reprise depuis la sauvegarde : pas de pop-up de début
+
 func nouvelle_partie(config := {}) -> void:
+	_reprise = false
 	_max_patr = 0.0
 	pluie_jusqua = -1
 	_ignorer_modales = true
@@ -148,6 +151,7 @@ func reprendre(d: Dictionary) -> bool:
 	pluie_jusqua = -1
 	_ignorer_modales = true
 	var ok := Partie.reprendre(d)
+	_reprise = ok
 	_ignorer_modales = false
 	if ok:
 		_apres_mise_en_place()
@@ -244,6 +248,16 @@ func jouer() -> void:
 	hud.afficher(true)
 	ville.set("interactif", true)
 	Partie.sauvegarde_auto = true
+	# Nouvelle partie (ni reprise ni modale en attente) : « qui vous êtes, quel est l'objectif », temps figé derrière
+	if Reglages.intro_a_montrer() and not _reprise and Partie.etat != null and Partie.etat.m == Partie.etat.m_depart:
+		Partie.bloquee = true
+		modales.intro(Partie.etat)
+		await modales.choix_fait
+		Partie.bloquee = false
+		# Relisible dans l'HISTORIQUE (source maison, déjà lue : pas comptée dans les non-lues)
+		var tx := ModaleIntro.textes(Partie.etat)
+		Partie.etat.historiser_evenement({"source": "maison", "type": "intro", "titre": str(tx["titre_historique"]),
+			"texte": " ".join(PackedStringArray((tx["blocs"] as Array).map(func(b: Dictionary) -> String: return "%s : %s" % [str(b["titre"]).capitalize(), str(b["texte"])])))})
 	Partie.changer_vitesse(int(demo.get("vitesse_depart", 1)))
 	Partie.sauvegarder()
 	Partie.rouvrir_modale()

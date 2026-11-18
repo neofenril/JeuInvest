@@ -1,0 +1,13 @@
+{
+  "_note": "Pop-up de début de nouvelle partie (docs/32_popup_debut.md). Gabarits : {salaire} = salaire mensuel de la partie (salaire_base), {depart} = compte courant de départ (demo.json depart_F.cc), {date} = date de départ. Texte modifiable sans code.",
+  "titre": "{DATE}",
+  "sous_titre": "Votre vie d'épargnant commence",
+  "bouton": "COMMENCER",
+  "titre_historique": "{date} : votre situation",
+  "blocs": [
+    { "titre": "QUI VOUS ÊTES", "texte": "Vous êtes Gérard, 26 ans, technicien. Vous vivez avec Sylvie, sans être mariés. Vous gagnez {salaire} par mois et vous avez {depart} sur votre compte courant." },
+    { "titre": "CE QUI VOUS ATTEND", "texte": "Cinq ans de vie, de 1984 à 1988 : des dépenses de famille, des projets, des surprises. M. Lefranc, votre banquier, vous présentera ses placements. Les marchés auront leurs secousses." },
+    { "titre": "VOTRE OBJECTIF", "texte": "Faire mieux que Tata Livret, qui laisse tout sur son Livret A. Mener vos projets à bien. Et finir avec un titre : lequel méritez-vous ?" },
+    { "titre": "COMMENT JOUER", "texte": "Le temps passe seul. COURRIER (touche N) avance jusqu'au prochain événement ; à vous de décider quand on vous le demande." }
+  ]
+}

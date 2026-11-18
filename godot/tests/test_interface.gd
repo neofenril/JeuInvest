@@ -873,11 +873,30 @@ func _verifier_confirmation_saut() -> void:
 	_verifier("Conclusion d'une carte ou d'un projet : ligne de conséquence 0,8 s au plus", ModaleCarte.DUREE_CONSEQUENCE <= 0.8, str(ModaleCarte.DUREE_CONSEQUENCE))
 
 
+## Pop-up de début de partie : jamais en test (option --intro absente) ; ouverte à la main, elle se ferme par Entrée.
+func _verifier_intro() -> void:
+	_verifier("Intro : jamais affichée en test sans l'option --intro", not Reglages.intro_a_montrer())
+	var recu: Array = []
+	var cb := func(g: String, id: String) -> void: recu.append("%s:%s" % [g, id])
+	modales.choix_fait.connect(cb)
+	var ei := EtatPartie.new()
+	ei.demarrer(Donnees.config_demo(1))
+	var tx := ModaleIntro.textes(ei)
+	_verifier("Intro : gabarits {salaire} et {depart} remplis depuis les données (" + str(tx["blocs"][0]["texte"]).substr(0, 0) + "salaire 6 790 F, départ 11 000 F)", str(tx["blocs"][0]["texte"]).contains(Format.montant(ei.salaire_base, ei.ab_courant())) and str(tx["blocs"][0]["texte"]).contains(Format.montant(ei.joueur.cc, ei.ab_courant())) and not str(tx["blocs"][0]["texte"]).contains("{"), str(tx["blocs"][0]["texte"]))
+	modales.intro(ei)
+	var ok := await _attendre_genre("intro")
+	await _touche(KEY_ENTER)
+	await get_tree().create_timer(0.5).timeout
+	modales.choix_fait.disconnect(cb)
+	_verifier("Intro : la fenêtre s'ouvre (%d blocs) et Entrée émet commencer" % int(modales.etat_intro().infos.get("blocs", 0)), ok and recu == ["intro:commencer"] and int(modales.etat_intro().infos.get("blocs", 0)) >= 3, str(recu))
+
+
 ## Historique : chaque filtre, puis 5 entrées relues comme Modales.relire_historique.
 func _verifier_historique(e: EtatPartie, nom: String) -> void:
 	var filtres_ok := true
 	var detail := ""
 	_verifier_confirmation_saut()
+	await _verifier_intro()
 	for f in ["", "maison", "banque", "media"]:
 		modales.historique(e, f, 0)
 		var ok := await _attendre_genre("historique")
