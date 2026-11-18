@@ -45,3 +45,5 @@ Source verbatim : `docs/10_retours_joueur.md`, section « 2026-11-18 (décisions
 - **Lot 10 : un seul profil de départ** (le profil n'est pas nommé par le joueur ; proposition du game designer retenue par défaut : Christine, docs/39). **Carte de passage de chapitre : version A** (docs/40, sans bilan d'étape). **PEP : le game designer tranche** (fiche jouable ou simple message). Reste ouvert : Jean-Mi et le studio à crédit 1990-1993 (docs/39 §15).
 
 - **Jean-Mi, studio, privatisation, immobilier (2026-11-18)** : pas de studio à crédit pour Jean-Mi tant que le joueur ne peut pas lui-même investir dans l'immobilier ; **pas de leçon sur la privatisation** (trop poussé pour un joueur débutant ou intermédiaire : rester simple) ; **garder la notion d'immobilier comme diversification** (ne pas tout mettre dans le même panier : bourse, obligations/OAT, court / moyen / long terme, immobilier) et étudier les **SCPI** (date de naissance en France à établir par le banquier). Mission confiée au banquier (docs/41) puis au game designer.
+
+- **Export** : pas d'export 0.6.3 ; prochain export (0.7) **à la fin du lot 10** (chapitre 1989-1993), avec la série de captures complète.
