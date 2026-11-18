@@ -66,7 +66,7 @@ Légende : **A** = aléatoire simple (effet `cout` / `gain`, JSON seul) ; **C** 
 | 16 | Le grand jour (mariage) | N | 12 % | couple non marié, 25-40 ans, ≥ 2 ans de vie commune ; jamais dans les 9 mois d'une naissance | fête au choix 0,3 / 1,8 M (docs/39 §2.1) ; règles des époux pour la succession | ■ | mariage et transmission |
 | 17 | Le départ d'un aîné (tante, oncle, parrain, sans enfant) | N | 1 garanti par tranche de 10 ans joués, fenêtre (§4) | un aîné vivant dans la famille élargie (§3.4) | héritage 6 à 9 M : **assurance-vie** (60 %) ou **succession** (40 %), tirés ; hypothèse barrée inverse (rendu d'Odette) | ■ | assurance-vie hors succession, parenté et droits |
 | 18 | Le départ d'un parent | N | selon l'âge du parent : 1 % < 65 ans, 2 % 65-74, 5 % 75-84, 12 % ≥ 85 | parent vivant ; au plus 1 par chapitre | frais d'obsèques − 0,5 M (partagés) ; héritage en ligne directe 3 à 8 M, **sous l'abattement : 0 droit** | ■ | ligne directe, abattement ; l'assurance-vie n'y change rien sous l'abattement (règle d'honnêteté de docs/38) |
-| 19 | La séparation | C | 1,5 % | couple depuis ≥ 3 ans, jamais dans les 12 mois d'une naissance ou d'un mariage, au plus 1 par partie | déménagement − 2 M ; mariés : partage par moitié de ce qui a été acquis ensemble ; non mariés : chacun garde les placements à son nom, le compte joint est coupé en deux ; dépenses du foyer recalculées ; bascule en R-SEUL (proche = un ami) | ■ | régime matrimonial, au nom de qui sont les placements, budget seul |
+| 19 | La séparation | C | 1,5 % (+ couplage carrière, §2 bis, plafond 3 %) | couple depuis ≥ 3 ans, jamais dans les 12 mois d'une naissance ou d'un mariage, au plus 1 par partie | déménagement − 2 M ; mariés : partage par moitié de ce qui a été acquis ensemble ; non mariés : chacun garde les placements à son nom, le compte joint est coupé en deux ; dépenses du foyer recalculées ; bascule en R-SEUL (proche = un ami) | ■ | régime matrimonial, au nom de qui sont les placements, budget seul |
 | 20 | Les études de l'aîné | N | à 18 ans d'un enfant | enfant de 18 ans | − 0,4 M / mois pendant 3 ans, ou bourse (tirée 30 %) | ○ puis ■ à l'entrée | épargne à horizon connu |
 | 21 | Le coup dur pendant la tempête | N | 1 par vitrine de marché | une vitrine (krach, Golfe…) dans le chapitre | − 0,8 à 1,2 M, type tiré parmi 1, 5, 6, 7 ; **1 à 3 mois** après la vitrine | ■ | la précaution évite de vendre au plus bas |
 
@@ -74,9 +74,23 @@ Exclus volontairement : gain au jeu (loto, tiercé : pas de récompense au hasar
 
 **Liaison des choix (sans tricher)** : les types C sont **pré-tirés** au départ (un nombre aléatoire par mois et par type, sur leur propre flux) ; le choix du joueur décide seulement si la condition est remplie. Un choix ne rebat donc jamais les autres événements.
 
-**Séparation** : **indépendante de l'humeur** de Sylvie (sinon une épargne serrée deviendrait une faute punie par une rupture, contraire à « épargner n'est pas une faute »). Texte sobre : « Sylvie et vous avez décidé de vous séparer. Chacun reprend sa route ; reste à partager ce que vous avez construit. » Pas d'humour, pas de voisin.
+**Séparation** : couplée **faiblement** à l'humeur, et **seulement par la carrière** (décision du joueur du 18/11, §2 bis ; remplace « indépendante de l'humeur »). Texte sobre : « Sylvie et vous avez décidé de vous séparer. Chacun reprend sa route ; reste à partager ce que vous avez construit. » Pas d'humour, pas de voisin.
 
 **Décès** : une phrase, pas de cause, pas d'humour, pas de passage de voisin le même mois. « Tante Josiane s'est éteinte en mars, à 81 ans. Elle vous avait désigné sur son assurance-vie. » Puis la carte chiffrée du banquier. Le nom « Josiane » est aussi l'épouse de Michel (docs/39 §3) : à retirer de la liste des aînés quand le profil est Michel.
+
+---
+
+## 2 bis. Séparation et humeur : couplage faible par la carrière (décision du joueur, 18/11)
+
+Le joueur veut que l'humeur du conjoint pèse **légèrement** sur la séparation (ex. horaires plus lourds → humeur en baisse → risque un peu plus haut). Le client refuse toute nouvelle jauge (docs/44). Règle :
+
+1. **Aucune jauge nouvelle.** Chaque variation d'humeur porte déjà une cause (« dernière cause ») ; on étiquette celles qui viennent des **cartes de carrière** (K4, K5 et suivantes) : `cause: "carriere"`. Les cartes de dépense / épargne, C00, les projets et l'usure de janvier n'ont jamais cette étiquette.
+2. **Probabilité annuelle** (tirée chaque janvier, nombre pré-tiré sur le flux `conditionnels`) : `p = 1,5 % + 0,75 point par année « tendue »`, **plafond 3 %**. Une année est « tendue » si, au 31 décembre, Sylvie est **fâchée** et qu'un choix de carrière à horaires lourds est **actif**. Un choix « plus de temps » (4/5e…) actif retire 0,5 point (plancher 1 %). Les années tendues s'effacent une à une dès que la situation se détend (pas de dette éternelle).
+3. **N'épargne jamais contre le joueur** : une fâcherie due à des refus de dépense (Palavas, luge au parc…) ne compte pas, car le choix de carrière lourd est requis. L'usure positive de janvier (D15) reste telle quelle et n'entre pas dans le calcul. La fourmi garde la même probabilité que la cigale à carrière égale.
+4. **Lisible** : la carte de carrière l'écrit en clair sous le choix lourd : « Sylvie vous verra moins. Le couple peut en souffrir. » ; la bulle d'humeur liée cite la cause (« Encore rentré à 21 h. ») ; la carte de séparation rappelle sobrement « Les soirées tardives avaient pesé. » si au moins une année tendue, sinon aucune cause. Jamais de pourcentage affiché, jamais de compte à rebours.
+5. **Honnête et sobre** : les conséquences financières viennent du banquier (régime matrimonial, partage du commun, contrats au nom de chacun, deux loyers, pension s'il y a des enfants) ; aucun reproche, aucun humour. Effet plafonné : sur 5 ans, ≈ 5 % (plus de temps) / ≈ 7 % (base) / ≈ 14 % au pire (5 années tendues), jamais une quasi-certitude.
+6. **Tests et équité** : R-MIROIR inchangée (les voisins ont les mêmes choix de carrière, donc la même séparation, avec un partage proportionnel à leur patrimoine) : l'écart face à Tata Livret ne bouge pas. Tests : (a) politiques « épargner » / « dépenser » sur 40 graines, carrière neutre → **mêmes dates de séparation** ; (b) probabilité jamais > 3 % ; (c) sur 1 000 graines, fréquence mesurée conforme à la formule ; (d) sauvegarde des années tendues.
+7. **Lot 10** : la séparation n'y est pas (elle exige R-SEUL) ; le pilote K4 / K5 pose seulement l'étiquette `cause: "carriere"` et le compteur d'années tendues (sauvegardé, sans effet), pour brancher la séparation plus tard sans changer les parties en cours.
 
 ---
 
@@ -168,7 +182,7 @@ Après le lot 10 : conditionnels 11 à 14 (assurance annulation dans les cartes 
 
 ## 7. Points à confirmer
 
-- **Joueur / client** : séparation dans le jeu (oui, sobre, ≤ 1 par partie, indépendante de l'humeur) ; mariage de Gérard à 70 % (et non garanti) ; jumeaux 25 % gardés pour la naissance ancrée ; décès d'un parent admis (sobre).
+- **Joueur / client** : séparation dans le jeu (oui, sobre, ≤ 1 par partie, couplage faible par la carrière seulement, §2 bis ; K4 / K5 au lot 10, retraite et PER repoussés) ; mariage de Gérard à 70 % (et non garanti) ; jumeaux 25 % gardés pour la naissance ancrée ; décès d'un parent admis (sobre).
 - **Banquier** : chiffres AV / succession par lien et par année, assurance annulation et assistance (existence et prix en 1984-1993), indemnités de chômage partiel, franchises.
 - **Boursier** : périodes de récession par décennie (probabilité du chômage partiel).
 - **Chef de projet** : découpage (lot 10 = §6) et carte des fichiers (`etat_partie.gd`, `banquier.gd`, `cadence.gd`, données du chapitre, tests).
