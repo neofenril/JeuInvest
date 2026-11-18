@@ -1,7 +1,7 @@
 # Base de connaissances du game designer
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `docs/10_retours_joueur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-11-13 (G6, docs/28 titres et sauvegarde).
+> Dernière mise à jour : 2026-11-18 (docs/39, chapitre 1989-1993, G-R1/G-R2).
 
 ## 1. Faits vérifiés sur le jeu (démo V2, 2026-10-28)
 
@@ -34,6 +34,9 @@ Spectateur ; tunnels vides ; ≈ 8 décisions dont 1 forte ; résultat à ±4 % 
 - **Doc 23 (12/11)** : répliques de Sylvie, usure de l'humeur positive seulement (validée), coup dur garde sa pause. **Doc 27 (13/11)** : textes des projets et de la rue, Jean-Mi visible (★ persistantes, étape), fiche de retour 0.5.
 - **Doc 28 (13/11, G6)** : titres de fin. Ordre corrigé (neveu 7 avant écureuil 8, sinon le titre 8 est inatteignable) ; seuils cartes = ≥ 5 et écart ≥ 3 (et non 6 / 7) ; nature par choix (C06, C07 neutres ; C14a épargne, C14b neutre ; C00b, C10b SPA épargne) ; abandon « évitable » seulement ; part risquée = 0 si instantané exemple ; étoiles retirées (étoile Cousin Indice contraire à CA-3.1) ; collection « ??? » sans indice ; SV : `toujours` = marche, D08, projet, C06 (pas la gazette), espacement de 6 mois compté depuis toute proposition.
 
+- **Doc 35 (18/11)** : gabarit de chapitre, 13 archétypes de cartes, R-SEUL, profils Martine / Bernard (1984), chapitre 2019-2023 (devenu secondaire : le joueur a choisi 1989-1993 en 2e).
+- **Doc 39 (18/11, G6)** : chapitre 1989-1993 en continuité. Passage de chapitre en 01/1989 (1 carte : titre 1984-88 + ce qui change, CONTINUER, pas de bilan d'étape) ; Gérard marié en 06/1990 (choix de la fête), promotion 03/1990 si C07 pris (retour à 5 ans) ; vitrine Golfe 09/1990 (baisse lente, « un an après » à 2 cas selon le cours réel), SME 09/1992 en secondaire ; Jean-Mi saison 2 = studio à crédit à taux révisable (moteur de la Porsche réutilisé, `bien`, `loyer`, `taux_revise`), même dosage ; profils 1989 Sophie (célibataire, Karine), Christine, Michel (52 ans, préretraite) ; arnaque = diamants ; R-DÉPART (départ à égalité avec Tata, présentations en file, options de projet à ≥ 12 mois, hors record) ; 6 étoiles par chapitre (« — » si non concernée) ; R-FIN (jamais avant 70 ans, table de mortalité, scène du crépuscule, note au conditionnel avec hypothèse barrée ; Gérard jamais concerné avant 2028) ; double record (chapitre de départ mesuré à sa fin / total si dernière année atteinte). G-R1 validé (escargots 20 % facultatif, alerte golden_boy ≤ 20 %) ; G-R2 : apprenti « Aucun style marqué cette fois : rejouez pour tenter une autre voie. »
+
 ## 3 bis. Faits vérifiés dans le code (13/11, lot/05-logique)
 - `Foyer.humeur_visible` : **0 = contente, 1 = neutre, 2 = fâchée** (piège : lot_07 D2 l'avait inversé).
 - `foyer.json` : `sens` vaut `depense` même à 0 F, inutilisable pour épargne / dépense. Prix réels ≠ docs/15 (C02 5 500, C07 2 500, C09 b 600, C04 2 200 / 3 800).
@@ -45,6 +48,8 @@ Spectateur ; tunnels vides ; ≈ 8 décisions dont 1 forte ; résultat à ±4 % 
 - (29/10) Joueur : on fait P1, P2, P3, P4, P5, P6, P9, P10 ; plus tard P7, P11, P12, P13 ; **P8 abandonnée**. Réserves du client appliquées par défaut (humeur en 3 états, 8-10 cartes dans les tunnels, Jean-Mi derrière Tata, P5 = rang + titre sans étoiles, P10 réduite), à confirmer par le joueur sur la démo.
 - Client (14 §6) : un seul projet à la fois, 2 par démo ; Tata reste le comparateur permanent ; Cousin Indice hors démo ; pas d'étoiles ; budget 20 min max mesuré, sinon retirer des cartes.
 - En attente (doc 15 §12) : durée sans bouton (garder ou retirer 2 cartes), classement permanent ou non, collection de titres sur l'écran titre. À confirmer par le client : R-MIROIR, apport du T3 fin 1988 sans crédit, barre « Renforcé » dans « un an après ».
+
+- (18/11) Joueur, extension des années (`docs/lots/decisions_extension_annees.md`, prime sur docs/35) : chapitres de 5 ans de proche en proche, 2e = 1989-1993 ; partie continue 1984 → 1993, marché continu, **un seul bilan final** ; un titre par chapitre traversé ; double record ; Gérard vieillit ; profils par 5 ans dont célibataire ; départ à une année précise ; fin = mort (âge, sobre, note assurance-vie / conjoint / enfants) ou dernière année ; **étoiles** de bonnes pratiques (revient sur le « pas d'étoiles » du client, voulu par le joueur) ; Jean-Mi : dosage inchangé ; tabac et casino suspendus (question juridique) ; décor 1984-1993 unique ; 1977-1983 = un chapitre de 7 ans.
 
 ## 5. Principes retenus pour ce projet
 

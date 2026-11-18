@@ -3,7 +3,7 @@
 > À lire au début de chaque mission et à mettre à jour à la fin. C'est une synthèse opérationnelle : pour le détail, voir `docs/01_enveloppes_france.md` (« 01 §x »).
 > Ordre de priorité des sources : `docs/sources/` (documents de l'utilisateur) > `03_cahier_des_charges.md` (référence produit) > 01 et 02 > recherche web.
 > Certitude : **A** vérifié (texte officiel ou plusieurs sources), **B** probable (une source fiable, ±1 an), **C** reconstitué (ordre de grandeur).
-> Dernière mise à jour : 2026-10-27.
+> Dernière mise à jour : 2026-11-18 (docs/34 et docs/38 : extension des années ; voir « Faits ajoutés » en §5).
 
 ---
 
@@ -290,6 +290,16 @@ Priorité si le client demande une fiabilisation : d'abord les données **utilis
 - Tous les autres prix de détail (magnétoscope, Club Med, Super 5, caméscope, T3...) : C, introuvables en ligne ; recoupement par ordres de grandeur. À corriger si le joueur ou une archive (L'Argus 1986, catalogues) les contredit.
 - Recommandations : magnétoscope 5 500, poussette 2 200/3 800, cours du soir 2 500 (CNAM modique), location caméscope 600, Grèce 16 000. Projets exprimés en « apport comptant » (pas de crédit simulé). Crédit auto 1987 ≈ 12-14 % (C).
 - Vente automatique : ordre SICAV, actions, emprunt, AV, PEL accepté, avec réserve (emprunt d'État vendu sans frais dans le jeu serait moins coûteux que les actions).
+
+### Faits ajoutés le 2026-11-18 (docs/38, chapitre 1989-1993)
+- Livret A 4,5 % de 05/1986 à 02/1996 ; plafonds 90 000 F (01/05/1990, B) et 100 000 F (30/10/1991). PEL 4,62 % hors prime / 6 % prime comprise pour les ouvertures du 16/05/1986 au 06/02/1994 (A) ; après : 3,84 % / 5,25 %.
+- PEP : art. 109 loi 89-935, 01/01/1990 -> 24/09/2003 (A) ; exonération IR après 8 ans, prime 25 % <= 1 500 F pour non imposables ; plafond 600 000 F en 1997 (initial non retrouvé, C). PEA : loi 92-666 du 16/07/1992, 600 000 F, 5 ans (A).
+- AFER net : 9,62 / 9,22 / 9,24 / 9,27 / 9,30 (1989-1993), 7,72 (1994) (A). AV ouverte depuis 01/01/1990 : 35 % (< 4 ans), 15 % (4-8 ans), 0 % après 8 ans (A/B).
+- CSG 1,1 % (02/1991 salaires), 2,4 % (07/1993) ; patrimoine : revenus 1992 (B). Abattements succession 01/01/1992 : 300 000 F (enfant), 330 000 F (conjoint) (A). Frère/soeur 100 000 F sous conditions depuis 1984 (A). Abattement résiduel 10 000 F art. 788 II (A).
+- Emprunt Balladur : 40 Md F demandés, ~110 Md F souscrits (1,4 M épargnants), 6 %, 4 ans, souscription 25/06-10/07/1993 (A/B) ; fiscalité non vérifiée. BNP 5-12/10/1993 à 240 F ; Rhône-Poulenc 16-23/11/1993 à 135 F (43,4 %) (A).
+- Courtier à distance : rien de prouvé avant 1994-95 (Fimatex 1995, Bourse Direct 1996 ou 2000) ; en 1989-93 un seul canal réel (réseau). Deux canaux à ouvrir à partir de 1996.
+- Salaires INSEE (série révisée) : 2023 = 2 659 (l'édition d'oct. 2024 disait 2 735), 2024 = 2 733, 2025 = 2 797. CORRECTION : mes valeurs 2023 = 2 735 (docs/34) sont à remplacer par 2 660 ; ligne 2025 = smn 2 800 (et non 2 850-2 900).
+- Décisions du joueur me concernant : deux canaux de frais, PER comme notion, M. Lefranc continue (proposition), tabac/casino suspendus (juridique), mort sobre avec note de transmission.
 
 ### Erreurs à ne pas refaire
 - La recherche web ne donne pas de prix de détail français des années 1980 : ne pas prétendre à A pour ces prix.
