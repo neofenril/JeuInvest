@@ -12,7 +12,7 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
 	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
-	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue", "fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre", "titre_record", "titre_sans_records", "titres_collection"]
+	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue", "fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre", "titre_record", "titre_sans_records", "titres_collection", "intro"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -68,6 +68,8 @@ func jouer(etape: String) -> void:
 			await _fin_titre(etape, jeu)
 		"titre_record", "titre_sans_records", "titres_collection":
 			await _titre_palmares(etape, jeu)
+		"intro":
+			await _intro(jeu)
 		_:
 			await _courrier(etape, jeu)
 
@@ -1057,6 +1059,39 @@ func _titre_palmares(etape: String, jeu: Node) -> void:
 	else:
 		_mesurer(etape, titre)
 	Records.effacer(chemin)
+
+## Pop-up de début de nouvelle partie : blocs de data/intro.json, bouton COMMENCER, texte lisible, temps figé.
+func _intro(jeu: Node) -> void:
+	sc.partir_de_la_rue("intro")
+	var modales: Modales = jeu.modales
+	Partie.bloquee = true
+	modales.intro(Partie.etat)
+	await sc.attendre_que(func() -> bool: return modales.genre_courant == "intro" and modales.courant != null, 4.0)
+	await sc.delai(0.8)
+	var c: Control = modales.courant
+	var vp := Rect2(Vector2.ZERO, sc.get_viewport().get_visible_rect().size).grow(1.0)
+	var go := c.find_child("Commencer", true, false) as Button
+	var ech := sc.get_viewport().get_final_transform().get_scale().x
+	var min_chiffres := 999
+	var min_texte := 999
+	for lb: Node in c.find_children("*", "Label", true, false):
+		var fs := (lb as Label).get_theme_font_size("font_size")
+		min_texte = mini(min_texte, fs)
+		if Style.a_chiffre((lb as Label).text):
+			min_chiffres = mini(min_chiffres, fs)
+	var d := Donnees.charger("intro")
+	var ok_bouton := go != null and go.get_global_rect().size.y * ech >= 48.0 and vp.encloses(go.get_global_rect())
+	print("UI intro blocs=%d/%d bouton_ok=%s panneau_dans_ecran=%s temps_fige=%s texte_min=%d chiffres_min=%d%s" % [int(modales.etat_intro().infos.get("blocs", 0)), (d.get("blocs", []) as Array).size(),
+		"oui" if ok_bouton else "non incoherences=1", "oui" if vp.encloses(c.get_global_rect()) else "non incoherences=1", "oui" if Partie.bloquee else "non", min_texte, min_chiffres,
+		"" if min_chiffres >= 24 else " incoherences=1"])
+	_mesurer("intro", c)
+	await RenderingServer.frame_post_draw
+	if OS.has_feature("editor"):
+		sc.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://captures/l8_intro_vue%s.png" % ("_tel" if Ecran.compact() else "")))
+	await sc.touche(KEY_ENTER)
+	await sc.delai(0.6)
+	print("UI intro entree_ferme=%s" % ("oui" if modales.genre_courant == "" else "non incoherences=1"))
+	Partie.bloquee = false
 
 ## Historique : onglet LA RUE avec les vraies notifications de la rue (partie menée jusqu'à fin 1986), relecture de la plus longue.
 func _historique_rue(jeu: Node) -> void:

@@ -67,3 +67,13 @@ static func ne_plus_confirmer(nom: String) -> void:
 	cfg.load(PREFERENCES)
 	cfg.set_value("confirmations", nom, true)
 	cfg.save(PREFERENCES)
+
+
+## Pop-up de début de nouvelle partie : toujours en jeu normal ; en capture et en test (sans écran), seulement avec l'option --intro.
+static var intro_force := false   # tests : simule le jeu normal
+static func intro_a_montrer() -> bool:
+	if intro_force:
+		return true
+	if not _preferences_actives():
+		return "--intro" in OS.get_cmdline_user_args()
+	return true
