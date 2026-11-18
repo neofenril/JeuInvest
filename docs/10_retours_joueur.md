@@ -211,3 +211,10 @@ Verbatim du joueur :
 ## 2026-11-18 (pilote carrière, temps libre, humeur et divorce, retraite/PER, verbatim)
 
 > J'accepte un pilote de deux cartes dans le lot 10 là pour ce qui est des options de métier et de promotion, etc. Le temps libre, il se traduit seulement par l'humeur, oui, mais j'aimerais bien que l'humeur, elle influe quand même un petit peu, peut-être potentiellement sur l'événement de divorce, par exemple, si au final on est sur un travail qui amène plus d'horaires et peut-être des choses comme ça, voilà, si l'humeur de Sylvie est pas satisfaisante, ça peut augmenter le taux de divorce potentiel, la probabilité. Je suis d'accord pour repousser la retraite et le PER. De toute façon, ça arrivera plus tard, en fin de carrière, quand on aura une plage de temps de jeu plus importante.
+
+
+---
+
+## 2026-11-18 (événements de vie : divorce, mariage, jumeaux, décès d'un parent ; 8 réponses carrière, verbatim)
+
+> Pour les 4 décisions, oui, le divorce est accepté. Le mariage de Gérard avec 70% de chance sur le chapitre, donc garantie, c'est bien. Les jumeaux, une naissance sur 4, c'est peut-être un peu beaucoup, peut-être mettre une sur 6. Le décès d'un parent, oui, c'est admis aussi. Parce que ça peut être l'occasion de sensibiliser les utilisateurs à l'importance de gérer le patrimoine de ses parents, de leur vivant, et de montrer les difficultés une fois qu'ils sont plus là. Pour ce qui est des 8 réponses sur la carrière, celle par défaut du chef de projet était bonne, donc je les valide aussi.
