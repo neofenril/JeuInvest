@@ -600,7 +600,7 @@ func _tests_fleches(e: EtatPartie, chemin: String) -> void:
 	verifier("F1-L : aucune flèche « → » dans l'historique (titres, résumés, tickets, textes)", avec_fleche.is_empty(), str(avec_fleche))
 	var fichiers_ok := true
 	var detail := ""
-	for f in ["res://data/banque.json", "res://data/demo.json"]:
+	for f in ["res://data/chapitres/1984/banque.json", "res://data/chapitres/1984/chapitre.json"]:
 		var t := FileAccess.get_file_as_string(f)
 		if t == "" or t.contains("→") or t.contains("›"):
 			fichiers_ok = false
@@ -615,7 +615,7 @@ func _tests_fleches(e: EtatPartie, chemin: String) -> void:
 	verifier("F1-L : jointure des tickets « a : b », sans « : » doublé",
 		Banquier.joindre_ticket(["12 600 F", "+ 945 F par an"]) == "12 600 F : + 945 F par an"
 		and Banquier.joindre_ticket(["300 F par mois", "pendant 4 ans : 19 400 F"]) == "300 F par mois pendant 4 ans : 19 400 F")
-	var b := FileAccess.get_file_as_string("res://data/banque.json")
+	var b := FileAccess.get_file_as_string("res://data/chapitres/1984/banque.json")
 	var rx_unite := RegEx.create_from_string("[0-9}] (%|F\\b)")
 	var rx_mille := RegEx.create_from_string("[0-9] [0-9]{3}(?![0-9])")
 	var n_unite := rx_unite.search_all(b).size()

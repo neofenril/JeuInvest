@@ -12,10 +12,14 @@ extends RefCounted
 
 const EPS := 0.005
 const VERSION_ETAT := 3          # 2 : historique, versements automatiques ; 3 (lot 02) : flux du mois, cadence V3, migration douce
-const HISTORIQUE_MAX := 600
+const HISTORIQUE_MAX := 600   # limite de l'historique conservé (à revoir au lot 10 : une partie sur plusieurs chapitres en produit davantage)
+
+## Émis quand le mois courant entre dans un autre chapitre (lot 09, D2) ; jamais avec les données réelles du lot 09.
+signal chapitre_change(ancien: String, nouveau: String)
 
 # --- Configuration ---
 var id_periode := "P1"
+var chapitre := ""                # chapitre actif (recalculé à chaque entrée de mois, jamais sauvegardé) ; config["chapitre"] = chapitre de départ
 var profil := "jeune"
 var graine_vie := 1
 var sans_vie := false
@@ -89,7 +93,7 @@ func demarrer(config: Dictionary = {}) -> Dictionary:
 	temoins = {"matelas": Portefeuille.new(), "livret": Portefeuille.new(), "indice": Portefeuille.new(), "jeanmi": Portefeuille.new()}
 	for k in ["j", "mis", "matelas", "livret", "indice", "jeanmi"]:
 		var serie := []
-		serie.resize(180)
+		serie.resize(mk.nb_mois())
 		serie.fill(0.0)
 		hist[k] = serie
 	stats = {"ordres": 0, "frais": 0.0, "impots": 0.0, "agios": 0.0, "paniques": [], "ventes_forcees": [],
@@ -134,13 +138,20 @@ func _configurer(config: Dictionary) -> void:
 	naissance_scriptee = config.get("naissance", {})
 	mk = Marche.pour_periode(id_periode)
 	per = mk.periode
+	var ab_debut_jeu := Dates.lire(config["debut"]) if config.has("debut") else mk.ab_debut
+	var chap := Donnees.chapitre_de(ab_debut_jeu)
+	chapitre = chap if chap != "" else str(config.get("chapitre", Donnees.index().get("chapitre_defaut", "")))
+	Donnees.regler_chapitre(chapitre)
 	regles = Donnees.regles()
 	sal = Donnees.salaires()
 	vie = Donnees.vie()
 	m_depart = Dates.lire(config["debut"]) - mk.ab_debut if config.has("debut") else 0
-	m_fin = Dates.lire(config["fin"]) - mk.ab_debut if config.has("fin") else 179
-	m_depart = clampi(m_depart, 0, 179)
-	m_fin = clampi(m_fin, m_depart, 179)
+	m_fin = Dates.lire(config["fin"]) - mk.ab_debut if config.has("fin") else mk.nb_mois() - 1
+	var m_max := mk.nb_mois() - 1
+	if config.has("chapitre") and Donnees.derniere_annee() > 0:   # partie par chapitres : fin à la dernière année implémentée (D3)
+		m_fin = mini(m_fin, Dates.ab(Donnees.derniere_annee(), 12) - mk.ab_debut)
+	m_depart = clampi(m_depart, 0, m_max)
+	m_fin = clampi(m_fin, m_depart, m_max)
 
 
 func banquier_actif() -> bool:
@@ -774,6 +785,8 @@ func _entrer_mois(initial: bool) -> Dictionary:
 	var y := Dates.annee(a)
 	var res := {"notifs": [], "modale": {}, "fin": "", "m": m}
 	var notifs: Array = res["notifs"]
+	if not initial:
+		_suivre_chapitre(true)
 
 	# 2-3. Salaire (indexé en janvier) et dépenses, pour le joueur et les 3 témoins
 	if not initial and Dates.mois(a) == 1:
@@ -1035,7 +1048,7 @@ func _tirer_calendrier() -> Array:
 	if not krachs.is_empty() and types.has("voiture"):
 		var ev: Dictionary = krachs[int(rng.u() * krachs.size())]
 		var bornes: Array = types["voiture"]["coutM"]
-		cal.append({"m": mini(179, Dates.lire(ev["d"]) - mk.ab_debut + 1), "type": "voiture",
+		cal.append({"m": mini(mk.nb_mois() - 1, Dates.lire(ev["d"]) - mk.ab_debut + 1), "type": "voiture",
 			"M": lerpf(float(bornes[0]), float(bornes[1]), rng.u()), "force": true})
 	cal = _espacer_repetitions(cal)
 	# Tranche de jeu : seuls les mois après le premier mois joué comptent
@@ -2028,6 +2041,23 @@ static func depuis_dict(d: Dictionary) -> EtatPartie:
 	return e
 
 
+## Le chapitre actif est celui qui contient le mois courant (D2). S'il change : données du nouveau chapitre, puis signal.
+## Les modules (Foyer, Projets, Quartier, Banquier, Krach, Titres) ne reprennent pas encore leur état à travers une bascule : lot 10.
+func _suivre_chapitre(emettre: bool) -> void:
+	var ch := Donnees.chapitre_de(ab_courant())
+	if ch == "":
+		ch = chapitre
+	if ch != chapitre:
+		var ancien := chapitre
+		chapitre = ch
+		Donnees.regler_chapitre(ch)
+		vie = Donnees.vie()
+		if emettre:
+			chapitre_change.emit(ancien, ch)
+	else:
+		Donnees.regler_chapitre(chapitre)
+
+
 ## Après une migration : écarte les références devenues incohérentes (événement de vie absent ou pas encore
 ## déclenché, présentation « en file » qui n'y est plus), pour que la partie aille jusqu'au bout.
 func _reparer() -> void:
@@ -2057,3 +2087,4 @@ func _reparer() -> void:
 			if not present:
 				en_file.erase(id)
 	m = clampi(m, m_depart, m_fin)
+	_suivre_chapitre(false)   # D7 : le chapitre actif est recalculé depuis la date à la reprise

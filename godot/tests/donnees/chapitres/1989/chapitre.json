@@ -1,0 +1,12 @@
+{
+  "id": "1989",
+  "_note": "Jeu d'essai (lot 09-L) : chapitre « 1989 » factice. Les autres fichiers sont des copies de data/chapitres/1984/.",
+  "config": { "periode": "P1", "profil": "technicien", "debut": "1989-01", "fin": "1993-12", "banquier": false, "naissances_aleatoires": false },
+  "graine_test": 11,
+  "depart_F": { "cc": 11000, "livret": 0 },
+  "vitesse_depart": 1,
+  "naissance": { "d": "1985-04", "jumeaux_proba": 0.25 },
+  "banquier": { "nom": "M. ESSAI-1989" },
+  "journal": { "nom": "LA GAZETTE", "prix": "4,50 F", "bandeau": "SPECIAL" },
+  "titre": { "accroche": "Essai 1989", "sous_titre": "Chapitre d'essai" }
+}

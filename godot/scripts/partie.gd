@@ -16,6 +16,7 @@ signal vitesse_changee(vitesse: int)
 signal partie_finie(bilan: Dictionary)
 signal argent_change                        # après un ordre du joueur (achat, vente, livret)
 signal saut_change(actif: bool)             # début et fin du saut « jusqu'au prochain courrier »
+signal chapitre_change(ancien: String, nouveau: String)   # le mois courant entre dans un autre chapitre (lot 09 ; jamais émis avec les données réelles avant le lot 10)
 
 var etat: EtatPartie = null
 var vitesse := 0            # 0 = pause, 1 à 3 = ×1 à ×3
@@ -44,6 +45,7 @@ func nouvelle_partie(config: Dictionary = {}) -> void:
 		config["graine_vie"] = randi_range(1, 2147483646)  # seul tirage non déterministe
 	_finir_saut()
 	etat = EtatPartie.new()
+	etat.chapitre_change.connect(_sur_chapitre_change)
 	id_partie = _nouvel_id_partie(int(config["graine_vie"]))
 	var res := etat.demarrer(config)
 	_progression = 0.0
@@ -61,6 +63,7 @@ func reprendre(d: Dictionary) -> bool:
 		return false
 	_finir_saut()
 	etat = e
+	etat.chapitre_change.connect(_sur_chapitre_change)
 	var p: Dictionary = d.get("partie", {})
 	_progression = clampf(float(p.get("progression", 0.0)), 0.0, 0.999)
 	_vitesse_avant_modale = clampi(int(p.get("vitesse_avant_modale", 1)), 0, 3)
@@ -72,6 +75,11 @@ func reprendre(d: Dictionary) -> bool:
 	partie_commencee.emit()
 	mois_passe.emit({"notifs": [], "modale": {}, "fin": etat.fin, "m": etat.m, "saut": true})
 	return true
+
+
+## Relaie le signal du moteur (EtatPartie.chapitre_change).
+func _sur_chapitre_change(ancien: String, nouveau: String) -> void:
+	chapitre_change.emit(ancien, nouveau)
 
 
 ## Après une reprise : la modale qui attendait un choix est présentée de nouveau.
