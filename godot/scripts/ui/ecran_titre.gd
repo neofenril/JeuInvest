@@ -17,7 +17,7 @@ var l_palmares: Label
 var bouton_titres: Button
 
 
-## Construit l'écran (à appeler avant de l'ajouter à l'arbre). demo : data/demo.json.
+## Construit l'écran (à appeler avant de l'ajouter à l'arbre). demo : data/chapitres/<id>/chapitre.json.
 func construire(demo: Dictionary) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE

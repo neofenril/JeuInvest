@@ -26,12 +26,13 @@ var _ignorer_modales := false     # pendant la mise en place d'une partie : la m
 
 
 func _ready() -> void:
-	demo = Donnees.charger("demo")
+	demo = Donnees.infos_chapitre()
 	modales_init()
 	Partie.mois_passe.connect(_on_mois)
 	Partie.notif_recue.connect(_on_notif)
 	Partie.modale_ouverte.connect(_on_modale)
 	Partie.partie_finie.connect(_on_fin)
+	Partie.chapitre_change.connect(_on_chapitre_change)
 	Partie.vitesse_changee.connect(func(v: int) -> void: hud.maj_vitesse(v))
 	Partie.saut_change.connect(func(_actif: bool) -> void: hud.maj_vitesse(Partie.vitesse))
 	Partie.argent_change.connect(func() -> void: hud.maj(Partie.etat, true, 0.4))
@@ -122,7 +123,7 @@ func modales_init() -> void:
 
 ## Configuration d'une nouvelle partie : graine de vie tirée au hasard (graine fixe pour les captures).
 func _config() -> Dictionary:
-	var c := Donnees.config_demo(-1 if ScenariosCapture.mode_capture() else randi_range(1, 2147483646))
+	var c := Donnees.config_chapitre(str(Donnees.index()["chapitre_defaut"]), -1 if ScenariosCapture.mode_capture() else randi_range(1, 2147483646))
 	# Lot 04 (D9, I5) et lot 05 (D11, P6) : les cartes du foyer et les projets sont allumés pour toute nouvelle partie du
 	# joueur ; éteints en capture (aucune étape existante ne change : `integrale` reste la référence), sauf étape qui les demande.
 	if not ScenariosCapture.mode_capture():
@@ -166,6 +167,7 @@ func _apres_mise_en_place() -> void:
 	hud.maj_vitesse(0)
 	hud.maj_badge(e.non_lues())
 	hud.point_banque(false)
+	_regler_theme(true)
 	if titre != null:
 		maj_titre()
 
@@ -412,6 +414,27 @@ func _on_vitesse_demandee(v: int) -> void:
 # Mois, notifications, modales du moteur
 # =====================================================================
 
+## Décor choisi par la date (tranches de 10 ans, lot 09). La ville ignore un thème identique et diffère le changement
+## pendant une séquence animée. `premier` : démarrage ou reprise, journal de capture « THEME <id> » (la ville ne
+## journalise que les changements effectifs).
+func _regler_theme(premier := false) -> void:
+	if Partie.etat == null or not ville.has_method("regler_theme"):
+		return
+	var id := Donnees.theme_a(Partie.etat.ab_courant())
+	var avant := str(ville.call("theme_actuel")) if ville.has_method("theme_actuel") else ""
+	ville.call("regler_theme", id)
+	if premier and avant == id and "--controle" in OS.get_cmdline_user_args():
+		print("THEME %s" % id)
+
+
+## Le mois courant entre dans un autre chapitre (Partie.chapitre_change ; jamais émis avec les données réelles avant le lot 10).
+## Place de la future carte de passage de chapitre (version A, docs/40) ; pour l'instant : textes et décor du chapitre.
+func _on_chapitre_change(_ancien: String, _nouveau: String) -> void:
+	demo = Donnees.infos_chapitre()
+	modales.donnees_demo = demo
+	_regler_theme()
+
+
 func _on_mois(res: Dictionary) -> void:
 	var e := Partie.etat
 	if e == null:
@@ -419,6 +442,7 @@ func _on_mois(res: Dictionary) -> void:
 	var anime: bool = not res.get("saut", false) and not res.get("pendant_saut", false) and not en_titre
 	var a := e.ab_courant()
 	ville.call("regler_mois", Dates.mois(a), Dates.annee(a))
+	_regler_theme()
 	hud.maj(e, anime)
 	sequences.maj_media(anime)
 	var patr := e.patrimoine(e.joueur)

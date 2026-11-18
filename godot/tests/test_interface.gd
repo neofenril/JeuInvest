@@ -73,6 +73,9 @@ func _test_scene_principale(empreinte_avant: String) -> void:
 	# Lot 04-05 (D9, D11, CA-M9) : une nouvelle partie du joueur (hors mode capture) a les cartes et les projets allumés
 	var cfg: Dictionary = scene.call("_config")
 	_verifier("principal._config() hors capture : \"cartes\", \"projets\" et \"rue\" vrais", cfg.get("cartes", false) == true and cfg.get("projets", false) == true and cfg.get("rue", false) == true, str(cfg.keys()))
+	# Lot 09-I (CA-I5) : la config du joueur porte le chapitre de départ et la fin bornée par la dernière année implémentée
+	print("INTERFACE _config chapitre=%s fin=%s" % [cfg.get("chapitre", "?"), cfg.get("fin", "?")])
+	_verifier("principal._config() : chapitre « 1984 » et fin « 1988-12 »", str(cfg.get("chapitre", "")) == "1984" and str(cfg.get("fin", "")) == "1988-12", str(cfg.get("chapitre", "")) + " " + str(cfg.get("fin", "")))
 	# Lot 08 : la pop-up de début s'ouvre à une nouvelle partie (JOUER, REJOUER), temps figé, pas à la reprise
 	Reglages.intro_force = true
 	scene.call("nouvelle_partie")
@@ -87,10 +90,16 @@ func _test_scene_principale(empreinte_avant: String) -> void:
 	_verifier("Intro : ouverte après une nouvelle partie / REJOUER, temps figé", ouv and Partie.bloquee)
 	var ei := Partie.etat
 	var txd := str(ModaleIntro.textes(ei)["blocs"][0]["texte"])
-	_verifier("Intro : {depart} = depart_F.cc de demo.json (11 000 F), {salaire} = salaire de la partie", txd.contains(Format.montant(float(Donnees.charger("demo")["depart_F"]["cc"]) / Format.TAUX_EURO, ei.ab_courant())) and txd.contains(Format.montant(ei.salaire_base, ei.ab_courant())), txd)
+	_verifier("Intro : {depart} = depart_F.cc de chapitre.json (11 000 F), {salaire} = salaire de la partie", txd.contains(Format.montant(float(Donnees.infos_chapitre()["depart_F"]["cc"]) / Format.TAUX_EURO, ei.ab_courant())) and txd.contains(Format.montant(ei.salaire_base, ei.ab_courant())), txd)
 	await _touche(KEY_ENTER)
 	await get_tree().create_timer(0.6).timeout
 	_verifier("Intro : COMMENCER (Entrée) ferme la fenêtre et rend le temps", md.genre_courant == "" and not Partie.bloquee)
+	# Lot 09-I (CA-I3, CA-I5) : thème choisi par la date, signal de changement de chapitre branché sans erreur
+	var vl: Node = scene.get("ville")
+	_verifier("Thème : la ville est au thème de la date (« 1980 »)", vl.has_method("theme_actuel") and str(vl.call("theme_actuel")) == Donnees.theme_a(Partie.etat.ab_courant()) and str(vl.call("theme_actuel")) == "1980")
+	scene.set("demo", {})
+	Partie.chapitre_change.emit("1984", "1984")
+	_verifier("chapitre_change : _on_chapitre_change rafraîchit les textes du chapitre et garde le thème", (scene.get("demo") as Dictionary).has("banquier") and str(vl.call("theme_actuel")) == "1980")
 	scene.set("_reprise", true)
 	scene.call("demarrer_direct", 0)
 	await get_tree().create_timer(0.4).timeout
