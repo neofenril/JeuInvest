@@ -137,3 +137,7 @@ Verbatim du joueur :
 4) prévoir une évolution du décor en fonction de l'époque (quand toute la plage temporelle sera disponible), tous les 10 ans ça pourrait être bien
 5) je ne sais plus si c'est déjà prévu, mais laisser le choix à l'utilisateur soit : a) un mini questionnaire pour demander à l'utilisateur son âge, l'année à laquelle il souhaite commencer, nombre d'enfants, etc. ; b) simplement sélection de l'année, et proposer 3 profils types de l'époque choisie
 6) peu importe le choix de début, prévoir une pop-up de début pour expliquer qui on est et quel est notre objectif
+
+## 2026-11-18 (retours utilisateur : questionnaire de début, jeux d'argent)
+- « Dans le questionnaire de début, en plus du nom, de l'âge etc., il pourrait être intéressant de demander le salaire actuel de la personne, et de le transformer à équivalence de l'inflation pour simuler un niveau de vie similaire mais à l'époque. »
+- « Prévoir une question lors de l'implémentation des jeux pour passer le temps comme le casino : en effet les lois françaises (ou ailleurs) pourraient considérer ça comme de l'incitation aux jeux d'argent et je ne sais pas si c'est légal. »
