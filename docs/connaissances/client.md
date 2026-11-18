@@ -74,6 +74,13 @@ Décisions que j'accepte de rouvrir si le joueur valide : budget de 15 interrupt
 Garde-fous imposés (14 §6.3) : Jean-Mi finit derrière Tata Livret, ses tuyaux ne sont jamais des boutons, pas de crédit pour le joueur ; le saut de temps s'arrête au mois de l'interruption, jamais avant, et à chaque présentation du banquier ; coût d'opportunité affiché après le choix, sans jugement ; les escargots perdent toujours ; pas de mécanique d'accroche ; prix d'époque avec certitude.
 Leçon : **plus de systèmes ≠ plus de plaisir** ; je préfère moins de cartes et une humeur simple, puis mesurer.
 
+### 3.4 Carrière simplifiée (avis du 2026-11-18, docs/44) : **provisoire, en attente du joueur**
+
+- Dans le périmètre **seulement** sous forme de cartes de dilemme « Travail » rares (2 par chapitre de 5 ans, 3 max), 2 options, un seul effet chiffré (épargne mensuelle possible) + humeur du foyer ; risque de chômage écrit sur la carte. Elles remplacent en partie les tirages « augmentation »/« prime ».
+- Raison : la carrière est le **robinet de l'épargne** ; leçons visées : capacité d'épargne, risque de revenu → épargne de précaution, chômage relié à la bourse (ne pas vendre au mauvais moment). Retraite/PER et actions de l'employeur : plus tard.
+- Refusé : choix de métier, arbre de carrière, jauge de stress/temps, négociation, banquier qui commente, chômage-punition non annoncé.
+- Priorité : pilote de 2 cartes dans le lot 10 **si contenu sans nouveau code**, sinon juste après ; carrière complète seulement si les critères de 44 §7 sont atteints (hésitation, pas d'option dominante, écart de 5-10 %, durée inchangée).
+
 ### 3.1 Décisions issues de la vision « ville » (2026-10-26)
 
 | # | Décision | Raison |
@@ -166,6 +173,7 @@ Chandeliers, indicateurs techniques, tableaux de 50 colonnes, compte utilisateur
 
 | 2026-10-26 | Retours du joueur sur la démo Godot | `docs/12_arbitrages_v2_demo.md` : R1 à R10 testables, progression du banquier, démo V2 1984-1988 ; A36 à A39 ; O10 à O12. |
 | 2026-10-27 | Réponses du joueur, catalogue du banquier (11), retours de la 2e partie | 12 §7 : D3 à D5 tranchés (A40 à A43), R11 à R14, pédagogie des frais (A44), volume inchangé (A45) ; O10 à O12 fermés, O13 ouvert. |
+| 2026-11-18 | Carrière simplifiée (idée du joueur) | `docs/44_client_carriere.md` : dans le périmètre en version cartes « Travail » (voir 3.4) ; 3 questions au joueur (pilote dans le lot 10 ?, temps libre = humeur ?, retraite/PER plus tard ?). Ordre du joueur rappelé : rééquilibrage, lot 09, lot 10, sauvegarde manuelle, célibataire, étoiles ; tabac/casino suspendus (D-J6). |
 | 2026-10-28 | Avis sur les propositions du game designer (« on s'ennuie ») | 14 §6 : avis sur P1-P13, conditions de réouverture, 8 garde-fous, top 5 (P4, P2, P1, P3+titre, P6) ; O14, O15 ouverts. Équipe : game designer, chef de projet, dev-logique, dev-interface. |
 
 ### Erreurs à ne pas refaire

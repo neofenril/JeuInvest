@@ -197,3 +197,10 @@ Verbatim du joueur :
 ## 2026-11-18 (carrière simplifiée, verbatim)
 
 > On peut aussi ajouter la gestion d'une carrière simplifiée avec des choix simples. Par exemple, opportunité de changer de travail, peut-être payer moins mais avec plus de temps ou vice-versa. Voilà, essayer d'explorer le côté là, voir un petit peu entre le client, le chef de projet, l'UX designer, ce qu'ils peuvent faire pour avoir quelque chose d'agréable à jouer et qui peut apporter un peu de plus-value et d'amusement au jeu.
+
+
+---
+
+## 2026-11-18 (événements de vie aléatoires et rejouabilité, verbatim)
+
+> Il faut que les événements de la vie soient aléatoires, genre l'accident de bagnole, la naissance d'enfants, le divorce, par exemple, on peut aussi ajouter la notion de divorce, les décès de la famille, les voyages, les annulations de réservations, etc. Il faudrait que tout ça, ce soit des choses aléatoires, à contrario des événements boursiers, où là, c'est vraiment les événements tels qu'ils se sont produits dans la vraie vie, et donc qui sont à des dates fixes. Ajouter l'aléatoire, ça permet que peu importe l'époque à laquelle on se situe, les événements peuvent se produire d'une façon ou d'une autre. Je veux dire, le décès de Tata Josiane, il n'est pas forcément à telle année, il va être de façon aléatoire à un certain moment dans la vie, dans l'utilisation et dans la partie courante de l'utilisateur, mais pas toujours à un même moment. Parce que si l'utilisateur fait plusieurs parties, faut pas qu'il retombe plusieurs fois sur le même événement à la même date, sinon il va pouvoir anticiper et il y aura moins de rejouabilité, ce sera moins agréable pour lui d'aller plus loin, il n'aura pas envie d'essayer différents profils, il va pas commencer en tant que débutant, et si l'intermédiaire offre les mêmes événements, il va pas aller au bout de la partie, quoi. Donc pensez à la rejouabilité sur ces événements.
