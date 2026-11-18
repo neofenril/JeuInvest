@@ -90,6 +90,10 @@ Chaque agent a une base de connaissances dans `docs/connaissances/<agent>.md` : 
 - Correctif de l'écran de fin sur smartphone (verdict du joueur sur la 0.6), fusionné dans main (d195290) : récap en tête, une seule zone défilante, polices du récap ≥ 24 px au téléphone, PC inchangé. 1 334 vérifications. Exports 0.6.1 : `export\windows\JeuClaude.exe` et `export\android\JeuClaude.apk` (17/11). Le joueur fait essayer la 0.6 par d'autres personnes et transmettra leurs retours.
 - Série de captures complète non rejouée pour ce correctif (changement d'un seul écran, vérifié par les étapes ciblées).
 
+## État du projet (2026-11-18) : version 0.6.2
+- Pop-up de début de partie (retour du joueur, backlog n° 6), fusionnée dans main (facc64c) : « JANVIER 1984 », 4 blocs (qui vous êtes, ce qui vous attend, objectif, comment jouer ; texte docs/32, données `godot/data/intro.json`), COMMENCER, temps figé, à chaque nouvelle partie et à « Rejouer autrement », jamais à la reprise ; entrée d'historique. 1 379 vérifications. Exports 0.6.2 (18/11). Mineures : titre d'historique en minuscule initiale (« janvier 1984 »), intertitres collés en relecture.
+- Backlog du joueur (6 idées : trophées, profils d'investisseur, bâtiment « s'amuser », décor par décennie, création de partie, pop-up de début) : `docs/lots/backlog_retours_0_6.md`. Extension de la plage des années : plan `docs/lots/plan_extension_annees.md` + contenus experts `docs/33` à `docs/36` ; décisions du joueur attendues (durée de partie, 2e chapitre, ordre, casino/tabac, profil célibataire, étoiles, PER, révision du cahier des charges).
+
 ## À faire plus tard
 - APK de publication (keystore de release) et version iOS.
 - Questionnaire de profil de risque au démarrage (idée de l'utilisateur mise de côté le 2026-10-27). D'ici là, le banquier adapte ses propositions à la seule situation de vie.
