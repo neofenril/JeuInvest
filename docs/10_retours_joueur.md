@@ -190,3 +190,10 @@ Verbatim du joueur :
 ## 2026-11-18 (investissements alternatifs, verbatim)
 
 > Quand on implémentera les années 2000, il faudra penser à l'investissement alternatif comme les cartes Pokémon, les montres de luxe, etc.
+
+
+---
+
+## 2026-11-18 (carrière simplifiée, verbatim)
+
+> On peut aussi ajouter la gestion d'une carrière simplifiée avec des choix simples. Par exemple, opportunité de changer de travail, peut-être payer moins mais avec plus de temps ou vice-versa. Voilà, essayer d'explorer le côté là, voir un petit peu entre le client, le chef de projet, l'UX designer, ce qu'ils peuvent faire pour avoir quelque chose d'agréable à jouer et qui peut apporter un peu de plus-value et d'amusement au jeu.

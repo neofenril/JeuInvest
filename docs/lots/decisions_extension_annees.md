@@ -49,3 +49,5 @@ Source verbatim : `docs/10_retours_joueur.md`, section « 2026-11-18 (décisions
 - **Export** : pas d'export 0.6.3 ; prochain export (0.7) **à la fin du lot 10** (chapitre 1989-1993), avec la série de captures complète.
 
 - **Investissements alternatifs (idée du joueur, 2026-11-18)** : à l'implémentation des années 2000, prévoir des placements alternatifs (cartes de collection, montres de luxe, etc.). À instruire par le banquier et le boursier avant ce chapitre : dates réelles d'apparition de chaque marché (le boom des cartes de collection et des montres de luxe est surtout 2015-2022 ; avant : vin, art, timbres, or), accessibilité pour un épargnant français, fiscalité, liquidité et risque ; noms et marques fictifs (même précaution juridique que pour le casino, docs/lots/backlog_retours_0_6.md « 3 bis »).
+
+- **Carrière simplifiée (idée du joueur, 2026-11-18)** : choix simples de carrière (opportunité de changer de travail, payer moins mais avoir plus de temps, ou l'inverse). Exploration confiée au client, au game designer, à l'UX et au chef de projet (docs/42 à 44, docs/lots/etude_carriere.md). Rien n'est décidé ni développé.
