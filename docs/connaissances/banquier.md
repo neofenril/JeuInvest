@@ -301,6 +301,10 @@ Priorité si le client demande une fiabilisation : d'abord les données **utilis
 - Salaires INSEE (série révisée) : 2023 = 2 659 (l'édition d'oct. 2024 disait 2 735), 2024 = 2 733, 2025 = 2 797. CORRECTION : mes valeurs 2023 = 2 735 (docs/34) sont à remplacer par 2 660 ; ligne 2025 = smn 2 800 (et non 2 850-2 900).
 - Décisions du joueur me concernant : deux canaux de frais, PER comme notion, M. Lefranc continue (proposition), tabac/casino suspendus (juridique), mort sobre avec note de transmission.
 
+### Faits ajoutés le 2026-11-18 (docs/41, SCPI et diversification)
+- SCPI : loi n° 70-1300 du 31/12/1970 (A) ; civile foncière 1964, PF1/Perial 1966 (B/C) ; Immorente = 1988 (pas 1968) ; loi n° 93-6 du 04/01/1993 = réforme (marché secondaire, capital 5 MF) (A objet, B détail) ; crise 1993-1997 (1991-98 selon sources), décote ≤ 30 %, rendement 6,28 % (1992) / 5,78 % (1993) (B) ; frais d'entrée ≈ 10 % (B).
+- Décision du joueur : pas de leçon sur les privatisations (retirer Balladur, BNP-OPV, Rhône-Poulenc de docs/38 ; BNP reste action) ; immobilier et SCPI comme diversification ; Jean-Mi sans studio à crédit.
+
 ### Erreurs à ne pas refaire
 - La recherche web ne donne pas de prix de détail français des années 1980 : ne pas prétendre à A pour ces prix.
 - Ne pas affirmer qu'un texte du banquier est « sous 60 mots » sans compter ; vérifier chaque calcul (une première version de 11 §5.3 mélangeait deux définitions de « part des gains mangée » : toujours préciser la référence, « par rapport à 0,5 % » ou « par rapport à sans frais »).
