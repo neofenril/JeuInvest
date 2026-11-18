@@ -41,3 +41,5 @@ Source verbatim : `docs/10_retours_joueur.md`, section « 2026-11-18 (décisions
 - **Q-R1** : le dosage actuel de Jean-Mi est bon, **ne pas le modifier**.
 - Experts (boursier, banquier, game designer, UX) : à lancer **en parallèle des développements** pour la période 1989-1993.
 - **Mariage du personnage** (réponse au point 1 du game designer, docs/39 §15) : il **n'est pas imposé en 06/1990** ; il **dépend de l'âge du personnage, selon le profil saisi** (règle à définir par le game designer : tranches d'âge, situation de départ marié / couple non marié / célibataire R-SEUL). Gérard (31 ans en 1989) reste le cas de référence à recaler.
+
+- **Lot 10 : un seul profil de départ** (le profil n'est pas nommé par le joueur ; proposition du game designer retenue par défaut : Christine, docs/39). **Carte de passage de chapitre : version A** (docs/40, sans bilan d'étape). **PEP : le game designer tranche** (fiche jouable ou simple message). Reste ouvert : Jean-Mi et le studio à crédit 1990-1993 (docs/39 §15).

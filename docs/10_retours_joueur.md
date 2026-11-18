@@ -160,3 +160,10 @@ Verbatim du joueur :
 ## 2026-11-18 (mariage du personnage, verbatim)
 
 > Le mariage du personnage, il va dépendre de l'âge, en fonction du profil qui a été rentré.
+
+
+---
+
+## 2026-11-18 (profils du lot 10, carte de passage, PEP, verbatim)
+
+> Un seul profil pour le lot 10, la carte de passage A. Et petit 5 laisse le game designer trancher.
