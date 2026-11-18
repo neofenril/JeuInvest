@@ -212,7 +212,7 @@ func _titres() -> void:
 		# Conditions verifiees sur l'etat reel
 		var cond := false
 		match id:
-			"bon_pere": cond = g["ecart_tata"] > 0.02 and g["projets_realises"] == 2 and g["humeur_fin"] != 2 and nb_vente_auto == 0.0
+			"bon_pere": cond = g["ecart_tata"] > 0.075 and g["projets_realises"] == 2 and g["humeur_fin"] != 2 and nb_vente_auto == 0.0
 			"golden_boy": cond = g["part_risquee_krach"] >= 0.30 and g["a_vendu_krach"]
 			"escargots": cond = g["escargots"] and g["ecart_tata"] < 0.0
 			"fourmi": cond = g["nb_epargne"] >= 5 and g["nb_epargne"] - g["nb_depense"] >= 3 and (g["humeur_fin"] == 2 or g["abandon_evitable"])
@@ -228,11 +228,11 @@ func _titres() -> void:
 	verifier("ORDRE 7 avant 8 : compte courant seul (aucun produit, cc 90 %) -> neveu_matelas", Titres.evaluer(gg)["id"] == "neveu_matelas")
 	gg["cc_moyen"] = 0.29
 	verifier("cc_moyen 0,29 aucun produit -> ecureuil (derniere condition avant defaut)", Titres.evaluer(gg)["id"] == "ecureuil")
-	gg["ecart_tata"] = 0.02
+	gg["ecart_tata"] = 0.075
 	gg["projets_realises"] = 2
-	verifier("bon_pere : ecart 0,02 pile = non", Titres.evaluer(gg)["id"] != "bon_pere")
-	gg["ecart_tata"] = 0.0201
-	verifier("bon_pere : ecart 0,0201 + 2 projets + humeur != 2 = oui", Titres.evaluer(gg)["id"] == "bon_pere")
+	verifier("bon_pere : ecart 0,075 pile = non (seuil du lot 08b)", Titres.evaluer(gg)["id"] != "bon_pere")
+	gg["ecart_tata"] = 0.0751
+	verifier("bon_pere : ecart 0,0751 + 2 projets + humeur != 2 = oui", Titres.evaluer(gg)["id"] == "bon_pere")
 	gg["humeur_fin"] = 2
 	verifier("bon_pere : humeur 2 (fachee) = non", Titres.evaluer(gg)["id"] != "bon_pere")
 	var f := {"ecart_tata": -0.1, "projets_realises": 0, "humeur_fin": 2, "abandon_evitable": false, "part_risquee_krach": 0.0, "a_vendu_krach": false, "escargots": false,

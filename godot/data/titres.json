@@ -32,7 +32,7 @@
     { "id": "ecureuil", "nom": "L'écureuil de la Caisse d'épargne",
       "pourquoi": "Sûr et sans frais, comme Tata Livret : sans risque, mais sans surprise." },
     { "id": "apprenti", "nom": "L'apprenti épargnant",
-      "pourquoi": "Un peu de tout, sans excès : rejouez pour tenter une autre voie." }
+      "pourquoi": "Aucun style marqué cette fois : rejouez pour tenter une autre voie." }
   ],
 
   "_objectif": "Phrase factuelle sur l'inflation de l'écran de fin (docs/28 §5), sans étoile : bilan[\"objectif\"][\"phrase\"]. Deux cas : objectif atteint ou non.",
