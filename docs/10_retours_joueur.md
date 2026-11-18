@@ -183,3 +183,10 @@ Verbatim du joueur :
 ## 2026-11-18 (export après le lot 10, verbatim)
 
 > Je préfère attendre la fin du lot 10
+
+
+---
+
+## 2026-11-18 (investissements alternatifs, verbatim)
+
+> Quand on implémentera les années 2000, il faudra penser à l'investissement alternatif comme les cartes Pokémon, les montres de luxe, etc.
