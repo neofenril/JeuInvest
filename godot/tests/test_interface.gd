@@ -73,6 +73,30 @@ func _test_scene_principale(empreinte_avant: String) -> void:
 	# Lot 04-05 (D9, D11, CA-M9) : une nouvelle partie du joueur (hors mode capture) a les cartes et les projets allumés
 	var cfg: Dictionary = scene.call("_config")
 	_verifier("principal._config() hors capture : \"cartes\", \"projets\" et \"rue\" vrais", cfg.get("cartes", false) == true and cfg.get("projets", false) == true and cfg.get("rue", false) == true, str(cfg.keys()))
+	# Lot 08 : la pop-up de début s'ouvre à une nouvelle partie (JOUER, REJOUER), temps figé, pas à la reprise
+	Reglages.intro_force = true
+	scene.call("nouvelle_partie")
+	scene.call("demarrer_direct", 0)
+	var md: Modales = scene.get("modales")
+	var ouv := false
+	for i in 120:
+		await get_tree().process_frame
+		if md.genre_courant == "intro":
+			ouv = true
+			break
+	_verifier("Intro : ouverte après une nouvelle partie / REJOUER, temps figé", ouv and Partie.bloquee)
+	var ei := Partie.etat
+	var txd := str(ModaleIntro.textes(ei)["blocs"][0]["texte"])
+	_verifier("Intro : {depart} = depart_F.cc de demo.json (11 000 F), {salaire} = salaire de la partie", txd.contains(Format.montant(float(Donnees.charger("demo")["depart_F"]["cc"]) / Format.TAUX_EURO, ei.ab_courant())) and txd.contains(Format.montant(ei.salaire_base, ei.ab_courant())), txd)
+	await _touche(KEY_ENTER)
+	await get_tree().create_timer(0.6).timeout
+	_verifier("Intro : COMMENCER (Entrée) ferme la fenêtre et rend le temps", md.genre_courant == "" and not Partie.bloquee)
+	scene.set("_reprise", true)
+	scene.call("demarrer_direct", 0)
+	await get_tree().create_timer(0.4).timeout
+	_verifier("Intro : pas de pop-up à la reprise d'une partie", md.genre_courant != "intro")
+	Reglages.intro_force = false
+	Partie.sauvegarde_auto = false
 	scene.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -882,7 +906,7 @@ func _verifier_intro() -> void:
 	var ei := EtatPartie.new()
 	ei.demarrer(Donnees.config_demo(1))
 	var tx := ModaleIntro.textes(ei)
-	_verifier("Intro : gabarits {salaire} et {depart} remplis depuis les données (" + str(tx["blocs"][0]["texte"]).substr(0, 0) + "salaire 6 790 F, départ 11 000 F)", str(tx["blocs"][0]["texte"]).contains(Format.montant(ei.salaire_base, ei.ab_courant())) and str(tx["blocs"][0]["texte"]).contains(Format.montant(ei.joueur.cc, ei.ab_courant())) and not str(tx["blocs"][0]["texte"]).contains("{"), str(tx["blocs"][0]["texte"]))
+	_verifier("Intro : gabarits {salaire} et {depart} remplis depuis les données (" + str(tx["blocs"][0]["texte"]).substr(0, 0) + "salaire 6 790 F, départ 11 000 F)", str(tx["blocs"][0]["texte"]).contains(Format.montant(ei.salaire_base, ei.ab_courant())) and str(tx["blocs"][0]["texte"]).contains("11" + String.chr(160) + "000") and not str(tx["blocs"][0]["texte"]).contains("{"), str(tx["blocs"][0]["texte"]))
 	modales.intro(ei)
 	var ok := await _attendre_genre("intro")
 	await _touche(KEY_ENTER)

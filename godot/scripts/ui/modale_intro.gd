@@ -15,7 +15,7 @@ func _init(modales: Modales) -> void:
 ## Valeurs des gabarits, lues dans la partie et les données (jamais écrites en dur).
 static func gabarits(e: EtatPartie) -> Dictionary:
 	var a := e.ab_courant()
-	return {"salaire": Format.montant(e.salaire_base, a), "depart": Format.montant(e.joueur.cc, a), "date": Dates.texte(a), "DATE": Dates.texte(a).to_upper()}
+	return {"salaire": Format.montant(e.salaire_base, a), "depart": Format.montant(float(Donnees.charger("demo")["depart_F"]["cc"]) / Format.TAUX_EURO, a), "date": Dates.texte(a), "DATE": Dates.texte(a).to_upper()}
 
 
 ## Textes finis (titre, blocs) : pour la fenêtre et pour l'entrée de l'historique.

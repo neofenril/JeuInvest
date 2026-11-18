@@ -248,16 +248,7 @@ func jouer() -> void:
 	hud.afficher(true)
 	ville.set("interactif", true)
 	Partie.sauvegarde_auto = true
-	# Nouvelle partie (ni reprise ni modale en attente) : « qui vous êtes, quel est l'objectif », temps figé derrière
-	if Reglages.intro_a_montrer() and not _reprise and Partie.etat != null and Partie.etat.m == Partie.etat.m_depart:
-		Partie.bloquee = true
-		modales.intro(Partie.etat)
-		await modales.choix_fait
-		Partie.bloquee = false
-		# Relisible dans l'HISTORIQUE (source maison, déjà lue : pas comptée dans les non-lues)
-		var tx := ModaleIntro.textes(Partie.etat)
-		Partie.etat.historiser_evenement({"source": "maison", "type": "intro", "titre": str(tx["titre_historique"]),
-			"texte": " ".join(PackedStringArray((tx["blocs"] as Array).map(func(b: Dictionary) -> String: return "%s : %s" % [str(b["titre"]).capitalize(), str(b["texte"])])))})
+	await _intro_nouvelle_partie()
 	Partie.changer_vitesse(int(demo.get("vitesse_depart", 1)))
 	Partie.sauvegarder()
 	Partie.rouvrir_modale()
@@ -279,8 +270,23 @@ func demarrer_direct(vitesse := 0) -> void:
 	_recadrer(0.0)
 	ville.set("interactif", true)
 	Partie.sauvegarde_auto = true
+	await _intro_nouvelle_partie()
 	Partie.changer_vitesse(vitesse)
 	Partie.rouvrir_modale()
+
+
+## Pop-up de début d'une nouvelle partie (JOUER, NOUVELLE PARTIE, REJOUER AUTREMENT) : jamais à la reprise.
+func _intro_nouvelle_partie() -> void:
+	# Nouvelle partie (ni reprise) : « qui vous êtes, quel est l'objectif », temps figé derrière
+	if Reglages.intro_a_montrer() and not _reprise and Partie.etat != null and Partie.etat.fin == "":
+		Partie.bloquee = true
+		modales.intro(Partie.etat)
+		await modales.choix_fait
+		Partie.bloquee = false
+		# Relisible dans l'HISTORIQUE (source maison, déjà lue : pas comptée dans les non-lues)
+		var tx := ModaleIntro.textes(Partie.etat)
+		Partie.etat.historiser_evenement({"source": "maison", "type": "intro", "titre": str(tx["titre_historique"]),
+			"texte": " ".join(PackedStringArray((tx["blocs"] as Array).map(func(b: Dictionary) -> String: return "%s : %s" % [str(b["titre"]).capitalize(), str(b["texte"])])))})
 
 
 func _recadrer(duree := 0.0) -> void:
