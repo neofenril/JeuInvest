@@ -3,7 +3,8 @@
 > Chef de projet, 2026-11-18. Deuxième lot de l'ordre décidé par le joueur (`decisions_extension_annees.md` §4). Plan d'ensemble : `plan_extension_annees.md` (version du 18/11 après décisions).
 > **Aucun changement visible, aucun contenu d'expert.** Le jeu reste 1984-1988 au bit près ; on prépare : données par chapitre de 5 ans, partie qui traverse les chapitres, fin à la dernière année implémentée, décor choisi par la date (tranches de 10 ans), export des sous-dossiers.
 > Base : `main` **après la fusion du lot 08b** (09-L, 09-I) ; `main` actuel pour 09-V (fichiers disjoints du 08b).
-> État (18/11 soir) : 08b OK (2c84a43) et 09-V OK (a4aef5f), fusions validées ; 09-L lançable depuis `main` après ces deux fusions. `test_reference_1984` (L0) fige donc l'état **après** 08b (titres rééquilibrés).
+> État : 09-L OK (015cafa, `lot_09l_recette.md`, 1 501 vérifications), fusion validée ; **09-I seul reste**, dev-interface seul (dev-ville inutile : `regler_theme` est déjà sur `main`), branche `lot/09-interface` depuis `main` après la fusion de 09-L.
+> État précédent (18/11 soir) : 08b OK (2c84a43) et 09-V OK (a4aef5f), fusions validées ; 09-L lançable depuis `main` après ces deux fusions. `test_reference_1984` (L0) fige donc l'état **après** 08b (titres rééquilibrés).
 
 ## 0. En bref
 
@@ -142,7 +143,13 @@ Règles de docs/36 §9 : ancres inchangées (`FENETRE_BANQUIER`, `PORTE_BANQUE`,
 
 ### 4.3 09-I (dev-interface)
 
-- **I1** Appels du §3.5 ; plus aucun `Donnees.charger("demo")` dans `scripts/ui` ni `principal.gd`.
+- **I1** Appels du §3.5 ; plus aucun `Donnees.charger("demo")` dans `scripts/ui` ni `principal.gd`. Points relevés par 09-L (recette `lot_09l_recette.md`) :
+  1. `principal.gd` l. 29 : `demo = Donnees.infos_chapitre()` ; `_config()` (l. 125) : `Donnees.config_chapitre(Donnees.index()["chapitre_defaut"], graine)` **obligatoire** (M1 : la borne de fin D3 n'est posée que si la config porte `chapitre`) ; `nouvelle_partie(config)` imposée par un test ou un scénario : si la config n'a pas `chapitre`, la laisser telle quelle (tests libres).
+  2. `modale_intro.gd` l. 18 : `Donnees.infos_chapitre()` au lieu de `charger("demo")` (`charger("intro")` reste : il se résout par le chapitre).
+  3. `ecran_titre.gd` : commentaire qui cite `demo.json` → `chapitre.json` (texte affiché inchangé).
+  4. `frise.gd` : `m_fin := 179` en dur → bornes lues dans la partie (`Partie.etat.m_depart` / `m_fin`, ou `mk.nb_mois()`), même rendu pour 1984-1988.
+  5. `Partie.chapitre_change` connecté dans `principal.gd` à `_on_chapitre_change(ancien, nouveau)` qui, aujourd'hui, ne fait que `ville.regler_theme(Donnees.theme_a(ab))` (has_method) et rafraîchit `demo = Donnees.infos_chapitre()` ; la carte de passage de chapitre (version A, docs/40) viendra au lot 10.
+- **I1 bis Bascule de thème** : `ville.regler_theme(Donnees.theme_a(Partie.etat.ab_courant()))` au démarrage, à la reprise, dans `_on_mois` (la ville ignore un thème identique) et dans `_on_chapitre_change` ; garde `has_method`. Journal en capture : `THEME <id>` (une ligne au démarrage, une par changement effectif).
 - **I2** Scénarios de capture de sa famille : inchangés sauf passage par `config_chapitre` si besoin.
 - **I3** Inventaire (compte rendu seulement, aucun changement) des textes d'interface encore liés à 1984-1988 en dur (H17 du plan) : fichier, ligne, texte ; il servira au lot 10.
 
@@ -168,7 +175,10 @@ Règles de docs/36 §9 : ancres inchangées (`FENETRE_BANQUIER`, `PORTE_BANQUE`,
 - **CA-I1 ★** Plus aucun `Donnees.charger("demo")` dans `scripts/ui` ni `principal.gd` (recherche ; les scénarios d'un autre propriétaire et les tests de non-régression sont exclus nommément de la recherche).
 - **CA-I2 ★** Captures ciblées identiques à `main` (relues côte à côte) : `titre`, intro (pop-up de début), `jouer`, `krach`, `fin` ; PC 1920 × 1080 et téléphone 1440 × 648.
 - **CA-I3 ★** `regler_theme` appelé au démarrage et à la reprise (ligne de journal en capture `THEME 1980`), jamais d'erreur si la ville ne l'a pas (`has_method`).
-- **CA-I4 ★** `tests.ps1 -Recette -Delai 700` vert sur la fusion ; `test_interface`, `test_partie`, `test_ecran` verts ; périmètre ⊂ colonne 09-I.
+- **CA-I4 ★** `tests.ps1 -Recette -Delai 700` vert sur la fusion (≥ 1 501 vérifications + nouvelles, 0 erreur de script) ; `test_interface`, `test_partie`, `test_ecran` verts ; `test_reference_1984` inchangé et vert ; périmètre ⊂ colonne 09-I (`principal.gd`, `ui/modale_intro.gd`, `ui/ecran_titre.gd`, `ui/frise.gd`, scénarios de sa famille, ses tests, sa base).
+- **CA-I5 ★** Les 5 points de I1 faits : recherche de `charger("demo")` vide dans `scripts/ui` et `principal.gd` ; plus de `179` en dur dans `frise.gd` ; `_config()` renvoie une config avec `chapitre` = « 1984 » et `fin` = « 1988-12 » (ligne imprimée par `test_interface`) ; `chapitre_change` connecté (vérifié en émettant le signal à la main dans `test_interface` : `regler_theme` appelé, aucune erreur).
+- **CA-I6 ★ Série de captures complète** (fin du lot 09, avant le prochain export ; règle du joueur du 17/11) : `capture_interface.ps1 -Serie` et `capture_ville.ps1 -Serie`, PC 1920 × 1080 et téléphones 1440 × 648 et 1280 × 720, comparées à `main` d'avant le lot (images relues côte à côte ; la ville comparée par zone de décor, pas par hachage, à cause de l'animation : leçon de la recette 09-V) ; aucune différence autre que l'animation.
+- **CA-I7 ★ Exe** : `--export-pack` Windows lancé par `--main-pack`, étapes `titre`, `jouer`, `reprise` : aucune erreur, JANVIER 1984, Gérard, M. Lefranc, ligne `THEME 1980`.
 
 ## 6. Ordre, recettes, fusions
 
