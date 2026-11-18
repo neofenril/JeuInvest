@@ -1,0 +1,9 @@
+{
+  "_note": "Index des chapitres (lot 09). Un chapitre = une tranche de 5 ans de contenu (dossier data/chapitres/<id>/, id = annee de debut). Les fichiers d'un chapitre remplacent ceux de data/ du meme nom (fichier entier, jamais de fusion). Monde (reste dans data/) : series, regles, salaires, rythme, periode_*. derniere_annee est calculee (fin du dernier chapitre ouvert), jamais ecrite ici. themes : decor de la rue selon la date (data/themes/<id>.json), une ligne par tranche de 10 ans.",
+  "premiere_annee": 1977,
+  "chapitre_defaut": "1984",
+  "chapitres": [
+    { "id": "1984", "nom": "Les années fric", "debut": "1984-01", "fin": "1988-12", "marche": "P1", "ouvert": true }
+  ],
+  "themes": [ { "de": "1977-01", "theme": "1980" } ]
+}

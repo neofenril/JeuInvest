@@ -1,0 +1,89 @@
+{
+  "_note": "P1 « Les projets du foyer » (docs/15 §3, lot 04 partie 04-L, D6 à D8). Lu par scripts/logique/projets.gd. Montants en francs (docs/18 §2, « montant retenu » : P1B 16 000 F), libellés « apport comptant » pour P1C, P2B, P2C (docs/18 §6.4). Certitude : C (valeurs de jeu plausibles, docs/18).",
+  "_actif": "D6 : moteur éteint par défaut. Une partie lit config.projets (défaut : cette valeur) au démarrage et garde ce réglage dans sa sauvegarde ; une sauvegarde sans champ projets reste sans projets. La vague 4 (04-I) l'allumera dans principal._config().",
+  "actif": false,
+
+  "_regles": "humeur : effet sur l'humeur de Sylvie (docs/15 §2.1). report_mois : un report déplace l'échéance de ce nombre de mois, ou au premier mois libre suivant (aucune interruption datée connue au mois d'avant, au mois même, au mois d'après), une seule fois par projet. rappel_mois : notification sans pause de la maison ce nombre de mois avant l'échéance (une par projet). p2c_dans_patrimoine : l'apport réalisé reste compté dans le patrimoine (joueur et témoins) au lieu d'être dépensé (D7, à confirmer par le client).",
+  "humeur": { "realise": 2, "realise_apres_report": 1, "reporte": -1, "abandonne": -2 },
+  "report_mois": 4,
+  "rappel_mois": 3,
+  "p2c_dans_patrimoine": true,
+
+  "_ordre_vente": "Décision du joueur du 2026-11-13 (lot_04.md, fin) : compte courant d'abord, puis le Livret A (le « livret bleu » du joueur : le jeu n'a qu'un livret réglementé), puis le reste par ordre de rentabilité : la ligne qui a le moins rapporté part la première. Rentabilité d'une ligne = (ce qu'elle rapporterait vendue en entier ce mois-ci, frais, impôts et pénalités déduits − sommes versées) / sommes versées. À égalité : la plus grosse ligne d'abord (lot_05 D7 bis). Rentabilité non annualisée (décision du chef de projet). On vend juste ce qu'il faut : la dernière ligne en partie (actions par titres entiers, le surplus reste sur le compte courant), le PEL toujours en entier (une clôture).",
+
+  "_projets": "fenetre [début, fin] du choix, prefere : mois où la carte de choix entre en file ; elle devient datée au dernier mois de sa fenêtre. options : 3 par projet, montant_F, echeance, icone (id pour l'interface), court (ligne du guichet, rappel, phrases), sous (ligne sous le nom), detail (facultatif : phrase complète affichée au jour J), replique_realise (Sylvie au jour J, docs/27 §1.5), reportable (P2C : non). Textes : docs/27 (game designer, G4) pour la formulation, docs/25 (banquier) pour le fond ; CA-R6 : aucun « c'est le moment ».",
+  "projets": [
+    { "id": "P1", "fenetre": ["1984-02", "1984-04"], "prefere": "1984-03",
+      "titre": "Le projet du foyer",
+      "texte": "Pour {echeance}, Sylvie et vous voulez vous offrir quelque chose. Un seul projet à la fois : lequel ?",
+      "options": [
+        { "id": "P1A", "nom": "Le salon et la chaîne hi-fi", "court": "le salon et la chaîne hi-fi", "montant_F": 12000, "echeance": "1986-04", "icone": "salon",
+          "sous": "Canapé, fauteuils et une vraie chaîne hi-fi", "replique_realise": "Enfin un canapé où l'on tient à deux !", "_certitude": "B/C" },
+        { "id": "P1B", "nom": "La Grèce pour les 30 ans de Sylvie", "court": "la Grèce", "montant_F": 16000, "echeance": "1986-04", "icone": "grece",
+          "sous": "Deux semaines dans les Cyclades, à deux", "replique_realise": "Trente ans face à la mer Égée !", "_certitude": "C" },
+        { "id": "P1C", "nom": "La Super 5 neuve", "court": "la Super 5", "montant_F": 30000, "echeance": "1986-04", "icone": "voiture",
+          "sous": "Apport comptant ; la vieille 4L est reprise", "replique_realise": "Adieu la 4L, elle a bien servi !", "_certitude": "C" }
+      ] },
+    { "id": "P2", "fenetre": ["1987-01", "1987-02"], "prefere": "1987-01",
+      "titre": "Le projet suivant",
+      "texte": "Avec {prenoms}, les envies changent. Trois projets, trois dates : lequel ?",
+      "options": [
+        { "id": "P2A", "nom": "Le Club Med en famille", "court": "le Club Med", "montant_F": 14000, "echeance": "1987-07", "icone": "club_med",
+          "sous": "Une semaine en juillet, tous ensemble", "replique_realise": "Des vacances où je ne cuisine pas !", "_certitude": "C" },
+        { "id": "P2B", "nom": "Un break familial", "court": "le break", "montant_F": 35000, "_montant": "35 000 F : calibrage CA-L5 (chef de projet, 13/11) ; docs/18 §2 donnait 40 000 F. ≈ 40 % d'un break neuf 1988 (80-95 000 F). Certitude C.", "echeance": "1988-02", "icone": "break",
+          "sous": "Apport comptant ; le reste serait à crédit", "replique_realise": "Enfin de la place pour tout le monde !", "_certitude": "C" },
+        { "id": "P2C", "nom": "L'apport pour un T3", "court": "l'apport du T3", "montant_F": 90000, "echeance": "1988-12", "icone": "maison",
+          "sous": "Apport comptant ; un PEL de 4 ans y aide",
+          "detail": "Un PEL ouvert en 1984 verse chaque année une prime d'État (jusqu'à 10 000 F) et ouvre droit à un prêt immobilier à un taux fixé dès l'ouverture, utilisable après 4 ans (en 01/1988 au plus tôt).",
+          "replique_realise": "Une chambre d'enfant, une vraie !",
+          "reportable": false, "dans_patrimoine": true, "ligne_patrimoine": "Apport du T3", "_certitude": "B/C" }
+      ] }
+  ],
+
+  "_textes": "Gabarits : {nom}, {court}, {montant}, {echeance} (« avril 1986 »), {mois} (« avril »), {disponible}, {prenoms}, {manque}, {dans}, {replique}. echeance_texte_manque / echeance_texte_suffisant : selon que le disponible couvre ou non la somme (docs/25 §3.2, formulation docs/27). rappel_texte_atteint : si le disponible couvre déjà la somme.",
+  "textes": {
+    "echeance_titre": "Le jour J : {court}",
+    "echeance_texte_suffisant": "Nous y sommes : {court}, {montant}. Voici ce qui est de côté.",
+    "echeance_texte_manque": "Nous y sommes : {court}, {montant}. Voici ce qui est de côté : {disponible}. Il manque {manque}.",
+    "rappel_titre": "Sylvie compte les mois",
+    "rappel_texte": "Sylvie : « {court}, c'est en {mois} ! » Sans rien vendre : {disponible} sur {montant}.",
+    "rappel_texte_atteint": "Sylvie : « {court}, c'est en {mois} ! » Tout est déjà de côté.",
+    "consequence_choix": "C'est décidé : {court}, pour {echeance}. Le compteur est sur la maison.",
+    "consequence_realise": "C'est fait : {court} ! « {replique} »",
+    "consequence_realise_sans_replique": "C'est fait : {court} !",
+    "consequence_reporte": "Reporté à {echeance}. « Quatre mois de plus… on patientera. »",
+    "consequence_abandonne": "Projet abandonné ; l'argent reste de côté. « Tant pis, ce sera pour une autre fois. »",
+    "consequence_abandonne_p2c": "L'argent reste de côté. « Le T3 attendra encore un peu. »",
+    "guichet": "Projet : {court}, {echeance} ({dans}) · {montant}",
+    "guichet_reporte": "Projet : {court}, reporté à {echeance} ({dans}) · {montant}",
+    "dans_mois": "dans {n} mois",
+    "dans_mois_un": "dans 1 mois",
+    "ce_mois": "ce mois-ci",
+    "ordre_vente": "Ordre des ventes : compte courant, Livret A, puis ce qui a le moins rapporté jusqu'ici.",
+    "ordre_vente_aide": "« Rapporté » = ce que la ligne vaudrait vendue aujourd'hui, frais, impôts et pénalités déduits, moins vos versements.",
+    "confirmation_titre": "Ce qui serait vendu",
+    "confirmation_intro": "Rien n'est vendu avant votre confirmation. Le surplus éventuel reste sur le compte courant.",
+    "ligne_livret": "Livret A : {net}. Retrait sans frais ni impôt.",
+    "simplifie": "Simplifié : à l'époque, les petites ventes étaient souvent exonérées."
+  },
+  "boutons": {
+    "realiser": { "titre": "RÉALISER", "sous": "Pris sur le compte courant, puis le Livret A · Sylvie ravie" },
+    "realiser_en_vendant": { "titre": "RÉALISER EN VENDANT", "sous": "Vendre des placements pour {manque} · Sylvie ravie", "sous_impossible": "Même en vendant tout, il manque {manque}" },
+    "reporter": { "titre": "REPORTER DE 4 MOIS", "sous": "Nouvelle date : {echeance} · Sylvie déçue" },
+    "renoncer": { "titre": "RENONCER", "titre_sans_report": "RENONCER POUR L'INSTANT", "sous": "Projet abandonné · Sylvie très déçue" }
+  },
+
+  "_penalites": "Textes de vente (docs/25 §3.5, banquier). {frais}, {impot}, {x} : montants ; {courtage} : barème du moment ; {taux} : taux du prélèvement du rachat ; {produit} : nom court ; {net}, {ecart} : montants. pel : clôture avant 4 ans ; pel_apres : après 4 ans ; action_perte : vente à perte.",
+  "penalites": {
+    "pel": "Prime d'État perdue : {x}. Le PEL est clos avant 4 ans : seuls les intérêts du taux de base sont versés.",
+    "pel_apres": "PEL clos après 4 ans : intérêts et prime d'État conservés. Le droit au prêt immobilier est abandonné.",
+    "av": "Rachat avant 6 ans : prélèvement de {taux} sur les intérêts : {x}.",
+    "action": "Frais de vente : {frais} ({courtage}). Impôt sur la plus-value : {impot} (règle simplifiée du jeu).",
+    "action_perte": "Frais de vente : {frais} ({courtage}). Pas d'impôt : la vente est à perte.",
+    "sicav": "Vente sans frais. Impôt sur la plus-value : {impot} (règle simplifiée du jeu).",
+    "emprunt": "Vendu au nominal, sans frais : simplification du jeu ; en vrai, le prix dépendait des taux.",
+    "ecart_moins": "{produit} : {net}, soit {ecart} de moins que vos versements.",
+    "ecart_plus": "{produit} : {net}, soit {ecart} de plus que vos versements.",
+    "ecart_egal": "{produit} : {net}, autant que vos versements."
+  }
+}

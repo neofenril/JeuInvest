@@ -95,4 +95,7 @@ static func calculer(e: EtatPartie) -> Dictionary:
 		"replique": replique, "lecons": lecons, "epargne_nette": e.epargne_nette,
 		"frais": e.stats["frais"], "impots": e.stats["impots"], "interets": e.joueur.interets_total,
 		"rue": rue, "replique_rue": Quartier.replique_rue(rue) if not rue.is_empty() else {},
+		# Lot 09-L (D8) : chapitre de départ et années jouées (un seul bilan final ; un titre par chapitre au lot 10)
+		"chapitre_depart": str(e.config_depart.get("chapitre", Donnees.index().get("chapitre_defaut", ""))),
+		"annee_depart": Dates.annee(e.ab_de(e.m_depart)), "annee_fin": Dates.annee(e.ab_de(e.m_fin)),
 	}

@@ -11,7 +11,8 @@
     { "annee": 2010, "devise": "€", "smn": 2080,  "jeune": 1150, "technicien": 2050,  "cadre": 3800,  "heritier": 1900, "capital": 37000 },
     { "annee": 2015, "devise": "€", "smn": 2250,  "jeune": 1250, "technicien": 2200,  "cadre": 4000,  "heritier": 2000, "capital": 40000 },
     { "annee": 2020, "devise": "€", "smn": 2500,  "jeune": 1350, "technicien": 2350,  "cadre": 4300,  "heritier": 2250, "capital": 45000 },
-    { "annee": 2025, "devise": "€", "smn": 2750,  "jeune": 1550, "technicien": 2600,  "cadre": 4700,  "heritier": 2500, "capital": 50000 }
+    { "annee": 2023, "devise": "€", "smn": 2735,  "jeune": 1480, "technicien": 2530,  "cadre": 4550,  "heritier": 2400, "capital": 47000 },
+    { "annee": 2025, "devise": "€", "smn": 2870,  "jeune": 1610, "technicien": 2700,  "cadre": 4890,  "heritier": 2600, "capital": 52000 }
   ],
   "_depenses": "Par décennie : part du loyer (% du salaire) et épargne possible (% du salaire) par profil. Technicien (démo V2) : Gérard vit en couple avec Sylvie, qui travaille aussi ; le ménage peut mettre de côté 24 % du salaire de Gérard, soit 15 % après une naissance (+ 9 % de dépenses par enfant) et 6 % avec des jumeaux (12 §7.2 R14 : au moins 10 % avec un enfant, 5 % avec des jumeaux).",
   "depenses": [
@@ -19,8 +20,11 @@
     { "de": 1980, "loyer": 17, "epargne": { "jeune": 8,  "technicien": 24, "cadre": 15, "heritier": 12 } },
     { "de": 1990, "loyer": 20, "epargne": { "jeune": 8,  "technicien": 22, "cadre": 15, "heritier": 12 } },
     { "de": 2000, "loyer": 23, "epargne": { "jeune": 8,  "technicien": 20, "cadre": 15, "heritier": 12 } },
-    { "de": 2010, "loyer": 26, "epargne": { "jeune": 6,  "technicien": 18, "cadre": 15, "heritier": 12 } }
+    { "de": 2010, "loyer": 26, "epargne": { "jeune": 6,  "technicien": 18, "cadre": 15, "heritier": 12 } },
+    { "de": 2022, "loyer": 26, "epargne": { "jeune": 4,  "technicien": 16, "cadre": 13, "heritier": 10 } },
+    { "de": 2024, "loyer": 26, "epargne": { "jeune": 6,  "technicien": 18, "cadre": 15, "heritier": 12 } }
   ],
+  "_valeurs_2022_2025": "Lot 09 (D10, docs/34 K2.6), certitude C : ligne 2023 et ligne 2025 corrigée (salaires nets mensuels en euros, valeurs choisies par le chef de projet) ; dépenses : de 2022 = celles de 2010 avec 2 points d'épargne en moins pour chaque profil (malus d'inflation 2022-2023), de 2024 = retour aux valeurs de 2010.",
   "_ajustLoyer": "Points de loyer ajoutés selon le profil",
   "ajustLoyer": { "jeune": 3, "technicien": 3, "cadre": 5, "heritier": 0 },
   "profils": {

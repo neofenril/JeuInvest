@@ -2,9 +2,9 @@ class_name Marche
 extends RefCounted
 ## Marché d'une période : cours générés de façon déterministe (03 §7.1-7.3), séries datées
 ## (Livret A, IPC, baguette, impôts, frais, agios). Port de jeu/js/marche.js.
-## Tableaux de N cases : case 0 = décembre précédant la période, case m + 1 = cours de fin du mois m.
+## Tableaux de n_cases cases : case 0 = décembre précédant la période, case m + 1 = cours de fin du mois m.
 
-const N := 181
+const ANNEES_PAR_DEFAUT := 15    # fenêtre d'une période sans champ « fin » (periode_*.json)
 const SIGMA_NORMAL := 0.045
 const SIGMA_CRISE := 0.10
 
@@ -12,6 +12,7 @@ static var _cache: Dictionary = {}
 static var _ipc_an: Dictionary = {}
 
 var periode: Dictionary
+var n_cases := 181           # cases par série = 12 × nombre d'années + 1 (lu dans la période : champ « fin », sinon 15 ans)
 var ab_debut: int        # janvier de la première année
 var ab0: int             # décembre précédent (case 0)
 var indice := PackedFloat64Array()
@@ -33,6 +34,8 @@ static func vider_cache() -> void:
 func _init(p: Dictionary) -> void:
 	periode = p
 	var debut := int(p["debut"])
+	var annees := int(p["fin"]) - debut + 1 if p.has("fin") else ANNEES_PAR_DEFAUT
+	n_cases = 12 * annees + 1
 	ab_debut = Dates.ab(debut, 1)
 	ab0 = ab_debut - 1
 	var rng := Hasard.new(int(p["graine"]))
@@ -41,21 +44,21 @@ func _init(p: Dictionary) -> void:
 	# Indice : ancrages durs = clôtures annuelles, puis points mensuels de la période
 	var anc := {}
 	var annuels := {}
-	for y in range(debut - 1, debut + 15):
+	for y in range(debut - 1, debut + annees):
 		var i := Dates.ab(y, 12) - ab0
 		anc[i] = log(float(annuel[str(y)][0]))
 		annuels[i] = true
 	for a in p.get("ancragesIndice", []):
 		var i := Dates.lire(a[0]) - ab0
-		if i >= 0 and i < N and not annuels.has(i):
+		if i >= 0 and i < n_cases and not annuels.has(i):
 			anc[i] = log(float(a[1]))
 	var crise := {}
 	for d in p.get("moisCrise", []):
 		crise[Dates.lire(d) - ab0] = true
 	var sigma_indice := func(i: int) -> float: return SIGMA_CRISE if crise.has(i) else SIGMA_NORMAL
 	var log_i := _pont(_trier(anc), sigma_indice, rng)
-	indice.resize(N)
-	for k in N:
+	indice.resize(n_cases)
+	for k in n_cases:
 		indice[k] = exp(float(log_i[k]))
 
 	# Actions : ln P = beta × ln I + résidu (pont brownien entre les ancrages propres)
@@ -71,8 +74,8 @@ func _init(p: Dictionary) -> void:
 		var sig := float(pr["volSpe"]) / sqrt(12.0)
 		var resid := _pont(_trier(pts), func(_i: int) -> float: return sig, rng)
 		var serie := PackedFloat64Array()
-		serie.resize(N)
-		for k in N:
+		serie.resize(n_cases)
+		for k in n_cases:
 			serie[k] = NAN if resid[k] == null else exp(beta * float(log_i[k]) + float(resid[k]))
 		prix[pr["id"]] = serie
 
@@ -86,7 +89,7 @@ func _init(p: Dictionary) -> void:
 ## Pont brownien en log entre des points [[i, x], ...] triés ; cases hors des points = null.
 func _pont(points: Array, sigma: Callable, rng: Hasard) -> Array:
 	var x := []
-	x.resize(N)
+	x.resize(n_cases)
 	for p in range(points.size() - 1):
 		var i0: int = points[p][0]
 		var x0: float = points[p][1]
@@ -115,10 +118,10 @@ func _trier(d: Dictionary) -> Array:
 
 func _fonds(debut_i: int, vl_debut: float, gestion: float, annuel: Dictionary) -> PackedFloat64Array:
 	var vl := PackedFloat64Array()
-	vl.resize(N)
+	vl.resize(n_cases)
 	vl.fill(NAN)
 	vl[debut_i] = vl_debut
-	for i in range(debut_i + 1, N):
+	for i in range(debut_i + 1, n_cases):
 		var d := float(annuel[str(Dates.annee(ab0 + i))][1]) / 100.0
 		vl[i] = vl[i - 1] * indice[i] / indice[i - 1] * (1.0 + d / 12.0) * (1.0 - gestion / 100.0 / 12.0)
 	return vl
@@ -131,11 +134,16 @@ func cours(id: String, m: int) -> float:
 	if not prix.has(id):
 		return NAN
 	var serie: PackedFloat64Array = prix[id]
-	return serie[clampi(m + 1, 0, N - 1)]
+	return serie[clampi(m + 1, 0, n_cases - 1)]
+
+
+## Nombre de mois de la fenêtre de marché (180 pour P1).
+func nb_mois() -> int:
+	return n_cases - 1
 
 
 func valeur_indice(m: int) -> float:
-	return indice[clampi(m + 1, 0, N - 1)]
+	return indice[clampi(m + 1, 0, n_cases - 1)]
 
 
 ## Nom de l'indice à la date a (court : « CAC 40 » ; sinon : « le CAC 40 »).

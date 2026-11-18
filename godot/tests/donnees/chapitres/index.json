@@ -1,0 +1,10 @@
+{
+  "_note": "Jeu d'essai du lot 09-L (tests/test_chapitres.gd) : deux chapitres, le second ouvert ; test_chapitres le ferme en modifiant le dictionnaire en cache.",
+  "premiere_annee": 1977,
+  "chapitre_defaut": "1984",
+  "chapitres": [
+    { "id": "1984", "nom": "Essai un", "debut": "1984-01", "fin": "1988-12", "marche": "P1", "ouvert": true },
+    { "id": "1989", "nom": "Essai deux", "debut": "1989-01", "fin": "1993-12", "marche": "P1", "ouvert": true }
+  ],
+  "themes": [ { "de": "1977-01", "theme": "1980" }, { "de": "1989-01", "theme": "essai" } ]
+}
