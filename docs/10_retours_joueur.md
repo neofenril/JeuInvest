@@ -167,3 +167,12 @@ Verbatim du joueur :
 ## 2026-11-18 (profils du lot 10, carte de passage, PEP, verbatim)
 
 > Un seul profil pour le lot 10, la carte de passage A. Et petit 5 laisse le game designer trancher.
+
+
+---
+
+## 2026-11-18 (Jean-Mi, privatisation, immobilier et SCPI, verbatim)
+
+> Je vois pas l'intérêt de faire acheter à Jean-Mi un studio avec un crédit à tout révisable, blablabla, si le joueur lui-même ne peut pas investir dans l'immobilier. Pourquoi tu me proposes ça, du coup?
+
+> Parler de la privatisation, c'est bien, mais c'est quand même quelque chose d'assez poussé. Je pense pas que ce soit pour tous les profils de joueurs. Faut rester relativement simple. C'est pas tous les investisseurs qui vont s'intéresser à ce qu'est une privatisation. Il faut que dans la partie joueur débutant ou intermédiaire, faut pas aborder des sujets trop complexes. Donc peut-être pas conserver ça. Par contre, conserver la notion d'investissement immobilier pour une notion de diversification de placement, pour pas tout mettre ses œufs dans le même panier, donc dans la bourse ou tout ce qui est OAT, moyen terme, court terme, moyen terme, long terme, etc. Ça pourrait être intéressant d'amener aussi la partie immobilière. Et je sais pas aussi la partie SCPI, je sais pas à quelle date en France les SCPI ont vu le jour. Voilà, ça pourrait être intéressant de parler de ça.
