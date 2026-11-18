@@ -122,6 +122,8 @@ static var _voitures := {}
 static var _taches: Array = []      # [identifiant WorkerThreadPool, résultats {nom: [Image, origine]}]
 static var _arret := false          # vrai pendant attendre_taches (sortie)
 var _fond: Couche
+var _couche_batiments: Couche
+var _batiments_theme := {}            # index des bâtiments dont la façade est remplacée par le thème
 var _fond_pret := false
 var mode_titre := false            # écran titre : l'arbre de premier plan est retiré (il cachait l'enseigne)
 
@@ -617,20 +619,8 @@ func _construire() -> void:
 		if not ARBRES[i][2]:
 			_arbre(i)
 	# Immeubles de la rue (ceux qui avancent, « retour », en dernier)
-	var rue_c := _couche("Batiments")
-	var ordre: Array = []
-	for i in BATIMENTS.size():
-		if not BATIMENTS[i][1].has("retour"):
-			ordre.append(i)
-	for i in BATIMENTS.size():
-		if BATIMENTS[i][1].has("retour"):
-			ordre.append(i)
-	for i in ordre:
-		var nom2 := "rue/batiment_%d" % i
-		var bx: int = BATIMENTS[i][0]
-		rue_c.image(nom2, Vector2i(bx, SOL - 1))
-		rue_c.image("neige/" + nom2, Vector2i(bx, SOL - 1), 0, "hiver")
-		_allumer(rue_c, fenetres(nom2), Vector2i(bx, SOL - GrillePixel.taille(nom2).y), 0.35, 700 + i)
+	_couche_batiments = _couche("Batiments")
+	_remplir_batiments()
 	for i in ARBRES.size():
 		if ARBRES[i][2]:
 			_arbre(i)
@@ -748,6 +738,67 @@ func _construire() -> void:
 	_maj_lumieres()
 	preparer_capture()
 	_mettre_en_prechauffe()
+
+
+## Opérations de la couche « Batiments » (façades, neige, fenêtres allumées la nuit) : refaites à neuf par
+## appliquer_theme quand une façade change. Mêmes opérations, même ordre qu'avant le lot 09 (thème « 1980 »).
+func _remplir_batiments() -> void:
+	_couche_batiments.ops.clear()
+	var ordre: Array = []
+	for i in BATIMENTS.size():
+		if not BATIMENTS[i][1].has("retour"):
+			ordre.append(i)
+	for i in BATIMENTS.size():
+		if BATIMENTS[i][1].has("retour"):
+			ordre.append(i)
+	for i in ordre:
+		var nom2 := "rue/batiment_%d" % i
+		var bx: int = BATIMENTS[i][0]
+		_couche_batiments.image(nom2, Vector2i(bx, SOL - 1))
+		_couche_batiments.image("neige/" + nom2, Vector2i(bx, SOL - 1), 0, "hiver")
+		_allumer(_couche_batiments, fenetres(nom2), Vector2i(bx, SOL - GrillePixel.taille(nom2).y), 0.35, 700 + i)
+
+
+## Lot 09-V : habille la rue selon une table de thème (ThemeDecor.table). Clé lue : « batiments », par x gauche de
+## BATIMENTS, remplacements de champs de la configuration de Facades.batiment (valeur null = champ retiré).
+## Table vide (thème « 1980 ») : la rue d'origine, régénérée à l'identique (graines fixes). Les ombres d'auvent
+## du sol, posées à la construction, ne suivent pas un changement d'auvent (non utilisé à ce jour).
+func appliquer_theme(table: Dictionary) -> void:
+	var champs: Dictionary = table.get("batiments", {})
+	var cibles := {}
+	for i in BATIMENTS.size():
+		if champs.has(str(BATIMENTS[i][0])):
+			cibles[i] = true
+	var a_refaire := cibles.duplicate()
+	for i in _batiments_theme:
+		a_refaire[i] = true
+	_batiments_theme = cibles
+	if a_refaire.is_empty():
+		return
+	var nouvelles: Array = []
+	for i in a_refaire:
+		var cfg: Dictionary = (BATIMENTS[i][1] as Dictionary).duplicate()
+		var remplace: Dictionary = champs.get(str(BATIMENTS[i][0]), {})
+		for k in remplace:
+			if remplace[k] == null:
+				cfg.erase(k)
+			else:
+				cfg[k] = remplace[k]
+		var nom := "rue/batiment_%d" % i
+		var r: Dictionary = Facades.batiment(cfg)
+		var img: Image = r["image"]
+		var o := Vector2i(0, img.get_height() - 1)
+		_poser(nom, r, o)
+		_auvents[nom] = r["auvent"]
+		GrillePixel.enregistrer("neige/" + nom, neige_sur(img), o)
+		nouvelles.append([nom, img])
+		nouvelles.append(["neige/" + nom, GrillePixel.image("neige/" + nom)])
+		_prechauffe_vu.erase(nom)
+		_prechauffe_vu.erase("neige/" + nom)
+	_taches_variantes(nouvelles)
+	_mettre_en_prechauffe()
+	_remplir_batiments()
+	redessiner_tout()
 
 
 ## Ajoute à la file de préchauffage les textures (jour, nuit, orage) des images apparues depuis le dernier appel.

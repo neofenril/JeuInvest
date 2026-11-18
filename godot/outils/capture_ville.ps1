@@ -2,6 +2,7 @@
 # Usage (depuis n'importe quel dossier) :
 #   powershell -File godot\outils\capture_ville.ps1 -Etape rue -Nom px1_rue -Taille 1920x1080 -Controle -SansHud
 #   ... -Telephone (téléphone simulé, fenêtre 1440 x 648 à 240 dpi, comme F10 ; voir Ecran)  -Facteur 4  -Attente 1.5  -Passer 0.3
+#   ... -Theme 1980 : décor d'un thème de data/themes (lot 09-V ; « 1980 » = la même image que sans l'option)
 #   ... -Montages : refait seulement les deux montages (captures déjà faites)
 #   ... -Serie : toute la série PX1 + lot 02 (préfixe px1_), ses deux montages et le journal godot\captures\px1_serie.log
 #   (aucune image de référence PX0 n'est plus demandée : la vitrine PX0 est retirée au lot 02)
@@ -31,6 +32,7 @@ param(
     [switch]$Controle,
     [double]$Attente = 0,
     [double]$Passer = 0,
+    [string]$Theme = "",
     [switch]$Serie,
     [switch]$Montages
 )
@@ -74,6 +76,7 @@ function Capturer([hashtable]$o) {
     if ($o.Facteur -gt 0) { $a += "--rue-facteur=$($o.Facteur)" }
     if ($o.SansHud) { $a += "--rue-sans-hud" }
     if ($o.Controle) { $a += "--controle" }
+    if ($o.Theme) { $a += "--theme=$($o.Theme)" }
     if ($o.Passer -gt 0) { $a += ("--rue-passer=" + [string]::Format([Globalization.CultureInfo]::InvariantCulture, '{0}', $o.Passer)) }
     $r = Lancer $a
     $rue = @($r.sortie | Where-Object { $_ -like "RUE *" -or $_ -like "Images par seconde*" -or $_ -like "Capture enregistr*" })
@@ -237,7 +240,7 @@ if ($Serie) {
 } else {
     if ($errImp.Count) { Write-Host ("import : " + ($errImp -join " / ")) }
     $o = @{ Nom = $Nom; Etape = $Etape; Taille = $Taille; Telephone = [bool]$Telephone; Telephone169 = [bool]$Telephone169; Facteur = $Facteur; SansHud = [bool]$SansHud;
-            Controle = [bool]$Controle; Attente = $Attente; Passer = $Passer }
+            Controle = [bool]$Controle; Attente = $Attente; Passer = $Passer; Theme = $Theme }
     if (-not (Capturer $o)) { $toutOk = $false }
 }
 

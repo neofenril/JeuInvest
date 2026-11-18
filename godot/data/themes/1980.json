@@ -1,0 +1,3 @@
+{
+	"_note": "Thème « 1980 » = la rue actuelle : table vide, tout prend la valeur du code (non-régression au pixel près). Format des tables de thème (clés « batiments », « palette_ajouts », « mobilier »...) : docs/36 §10.6. Seule la clé « batiments » (remplacements de champs par x gauche de BATIMENTS) est lue pour l'instant."
+}

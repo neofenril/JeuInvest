@@ -55,6 +55,13 @@ func jouer(etape: String) -> void:
 		return
 	sc.partir_de_la_rue(etape)
 	await sc.attendre_que(func() -> bool: return rue.call("images_pretes"), 12.0)
+	# Lot 09-V : --theme=<id> (décor d'un thème de data/themes ; « 1980 » = rue actuelle)
+	var theme := ScenariosCapture.option("theme")
+	if theme != "":
+		ville.call("regler_theme", theme)
+		await sc.attendre_que(func() -> bool: return rue.call("images_pretes"), 12.0)
+		if _controle:
+			print("RUE theme=%s" % ville.call("theme_actuel"))
 	if ScenariosCapture.option("rue-sans-hud") != "" or "--rue-sans-hud" in OS.get_cmdline_user_args() or etape in ["planche_personnages", "rue_libre"]:
 		jeu.hud.visible = false
 	var passer := float(ScenariosCapture.option("rue-passer")) if ScenariosCapture.option("rue-passer") != "" else -1.0

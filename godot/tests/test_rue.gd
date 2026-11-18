@@ -58,6 +58,90 @@ func _relancer_generation() -> int:
 	return ms2
 
 
+func _noeuds(n: Node) -> int:
+	var c := 1
+	for e in n.get_children():
+		c += _noeuds(e)
+	return c
+
+
+## Empreinte du décor statique : images des façades, de leur neige, des trois bâtiments jouables et opérations
+## des couches (les ancres des séquences : fenêtre du banquier, portes, horloge, écran, néon, rotative, fenêtre
+## de Sylvie, porte de la maison, vivent dans « rue/maison », « rue/banque », « rue/gazette »).
+func _empreinte(rue: Node2D, noms: Array) -> String:
+	var s := ""
+	for n in noms:
+		s += n + GrillePixel.image(n).get_data().hex_encode().md5_text()
+	for c in rue.get("_couches"):
+		s += str(c.get("ops")).md5_text()
+	return s.md5_text()
+
+
+## Lot 09-V (V3, V5) : le thème « 1980 » ne change rien ; une table d'essai (enseigne de la boulangerie) change des
+## pixels hors ancres sans fuite de nœuds ; le changement de thème attend la fin d'une séquence animée.
+func _tester_themes(ville: Node2D) -> void:
+	var rue: Node2D = ville.get("rue")
+	var facades: Array = []
+	for i in RUE.BATIMENTS.size():
+		facades.append("rue/batiment_%d" % i)
+		facades.append("neige/rue/batiment_%d" % i)
+	var ancres := ["rue/maison", "rue/banque", "rue/gazette", "neige/rue/maison", "neige/rue/banque", "neige/rue/gazette"]
+	var tous: Array = facades + ancres
+	var avant := _empreinte(rue, tous)
+	var ancres_avant := _empreinte(rue, ancres)
+	var table_vide: Dictionary = ThemeDecor.table("1980")
+	ville.call("regler_theme", "1980")
+	await _images(2)
+	var identique := _empreinte(rue, tous) == avant
+	var hors := 0
+	for n in tous:
+		for v in [PalettePixel.JOUR, PalettePixel.NUIT, PalettePixel.ORAGE]:
+			hors += PalettePixel.compter_hors_palette(GrillePixel.image(n, v), v)
+	print("RUE theme=1980 identique_main=%s couleurs_hors_palette=%d ancres_identiques=oui" % ["oui" if identique else "non", hors])
+	_verifier(table_vide.is_empty() and ville.call("theme_actuel") == "1980" and identique and hors == 0,
+		"thème 1980 : table vide, décor identique (images et couches), 0 couleur hors palette", "table=%s hors=%d" % [str(table_vide), hors])
+	_verifier(ThemeDecor.table("nexiste_pas").is_empty(), "ThemeDecor : thème inconnu = table vide")
+	# Thème d'essai : l'enseigne de la boulangerie (x 1134) devient « PAIN »
+	var ib := -1
+	for i in RUE.BATIMENTS.size():
+		if RUE.BATIMENTS[i][0] == 1134:
+			ib = i
+	var boulangerie: Image = GrillePixel.image("rue/batiment_%d" % ib)
+	var copie := Image.new()
+	copie.copy_from(boulangerie)
+	var n0 := _noeuds(ville)
+	var essai := {"batiments": {"1134": {"enseigne": "PAIN"}}}
+	var changes := 0
+	var diff_ancres := false
+	for tour in 2:
+		rue.call("appliquer_theme", essai)
+		await _images(2)
+		var apres: Image = GrillePixel.image("rue/batiment_%d" % ib)
+		if tour == 0:
+			for y in copie.get_height():
+				for x in copie.get_width():
+					if copie.get_pixel(x, y) != apres.get_pixel(x, y):
+						changes += 1
+		diff_ancres = diff_ancres or _empreinte(rue, ancres) != ancres_avant
+		rue.call("appliquer_theme", table_vide)
+		await _images(2)
+	var retour := _empreinte(rue, tous) == avant
+	var fuites := _noeuds(ville) - n0
+	print("RUE theme=essai pixels_changes=%d ancres_identiques=%s noeuds_fuites=%d retour_1980=%s" % [changes, "non" if diff_ancres else "oui", fuites, "oui" if retour else "non"])
+	_verifier(changes > 0 and not diff_ancres and fuites == 0 and retour,
+		"thème d'essai : pixels changés hors ancres, ancres identiques, 0 nœud fuité après 2 allers-retours, retour exact à 1980")
+	# Différé pendant une séquence animée
+	var effet := Node2D.new()
+	rue.get("effets").add_child(effet)
+	ville.call("regler_theme", "essai")
+	var differe: bool = ville.call("theme_actuel") == "1980"
+	effet.queue_free()
+	await _images(3)
+	var applique: bool = ville.call("theme_actuel") == "essai"
+	ville.call("regler_theme", "1980")
+	_verifier(differe and applique and ville.call("theme_actuel") == "1980", "thème : changement différé pendant une séquence, appliqué à sa fin")
+
+
 func _initialize() -> void:
 	var debut := Time.get_ticks_msec()
 	await process_frame
@@ -351,6 +435,7 @@ func _initialize() -> void:
 	print("RUE pieces arc=%d portes=%s,%s touches_arc=%d touches_arc_120=%d" % [roundi(arc), str(d_p), str(a_p), touches_arc, touches_120])
 	_verifier(d_p.x >= 0.0 and a_p.x >= 0.0 and touches_arc == 0, "m1 : de la banque à la maison, l'arc choisi (%d px) ne touche aucune enseigne (l'ancien arc de 120 px : %d points)" % [roundi(arc), touches_120])
 	seq.free()
+	await _tester_themes(ville)
 	# D9 (lot 03) : durée de génération, meilleure de 2 mesures (relance seulement si la 1re dépasse le seuil ;
 	# --rue-relance la force pour l'éprouver)
 	var ms_retenue := ms
