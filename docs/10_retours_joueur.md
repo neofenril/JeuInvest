@@ -232,3 +232,10 @@ Verbatim du joueur :
 ## 2026-11-18 (joueuse dans le questionnaire de début, verbatim)
 
 > Ajoute qu'il faudra prévoir de pouvoir etre une femme en tant que joueur dans le questionnaire de debut de partir. Si on est une femme, Sylvie devient alors Gérard
+
+
+---
+
+## 2026-11-18 (joueuse : réponses, verbatim)
+
+> Ok pour toutes tes propositions sauf celle du conjoint de même sexe, pas besoin d'aller aussi loin pour ce jeu on restera "standard"
