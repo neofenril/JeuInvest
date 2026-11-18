@@ -1,7 +1,7 @@
 # Base de connaissances du game designer
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `docs/10_retours_joueur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-11-18 (docs/39, chapitre 1989-1993, G-R1/G-R2).
+> Dernière mise à jour : 2026-11-18 (docs/42, carrière simplifiée).
 
 ## 1. Faits vérifiés sur le jeu (démo V2, 2026-10-28)
 
@@ -36,12 +36,14 @@ Spectateur ; tunnels vides ; ≈ 8 décisions dont 1 forte ; résultat à ±4 % 
 
 - **Doc 35 (18/11)** : gabarit de chapitre, 13 archétypes de cartes, R-SEUL, profils Martine / Bernard (1984), chapitre 2019-2023 (devenu secondaire : le joueur a choisi 1989-1993 en 2e).
 - **Doc 39 (18/11, G6)** : chapitre 1989-1993 en continuité. Passage de chapitre en 01/1989 (1 carte : titre 1984-88 + ce qui change, CONTINUER, pas de bilan d'étape) ; Gérard marié en 06/1990 (choix de la fête), promotion 03/1990 si C07 pris (retour à 5 ans) ; vitrine Golfe 09/1990 (baisse lente, « un an après » à 2 cas selon le cours réel), SME 09/1992 en secondaire ; Jean-Mi saison 2 = studio à crédit à taux révisable (moteur de la Porsche réutilisé, `bien`, `loyer`, `taux_revise`), même dosage ; profils 1989 Sophie (célibataire, Karine), Christine, Michel (52 ans, préretraite) ; arnaque = diamants ; R-DÉPART (départ à égalité avec Tata, présentations en file, options de projet à ≥ 12 mois, hors record) ; 6 étoiles par chapitre (« — » si non concernée) ; R-FIN (jamais avant 70 ans, table de mortalité, scène du crépuscule, note au conditionnel avec hypothèse barrée ; Gérard jamais concerné avant 2028) ; double record (chapitre de départ mesuré à sa fin / total si dernière année atteinte). G-R1 validé (escargots 20 % facultatif, alerte golden_boy ≤ 20 %) ; G-R2 : apprenti « Aucun style marqué cette fois : rejouez pour tenter une autre voie. »
+- **Doc 42 (18/11)** : carrière simplifiée (idée du joueur, rien de décidé). Cartes du foyer K1-K8 (K1 = C07 ; K2 mercredi de Sylvie 4/5, K3 offre de la PME + suite K6 « la PME ferme » 1 fois sur 2 en 06/1991, K4 poste itinérant, K5 congé formation remplace la C07 de 1989, K7 plan de départs 1993, K8 préretraite de Michel), candidates dans des créneaux existants : **0 pause ajoutée**, ≤ 3 par chapitre. Ligne « épargne possible avant → après ». Temps : **pas de jauge**, statut `normal | temps | prenant` qui ne change que l'usure de janvier (temps : pas d'usure ; prenant : −1 toujours → C00). Règle des 3 axes (argent / temps-humeur / sécurité-avenir). R-MIROIR : voisins suivent les salaires. Variante minimale : K2-K5, champ `salaire` existant (+ pct négatif) et `depenses_M_mois`. Création d'entreprise reportée ≥ 1994.
 
 ## 3 bis. Faits vérifiés dans le code (13/11, lot/05-logique)
 - `Foyer.humeur_visible` : **0 = contente, 1 = neutre, 2 = fâchée** (piège : lot_07 D2 l'avait inversé).
 - `foyer.json` : `sens` vaut `depense` même à 0 F, inutilisable pour épargne / dépense. Prix réels ≠ docs/15 (C02 5 500, C07 2 500, C09 b 600, C04 2 200 / 3 800).
 - Instantané du krach : `lignes` = actions + SICAV seulement ; `exemple: true` si le joueur n'en a pas ; choix `vendre | rien | renforcer`. Héritage versé en argent à tous (`recevoir_tous`). Bilan : 5 étoiles dont « battre Cousin Indice ».
 - Produits de la démo : livret, pel, emprunt, av, sicav, elf, loreal, peugeot, saintgobain.
+- (18/11) Données par chapitre : `godot/data/chapitres/1984/` (foyer.json, evenements_vie.json : voiture, medical, prime, naissance ; aucun chômage implémenté). Carte : champ `salaire: { pct, des }` (C07), recopié chez les témoins. Le salaire de Sylvie n'est pas modélisé à part.
 
 ## 4. Décisions du joueur et du client
 

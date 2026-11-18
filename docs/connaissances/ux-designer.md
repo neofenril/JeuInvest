@@ -28,6 +28,8 @@
 20. **Un symbole = un sens** : quand une forme devient une récompense (étoile), elle quitte ses autres usages (marqueur de frise).
 21. (Rappel, ancien 17) **Pas de mise à l'échelle des cadres pixel** dans les animations d'interface : on déplie (découpe en 3 images), on saute d'1 texel, on fait voler un petit sprite.
 22. **Parties longues** : la durée de jeu s'annonce avant de commencer ; une seule pause de passage par chapitre ; aucune information de chapitre sur la frise hors la coupure.
+23. **Choix à plusieurs dimensions = colonnes alignées, pas de jauge** (docs/43) : mêmes lignes dans le même ordre d'une option à l'autre, deltas ▲▼ signés, niveaux qualitatifs en 3 crans + un mot ; une option « rester comme ça » au même style ; pas de total ni de score.
+24. **Pas de nouveau bâtiment pour un événement rare** : ce qui arrive tous les 2-5 ans passe par un lieu existant (maison, boîte aux lettres) ; l'ailleurs se suggère par le bord de la rue (personnage qui part, panneau).
 
 ---
 
@@ -59,6 +61,7 @@
 | 2026-10-28 | « On s'ennuie un peu. » | Game designer, docs 14 et 15. |
 | 2026-10-29 | P1-P6, P9, P10 retenues ; classement de la rue **affiché en permanence** ; titres conservés d'une partie à l'autre. | Bloc « La rue » permanent (16 §5.2). |
 | 2026-11-18 | Extension des années : chapitres de 5 ans autour de 1984-1988 (1989-1993 d'abord, plage 1977 → dernière année implémentée) ; une partie **traverse les chapitres** ; **un seul bilan final** (étape facultative) ; un titre par chapitre traversé ; double record (chapitre / partie) ; décor par 2 chapitres (1984-1993 = un décor) ; création : chapitre **et** année précise ; profil célibataire ; mort liée à l'âge, sobre, avec note de transmission (assurance-vie, conjoint, enfants) ; étoiles = trophées de bonnes pratiques. | docs/40 (prime sur docs/36 U1). |
+| 2026-11-18 | Idée « carrière simplifiée » (changer de travail, moins payé mais plus de temps, ou l'inverse). Exploration, rien de décidé. | docs/43. |
 | 2026-10-29 | « La vue de face est pas mal mais le style est trop **générique** » ; références : rue en pixel art (Dreamstime, référence seulement) et personnage chibi pixel. **Modifier les graphismes avant d'aller plus loin.** | docs/16 : pixel art 640 × 360, palette de 40 couleurs, interface en cadres pixel, preuve de concept avant migration. |
 
 ---
@@ -129,6 +132,7 @@ Ce qui reste valable de 09 : intention (un lieu par message), ville qui vit (cyc
 | U6 | 3e pile de F01 pour l'action et l'assurance-vie | Banquier |
 | U8 | Retour auto de la caméra à la maison après 10 s sans toucher (écart à lot_px1 §3) | Chef de projet (17 Q1) |
 | U9 | Couleur de la source `rue` (sarcelle si le seul vert est `gain`) | dev-interface (17 Q2) |
+| U11 | docs/43 C1-C7 : temps libre (3 crans ou rien), fréquence, 2 ou 3 options, trajet de Gérard dans le lot ou plus tard, réalisme du 4 jours, habillage de la promotion CNAM, couleurs | Game designer, client, chef de projet, banquier |
 | U10 | docs/40 Q1-Q10 : carte de passage A ou B, départ en cours de chapitre hors record, contrat Records v2, titre d'un chapitre interrompu, homonymie des 5 « étoiles » de `Bilan`, marqueur « ? », tuiles par chapitre, textes de succession datés | Chef de projet, game designer, banquier |
 
 (O9 « style A, B ou C » est clos : le joueur garde la vue de face, en pixel art. U2 clos : M. Lefranc. U7 appliqué : frais en 5e ligne.)
@@ -145,4 +149,5 @@ Ce qui reste valable de 09 : intention (un lieu par message), ville qui vit (cyc
 | 2026-10-30 | UX vague 2 (P4 dans la rue large) et préparation vague 3 | `docs/17_ux_vague2.md` : bouton COURRIER, badge des non-lus, caméra et flèches de bord, trajet des pièces, carte de dilemme, Sylvie 3 humeurs, jauge de projet, « Mon foyer » |
 | 2026-11-18 | Extension des années (U1 création, U2 thèmes par décennie) | `docs/36` : création en 2 écrans, thème « 2020 » détaillé ; U1 en partie remplacé par docs/40 |
 | 2026-11-18 | Partie longue 1984-1993 (U4 + décisions du joueur) | `docs/40_ux_1989_1993.md` : frise de toute la partie avec coupure de chapitre (le marqueur nouveauté devient « ? »), carte de passage de janvier 1989 (A sans titre recommandée, B bilan d'étape), bilan final à plaques par chapitre, double record (chapitre de départ = record v1 ; partie « 1984 → 1993 »), départ en cours de chapitre hors record (Q2), 10 tuiles-chapitres + puces d'année + frappe directe PC + ligne de durée, fiche du célibataire (proche nommé), mort (séquence nuit, faire-part, note de transmission à 2 colonnes, droits en cuivre), 6 étoiles (notification + vol vers la maison, aimants du frigo) |
+| 2026-11-18 | Carrière simplifiée (exploration) | `docs/43_ux_carriere.md` : travail hors champ par le bord gauche (Gérard part/rentre, transport = métier, panneau de l'employeur ; pas de 4e bâtiment), carte « lettre à en-tête » sortie de la boîte aux lettres (trombone, liseré bleu de travail, picto mallette), 2-3 colonnes à 4 lignes (salaire, mis de côté / mois, temps libre 3 crans, humeur de Sylvie), tampon « SIGNÉ », bulle « Nouveau salaire », pas de marqueur de frise, « Mon foyer » (Métier, Temps libre, rubrique CARRIÈRE), bilan (ligne + mini-frise des métiers), coûts (2 M + 5 S), variante minimale XS-S sur la carte de dilemme |
 | 2026-10-29 | Bible graphique pixel art (style jugé « générique ») | `docs/16_bible_graphique_pixel.md` : lecture des références, grille 640 × 360 à facteur entier, palette de 40 couleurs (jour, nuit, orage), échelle, animations, interface en cadres pixel et polices OFL, comparaison des 3 provenances (recommandation : code d'abord, packs en référence, portraits fournis plus tard), maquettes (rue, classement permanent, carte du banquier, journal du krach), migration PX0 / PX1 / PX2, 3 questions au joueur |
