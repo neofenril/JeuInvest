@@ -1,7 +1,7 @@
 # Base de connaissances du game designer
 
 > À lire au début de chaque mission (après `CLAUDE.md` et `docs/10_retours_joueur.md`), à mettre à jour à la fin. Concise.
-> Dernière mise à jour : 2026-11-18 (docs/42, carrière simplifiée).
+> Dernière mise à jour : 2026-11-18 (docs/47, révision du lot 10).
 
 ## 1. Faits vérifiés sur le jeu (démo V2, 2026-10-28)
 
@@ -40,6 +40,8 @@ Spectateur ; tunnels vides ; ≈ 8 décisions dont 1 forte ; résultat à ±4 % 
 
 - **Doc 45 (18/11)** : événements de vie aléatoires (demande du joueur : seul le marché garde ses dates). Ancrés = survenue garantie, date en fenêtre ≥ 6 mois (naissance 12/1984-06/1985, coup dur 1-3 mois après une vitrine, héritage 01-09/1988, mariage de Gérard 09/1989-06/1992 à 70 %, Raymond 01/1991-06/1992) ; 21 types en M (mois de salaire) ; pioche par tranches de 12 mois ; budget de malchance 1,5-4,5 M par chapitre, ≤ 2 gros coups, ≥ 1 bonne nouvelle / 24 mois ; R-MIROIR étendue à tous les types ; aucun héritage dans les 6 mois avant une vitrine ; séparation couplée faiblement à l'humeur **par la carrière seulement** (décision du joueur : §2 bis, 1,5 % + 0,75 pt par année « fâchée + horaires lourds actifs », plafond 3 %, étiquette `cause: "carriere"`, jamais l'épargne) ; pilote carrière K4/K5 au lot 10, retraite et PER repoussés ; calendrier de référence (`vie_reference`) pour tests et captures. Lot 10 = §6.
 
+- **Doc 47 (18/11, prime sur docs/39 §2.1, §5, §6.1, §13, §14)** : vitrine du Golfe en 2 étapes mensuelles réelles (08/1990 sans pause + bandeau −16 % ; 09/1990 pause, courbe de 3 fins de mois « fins de mois seulement », ordres au cours de fin septembre), jamais de jours fictifs ; « un an après » 09/1991 calculé (rebond / écart à juillet). Jean-Mi saison 2 = tout dans une seule SCPI comptant (8 passages, 5 ★, J1 supprimée, J2 gardée). SCPI jouable (part 1 000 F dont 100 F de frais, loyers 6,5 → 5,8 %, revente 900 → 780 F en 1993, **vente différée de 3 mois**, exclue de la vente automatique), B2 02-04/1990, alerte 03/1993 si parts. **PEP = simple message** (tranché). Mariage par âge (< 30 : 60 %, 30-39 : 70 %, 40-49 : 40 %, ≥ 50 : 20 %, fenêtre M9-M42). Jumeaux 1/6. K4 / K5 toujours présentées. Privatisations retirées (BNP action ordinaire 10/1993). 24-26 pauses. Tabac : devanture existante, ticket fictif « Le Trèfle » 10 F, 1/mois, une seule zone (pas de « presque gagné »), retour 65 %, pré-tiré (flux `tabac`), compteur net + Livret A, hors R-CADENCE, non recopié, ni titre ni étoile.
+
 ## 3 bis. Faits vérifiés dans le code (13/11, lot/05-logique)
 - Calendrier de vie : `etat_partie._tirer_calendrier` (15 ans tirés au départ, indépendant des choix, sauvegardé dans `CHAMPS_ETAT`) ; flux décalés pour naissances (+1000003) et foyer ; `_espacer_repetitions` (24 mois) ; panne forcée = krach + 1 mois ; héritage daté dans `banque.json` > `heritage.av.d` (D08) ; `test_cadence` vérifie les dates exactes.
 - `Foyer.humeur_visible` : **0 = contente, 1 = neutre, 2 = fâchée** (piège : lot_07 D2 l'avait inversé).
@@ -56,6 +58,8 @@ Spectateur ; tunnels vides ; ≈ 8 décisions dont 1 forte ; résultat à ±4 % 
 
 - (18/11) Joueur, extension des années (`docs/lots/decisions_extension_annees.md`, prime sur docs/35) : chapitres de 5 ans de proche en proche, 2e = 1989-1993 ; partie continue 1984 → 1993, marché continu, **un seul bilan final** ; un titre par chapitre traversé ; double record ; Gérard vieillit ; profils par 5 ans dont célibataire ; départ à une année précise ; fin = mort (âge, sobre, note assurance-vie / conjoint / enfants) ou dernière année ; **étoiles** de bonnes pratiques (revient sur le « pas d'étoiles » du client, voulu par le joueur) ; Jean-Mi : dosage inchangé ; tabac et casino suspendus (question juridique) ; décor 1984-1993 unique ; 1977-1983 = un chapitre de 7 ans.
 
+- (18/11, suite) Joueur : pas de studio ni de crédit pour Jean-Mi tant que le joueur ne peut pas en faire autant (**un rival n'utilise que des produits accessibles au joueur**) ; pas de leçon sur les privatisations (rester simple) ; SCPI / diversification oui ; mariage 70 % ; jumeaux 1/6 ; Christine seul profil du lot 10 ; carte de passage version A ; divorce et décès d'un parent admis ; tabac lancé (aucun argent réel), casino plus tard ; produits définis dans un catalogue du monde avec date de naissance, présentations déplaçables entre chapitres (le PEA, 07/1992, ne peut pas remonter avant).
+
 ## 5. Principes retenus pour ce projet
 
 - Le joueur aime : pop-ups d'événements, animations (crash, cigogne), banquier didactique, comparaison avec le Livret A. Construire dessus.
@@ -66,4 +70,7 @@ Spectateur ; tunnels vides ; ≈ 8 décisions dont 1 forte ; résultat à ±4 % 
 ## 6. Erreurs à ne pas refaire
 
 - Ne pas oublier que la démo vouvoie le joueur (textes de cartes écrits d'abord au tutoiement, corrigé).
+- Ne pas concevoir une séquence sur des données qui n'existent pas (7 vendredis du Golfe sans clôtures journalières) : demander d'abord au boursier la granularité disponible.
+- Ne pas faire vivre au rival une mécanique interdite au joueur (studio à crédit) : le joueur l'a rejetée.
+- Recompter les mots des gabarits (un texte « un an après » faisait 35 mots).
 - Un projet coûteux réalisé en fin de démo fait chuter le patrimoine affiché : l'apport immobilier reste un actif (ligne « Apport du T3 »), pas une dépense.
