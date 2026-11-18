@@ -225,3 +225,10 @@ Verbatim du joueur :
 ## 2026-11-18 (mariage 70 %, Christine, tabac et casino, produits antérieurs à leur chapitre, verbatim)
 
 > Pour le mariage de Gérard 70% de survenue, c'est ok. Pour le profil, on peut bel et bien garder Christine. Tabac et casino, j'ai vérifié, ça n'a pas l'air d'être problématique dans la mesure où l'application ne va pas demander de l'argent aux utilisateurs, même si on leur fait jouer à des jeux qui seraient potentiellement d'argent dans la vraie vie, vu que là, il n'y a pas d'argent demandé. Ça a l'air d'être ok, tu peux vérifier via quelques recherches sur Internet, mais il me semble que c'est bon et on pourra partir dessus. Et enfin, la question du PEP du banquier, je sais pas ce dont tu me parles. Tu pourrais m'en dire plus ? Ensuite, pour ce qui est du lot 10, là, je vois que dans le chapitre 89-93, tu parles de marché prolongé, mais aussi des produits PEA et SCPI. On est d'accord que ces produits sont disponibles avant, donc ce serait peut-être intéressant de les faire intervenir avant, potentiellement dans la période précédente, 84-88, qui elle est déjà développée. Et ces produits existent même de façon antérieure à 84-88, et il faudrait prévoir que lorsque cette période sera développée, les produits soient présentés dans cette période et pas dans la période dans laquelle ils seront développés. Il faut prévoir qu'ils puissent être bougés, non? Tu vois ce que je veux dire? Sinon, pour le reste, je suis en phase avec toi. Tu peux lancer le banquier qui retire la privatisation et chiffrerait la carrière, le divorce et la gestion du patrimoine des parents, le game designer qui arbitrera sur la vitrine et met à jour le doc 39. On est parti.
+
+
+---
+
+## 2026-11-18 (joueuse dans le questionnaire de début, verbatim)
+
+> Ajoute qu'il faudra prévoir de pouvoir etre une femme en tant que joueur dans le questionnaire de debut de partir. Si on est une femme, Sylvie devient alors Gérard
