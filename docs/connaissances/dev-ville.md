@@ -119,6 +119,13 @@
 - Captures : `-Telephone169` (`--telephone=169`). Une partie cartes allumées en capture : `sc.jeu.nouvelle_partie(cfg avec "cartes": true)`, `resolution_auto()`, `demarrer_direct(0)` ; `StrategieTest.politique_cartes`.
 - Graine 7, 12/1988 : dépenser = télé, antenne, tricycle, chien, escargot ; épargner et alterner = tricycle, chien (C02 et C07 jamais tirées avec cette graine : non vues en partie réelle, seulement dans les tests).
 
+## 2 undecies. Lot 09-V (thèmes de décor)
+
+- `ThemeDecor.table(id)` (`scripts/ville/theme_decor.gd`) lit `data/themes/<id>.json` (clés `_…` = notes ignorées) ; absent = `{}` + `push_warning`. « 1980 » = table vide : `appliquer_theme({})` ne régénère rien, donc identité au pixel par construction.
+- `ville.regler_theme(id)` / `theme_actuel()` ; différé tant que `rue.effets` a des enfants (séquence animée), réessayé à chaque `_process`. Pas besoin de toucher `sequences.gd`.
+- `rue.appliquer_theme(table)` : clé lue `batiments` (par x gauche de `BATIMENTS`, champs de `Facades.batiment`, null = retire) ; régénère `rue/batiment_i` + `neige/…`, relance variantes et préchauffage, refait la couche « Batiments » (`_remplir_batiments`, extrait de `_construire`). Limite : ombres d'auvent du Sol non refaites.
+- Test : `test_rue._tester_themes` (empreinte md5 des images et des ops de couches ; compare en headless, sans rendu). Captures `-Theme <id>` / `--theme=<id>` : `rue_libre` est déterministe, `rue` varie parfois d'une exécution à l'autre (téléphone aussi) : comparer deux captures sans option avant de conclure.
+- Worktree neuf : lancer `--headless --import` avant le premier test (sinon « GrillePixel not declared », cache de classes absent).
 ## 3. Décisions (étape A)
 
 - Ciel : bandes crème 12, ciel clair 46, ciel 110, bleu ardoise 112, puis bleu nuit ; horizon posé au bas du trottoir. **À régler à l'étape B** avec les bâtiments (la partie claire est surtout cachée ; le haut bleu nuit est sous la barre).

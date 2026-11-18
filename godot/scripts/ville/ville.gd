@@ -67,6 +67,8 @@ var _survol: Batiment = null
 var _humeur := 1
 var _calme := 0.0                        # secondes de temps qui tourne sans toucher la rue (D7)
 var _controle := false
+var _theme := "1980"                  # thème du décor appliqué (lot 09-V)
+var _theme_voulu := ""                # thème demandé pendant une séquence animée : appliqué à sa fin
 
 
 func _ready() -> void:
@@ -104,6 +106,8 @@ func _ready() -> void:
 # =====================================================================
 
 func _process(delta: float) -> void:
+	if _theme_voulu != "" and not _sequence_animee():
+		regler_theme(_theme_voulu)
 	if anime and not mode_titre:
 		phase = fmod(phase + delta / CYCLE, 1.0)
 	var jc := _jour_couchant(phase)
@@ -182,6 +186,33 @@ static func _jour_couchant(p: float) -> Vector2:
 		var k2 := (p - 0.85) / 0.1
 		return Vector2(k2, sin(k2 * PI) * 0.6)
 	return Vector2(1, 0)
+
+
+## Lot 09-V : thème du décor (tranche de 10 ans), valable au démarrage et en cours de partie. Sans effet si c'est le
+## thème actuel ; la rue n'est refaite que si le thème change, et jamais pendant une séquence animée (appliqué à sa fin).
+func regler_theme(id: String) -> void:
+	if id == _theme and _theme_voulu == "":
+		return
+	if _sequence_animee():
+		_theme_voulu = id
+		return
+	_theme_voulu = ""
+	if id == _theme:
+		return
+	_theme = id
+	rue.call("appliquer_theme", ThemeDecor.table(id))
+	if _controle:
+		print("THEME %s" % id)
+
+
+func theme_actuel() -> String:
+	return _theme
+
+
+## Une séquence (vedette) a posé des accessoires d'effets dans la rue.
+func _sequence_animee() -> bool:
+	var e: Node = rue.get("effets")
+	return e != null and e.get_child_count() > 0
 
 
 ## Saison et époque selon le mois du jeu.
