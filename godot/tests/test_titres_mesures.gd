@@ -72,6 +72,7 @@ func _initialize() -> void:
 		alertes += 1
 		print("ALERTE : « bon_pere » n'est jamais obtenu hors stratégie dédiée (sur %d parties)" % nb_tout)
 	print("MESURE alertes=%d titres_obtenus=%d/9" % [alertes, total_tout.size()])
+	_reference_pref(ids)
 	verifier("Toutes les parties vont à leur terme (aucune inachevée)", inachevees == 0, "%d inachevées" % inachevees)
 	verifier("Toutes les parties menées à terme reçoivent un titre", sans_titre == 0, "%d sans titre (faillite)" % sans_titre)
 	print("")
@@ -93,6 +94,34 @@ func _ligne(compte: Dictionary, ids: Array) -> String:
 	for id: String in ids:
 		s += "%s=%d " % [id, int(compte.get(id, 0))]
 	return s.strip_edges()
+
+
+const NB_PREF := 200
+
+
+## Lot 08b : population de référence P-REF (StrategieTest.profil_reference, graines 1 à NB_PREF).
+func _reference_pref(ids: Array) -> void:
+	var compte := {}
+	var inachevees: Array = []
+	var sans_titre: Array = []
+	for g in range(1, NB_PREF + 1):
+		var cfg := Donnees.config_demo(g)
+		cfg["cartes"] = true
+		cfg["projets"] = true
+		cfg["rue"] = true
+		var e := EtatPartie.new()
+		e.demarrer(cfg)
+		StrategieTest.jouer_partie_profil(e, StrategieTest.profil_reference(g))
+		if e.fin != "fin":
+			inachevees.append(g)
+		var t := Titres.calculer(e)
+		if t.is_empty():
+			sans_titre.append(g)
+			continue
+		compte[str(t["id"])] = int(compte.get(str(t["id"]), 0)) + 1
+	print("REFERENCE_PREF (%d parties) : %s" % [NB_PREF, _ligne(compte, ids)])
+	verifier("P-REF : toutes les parties vont à leur terme et reçoivent un titre", inachevees.is_empty() and sans_titre.is_empty(),
+		"inachevées %s, sans titre %s" % [str(inachevees), str(sans_titre)])
 
 
 func _partie(g: int, c: Dictionary) -> EtatPartie:
