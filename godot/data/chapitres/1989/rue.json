@@ -1,0 +1,97 @@
+{
+  "_note": "La rue du chapitre 1989-1993 (docs/47 §2 et §6, docs/39 §6.4, docs/37 §8) : passages des voisins, bulles réactives, kiosque de la Gazette. Même structure que 1984 (scripts/logique/quartier.gd). Ids propres au chapitre (W = passages, X = réactives, L = kiosque) : ceux de 1984 (V, R, K) sont déjà « vus » dans une partie venue de 1984. Dosage de Jean-Mi : 8 passages dont 5 ★ (W06, W07, W11, W13, W15 ; W15 en 11/1993 au lieu de 12/1993 : le mois de l'échéance du projet 2C est un mois de pause, sans notification de rue), comme 1984-1988 ; mesuré par test_rue_mesures. Aucun studio, crédit, privatisation ni prénom en dur (gabarits Gabarits). Textes ≤ 15 mots (passages), jamais d'ordre d'achat ni de prévision hors de la bouche de Jean-Mi.",
+  "actif": false,
+
+  "_budgets": "Mêmes règles qu'en 1984 (voisin_ecart_mois, decalage_max, kiosque_decalage_max, par_mois, rang_ecart_mois). rang_premier_mois : Jean-Mi n'entre dans le classement qu'à l'automne 1990.",
+  "budgets": {
+    "voisin_ecart_mois": 2,
+    "decalage_max": 2,
+    "kiosque_decalage_max": 1,
+    "par_mois": 1,
+    "rang_ecart_mois": 6,
+    "rang_premier_mois": "1990-11"
+  },
+
+  "personnages": {
+    "lopez": { "nom": "Mme Lopez", "initiale": "L" },
+    "lefranc": { "nom": "M. Lefranc", "initiale": "F" }
+  },
+  "classement": {
+    "vous": { "nom": "Vous", "initiale": "V" },
+    "titre_rang": "Classement de la rue",
+    "titre_kiosque": "LA GAZETTE"
+  },
+
+  "_passages": "mois = mois du passage ; qui = lopez | matelas | livret | jeanmi | lefranc ; cle = passage ★ (jamais abandonné, historisé) ; long = carte de lecture (texte_long) ; persistant = reste à l'écran jusqu'au toucher. V12 (baguettes) et la carte de lecture de V13 sont écrites sans variable : le moteur ne fournit que {levier} aux passages.",
+  "passages": [
+    { "id": "W01", "mois": "1989-02", "qui": "lopez", "cle": true, "long": true,
+      "texte": "Bienvenue dans la rue : ici, tout le monde se connaît !",
+      "texte_long": "Bienvenue dans la rue ! Tata Livret met tout sur son Livret A. Tonton Matelas garde tout sur son compte. Jean-Mi, vendeur chez Peugeot, a perdu gros en Bourse en 1987 : il en parle volontiers. Mêmes revenus que vous : seule change la façon de placer. Le classement est dans « Mon argent »." },
+    { "id": "W02", "mois": "1989-05", "qui": "livret", "cle": false, "long": false,
+      "texte": "Le Livret A, toujours là. Comme moi." },
+    { "id": "W03", "mois": "1989-09", "qui": "matelas", "cle": false, "long": false,
+      "texte": "Le Minitel ? Mon matelas n'a pas besoin de code." },
+    { "id": "W04", "mois": "1989-12", "qui": "jeanmi", "cle": false, "long": false,
+      "texte": "Cette fois, je fais du solide. Plus de Bourse, plus de crédit." },
+    { "id": "W05", "mois": "1990-03", "qui": "lopez", "cle": false, "long": false,
+      "texte": "Il paraît que les prix des appartements flambent." },
+    { "id": "W06", "mois": "1990-06", "qui": "jeanmi", "persistant": true, "cle": true, "long": false,
+      "texte": "J'ai fini de payer mes erreurs ! Plus jamais de crédit, plus jamais la Bourse." },
+    { "id": "W07", "mois": "1990-10", "qui": "jeanmi", "persistant": true, "cle": true, "long": false,
+      "texte": "Des bureaux à Lyon, 6,5 % de loyers. Tout dedans, comptant !" },
+    { "id": "W08", "mois": "1991-05", "qui": "jeanmi", "cle": false, "long": false,
+      "texte": "Mes loyers tombent chaque trimestre. Ton livret, il fait combien, déjà ?" },
+    { "id": "W09", "mois": "1991-11", "qui": "livret", "cle": false, "long": false,
+      "texte": "Mes intérêts tombent le 31 décembre. Toujours." },
+    { "id": "W10", "mois": "1992-03", "qui": "jeanmi", "cle": false, "long": false,
+      "texte": "Tous mes œufs dans le même panier ? Un panier en béton !" },
+    { "id": "W11", "mois": "1992-10", "qui": "jeanmi", "persistant": true, "cle": true, "long": false,
+      "texte": "Un étage de mon immeuble est vide. Mes loyers ont baissé." },
+    { "id": "W12", "mois": "1993-02", "qui": "matelas", "cle": false, "long": false,
+      "texte": "Mes billets de 1989 achètent moins de baguettes. Mon matelas, lui, n'a pas changé." },
+    { "id": "W13", "mois": "1993-06", "qui": "jeanmi", "persistant": true, "cle": true, "long": true,
+      "texte": "Ma 205 est morte. Je vends mes parts… il faut attendre un acheteur.",
+      "texte_long": "Jean-Mi a tout mis dans une seule SCPI. Pour revendre, il attend un acheteur, au prix conseillé, bien en dessous de son prix d'achat. Un seul panier, c'est un seul risque." },
+    { "id": "W14", "mois": "1993-09", "qui": "lopez", "cle": false, "long": false,
+      "texte": "Jean-Mi a vendu ses parts. Moins cher qu'il les avait payées." },
+    { "id": "W15", "mois": "1993-11", "qui": "jeanmi", "persistant": true, "cle": true, "long": false,
+      "texte": "La pierre, c'est bien. Toute ma pierre dans un seul panier, moins." }
+  ],
+
+  "_reactives": "declencheur = achat_action (1er achat d'une action) | projet_realise. par_projet : texte selon l'id du projet réalisé.",
+  "reactives": [
+    { "id": "X01", "qui": "lopez", "declencheur": "achat_action",
+      "texte": "Alors, vous voilà actionnaire ? Comme les patrons !" },
+    { "id": "X02", "qui": "lopez", "declencheur": "projet_realise",
+      "texte": "Bravo pour le projet, toute la rue en parle !",
+      "par_projet": {
+        "P1A": "Une cuisine équipée ? Vous recevez quand ?",
+        "P1B": "Le Canada en camping-car ! Rapportez-moi du sirop d'érable.",
+        "P1C": "Belle 405 break ! Toute la rue en parle.",
+        "P2A": "Bonnes vacances en Corse ! Rapportez-moi du miel.",
+        "P2B": "Une véranda ! La mienne fuit, vous avez l'adresse ?" } }
+  ],
+
+  "rang": {
+    "jeanmi_devant": "Jean-Mi passe devant vous dans la rue. Tout le café est au courant.",
+    "vous_devant": "Vous repassez devant Jean-Mi au classement de la rue."
+  },
+
+  "_kiosque": "10 titres de la Gazette (docs/47 §6.3, docs/37 §8) ; (docs/47 §6.3, docs/37 §8) ; privatisations retirées (docs/47 §5) ; l'invasion du Koweït (08/1990) et Maastricht (09/1992) sont portés par la vitrine. cert = certitude de la date.",
+  "kiosque": [
+    { "id": "L01", "mois": "1989-07", "texte": "Le Bicentenaire de la Révolution en grande pompe", "cert": "A" },
+    { "id": "L02", "mois": "1989-11", "texte": "Le mur de Berlin est tombé", "cert": "A" },
+    { "id": "L03", "mois": "1991-01", "texte": "Les armées alliées passent à l'attaque dans le Golfe", "cert": "A" },
+    { "id": "L04", "mois": "1991-05", "texte": "Pour la première fois, une femme Première ministre", "cert": "A" },
+    { "id": "L05", "mois": "1992-02", "texte": "Les Jeux d'Albertville s'ouvrent", "cert": "A" },
+    { "id": "L06", "mois": "1992-04", "texte": "Euro Disney ouvre ses portes", "cert": "A" },
+    { "id": "L07", "mois": "1992-07", "texte": "Le PEA : une enveloppe pour les actions, exonérée après cinq ans", "cert": "A" },
+    { "id": "L08", "mois": "1993-03", "texte": "Cohabitation : la droite revient à Matignon", "cert": "A" },
+    { "id": "L09", "mois": "1993-05", "texte": "L'OM champion d'Europe", "cert": "A" },
+    { "id": "L10", "mois": "1993-07", "texte": "La Twingo arrive dans les concessions", "cert": "A" }
+  ],
+  "_etapes_jeanmi": "Libellé court de l'étape de Jean-Mi (jeanmi_resume()[etape_texte]). Le moteur n'a pas encore d'étape SCPI : « attend » vaut pour toute la saison 2.",
+  "etapes_jeanmi": { "attend": "garde son argent", "position": "tout dans la pierre", "porsche": "tout dans la pierre", "liquide": "a tout vendu", "rembourse": "rembourse" },
+  "_levier": "Gabarit de la phrase du levier de 1987 (conservé pour une partie venue de 1984 : l'état de Jean-Mi traverse le chapitre).",
+  "levier": "Avec {couverture}, Jean-Mi en a joué {position} au règlement mensuel (acheter à crédit sur la Bourse). Peugeot a perdu {baisse} : {perte} de perte. Ses {couverture} y sont passés, et il en doit encore {dette}."
+}

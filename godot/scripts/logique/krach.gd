@@ -35,7 +35,7 @@ static func instantane(e: EtatPartie) -> Dictionary:
 	var lignes: Array = []
 	for id in e.joueur.lignes:
 		var p := e.cours(id)
-		if is_nan(p):
+		if is_nan(p) or e.produit(id).get("monetaire", false):
 			continue
 		lignes.append({"id": str(id), "nom": e.nom_ligne(id), "type": str(e.produit(id).get("type", "")),
 			"qte": e.joueur.qte(id), "cout": e.joueur.cout(id), "cours": p})

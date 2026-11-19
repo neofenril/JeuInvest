@@ -1,0 +1,32 @@
+{
+  "id": "1989",
+  "version_contenu": 1,
+  "_note": "Chapitre 1989-1993 « Le franc fort » (lot 10a-contenu ; docs/37 marché, docs/38 + docs/46 banque, docs/39 + docs/47 foyer, rue, vitrine). Deux entrées : Gérard (et son conjoint) venus de 1984, ou une nouvelle partie en janvier 1989 avec Christine. Aucun prénom ni genre en dur dans les textes : gabarits de data/ (Gabarits.rendre). Certitude : C sauf mention.",
+  "config": { "periode": "P1", "profil": "christine", "debut": "1989-01", "fin": "1993-12", "banquier": true, "naissances_aleatoires": false, "sexe": "f", "age": 34, "marie": true,
+    "proche": { "prenom": "Patrick", "sexe": "h", "lien": "conjoint", "annees_ensemble": 10 },
+    "enfants_initiaux": [ { "prenom": "Aurélie", "age": 8 }, { "prenom": "Julien", "age": 5 } ] },
+  "graine_test": 11,
+  "depart_F": { "cc": 9000, "livret": 25000 },
+  "_depart_F": "Christine (docs/39 §3) : 9 000 F sur le compte courant, 25 000 F sur un Livret A déjà ouvert (le Livret A est présenté en rattrapage au mois 1 : produit de base non vu). Les enfants du profil (enfants_initiaux : Aurélie, 8 ans, et Julien, 5 ans) sont lus par le moteur depuis le lot 10a bis ; ils pèsent 2 x 9 % sur le budget : épargne du profil 30 % - 18 % = 12 % possibles.",
+  "vitesse_depart": 1,
+  "_naissance": "Jumeaux : 1 naissance ancrée sur 6 (docs/47 §4.2, A7) : paramètre evenements_vie.json > naissance > jumeaux_proba. Pas de bloc « naissance » ici : une naissance scriptée exige une date (aucune au départ de Christine, dont les enfants ne sont pas modélisés par le moteur).",
+  "_moments": "Moments forts : F8 ou triple toucher sur la date saute au mois qui précède le prochain.",
+  "moments": ["1989-10", "1990-08", "1990-09", "1991-09", "1992-09", "1993-06", "1993-12"],
+  "cadence": { "budgets": { "classiques": 15, "cartes": 10, "projets": 6, "gazette": 1 } },
+  "banquier": { "nom": "M. LEFRANC" },
+  "journal": { "nom": "LA GAZETTE", "prix": "4,50 F", "bandeau": "SPÉCIAL" },
+  "passage": {
+    "_note": "Carte de passage de 1984-1988 à 1989-1993 (version A, docs/40 §1.2.3). texte_attente ≤ 15 mots, rendu par Gabarits.rendre.",
+    "texte_attente": "Cinq ans de plus avec {conjoint} : mariage, école, projets. Les placements se multiplient."
+  },
+  "_continuite": "Données de continuité de Gérard (docs/39 §2, docs/47 §4 et §6), non lues par le moteur à ce jour : promotion CNAM (si la carte de formation de 1984-1988 a été choisie : salaire + 6 % entre 01/1990 et 10/1990, texte « Votre diplôme du CNAM est arrivé aux oreilles du directeur : vous passez agent de maîtrise. » ; sinon bulle de Mme Lopez « Le fils Moreau est passé chef d'atelier. Les cours du soir, paraît-il. »).",
+  "continuite": {
+    "promotion": { "si_carte": "C07", "fenetre": ["1990-01", "1990-10"], "salaire_pct": 6,
+      "texte": "Votre diplôme du CNAM est arrivé aux oreilles du directeur : vous passez agent de maîtrise.", "replique": "Tous ces samedis… ça valait le coup !",
+      "sinon_bulle": "Le fils Moreau est passé chef d'atelier. Les cours du soir, paraît-il." }
+  },
+  "titre": {
+    "accroche": "Ma rue, de 1978 à aujourd'hui",
+    "sous_titre": "Le franc fort · janvier 1989 – décembre 1993"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "_note": "« Le Golfe, un an après » (09/1991) : même mécanique que « Le krach, un an après » de 1984 (modale à 3 barres, scripts/logique/krach.gd lu par EtatPartie) ; mois_krach = mois de la modale de la vitrine (09/1990, vitrine.json), mois_un_an_apres = 09/1991. Pas de tableau de 7 jours : « jours » est vide (la vitrine n'a que des fins de mois). Le texte est volontairement SANS CHIFFRE : avec la série actuelle (09/1991 : 1 830 contre 1 950 en 07/1990, C), la Bourse est encore sous son niveau de juillet 1990 (cas attendu de docs/47 §1.3) ; test_chapitre_1989 vérifie que ce cas est bien celui de la série (rebond et écart imprimés). Un gabarit à deux cas ({rebond}, {ecart}) demanderait un changement du moteur.",
+  "indice_nom": "Indice de la Bourse de Paris",
+  "arrondi_points": 5,
+  "jours": [],
+  "mois_krach": "1990-09",
+  "mois_un_an_apres": "1991-09",
+  "un_an_apres": {
+    "titre": "LE GOLFE, UN AN APRÈS",
+    "texte": "Un an après, la Bourse a regagné du terrain depuis septembre 1990, mais reste sous son niveau de juillet 1990. Un an ne suffit pas toujours : les actions demandent du temps.",
+    "garde_fou": "Un seul exemple, pas une règle.",
+    "legende_renforce": "{mise} de plus engagés",
+    "mention": "Exemple : vous n'aviez ni actions ni SICAV en septembre 1990.",
+    "bouton": "J'AI COMPRIS",
+    "titres_barres": { "vendu": "TOUT VENDU", "rien": "RIEN FAIT", "renforce": "RENFORCÉ" },
+    "exemple": { "montant_f": 2000.0, "renfort_part": 0.5 }
+  }
+}

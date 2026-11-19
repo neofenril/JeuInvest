@@ -39,6 +39,8 @@ static func contexte(e: EtatPartie) -> Dictionary:
 		if nom != "":
 			proche = {"prenom": nom, "sexe": "h" if _sexe(sexe) == "f" else "f", "lien": "conjoint"}
 	var enfants := []
+	for x: Dictionary in e.config_depart.get("enfants_initiaux", []):
+		enfants.append(str(x["prenom"]))
 	for ev in e.calendrier:
 		if ev["type"] == "naissance" and ev.get("declenche", false):
 			enfants.append_array(ev.get("prenoms", []))

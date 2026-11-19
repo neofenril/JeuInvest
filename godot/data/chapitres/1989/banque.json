@@ -1,0 +1,160 @@
+{
+  "_note": "Catalogue de la banque du chapitre 1989-1993 (lot 10a-contenu ; docs/46 prime sur docs/38 ; structure de la démo V2 (11 §1.7, §2.4, §4.0, §5 ; 12 §2.2 ; 13 §1-3). Textes de M. Lefranc : il informe, il ne conseille jamais (A33), 60 mots au plus par présentation (12 R3). Variables entre accolades, calculées par scripts/logique/banquier.gd avec l'argent du joueur. Montants en francs. Cert. : A vérifié, B probable, C reconstitué.",
+
+  "conjointe": "Sylvie",
+  "_conjointe": "Prénom du conjoint par défaut d'une partie venue de 1984 (continuité de Gérard) ; une partie de Christine porte son proche (Patrick) dans sa configuration. Aucun texte du chapitre ne l'écrit : gabarits {conjoint}, {proche}.",
+
+  "_ordre_carnet": "Ordre d'affichage du carnet : produits de base, puis nouveautés de 1989-1993 (SICAV monétaire, SCPI, PEA, BNP).",
+  "ordre_carnet": ["livret", "pel", "sicav_monetaire", "emprunt", "av", "sicav", "scpi", "pea", "elf", "loreal", "peugeot", "saintgobain", "bnp"],
+
+  "familles": {
+    "cc": "8c96a8", "livret": "4ea8de", "pel": "8f8cf2", "emprunt": "d9b44a", "av": "c48bd6", "sicav": "5cc8a0", "action": "ff8a65"
+  },
+
+  "libelles": { "journal_heritage": "Héritage de l'oncle Raymond (assurance-vie)", "titre_heritage": "Oncle Raymond : l'assurance-vie", "presente": "M. Lefranc présente : ", "pas_presente": "M. Lefranc ne vous a pas encore présenté ce produit." },
+  "_produits": "Les fiches et paramètres datés de tous les produits sont dans le catalogue du monde data/produits.json (SICAV monétaire, SCPI, PEA, PEP, BNP compris).",
+
+  "_presentations": "Présentations du chapitre 1989-1993 au format 10a : { id, produit | produits, quand (mois relatif au début du chapitre : 0 = janvier 1989), echeance, mode, titre, bouton, compare, texte, ticket, plus }. Un produit déjà vu (R-UNE-FOIS) n'est jamais représenté : Gérard, venu de 1984, ne voit que la SICAV monétaire (05/1989), la SCPI (02-04/1990) et la BNP (10/1993) ; Christine, partie de 1989, voit en plus les produits de base par rattrapage (livret, PEL, assurance-vie, emprunt, SICAV) puis les actions (01/1990). PEA : 07/1992, limite 09/1992 (naissance réelle 16/07/1992, A). Texte ≤ 30 mots, aucun conseil, aucune variable hors celles de Banquier.variables. Le PEP n'a pas de fiche jouable : c'est un message daté (messages > datees).",
+  "presentations": [
+    { "id": "B1", "produit": "sicav_monetaire", "quand": 4, "echeance": 5, "mode": "jouable", "titre": "SICAV MONÉTAIRE", "bouton": "OUVRIR", "compare": ["livret"],
+      "texte": "Une SICAV monétaire place votre argent à très court terme, au rythme des taux courts, aujourd'hui bien au-dessus du Livret A. Disponible en quelques jours ; gains imposables.",
+      "ticket": ["Au rythme des taux courts", "Disponible en quelques jours"],
+      "plus": "Les taux courts suivent la politique de la Banque de France : ils peuvent baisser. La valeur est stable mais non garantie. Simplifié : en vrai, les gains sont souvent exonérés sous un seuil de cessions ; le jeu applique 16 %." },
+    { "id": "B3", "produits": ["elf", "loreal", "peugeot", "saintgobain"], "quand": 11, "echeance": 13, "mode": "jouable", "titre": "ACTIONS", "bouton": "ACHETER", "compare": ["sicav"], "risque": true,
+      "texte": "Les actions en direct : Elf, L'Oréal, Peugeot, Saint-Gobain. Vous choisissez l'entreprise et touchez ses dividendes, mais elle peut chuter seule. Chaque ordre coûte 1,3 %, au moins 50 F.",
+      "ticket": ["Un ordre coûte 1,3 %, 50 F au moins", "Pas de frais de gestion annuels"],
+      "plus": "Depuis le 1er juillet 1989, les tarifs de courtage ne sont plus réglementés : chaque intermédiaire fixe les siens, et votre agence reste le passage habituel. Avec le minimum de 50 F, un petit ordre coûte cher : mieux vaut des ordres moins nombreux et plus gros." },
+    { "id": "B2", "produit": "scpi", "quand": 13, "echeance": 15, "mode": "jouable", "titre": "LA PIERRE EN PARTS", "bouton": "OUVRIR", "compare": ["livret", "av"], "risque": true,
+      "texte": "Une SCPI permet de détenir une part d'immeubles de bureaux ou de commerces pour quelques milliers de francs. Frais d'entrée élevés, revente non garantie.",
+      "ticket": ["Des loyers chaque trimestre", "Frais d'entrée élevés ; revente : il faut un acheteur"],
+      "plus": "L'immobilier est un autre panier : il rapporte des loyers et son prix suit un cycle différent de la Bourse. Mais on le revend moins vite, à un prix non garanti. Simplifié : en vrai, les loyers relèvent des revenus fonciers ; le jeu applique 16 %." },
+    { "id": "B4", "produit": "pea", "quand": 42, "echeance": 44, "mode": "jouable", "titre": "PLAN D'ÉPARGNE EN ACTIONS", "bouton": "OUVRIR", "compare": ["sicav"], "risque": true,
+      "texte": "Le Plan d'épargne en actions (loi de juillet 1992) abrite actions et SICAV : après 5 ans sans retrait, gains et dividendes échappent à l'impôt sur le revenu.",
+      "ticket": ["Actions et SICAV actions", "Bloqué 5 ans pour l'avantage fiscal"],
+      "plus": "Un retrait avant 5 ans clôt le plan et les gains sont imposés comme sur un compte-titres. Le plafond des versements est de 600 000 F. Simplifié : le jeu ne tient pas compte des prélèvements sociaux après 5 ans." },
+    { "id": "B5", "produit": "bnp", "quand": 57, "echeance": 57, "mode": "message", "titre": "BNP", "bouton": "VOIR LA FICHE", "compare": ["elf"], "risque": true,
+      "texte": "Nouvelle action au catalogue : BNP. Banque cotée à Paris depuis octobre 1993.",
+      "ticket": ["Nouvelle action au catalogue", "1,3 % par ordre"],
+      "plus": "C'est une action comme les autres : son cours peut monter comme baisser, et aucun dividende n'est attendu cette année." }
+  ],
+
+  "_rattrapage": "R-RATTRAPAGE (docs/46 §2.1) : produit de base né avant le chapitre, non vu et non déclaré par le chapitre, présenté du mois 1 au mois « fenetre », au plus un tous les « ecart » mois, dans l'ordre pédagogique global ; texte et fiche viennent du catalogue. Ne concerne que le départ de Christine en 1989.",
+  "rattrapage": { "ordre": ["livret", "pel", "av", "emprunt", "sicav"], "fenetre": 24, "ecart": 2, "echeance": 3 },
+  "_garde_fou_coussin": "Phrase ajoutée quand une présentation de produit risqué arrive alors que le coussin fait moins de 3 mois de dépenses (11 §2.5).",
+  "phrase_coussin": "Avant cela, votre roue de secours n'est pas encore complète : ce placement ne concerne que l'argent au-delà.",
+
+  "_cadence": "Réglages de la cadence des interruptions : déplacés dans rythme.json > cadence (lot 02, R-CADENCE de docs/15 §0.1).",
+
+  "_heritage": "Oncle Raymond, version « un seul pot » comme tante Odette (docs/38 §7.1, docs/47) : oncle par le sang, veuf, sans enfant ; l'assurance-vie (contrat de 1978, antérieur au 20/11/1991) verse 70 000 F en avril 1991, au joueur comme aux témoins. Même somme par succession : abattement de 10 000 F pour un neveu ou une nièce, puis 55 % (A) : 33 000 F de droits, 37 000 F nets. Frais de notaire ignorés (C). Le montant (≈ 8 mois de salaire) est de certitude C.",
+  "heritage": {
+    "av": { "d": "1991-04", "montant_F": 70000 },
+    "comparaison_succession": { "abattement_F": 10000, "droits_pct": 55, "_cert": "A (règles de 1991), C (montant du scénario)" },
+    "D08": { "titre": "ONCLE RAYMOND",
+      "texte": "{prenom}, toutes mes condoléances pour votre oncle Raymond. Vous étiez bénéficiaire de son assurance-vie : {av_montant}, versés ce mois-ci, sans un centime de droits. Passée par sa succession, la même somme aurait coûté {droits} de droits : il vous serait resté {succ_net}, six mois plus tard.",
+      "ticket": ["Reçu par assurance-vie", "{av_montant}", "ce mois-ci, sans droits", "Si ça avait été par succession", "{succ_net} nets", "vous auriez attendu 6 mois et payé {droits} de droits"],
+      "resume": "Reçu par assurance-vie : {av_montant} ; par succession, il ne vous serait resté que {succ_net}" }
+  },
+  "_versements": "Versements automatiques mensuels (11 §8) : règles VP1-VP11, textes VP-A à VP-C. Exécutés au début du mois, après le salaire et le versement du PEL, dans l'ordre de création ; tout ou rien, seulement si le compte reste positif ; 3 refus de suite = plan suspendu ; Livret A : versement réduit au plafond, suspendu à 0. Frais d'entrée prélevés sur chaque versement. Le PEL garde son versement obligatoire (300 F au moins, 3 600 F par an, B/C).",
+  "versements": {
+    "eligibles": {
+      "livret": { "min_F": 100, "frais_pct": 0 },
+      "av": { "min_F": 300, "frais_pct": 4 },
+      "sicav": { "min_F": 300, "frais_pct": 2 }
+    },
+    "montants_F": [100, 200, 300, 500, 1000],
+    "pel_montants_F": [300, 500, 1000],
+    "pel_min_annuel_F": 3600,
+    "refus_max": 3,
+    "vpa_apres_mois": 3,
+    "non_eligibles": {
+      "pel": "Le versement mensuel du PEL est obligatoire : au moins 300 F par mois, 3 600 F par an. Vous pouvez changer son montant (effet le mois suivant).",
+      "emprunt": "Pas de versement automatique sur l'emprunt d'État : l'État n'emprunte qu'à dates fixes, et chaque achat ouvrirait une nouvelle ligne de 10 ans.",
+      "action": "Pas de versement automatique en actions : chaque ordre coûte au moins 50 F. Pour investir un peu chaque mois en Bourse, on passait par une SICAV."
+    },
+    "simplifie_sicav": "Simplifié : à l'époque, une SICAV s'achetait souvent par parts entières ; le jeu achète des fractions de part.",
+    "VPA": { "titre": "Épargner sans y penser",
+      "texte": "{prenom}, la banque peut virer automatiquement une somme le 1er de chaque mois, juste après votre paye. Avec {v} par mois, vous aurez {v12} de côté dans un an, sans y penser : l'épargne passe avant les dépenses, pas après. Montant et placement à votre choix ; vous arrêtez quand vous voulez." },
+    "VPB": "Avec un versement fixe chaque mois, vous achetez plus de parts quand la SICAV baisse, moins quand elle monte. Exemple : 500 F par mois à 100, 80 puis 125 F la part : 15,25 parts, payées 98,36 F en moyenne, contre 101,67 F de prix moyen. Aucune garantie de gain, mais on évite de tout acheter au plus haut.",
+    "VPC": "Rappel : {e_pct} % de frais d'entrée sur chaque versement, soit {frais_v} sur vos {v} chaque mois, {frais_an} par an.",
+    "programme": { "titre": "Versement automatique programmé", "texte": "{v} par mois vers {produit}, le 1er du mois, juste après la paye, à partir de {debut}." },
+    "modifie": { "titre": "Versement automatique modifié", "texte": "{v} par mois vers {produit}, à partir de {debut}." },
+    "arrete": { "titre": "Versement automatique arrêté", "texte": "Plus de versement automatique vers {produit}. L'argent reste sur votre compte courant." },
+    "reactive": { "titre": "Versement automatique réactivé", "texte": "{v} par mois vers {produit}, de nouveau, à partir de {debut}." },
+    "refus": { "titre": "Versement non effectué", "texte": "Versement de {v} vers {produit} non effectué : compte insuffisant." },
+    "suspendu_refus": { "titre": "Versement automatique suspendu", "texte": "Trois mois de suite, votre compte ne suffisait pas pour verser {v} vers {produit} : le versement est suspendu. Vous pouvez le réactiver depuis sa fiche, à la banque." },
+    "suspendu_plafond": { "titre": "Livret A plein", "texte": "Votre Livret A est plein ({plafond}) : le versement est suspendu, l'argent reste sur votre compte courant." },
+    "plafond_releve": { "titre": "Livret A : versement à réactiver", "texte": "Le plafond du Livret A passe à {plafond} : vous pouvez réactiver votre versement automatique depuis sa fiche, à la banque." },
+    "pel_regularise": { "titre": "PEL : versement annuel complété", "texte": "Votre PEL demande 3 600 F de versements par an. Il manquait {manque} : je les ai prélevés sur votre compte courant pour garder votre plan." },
+    "pel_clos": { "titre": "PEL clos", "texte": "Votre PEL demande 3 600 F de versements par an ; il manquait {manque} et le compte ne suffisait pas : le plan est clos. Vous récupérez {recu}." },
+    "releve": " Versements automatiques de l'année : {total} ({detail})."
+  },
+
+  "_messages": "Notifications de la banque sans pause (13 §5.1). persistant : reste à l'écran jusqu'au toucher et se range dans le carnet (Messages).",
+  "messages": {
+    "_datees": "Messages datés sans pause du chapitre (docs/38 §4, docs/41 §4, docs/46 §3, docs/47 §3) : { d, titre, texte, source (banque | media), produit? + mode « message » + texte_long pour le PEP (mécanisme existant long / texte_long), si_parts? (SCPI) }. À ce jour le moteur ne lit que « plafond » (05/1990), « D04bis » et « L17 » de ce bloc : la liste est la DONNÉE complète, prête pour le moteur (point signalé au chef de projet). Aucun message ne dit ce qui va se passer ensuite. Variables {prix_revente} et {decote} de l'alerte SCPI : à fournir par le moteur.",
+    "datees": [
+      { "d": "1989-05", "source": "banque", "titre": "Court, moyen, long terme",
+        "texte": "Court terme, moyen terme, long terme : l'argent dont vous avez besoin bientôt n'a pas la même place que celui que vous pouvez laisser dix ans." },
+      { "d": "1989-07", "source": "banque", "titre": "Courtage libre",
+        "texte": "Depuis le 1er juillet 1989, les tarifs de courtage ne sont plus réglementés : chaque intermédiaire fixe les siens. Le coût d'un ordre varie donc selon la banque." },
+      { "d": "1990-01", "source": "banque", "titre": "Diversifier",
+        "texte": "Diversifier, c'est répartir son épargne entre plusieurs placements qui ne réagissent pas de la même façon : si l'un baisse, les autres peuvent tenir." },
+      { "d": "1990-01", "source": "banque", "titre": "Le Plan d'épargne populaire", "produit": "pep", "mode": "message",
+        "texte": "Le Plan d'épargne populaire, créé en janvier 1990, exonère d'impôt sur le revenu les gains retirés après 8 ans. Retrait plus tôt : le plan est clos. Versements libres, plafonnés.",
+        "texte_long": "Plan d'épargne populaire. Rendement : taux fixé à l'avance pour le PEP bancaire, fonds garanti pour le PEP assurance. Risque : capital garanti. Disponibilité : bloqué 8 ans ; retrait avant = clôture. Fiscalité : sans impôt sur le revenu après 8 ans ; prélèvements sociaux dus. Fermé aux nouveaux plans en 2003, quand l'épargne retraite a pris le relais de l'avantage fiscal." },
+      { "d": "1991-02", "source": "banque", "titre": "Une nouvelle contribution, la CSG",
+        "texte": "Une nouvelle contribution, la CSG, est créée au taux de 1,1 %. Elle frappe d'abord les salaires, puis aussi les revenus du patrimoine." },
+      { "d": "1991-10", "source": "banque", "titre": "Plafond du Livret A relevé",
+        "texte": "Le plafond du Livret A atteint 100 000 F. Le taux reste à 4,5 % ; l'inflation est d'environ 3,2 %." },
+      { "d": "1992-07", "source": "banque", "titre": "Le PEA est créé",
+        "texte": "Le Plan d'épargne en actions est créé par la loi du 16 juillet 1992. Les actions y sont abritées de l'impôt, à condition d'attendre." },
+      { "d": "1993-03", "source": "banque", "titre": "Votre SCPI", "si_parts": "scpi",
+        "texte": "Votre SCPI : pour revendre une part, le prix conseillé est désormais de {prix_revente}, soit {decote} % sous votre prix d'achat. Délai : environ trois mois." },
+      { "d": "1993-07", "source": "banque", "titre": "La CSG augmente",
+        "texte": "La CSG passe de 1,1 % à 2,4 % (1er juillet 1993 pour les salaires). Elle pèse aussi sur la plupart des revenus du capital." }
+    ],
+    "_messages_contexte": "Messages de docs/41 §4 pour l'emprunt d'État (n° 2) et le bilan final (n° 6) : 2 « Les actions peuvent beaucoup monter ou baisser. Un emprunt d'État rapporte un intérêt connu à l'avance. Les deux ne réagissent pas de la même façon. » ; 6 « Diversifier ne supprime pas le risque, et ne garantit ni gain ni absence de perte : cela évite qu'un seul incident pèse sur tout votre patrimoine. »",
+    "baisses_livret": [],
+    "baisse_titre": "Le Livret A baisse",
+    "baisse_texte": "Depuis le {depuis}, le Livret A passe de {ancien} % à {nouveau} %, quand les prix montent d'environ {inflation} % par an. Sur {base}, c'est {perte} d'intérêts en moins par an.",
+    "baisse_fixe": " Votre {produit_fixe}, lui, garde son taux de {taux_fixe} % : c'est tout l'intérêt d'un taux fixe.",
+    "plafond": { "d": "1990-05", "titre": "Plafond du Livret A relevé",
+      "texte": "Le plafond du Livret A passe de 80 000 à 90 000 F. Le taux reste à 4,5 % : l'inflation est d'environ 3,4 % cette année." },
+    "D04bis": { "titre": "L'assurance-vie, pour les grosses sommes",
+      "texte": "Pour un enfant, l'assurance-vie compte surtout pour les grosses sommes : sous l'abattement de 275 000 F, une succession ne coûte rien. Mais c'est un placement fait pour durer : avant 8 ans, les gains retirés sont imposés." },
+    "L17": { "titre": "Un mot après le krach",
+      "texte": "{prenom}, vous avez vu les journaux. Je ne sais pas plus que vous ce que fera la Bourse demain, et je me méfie de ceux qui prétendent le savoir. Votre coussin sur le Livret A, lui, n'a pas bougé d'un centime ; vos actions et SICAV ont perdu {x} %. Vendre aujourd'hui, c'est encaisser cette baisse ; garder, c'est accepter de ne pas savoir quand elle sera rattrapée : c'est à vous de décider." },
+    "releve_titre": "Relevé {annee}",
+    "releve_interets": "Votre épargne vous a rapporté {interets} d'intérêts cette année.",
+    "releve_sans_interets": "Aucun intérêt cette année : votre argent est resté sur le compte courant, qui ne rapporte rien.",
+    "releve_dividendes_sans_interets": "Pas d'intérêts cette année, mais {dividendes} de dividendes versés par vos actions, après impôt.",
+    "releve_frais": " Frais de l'année : {frais_annee}. Depuis le début : {frais_total} payés + {manque} de gains qui n'ont jamais existé.",
+    "releve_sans_frais": " Aucun frais payé cette année.",
+    "_dividendes": "Lot 03 (D4), textes du banquier (docs/21 K2) : {montant} net total, {detail} « Elf 840 F, L'Oréal 120 F et 1 autre » (2 titres nommés au plus), {taux} = impôt du compte-titres (regles.json), {mois} = mois du versement, {dividendes} = net de l'année. releve_avoir_fiscal : ajoutée au relevé la première année avec dividendes (docs/21 K1, 22 mots ; trop longue pour la notification du 1er dividende). dividendes_nul : année listée dans divNul d'un titre détenu (Peugeot 1984-1986, docs/20 B2), quand aucun autre titre ne verse ce mois-là ; sinon dividendes_nul_ajout ({noms} joints par « et ») termine la notification du dividende (03-R, D1 ; texte du chef de projet, à relire par le banquier). Relevé (03-R, D2, docs/22 §2) : releve_sans_interets (ni intérêt ni dividende), releve_dividendes_sans_interets (une seule phrase, sans intérêt mais avec dividendes), sinon releve_interets puis releve_dividendes. Fiche d'une action (03-R, D4, docs/22 §1) : fiche_dividende ({mois}) tant que rien n'a été reçu, puis fiche_dividendes_recus ({montant}) ; jamais « chaque année », « régulier », « toujours ».",
+    "dividendes_titre": "Vos actions vous versent un dividende",
+    "dividendes_premier": "Un dividende, c'est la part des bénéfices que l'entreprise reverse à ses actionnaires, en général une fois par an. Vous touchez {montant} ({detail}), après {taux} % d'impôt. Il n'est pas garanti d'une année sur l'autre, et le cours de l'action continue de bouger.",
+    "dividendes": "Dividendes de {mois} : {montant} versés ({detail}), après {taux} % d'impôt.",
+    "dividendes_et_autre": " et 1 autre",
+    "dividendes_et_autres": " et {n} autres",
+    "dividendes_nul_titre": "Pas de dividende cette année",
+    "dividendes_nul": "{nom} n'a pas versé de dividende cette année : l'entreprise gardait ses bénéfices pour se redresser.",
+    "dividendes_nul_ajout": " {noms} : rien cette année.",
+    "fiche_dividende": "Dividende : versé en {mois}, si l'entreprise en distribue cette année-là.",
+    "fiche_dividendes_recus": "Dividendes reçus : {montant}",
+    "releve_dividendes": " Vos actions vous ont versé {dividendes} de dividendes cette année, après impôt.",
+    "releve_avoir_fiscal": " Simplifié : le jeu applique {taux} %. En réalité, l'avoir fiscal, un crédit d'impôt de 50 % du dividende, réduisait l'impôt des actionnaires."
+  },
+
+  "_frais_pedagogie": "Encart F01 (13 §3.3) : 3 piles sur 20 ans, V = C × (1 − e) × (1 + r − f)^20, r = 7 % (une hypothèse, pas une promesse). Pile 3 « plus chargé » : SICAV « maison » de 11 §5.3 C (4,5 % + 2,5 %/an) ; pour l'assurance-vie et les actions, 11 §5 ne donne pas de produit plus chargé : frais du produit + 1,5 point par an (arbitrage du coordinateur). Courtage des actions payé à l'achat et à la revente.",
+  "frais_pedagogie": {
+    "r": 0.07, "annees": 20,
+    "sicav": { "e": 0.02, "f": 0.015, "e3": 0.045, "f3": 0.025, "nom3": "SICAV PLUS CHARGÉE", "detail3": "4,5 % + 2,5 %/an" },
+    "av": { "e": 0.04, "f": 0.0, "e3": 0.04, "f3": 0.015, "nom3": "CONTRAT PLUS CHARGÉ", "detail3": "4 % + 1,5 %/an" },
+    "action": { "f": 0.0, "f3": 0.015, "nom3": "PLUS CHARGÉ", "detail3": "courtage + 1,5 %/an" },
+    "seuil_alerte": 0.02,
+    "exemple_F": 10000
+  },
+
+  "_references": "Repères hors démo (silhouettes possibles plus tard, jamais achetables) : SICAV monétaire nette corrigée par le boursier (docs/connaissances/boursier.md §2.7, A/B).",
+  "references": { "sicav_monetaire_nette": { "1989": 8.7, "1990": 9.6, "1991": 8.9, "1992": 9.5, "1993": 7.8 } }
+}

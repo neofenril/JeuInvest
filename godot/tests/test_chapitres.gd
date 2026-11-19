@@ -108,11 +108,11 @@ func _tests_cache() -> void:
 func _tests_index() -> void:
 	_reel()
 	var tous := Donnees.chapitres(true)
-	verifier("chapitres() : un seul chapitre réel, ouvert", Donnees.chapitres().size() == 1 and tous.size() == 1 and str(Donnees.chapitres()[0]["id"]) == "1984" and str(Donnees.chapitres()[0]["marche"]) == "P1")
-	verifier("premiere_annee = 1977 ; derniere_annee = 1988", Donnees.premiere_annee() == 1977 and Donnees.derniere_annee() == 1988)
-	verifier("chapitre_de aux bornes : 1983-12 vide, 1984-01 et 1988-12 = 1984, 1989-01 vide",
+	verifier("chapitres() : deux chapitres réels, ouverts (1984 et 1989 « Le franc fort », lot 10a-contenu)", Donnees.chapitres().size() == 2 and tous.size() == 2 and str(Donnees.chapitres()[0]["id"]) == "1984" and str(Donnees.chapitres()[1]["id"]) == "1989" and str(Donnees.chapitres()[1]["marche"]) == "P1")
+	verifier("premiere_annee = 1977 ; derniere_annee = 1993 (1989 ouvert au lot 10a-contenu)", Donnees.premiere_annee() == 1977 and Donnees.derniere_annee() == 1993)
+	verifier("chapitre_de aux bornes : 1983-12 vide, 1984-01 et 1988-12 = 1984, 1989-01 et 1993-12 = 1989, 1994-01 vide",
 		Donnees.chapitre_de(Dates.lire("1983-12")) == "" and Donnees.chapitre_de(Dates.lire("1984-01")) == "1984"
-		and Donnees.chapitre_de(Dates.lire("1988-12")) == "1984" and Donnees.chapitre_de(Dates.lire("1989-01")) == "")
+		and Donnees.chapitre_de(Dates.lire("1988-12")) == "1984" and Donnees.chapitre_de(Dates.lire("1989-01")) == "1989" and Donnees.chapitre_de(Dates.lire("1993-12")) == "1989" and Donnees.chapitre_de(Dates.lire("1994-01")) == "")
 	verifier("theme_a : « 1980 » à toute date (1977-01, 1984-01, 1988-12, 1989-01)",
 		Donnees.theme_a(Dates.lire("1977-01")) == "1980" and Donnees.theme_a(Dates.lire("1984-01")) == "1980"
 		and Donnees.theme_a(Dates.lire("1988-12")) == "1980" and Donnees.theme_a(Dates.lire("1989-01")) == "1980")
@@ -143,10 +143,10 @@ func _tests_config() -> void:
 	_reel()
 	var ok := true
 	for g in [1, 7, 11, 40]:
-		var nouvelle := Donnees.config_chapitre("1984", g)
+		var nouvelle := Donnees.config_chapitre("1984", g, "1988-12")   # fin figée : 1989 est ouvert depuis le lot 10a-contenu
 		var chap: Variant = nouvelle.get("chapitre", "")
 		nouvelle.erase("chapitre")
-		ok = ok and var_to_str(nouvelle) == var_to_str(_ancienne_config_demo(g)) and str(chap) == "1984" and var_to_str(Donnees.config_demo(g)) == var_to_str(Donnees.config_chapitre("1984", g))
+		ok = ok and var_to_str(nouvelle) == var_to_str(_ancienne_config_demo(g)) and str(chap) == "1984" and var_to_str(Donnees.config_demo(g)) == var_to_str(Donnees.config_chapitre("1984", g, "1988-12"))
 	verifier("config_chapitre(\"1984\", g) = ancienne config_demo(g) (+ « chapitre ») ; config_demo = alias", ok)
 	verifier("config_demo(-1) : graine de test du chapitre (11)", int(Donnees.config_demo(-1)["graine_vie"]) == 11)
 
@@ -206,10 +206,10 @@ func _tests_bascule() -> void:
 	verifier("Données réelles : aucune bascule en 1984-1988, fin en 1988-12", n_reel[0] == 0 and r.chapitre == "1984" and r.fin == "fin" and Dates.annee(r.ab_courant()) == 1988 and Dates.mois(r.ab_courant()) == 12)
 	# Fin bornée à la dernière année par config_chapitre (config.fin au-delà)
 	var c := Donnees.config_chapitre("1984", 7)
-	c["fin"] = "1992-12"
+	c["fin"] = "1998-12"
 	var e2 := EtatPartie.new()
 	e2.demarrer(c)
-	verifier("Fin de partie = min(config.fin, décembre de derniere_annee) pour une partie par chapitres", e2.m_fin == Dates.lire("1988-12") - e2.mk.ab_debut)
+	verifier("Fin de partie = min(config.fin, décembre de derniere_annee) pour une partie par chapitres (1998-12 demandé : 1993-12)", e2.m_fin == Dates.lire("1993-12") - e2.mk.ab_debut)
 	var b := Bilan.calculer(r)
 	verifier("Bilan : chapitre_depart, annee_depart, annee_fin", b["chapitre_depart"] == "1984" and b["annee_depart"] == 1984 and b["annee_fin"] == 1988, "%s %d %d" % [b["chapitre_depart"], b["annee_depart"], b["annee_fin"]])
 	Partie.etat = null

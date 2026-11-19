@@ -205,7 +205,10 @@ static func evaluer(g: Dictionary) -> Dictionary:
 	for i in liste.size():
 		var t: Dictionary = liste[i]
 		if i == liste.size() - 1 or _condition(str(t["id"]), g, p):
-			return {"id": str(t["id"]), "nom": str(t["nom"]), "pourquoi": str(t["pourquoi"]), "ordre": i + 1}
+			var r := {"id": str(t["id"]), "nom": str(t["nom"]), "pourquoi": str(t["pourquoi"]), "ordre": i + 1}
+			if t.has("nom_f"):
+				r["nom_f"] = str(t["nom_f"])
+			return r
 	return {}
 
 
@@ -246,4 +249,15 @@ static func _condition(id: String, g: Dictionary, p: Dictionary) -> bool:
 static func calculer(e: EtatPartie) -> Dictionary:
 	if e.fin != "fin":
 		return {}
-	return evaluer(grandeurs(e))
+	return pour_joueur(evaluer(grandeurs(e)), e)
+
+
+## Forme du titre pour le joueur (lot 10a bis) : « nom_f » si le joueur est une femme, gabarits rendus ; « nom_f » est retiré.
+static func pour_joueur(t: Dictionary, e: EtatPartie) -> Dictionary:
+	if t.is_empty():
+		return t
+	var r := t.duplicate()
+	if str(Gabarits.contexte(e)["joueur"]["sexe"]) == "f" and r.has("nom_f"):
+		r["nom"] = r["nom_f"]
+	r.erase("nom_f")
+	return e.rendre(r)
