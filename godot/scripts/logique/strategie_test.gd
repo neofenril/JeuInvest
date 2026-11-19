@@ -189,6 +189,16 @@ static func _tirer(rng: RandomNumberGenerator, poids: Array) -> Variant:
 	return (poids[poids.size() - 1] as Array)[0]
 
 
+## La présentation c est-elle acceptée par la liste « ouvrir » ? Les deux formes : id de présentation (D01… B1…) ou id de produit (lot 10a).
+static func _accepte(liste: Array, c: Dictionary) -> bool:
+	if liste.has(str(c["id"])):
+		return true
+	for p in c.get("produits", []):
+		if liste.has(p):
+			return true
+	return false
+
+
 ## Profil de joueur « plausible » (population de référence P-REF, lot 08b §4.1), tiré de façon déterministe de la graine g
 ## par un générateur propre (jamais le hasard de la partie). Lois de tirage : certitude C.
 static func profil_reference(g: int) -> Dictionary:
@@ -265,7 +275,7 @@ static func _choix_profil(e: EtatPartie, profil: Dictionary) -> String:
 		"banquier":
 			if c.get("heritage", false):
 				return "compris"
-			return "ouvrir" if (profil.get("ouvrir", []) as Array).has(str(c["id"])) else "plus_tard"
+			return "ouvrir" if _accepte(profil.get("ouvrir", []), c) else "plus_tard"
 		"marche":
 			var ev := e.evenement(str(e.modale["id"]))
 			if e._est_krach(ev) and c.get("detient", false):

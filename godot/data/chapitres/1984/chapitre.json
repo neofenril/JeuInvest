@@ -1,5 +1,6 @@
 {
   "id": "1984",
+  "version_contenu": 1,
   "_note": "Démo V2 (12 §3) : P1, janvier 1984 -> décembre 1988, Gérard, 26 ans, technicien, en couple non marié avec Sylvie. Le banquier présente les produits un par un (data/banque.json). Naissance scriptée au printemps 1985 (jumeaux 1 fois sur 4, tirés par la graine), héritage de tante Odette en 1988. Les autres événements de vie restent tirés par la graine de vie. Une nouvelle partie tire une graine au hasard ; graine_test sert aux tests et aux captures.",
   "config": { "periode": "P1", "profil": "technicien", "debut": "1984-01", "fin": "1988-12", "banquier": true, "naissances_aleatoires": false },
   "graine_test": 11,

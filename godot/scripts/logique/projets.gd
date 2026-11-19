@@ -29,6 +29,11 @@ static func _def(pid: String) -> Dictionary:
 	for p: Dictionary in donnees()["projets"]:
 		if str(p["id"]) == pid:
 			return p
+	# Projet d'un chapitre déjà quitté, encore en cours : il se termine selon les règles de son chapitre (lot 10a)
+	for c: Dictionary in Donnees.chapitres(true):
+		for p: Dictionary in Donnees.charger_dans(str(c["id"]), "projets").get("projets", []):
+			if str(p["id"]) == pid:
+				return p
 	return {}
 
 
@@ -38,6 +43,11 @@ static func _option(oid: String) -> Dictionary:
 		for o: Dictionary in p["options"]:
 			if str(o["id"]) == oid:
 				return {"option": o, "projet": p}
+	for c: Dictionary in Donnees.chapitres(true):
+		for p: Dictionary in Donnees.charger_dans(str(c["id"]), "projets").get("projets", []):
+			for o: Dictionary in p["options"]:
+				if str(o["id"]) == oid:
+					return {"option": o, "projet": p}
 	return {}
 
 
@@ -81,6 +91,28 @@ static func apres_chargement(e: EtatPartie, avait_projets: bool) -> void:
 		e.projets["projets"][pid] = vide
 	if not e.projets.has("apports"):
 		e.projets["apports"] = {}
+
+
+## Changement de chapitre (lot 10a) : les projets terminés de l'ancien chapitre sont rangés sous « <chapitre>:<id> » (les ids du
+## nouveau chapitre sont préfixés par son chapitre, ou libres) ; un projet en cours reste sous son id et se termine selon ses règles ;
+## les états des projets du nouveau chapitre sont créés. N'agit que si les projets sont actifs.
+static func changer_chapitre(e: EtatPartie, ancien: String) -> void:
+	if not e.projets.has("projets"):
+		return
+	var etats: Dictionary = e.projets["projets"]
+	var nouveaux := []
+	for x: Dictionary in donnees().get("projets", []):
+		nouveaux.append(str(x["id"]))
+	for pid in etats.keys():
+		if str(pid).contains(":"):
+			continue
+		var s: Dictionary = etats[pid]
+		if str(s["etat"]) in ["realise", "realise_apres_report", "abandonne"] and nouveaux.has(str(pid)):
+			etats["%s:%s" % [ancien, pid]] = s
+			etats.erase(pid)
+	for pid in nouveaux:
+		if not etats.has(pid):
+			etats[pid] = _etat_vide()
 
 
 ## Les projets s'ouvrent-ils dans cette partie ? (drapeau de la partie et démo avec le banquier)

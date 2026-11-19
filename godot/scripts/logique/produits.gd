@@ -9,8 +9,23 @@ extends RefCounted
 const EPS := 0.005
 
 
+static var _params_src: Dictionary = {}
+static var _params_cache: Dictionary = {}
+
+
+## Paramètres datés des produits (pel, av, succession, emprunt, pea, scpi…) : les `parametres` de chaque entrée du
+## catalogue (data/produits.json), exposés sous leur clé. Même dictionnaire à chaque appel tant que le catalogue ne change pas.
 static func params() -> Dictionary:
-	return Donnees.charger("banque").get("parametres", {})
+	var cat := Donnees.charger("produits")
+	if cat != _params_src or _params_cache.is_empty():
+		_params_src = cat
+		_params_cache = {}
+		for id in cat:
+			var p: Variant = cat[id]
+			if p is Dictionary and (p as Dictionary).has("parametres"):
+				for k in (p as Dictionary)["parametres"]:
+					_params_cache[k] = (p as Dictionary)["parametres"][k]
+	return _params_cache
 
 
 static func f(francs: float) -> float:

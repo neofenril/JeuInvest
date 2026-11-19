@@ -282,14 +282,14 @@ func _tests_export() -> void:
 func _tests_marche() -> void:
 	_reel()
 	var mk := Marche.pour_periode("P1")
-	verifier("Marche P1 : fenêtre lue dans periode_p1.json (181 cases, 180 mois)", mk.n_cases == 181 and mk.nb_mois() == 180 and mk.indice.size() == 181 and (mk.prix["elf"] as PackedFloat64Array).size() == 181)
+	verifier("Marche P1 : fenêtre lue dans periode_p1.json (193 cases, 192 mois, fin 1993 depuis le lot 10a)", mk.n_cases == 193 and mk.nb_mois() == 192 and mk.indice.size() == 193 and (mk.prix["elf"] as PackedFloat64Array).size() == 193)
 	var p := Donnees.periode("P1").duplicate(true)
 	p.erase("fin")
 	var sans := Marche.new(p)
-	verifier("Marche sans champ « fin » : 15 ans par défaut (mêmes tirages que P1)", sans.n_cases == 181 and sans.indice == mk.indice)
+	verifier("Marche sans champ « fin » : 15 ans par défaut (mêmes tirages que P1)", sans.n_cases == 181 and sans.indice.slice(0, 181) == mk.indice.slice(0, 181))
 	var e := EtatPartie.new()
 	e.demarrer(Donnees.config_demo(7))
-	verifier("hist dimensionné sur la fenêtre (180) ; limite d'historique HISTORIQUE_MAX = 600", (e.hist["j"] as Array).size() == 180 and EtatPartie.HISTORIQUE_MAX == 600)
+	verifier("hist dimensionné sur la fenêtre (192) ; limite d'historique HISTORIQUE_MAX = 1200", (e.hist["j"] as Array).size() == 192 and EtatPartie.HISTORIQUE_MAX == 1200)
 	p["fin"] = 1993
 	var long := Marche.new(p)
 	var sain := long.n_cases == 193 and long.nb_mois() == 192

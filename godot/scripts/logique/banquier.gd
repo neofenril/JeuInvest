@@ -9,18 +9,68 @@ const CRITERES := [["rendement", "Rendement"], ["risque", "Risque"], ["dispo", "
 
 
 static func donnees() -> Dictionary:
-	return Donnees.charger("banque")
+	var d := Donnees.charger("banque")
+	# Lot 10a (C3) : `presentations` peut être une LISTE [{id, produit, quand, echeance, …}] ; elle est normalisée une fois en
+	# dictionnaire { id : entrée } (forme lue par l'interface), avec `produits` = [produit].
+	if d.get("presentations", null) is Array:
+		var out := {}
+		for p: Dictionary in d["presentations"]:
+			var q := p.duplicate(true)
+			if not q.has("produits"):
+				q["produits"] = [str(q["produit"])]
+			out[str(q["id"])] = q
+		d["presentations"] = out
+	return d
+
+
+## Entrée de présentation : le chapitre, sinon une présentation de rattrapage « R_<produit> » fabriquée depuis le catalogue.
+static func _pres(id: String) -> Dictionary:
+	var d: Dictionary = donnees()["presentations"]
+	if d.has(id):
+		return d[id]
+	if id.begins_with("R_"):
+		var pid := id.trim_prefix("R_")
+		var cat := Donnees.produit(pid)
+		return {"id": id, "produit": pid, "produits": [pid], "titre": str(cat.get("nom", pid)).to_upper(), "bouton": "OUVRIR", "compare": ["livret"],
+			"texte": str(cat.get("fiche", cat.get("definition", ""))), "ticket": [], "plus": "", "rattrapage": true}
+	return {}
+
+
+## Produits déjà présentés (identité = id de produit, lot 10a C2). Les sauvegardes d'avant le lot sont migrées depuis `presentes`.
+static func produits_vus(e: EtatPartie) -> Array:
+	var b := e.banque
+	if not b.has("produits_vus"):
+		b["produits_vus"] = []
+	var l: Array = b["produits_vus"]
+	for id in b.get("presentes", {}):
+		for pid in _pres(str(id)).get("produits", []):
+			if not l.has(pid):
+				l.append(pid)
+	return l
+
+
+## Date de début du chapitre actif en mois de partie (au plus tôt le premier mois joué).
+static func debut_chapitre(e: EtatPartie) -> int:
+	for c: Dictionary in Donnees.chapitres(true):
+		if str(c["id"]) == e.chapitre:
+			return maxi(e.m_depart, Dates.lire(str(c["debut"])) - e.mk.ab_debut)
+	return e.m_depart
 
 
 static func etat_initial() -> Dictionary:
 	return {"actif": true, "presentes": {}, "en_file": {}, "nouveaux": [], "messages": [], "interruptions": 0,
-		"derniere_interruption": -99, "f01_vu": false, "naissance_m": -1, "frais_annee": 0.0, "interets_annee": 0.0,
+		"derniere_interruption": -99, "f01_vu": false, "produits_vus": [], "rattrapage_m": -99, "naissance_m": -1, "frais_annee": 0.0, "interets_annee": 0.0,
 		"interruptions_liste": [], "versements_annee": {}, "vpa_vu": false, "premier_eligible_m": -1,
 		"derniere_kind": "", "compteurs": Cadence.compteurs_vides(), "dividendes_annee": 0.0, "avoir_fiscal_vu": false}
 
 
+## Libellé fixe du chapitre (banque.json > libelles) : nom du banquier, du parent défunt… jamais écrit dans le code (lot 10a).
+static func libelle(cle: String, defaut: String) -> String:
+	return str(donnees().get("libelles", {}).get(cle, defaut))
+
+
 static func info_produit(pid: String) -> Dictionary:
-	return donnees()["produits"].get(pid, {})
+	return Donnees.produit(pid)
 
 
 static func couleur(pid: String) -> Color:
@@ -29,6 +79,10 @@ static func couleur(pid: String) -> Color:
 
 
 static func presentation_de(pid: String) -> String:
+	var d: Dictionary = donnees()["presentations"]
+	for id in d:
+		if str(d[id].get("produit", (d[id].get("produits", [""]) as Array)[0])) == pid:
+			return str(id)
 	return str(info_produit(pid).get("presentation", ""))
 
 
@@ -36,7 +90,7 @@ static func presentation_de(pid: String) -> String:
 static func presente(e: EtatPartie, pid: String) -> bool:
 	if pid == "cc":
 		return true
-	return e.banque.get("presentes", {}).has(presentation_de(pid))
+	return produits_vus(e).has(pid)
 
 
 static func ordre_carnet() -> Array:
@@ -116,6 +170,10 @@ static func _proposer(e: EtatPartie, id: String, echeance: int, historique := fa
 	var b := e.banque
 	if b["presentes"].has(id) or b["en_file"].has(id):
 		return
+	# R-UNE-FOIS (lot 10a, C4) : un produit déjà vu n'est jamais représenté
+	var prods: Array = _pres(id).get("produits", [])
+	if not prods.is_empty() and prods.all(func(p: Variant) -> bool: return produits_vus(e).has(p)):
+		return
 	b["en_file"][id] = true
 	e.file.append({"kind": "banquier", "id": id, "m": e.m, "prio": 1 if historique else 3, "source": "banque",
 		"echeance": echeance, "historique": historique})
@@ -145,7 +203,10 @@ static func naissance_prevue(e: EtatPartie) -> bool:
 
 
 static func verifier(e: EtatPartie) -> void:
-	var dd: Dictionary = donnees()["declencheurs"]
+	var dd: Dictionary = donnees().get("declencheurs", {})
+	if dd.is_empty():
+		_verifier_generique(e)
+		return
 	var rel := e.m - e.m_depart
 	var w := e.joueur
 	var dep := float(e.depenses()["total"])
@@ -178,6 +239,38 @@ static func verifier(e: EtatPartie) -> void:
 		var h: String = donnees()["presentations"][id].get("historique", "")
 		if h != "" and Dates.lire(h) == e.ab_courant():
 			_proposer(e, id, e.m, true)
+	_verifier_generique(e)
+
+
+## Présentations d'un chapitre au format 10a (`presentations: [{id, produit, quand, echeance, apres?}]`, sans bloc `declencheurs`) :
+## proposée au mois `quand` (relatif au début du chapitre) si son produit n'est pas vu et que `apres` l'est, avec l'échéance
+## `echeance` ; puis R-RATTRAPAGE (`rattrapage: {ordre, fenetre, ecart}`) : produit de base né avant le chapitre, non vu et non
+## déclaré par le chapitre, présenté du mois 1 au mois `fenetre`, dans l'ordre global, au plus un tous les `ecart` mois.
+static func _verifier_generique(e: EtatPartie) -> void:
+	var d := donnees()
+	var base := debut_chapitre(e)
+	var rel := e.m - base
+	if not d.has("declencheurs"):
+		for id in d["presentations"]:
+			var p: Dictionary = d["presentations"][id]
+			if not p.has("quand") or _vu(e, str(id)):
+				continue
+			if rel >= int(p["quand"]) and (not p.has("apres") or _vu(e, str(p["apres"]))):
+				_proposer(e, str(id), base + int(p.get("echeance", p["quand"])))
+	var r: Dictionary = d.get("rattrapage", {})
+	if r.is_empty() or rel < 1 or rel > int(r["fenetre"]) or e.m - int(e.banque.get("rattrapage_m", -99)) < int(r["ecart"]):
+		return
+	var declares := []
+	for id in d["presentations"]:
+		declares.append_array(d["presentations"][id].get("produits", []))
+	for pid in r["ordre"]:
+		if declares.has(pid) or produits_vus(e).has(pid) or e.banque["en_file"].has("R_" + str(pid)):
+			continue
+		if Dates.lire(str(Donnees.produit(str(pid)).get("naissance", "9999-12"))) >= e.ab_de(base):
+			continue
+		e.banque["rattrapage_m"] = e.m
+		_proposer(e, "R_" + str(pid), e.m + int(r.get("echeance", 3)))
+		return
 
 
 ## Mois (index m) des interruptions de la banque datées et déjà connues, pour l'anticipation de la cadence
@@ -185,26 +278,33 @@ static func verifier(e: EtatPartie) -> void:
 ## réunies (mêmes règles), dates historiques (Saint-Gobain) et héritage. { id -> m }.
 static func dates_connues(e: EtatPartie) -> Dictionary:
 	var out := {}
-	var dd: Dictionary = donnees()["declencheurs"]
+	var dd: Dictionary = donnees().get("declencheurs", {})
 	var b := e.banque
-	if not _vu(e, "D01"):
+	if dd.is_empty():
+		pass
+	elif not _vu(e, "D01"):
 		out["D01"] = e.m_depart
-	if _vu(e, "D01") and not _vu(e, "D02"):
+	if not dd.is_empty() and _vu(e, "D01") and not _vu(e, "D02"):
 		out["D02"] = e.m_depart + int(dd["D02"]["echeance"])
-	if _vu(e, "D02") and not _vu(e, "D03"):
+	if not dd.is_empty() and _vu(e, "D02") and not _vu(e, "D03"):
 		out["D03"] = e.m_depart + int(dd["D03"]["echeance"])
 	var mn := int(b.get("naissance_m", -1))
-	if mn >= 0 and not _vu(e, "D04"):
+	if not dd.is_empty() and mn >= 0 and not _vu(e, "D04"):
 		out["D04"] = mn + int(dd["D04"]["echeance_apres_naissance"])
-	if _vu(e, "D03") and not _vu(e, "D05"):
+	if not dd.is_empty() and _vu(e, "D03") and not _vu(e, "D05"):
 		out["D05"] = e.m_depart + int(dd["D05"]["echeance"])
-	if _vu(e, "D05") and (_vu(e, "D04") or not naissance_prevue(e)) and not _vu(e, "D06"):
+	if not dd.is_empty() and _vu(e, "D05") and (_vu(e, "D04") or not naissance_prevue(e)) and not _vu(e, "D06"):
 		out["D06"] = e.m_depart + int(dd["D06"]["echeance"])
 	for id in donnees()["presentations"]:
 		var h: String = donnees()["presentations"][id].get("historique", "")
 		if h != "" and not _vu(e, id):
 			out[id] = Dates.lire(h) - e.mk.ab_debut
-	if not _vu(e, "D08"):
+	if dd.is_empty():
+		for id in donnees()["presentations"]:
+			var p: Dictionary = donnees()["presentations"][id]
+			if p.has("quand") and not _vu(e, str(id)) and not out.has(id):
+				out[id] = debut_chapitre(e) + int(p.get("echeance", p["quand"]))
+	if not _vu(e, "D08") and donnees().get("heritage", {}).has("av"):
 		out["D08"] = Dates.lire(str(donnees()["heritage"]["av"]["d"])) - e.mk.ab_debut
 	return out
 
@@ -264,7 +364,7 @@ static func variables(e: EtatPartie) -> Dictionary:
 	var mt := func(eur: float) -> String: return Format.entier(eur, a)
 	var v := {}
 	v["prenom"] = e.prenom()
-	v["conjointe"] = str(donnees().get("conjointe", "Sylvie"))
+	v["conjointe"] = str(donnees().get("conjointe", ""))
 	var cc_ex := exemple(maxf(0.0, e.joueur.cc), 1.0, 100.0, 100.0, 1e9)
 	v["cc"] = mt.call(cc_ex)
 	var tl := Marche.taux_livret(a)
@@ -403,8 +503,8 @@ static func produit_reference(e: EtatPartie, compare: Array) -> String:
 static func notes(pid: String, annee: int) -> Dictionary:
 	var info := info_produit(pid)
 	var n: Dictionary = info.get("notes", {}).duplicate()
-	if annee == 1984 and info.has("notes_1984"):
-		n.merge(info["notes_1984"], true)
+	if info.has("notes_%d" % annee):   # notes datées d'une année précise (ex. notes_1984)
+		n.merge(info["notes_%d" % annee], true)
 	return n
 
 
@@ -427,7 +527,7 @@ static func taux_actuel(e: EtatPartie, pid: String) -> float:
 
 
 static func comparatif(e: EtatPartie, id: String) -> Dictionary:
-	var pr: Dictionary = donnees()["presentations"][id]
+	var pr: Dictionary = _pres(id)
 	var pid: String = pr["produits"][0]
 	var ref := produit_reference(e, pr.get("compare", ["livret"]))
 	var y := Dates.annee(e.ab_courant())
@@ -479,7 +579,7 @@ static func contenu(e: EtatPartie, id: String) -> Dictionary:
 		c["choix"] = [{"id": "compris", "titre": "COMPRIS"}]
 		c["mots"] = nb_mots(c["texte"])
 		return c
-	var pr: Dictionary = donnees()["presentations"][id]
+	var pr: Dictionary = _pres(id)
 	var cle_texte := "texte"
 	if id == "D02" and e.joueur.livret < 3.0 * float(e.depenses()["total"]) and pr.has("texte_sans_coussin"):
 		cle_texte = "texte_sans_coussin"
@@ -514,7 +614,11 @@ static func resoudre(e: EtatPartie, id: String, choix_id: String) -> Dictionary:
 	var r := {"choix": choix_id, "kind": "banquier", "id": id}
 	if id == "D08":
 		return r
-	var produits: Array = donnees()["presentations"][id]["produits"]
+	var produits: Array = _pres(id)["produits"]
+	var vus: Array = produits_vus(e)
+	for pid in produits:
+		if not vus.has(pid):
+			vus.append(pid)
 	for pid in produits:
 		if not b["nouveaux"].has(pid):
 			b["nouveaux"].append(pid)
@@ -563,7 +667,7 @@ static func messages_du_mois(e: EtatPartie, notifs: Array) -> void:
 	if p04 >= 0 and e.m == p04 + 1:
 		_message(e, notifs, d["D04bis"]["titre"], d["D04bis"]["texte"], true)
 	# Après le krach (mois suivant un événement « - » majeur), si le joueur a des placements en bourse
-	for ev in e.per.get("evenements", []):
+	for ev in e.evenements():
 		if ev["type"] == "-" and Dates.lire(ev["d"]) + 1 == a and e.valeur_risquee(w) > Produits.EPS:
 			var m0 := e.m - 2
 			var v0 := 0.0
@@ -578,7 +682,7 @@ static func messages_du_mois(e: EtatPartie, notifs: Array) -> void:
 	var h: Dictionary = donnees()["heritage"]
 	if Dates.lire(h["av"]["d"]) == a:
 		e.recevoir_tous(heritage_chiffres()["av"])
-		e.journaliser("Héritage de tante Odette (assurance-vie)")
+		e.journaliser(libelle("journal_heritage", "Héritage (assurance-vie)"))
 		_proposer(e, "D08", e.m, true)
 	# Versements automatiques (11 §8) : proposition VP-A, plafond du Livret A relevé
 	Versements.messages_du_mois(e, notifs, v)
@@ -704,12 +808,12 @@ static func releve(e: EtatPartie) -> Dictionary:
 
 static func titre_historique(c: Dictionary) -> String:
 	if c.get("heritage", false):
-		return "Tante Odette : l'assurance-vie"
+		return libelle("titre_heritage", "L'héritage")
 	var pids: Array = c.get("produits", [])
 	var noms := []
 	for pid in pids:
 		noms.append(str(info_produit(pid).get("court", pid)))
-	return "M. Lefranc présente : " + ", ".join(PackedStringArray(noms))
+	return libelle("presente", "Le banquier présente : ") + ", ".join(PackedStringArray(noms))
 
 
 static func resume_historique(c: Dictionary) -> String:

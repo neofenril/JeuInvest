@@ -23,8 +23,19 @@ extends RefCounted
 const CATEGORIES := ["classiques", "cartes", "projets", "gazette"]
 
 
+## Réglages de cadence : data/rythme.json, surchargés par le « cadence » du chapitre actif (chapitre.json), budgets compris.
 static func params() -> Dictionary:
-	return Donnees.charger("rythme")["cadence"]
+	var base: Dictionary = Donnees.charger("rythme")["cadence"]
+	var ov: Dictionary = Donnees.infos_chapitre().get("cadence", {})
+	if ov.is_empty():
+		return base
+	var p := base.duplicate(true)
+	for k in ov:
+		if k == "budgets":
+			p["budgets"].merge(ov["budgets"], true)
+		else:
+			p[k] = ov[k]
+	return p
 
 
 static func budget(categorie: String) -> int:
@@ -53,7 +64,7 @@ static func categorie(it: Dictionary) -> String:
 ## Rang de priorité (le plus petit passe d'abord). Un projet porte « echeance_projet » (échéance) ou non (choix).
 static func rang(e: EtatPartie, it: Dictionary) -> float:
 	match str(it.get("kind", "")):
-		"marche":
+		"marche", "passage":
 			return 0.0
 		"gazette":
 			return 1.0
@@ -84,7 +95,7 @@ static func date_connue(e: EtatPartie, mm: int, sauf: Dictionary = {}) -> bool:
 	if mm > e.m_fin:
 		return false
 	var ab := e.ab_de(mm)
-	for ev in e.per.get("evenements", []):
+	for ev in e.evenements():
 		if Dates.lire(ev["d"]) == ab and ev["type"] != "-silencieux":
 			return true
 	for ev: Dictionary in e.calendrier:
@@ -114,7 +125,7 @@ static func date_ferme(e: EtatPartie, mm: int, sauf: Dictionary = {}) -> bool:
 	if mm > e.m_fin:
 		return false
 	var ab := e.ab_de(mm)
-	for ev in e.per.get("evenements", []):
+	for ev in e.evenements():
 		if Dates.lire(ev["d"]) == ab and ev["type"] != "-silencieux":
 			return true
 	for ev: Dictionary in e.calendrier:

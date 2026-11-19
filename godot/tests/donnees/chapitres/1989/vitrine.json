@@ -1,0 +1,23 @@
+{
+  "etapes": [
+    {
+      "mois": "1989-10",
+      "pause": false,
+      "texte": "L'indice finit le mois à {indice} (avant : {indice_avant}).",
+      "titre": "La Bourse recule"
+    },
+    {
+      "courbe": [
+        "1989-09",
+        "1989-10",
+        "1989-11"
+      ],
+      "lecon": "Essai.",
+      "mention": "Exemple d'essai.",
+      "mois": "1989-11",
+      "pause": true,
+      "texte": "Fin de mois : {indice}.",
+      "titre": "Le creux"
+    }
+  ]
+}

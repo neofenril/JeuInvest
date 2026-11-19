@@ -12,7 +12,7 @@ extends RefCounted
 
 const EPS := 0.005
 const VERSION_ETAT := 3          # 2 : historique, versements automatiques ; 3 (lot 02) : flux du mois, cadence V3, migration douce
-const HISTORIQUE_MAX := 600   # limite de l'historique conservé (à revoir au lot 10 : une partie sur plusieurs chapitres en produit davantage)
+const HISTORIQUE_MAX := 1200   # limite de l'historique conservé (lot 10a : une partie de 10 ans en produit ~150, mesuré par test_bascule ; marge x8)
 
 ## Émis quand le mois courant entre dans un autre chapitre (lot 09, D2) ; jamais avec les données réelles du lot 09.
 signal chapitre_change(ancien: String, nouveau: String)
@@ -77,6 +77,13 @@ var instantane_k: Dictionary = {}
 ## retours en arrière du joueur (sauvegarde manuelle, lot SV : toujours 0 avant) ; une partie avec retours ne bat pas le record.
 var stats_titre: Dictionary = {}
 var retours := 0
+## Lot 10a (M3) : bilan de chaque chapitre déjà terminé { id : { titre: {id, nom, pourquoi, ordre}, ecart_pct, rang, annee_fin, patrimoine } },
+## pris au changement de chapitre (avec les données et les paramètres du chapitre qui se termine). Sauvegardé.
+var chapitres_bilan: Dictionary = {}
+## Chapitre de départ de la partie (config["chapitre"], à défaut le chapitre par défaut de l'index).
+var chapitre_depart: String:
+	get:
+		return str(config_depart.get("chapitre", Donnees.index().get("chapitre_defaut", "")))
 
 
 # =====================================================================
@@ -109,6 +116,7 @@ func demarrer(config: Dictionary = {}) -> Dictionary:
 	quartier["evts"] = []
 	instantane_k = {}
 	stats_titre = Titres.stats_initiales()
+	chapitres_bilan = {}
 	retours = 0
 	# État de départ garni (démonstration) : le joueur a un compte et un livret ; les témoins reçoivent
 	# le même capital en argent (03 §7.8) et le placent selon leur règle. Compté comme épargne.
@@ -311,7 +319,32 @@ func valeur_risquee(w: Portefeuille, mois: int = -999) -> float:
 
 
 func patrimoine(w: Portefeuille, mois: int = -999) -> float:
-	return w.cc + w.livret + valeur_risquee(w, mois) + w.valeur_epargne() + Projets.apport(self, w)
+	var enveloppes := 0.0
+	if not w.pea.is_empty() or not w.scpi.is_empty():   # lot 10a : PEA (espèces et titres) et parts de SCPI à leur valeur de revente
+		enveloppes = Enveloppes.valeur_pea(self, w, mois) + Enveloppes.valeur_scpi(w, ab_de(mois) if mois != -999 else ab_courant())
+	return w.cc + w.livret + valeur_risquee(w, mois) + w.valeur_epargne() + Projets.apport(self, w) + enveloppes
+
+
+## Enveloppe qui porte la ligne du joueur : "pea" si le PEA la détient, sinon "" (compte-titres).
+func enveloppe(id_ligne: String) -> String:
+	return "pea" if (joueur.pea.get("lignes", {}) as Dictionary).has(id_ligne) else ""
+
+
+## Ventes différées du joueur (SCPI) : [{produit, parts, m_ordre, m_execution, estime}].
+func ventes_differees() -> Array:
+	return joueur.ventes_differees.duplicate(true)
+
+
+func ouvrir_pea() -> bool:
+	return bool(Enveloppes.ouvrir_pea(self, joueur)["ok"])
+
+
+func vendre_scpi(parts: int) -> bool:
+	return bool(Enveloppes.vendre_scpi(self, joueur, parts)["ok"])
+
+
+func annuler_vente_differee(index: int) -> bool:
+	return Enveloppes.annuler_vente(joueur, index)
 
 
 ## Plus-value latente d'une ligne (valeur − coût de revient, frais d'achat compris).
@@ -447,9 +480,13 @@ func devis_achat(id: String, budget: float) -> Dictionary:
 	return d
 
 
-func acheter(w: Portefeuille, id: String, budget: float) -> Dictionary:
+func acheter(w: Portefeuille, id: String, budget: float, enveloppe := "") -> Dictionary:
 	if w == joueur and ordres_bloques():
 		return Foyer.refus_ordre()
+	if enveloppe == "pea":
+		return Enveloppes.acheter_pea(self, w, id, budget)
+	if id == "scpi":
+		return Enveloppes.acheter_scpi(self, w, budget)
 	var d := devis_achat(id, budget)
 	if not d["ok"]:
 		return d
@@ -515,7 +552,9 @@ func devis_vente(w: Portefeuille, id: String, montant: float, tout := false) -> 
 
 
 ## forcee : vente pour payer un coup dur (ne compte pas comme une panique).
-func vendre(w: Portefeuille, id: String, montant: float, tout := false, forcee := false) -> Dictionary:
+func vendre(w: Portefeuille, id: String, montant: float, tout := false, forcee := false, enveloppe := "") -> Dictionary:
+	if enveloppe == "pea":
+		return Enveloppes.vendre_pea(self, w, id, montant, tout)
 	var d := devis_vente(w, id, montant, tout)
 	if not d["ok"]:
 		return d
@@ -840,17 +879,24 @@ func _entrer_mois(initial: bool) -> Dictionary:
 				notifs.append({"type": "nouveau", "source": "banque", "cls": "neutre", "produit": pr["id"],
 					"titre": "Nouveau · %d" % y, "texte": pr.get("texteNouveau", pr["nom"] + " est disponible.")})
 
+	# Lot 10a : ventes différées de SCPI échues et loyers trimestriels (joueur seulement)
+	if not joueur.scpi.is_empty() or not joueur.ventes_differees.is_empty():
+		Enveloppes.entree_mois(self, joueur, notifs)
+
 	# 5 (docs/03 §3.3). Dividendes des actions, après salaire, dépenses et versements (lot 03)
 	_verser_dividendes(notifs)
 
 	# 8. Événements de marché, de contexte, puis de vie
-	for ev in per.get("evenements", []):
+	for ev in evenements():
 		if Dates.lire(ev["d"]) != a:
 			continue
 		_journaliser(ev["titre"])
 		var source: String = ev.get("source", "media")
 		if ev["type"] == "-silencieux":
-			notifs.append({"type": "silencieux", "source": source, "cls": "perte", "titre": ev["titre"], "texte": ev["texte"]})
+			var ns := {"type": "silencieux", "source": source, "cls": "perte", "titre": ev["titre"], "texte": ev["texte"]}
+			if ev.has("vitrine_etape"):
+				ns["vitrine_etape"] = 1   # étape de vitrine sans pause (lot 10a)
+			notifs.append(ns)
 			continue
 		if ev["type"] == "-":
 			panique.append({"id": ev["id"], "m0": m, "fin": m + 2, "v0": valeur_risquee(joueur), "vendu": 0.0, "panique": false})
@@ -897,6 +943,8 @@ func _entrer_mois(initial: bool) -> Dictionary:
 			file.sort_custom(_avant_dans_file)
 			modale = file.pop_front()
 		res["modale"] = modale
+	if res["modale"].is_empty() and not modale.is_empty():
+		res["modale"] = modale   # carte de passage de chapitre (lot 10a)
 	_instantane_si_krach()   # lot 07-L : pris même rue éteinte (titres) ; instantane_krach() reste vide pour l'interface
 	if rue_active():
 		_notifs_rue(notifs, not modale.is_empty())
@@ -929,6 +977,10 @@ func mois_dividende(id: String) -> int:
 
 ## Le titre ne verse rien l'année (de paiement) donnée (periode > divNul).
 func dividende_nul(id: String, annee: int) -> bool:
+	# Dividende nul implicite (lot 10a) : un titre qui n'est disponible qu'après le mois de détachement de l'année ne verse rien cette année-là.
+	var dispo := str(produit(id).get("dispo", ""))
+	if dispo != "" and Dates.lire(dispo) > Dates.ab(annee, mois_dividende(id)):
+		return true
 	for x in produit(id).get("divNul", []):
 		if int(x) == annee:
 			return true
@@ -1042,7 +1094,7 @@ func _tirer_calendrier() -> Array:
 			cal.append(e)
 	# Coïncidence forcée : panne de voiture le mois suivant un événement « - » (après le 12e mois)
 	var krachs := []
-	for ev in per.get("evenements", []):
+	for ev in evenements():
 		if ev["type"] == "-" and Dates.lire(ev["d"]) - mk.ab_debut > int(vie["coincidenceApresMois"]):
 			krachs.append(ev)
 	if not krachs.is_empty() and types.has("voiture"):
@@ -1059,6 +1111,9 @@ func _tirer_calendrier() -> Array:
 		var n := _naissance_de_scenario()
 		if int(n["m"]) > m_depart and int(n["m"]) <= m_fin:
 			cal.append(n)
+	var mm := _tirer_mariage(cal)   # lot 10a : seulement si le chapitre définit evenements_vie.json > mariage
+	if mm >= 0:
+		cal.append({"m": mm, "type": "mariage", "M": 0.0, "force": true})
 	cal.sort_custom(func(x: Dictionary, z: Dictionary) -> bool: return x["m"] < z["m"])
 	return cal
 
@@ -1084,6 +1139,44 @@ func _espacer_repetitions(cal: Array) -> Array:
 		if not trop_proche:
 			gardes.append(x)
 	return gardes
+
+
+## Mariage (lot 10a, M6 ; docs/47 §4.1) : mois du mariage, ou -1. Table de probabilités selon l'âge du joueur pour un couple non
+## marié (profil : proche de lien « conjoint », config « marie » faux), fenêtre en mois depuis le début de la partie, jamais
+## dans les 9 mois après une naissance, au plus un mariage. Flux propre (graine de vie décalée) : aucun tirage existant ne bouge.
+## cal : événements déjà retenus (naissances comprises).
+func _tirer_mariage(cal: Array) -> int:
+	var p: Dictionary = vie.get("mariage", {})
+	if p.is_empty():
+		return -1
+	var proche: Dictionary = config_depart.get("proche", sal["profils"].get(profil, {}).get("proche", {}))
+	if str(proche.get("lien", "conjoint")) != "conjoint" or bool(config_depart.get("marie", false)) or bool(config_depart.get("celibataire", false)):
+		return -1
+	var rng := Hasard.new(graine_vie + 2000003)
+	var u_proba := rng.u()
+	var u_mois := rng.u()
+	var age := int(config_depart.get("age", sal["profils"].get(profil, {}).get("age", 30)))
+	var proba := 0.0
+	for t: Dictionary in p["table"]:
+		if age <= int(t["age_max"]):
+			proba = float(t["proba"])
+			break
+	if u_proba >= proba:
+		return -1
+	var debut := m_depart + int(p["fenetre"][0])
+	var fin_f := mini(m_depart + int(p["fenetre"][1]), m_fin)
+	if fin_f < debut:
+		return -1
+	var mois := debut + int(u_mois * float(fin_f - debut + 1))
+	var apres := int(p.get("apres_naissance_mois", 9))
+	for k in range(mois, fin_f + 1):
+		var libre := true
+		for ev in cal:
+			if ev["type"] == "naissance" and int(ev["m"]) <= k and k < int(ev["m"]) + apres:
+				libre = false
+		if libre:
+			return k
+	return -1
 
 
 ## Naissance scriptée de la démo (12 §3.2) : date fixe, jumeaux tirés par la graine (1 fois sur 4 dans la
@@ -1194,11 +1287,15 @@ func forcer_naissance(jumeaux: bool) -> Dictionary:
 func _type_vie(id: String) -> Dictionary:
 	if id == "naissance":
 		return vie["naissance"]
+	if id == "mariage":
+		return vie["mariage"]
 	return vie["types"][id]
 
 
 func texte_vie(e: Dictionary) -> String:
 	var t := _type_vie(e["type"])
+	if e["type"] == "mariage":
+		return Gabarits.rendre(Format.gabarit(str(t["texte"]), {"annees": str(_annees_ensemble())}), Gabarits.contexte(self))
 	if e["type"] == "naissance":
 		var prenoms: Array = e.get("prenoms", [])
 		var noms := " et ".join(PackedStringArray(prenoms))
@@ -1217,6 +1314,16 @@ func titre_vie(e: Dictionary) -> String:
 func _declencher_vie(idx: int, notifs: Array) -> void:
 	var e: Dictionary = calendrier[idx]
 	var t := _type_vie(e["type"])
+	if str(t.get("effet", "")) == "mariage":
+		# Lot 10a : le couple se marie (état civil) ; une carte « ok » (la fête, en carte de foyer, est du contenu du chapitre)
+		foyer["marie"] = true
+		foyer["mariage_m"] = m
+		e["montant"] = 0.0
+		e["declenche"] = true
+		e["resolu"] = false
+		_journaliser(str(t["titre"]))
+		file.append({"kind": "vie", "idx": idx, "m": m, "prio": 1, "source": t.get("source", "maison"), "force": true})
+		return
 	if t.get("effet", "") == "naissance":
 		# Les dépenses augmentent dès le mois suivant, pour le joueur comme pour les témoins (même vie)
 		var n := int(e.get("n", 1))
@@ -1276,8 +1383,45 @@ func _vie_en_notification(idx: int, notifs: Array) -> void:
 # Événements de marché
 # =====================================================================
 
+## Événements de marché de la période et vitrine du chapitre (lot 10a, C : `vitrine.json` générique). Une étape de vitrine devient
+## un événement : avec pause (`pause` vrai) = modale « marche » de type « - » (courbe et mention dans la modale), sans pause =
+## notification `vitrine_etape` (type « -silencieux »). Étape : { id, mois, pause, titre, texte, gravite?, lecon?, courbe?: [mois],
+## mention?, date_journal?, source? } ; le texte est CALCULÉ sur la série : {indice} (fin de mois), {variation} (% depuis le mois
+## précédent), {indice_avant}. Le chapitre 1984 n'a pas de vitrine.json : le krach de 1987 reste lu dans periode_p1.json + krach.json.
+var _vitrines: Dictionary = {}
+
+
+func evenements() -> Array:
+	var base: Array = per.get("evenements", [])
+	if not Donnees.existe("vitrine"):
+		return base
+	if not _vitrines.has(chapitre):
+		var out: Array = []
+		for et: Dictionary in Donnees.charger("vitrine").get("etapes", []):
+			var ab := Dates.lire(str(et["mois"]))
+			var i := ab - mk.ab_debut
+			var v := mk.valeur_indice(i)
+			var av := mk.valeur_indice(i - 1)
+			var vals := {"indice": Format.nombre(roundf(v), 0), "indice_avant": Format.nombre(roundf(av), 0),
+				"variation": Format.nombre(absf((v / av - 1.0) * 100.0), 1)}
+			var pause := bool(et.get("pause", false))
+			var ev := {"id": "V:" + str(et["mois"]), "d": str(et["mois"]), "type": "-" if pause else "-silencieux", "fenetre": 1, "gravite": str(et.get("gravite", "")),
+				"source": str(et.get("source", "media")), "date_journal": str(et.get("date_journal", "")), "titre": str(et["titre"]),
+				"texte": Format.gabarit(str(et["texte"]), vals), "lecon": str(et.get("lecon", "")), "vitrine_etape": 1 if not pause else 2}
+			if et.has("courbe"):
+				var c := []
+				for mm in et["courbe"]:
+					c.append({"mois": str(mm), "valeur": mk.valeur_indice(Dates.lire(str(mm)) - mk.ab_debut)})
+				ev["courbe"] = c
+			if et.has("mention"):
+				ev["mention"] = str(et["mention"])
+			out.append(ev)
+		_vitrines[chapitre] = out
+	return base + (_vitrines[chapitre] as Array)
+
+
 func evenement(id: String) -> Dictionary:
-	for ev in per.get("evenements", []):
+	for ev in evenements():
 		if ev["id"] == id:
 			return ev
 	return {}
@@ -1369,6 +1513,8 @@ func contenu_modale() -> Dictionary:
 		return Projets.contenu(self)
 	if modale["kind"] == "gazette":
 		return _contenu_gazette()
+	if modale["kind"] == "passage":
+		return _contenu_passage()
 	if modale["kind"] == "marche":
 		var ev := evenement(modale["id"])
 		var m_avant := maxi(m_depart, m - int(ev.get("fenetre", 1)))
@@ -1377,6 +1523,9 @@ func contenu_modale() -> Dictionary:
 			"titre": ev["titre"], "texte": ev["texte"], "gravite": ev.get("gravite", ""), "type": ev["type"],
 			"impact": impact_marche(ev), "detient": valeur_risquee(joueur) > EPS, "choix": choix_marche(ev),
 			"ecart_livret": ecart_livret(), "ecart_livret_avant": ecart_livret(m_avant), "ab_avant": ab_de(m_avant)}
+		if ev.has("courbe"):
+			c_marche["courbe"] = ev["courbe"]   # vitrine en étapes : courbe [{mois, valeur}] et mention, sans « jours »
+			c_marche["mention"] = str(ev.get("mention", ""))
 		if rue_active() and _est_krach(ev):
 			c_marche["jours"] = Krach.jours()
 		return c_marche
@@ -1390,6 +1539,9 @@ func contenu_modale() -> Dictionary:
 			"depenses_avant": e["depenses_avant"], "depenses_apres": e["depenses_apres"],
 			"reste_avant": e["reste_avant"], "reste_apres": e["reste_apres"], "picto": "jumeaux" if int(e.get("n", 1)) >= 2 else t.get("picto", "bebe"),
 			"choix": [{"id": "ok", "titre": "Bienvenue !" if int(e.get("n", 1)) == 1 else "Bienvenue à tous les deux !", "sous": ""}]}
+	if t.get("effet", "") == "mariage":
+		return {"kind": "vie", "effet": "mariage", "source": modale["source"], "date": Dates.texte(a, true), "titre": str(t["titre"]), "texte": texte_vie(e),
+			"montant": 0.0, "picto": t.get("picto", "mariage"), "choix": [{"id": "ok", "titre": str(t.get("bouton", "OK")), "sous": ""}]}
 	var ch := []
 	if t["effet"] == "gain":
 		ch = [{"id": "encaisser", "titre": "Encaisser", "sous": Format.montant(montant, a, false, true)}]
@@ -1421,6 +1573,8 @@ func resoudre_modale(choix_id: String) -> Dictionary:
 		r = Foyer.resoudre(self, choix_id, vu)
 	elif item["kind"] == "projet":
 		r = Projets.resoudre(self, choix_id, vu)
+	elif item["kind"] == "passage":
+		r = {"choix": choix_id, "kind": "passage", "notifs": []}
 	elif item["kind"] == "gazette":
 		quartier["gazette_vue"] = true
 		r = {"choix": choix_id, "kind": "gazette", "notifs": []}
@@ -1446,8 +1600,8 @@ func resoudre_modale(choix_id: String) -> Dictionary:
 		var montant: float = e["montant"]
 		e["resolu"] = true
 		e["choix"] = choix_id
-		if t["effet"] == "naissance":
-			pass   # rien à payer : le coût passe dans les dépenses de chaque mois
+		if t["effet"] == "naissance" or t["effet"] == "mariage":
+			pass   # rien à payer : le coût de la naissance passe dans les dépenses de chaque mois ; le mariage est un état civil
 		elif t["effet"] == "gain":
 			joueur.cc += montant
 		else:
@@ -1476,6 +1630,8 @@ func resolution_auto() -> Dictionary:
 		return resoudre_modale(Projets.choix_auto(self))
 	if c["kind"] == "gazette":
 		return resoudre_modale("ok")
+	if c["kind"] == "passage":
+		return resoudre_modale("continuer")
 	var premier: String = c["choix"][0]["id"]
 	return resoudre_modale("decouvert" if premier == "vendre" else premier)
 
@@ -1583,7 +1739,7 @@ func _journaliser(texte: String) -> void:
 # titre, resume (une ligne), choix (libellé du choix fait, "" sinon), montant, a_montant, suffixe,
 # contenu (de quoi rouvrir la pop-up en lecture seule : contenu de modale ou notification) }.
 
-const GENRES_MODALE := {"banquier": "appel", "marche": "journal", "vie": "courrier", "carte": "carte", "projet": "projet", "gazette": "gazette"}
+const GENRES_MODALE := {"banquier": "appel", "marche": "journal", "vie": "courrier", "carte": "carte", "projet": "projet", "gazette": "gazette", "passage": "notif"}
 ## Genre d'historique des notifications de la rue (lot 05-L, contrat §4.3) ; les autres sont des « notif ».
 const GENRES_NOTIF := {"voisin": "voisin", "rang": "voisin", "kiosque": "gazette"}
 ## Genres et sources possibles d'une entrée (V3, docs/15 §8) : « carte », « projet », « voisin », « gazette » et la
@@ -1970,11 +2126,12 @@ func ctx_gazette(inst: Dictionary) -> Dictionary:
 
 const CHAMPS_ETAT := ["m", "m_depart", "m_fin", "salaire_base", "calendrier", "file", "modale", "choix", "panique",
 	"epargne_nette", "bag_mis", "decouvert_mois", "enfants", "fin", "hist", "stats", "journal", "banque", "historique",
-	"flux_mois", "foyer", "projets", "jeanmi", "quartier", "instantane_k", "retours", "stats_titre"]
+	"flux_mois", "foyer", "projets", "jeanmi", "quartier", "instantane_k", "retours", "stats_titre", "chapitres_bilan"]
 
 
 func vers_dict() -> Dictionary:
-	var d := {"version_etat": VERSION_ETAT, "config": config_depart.duplicate(true), "joueur": joueur.vers_dict(), "temoins": {}}
+	var d := {"version_etat": VERSION_ETAT, "config": config_depart.duplicate(true), "joueur": joueur.vers_dict(), "temoins": {},
+		"version_contenu": int(Donnees.infos_chapitre(chapitre).get("version_contenu", 1))}   # lot 10a (C7)
 	for k in temoins:
 		d["temoins"][k] = temoins[k].vers_dict()
 	for k in CHAMPS_ETAT:
@@ -2049,13 +2206,104 @@ func _suivre_chapitre(emettre: bool) -> void:
 		ch = chapitre
 	if ch != chapitre:
 		var ancien := chapitre
+		if emettre:
+			_bilan_de_chapitre(ancien)   # avec les données du chapitre qui se termine (Donnees.chapitre n'a pas encore changé)
 		chapitre = ch
 		Donnees.regler_chapitre(ch)
 		vie = Donnees.vie()
 		if emettre:
 			chapitre_change.emit(ancien, ch)
+			_reinitialiser_pour_chapitre(ancien)
+			_ouvrir_passage(ancien, ch)
 	else:
 		Donnees.regler_chapitre(chapitre)
+
+
+## Années de vie commune au mois courant (config proche.annees_ensemble au départ + années écoulées).
+func _annees_ensemble() -> int:
+	var proche: Dictionary = config_depart.get("proche", sal["profils"].get(profil, {}).get("proche", {}))
+	return int(proche.get("annees_ensemble", 0)) + (m - m_depart) / 12
+
+
+## Foyer pour l'affichage (lot 10a, M6) : joueur {prenom, sexe "h"|"f", age}, proche {prenom, sexe, lien "conjoint"|"ami"} ou {},
+## enfants [{prenom, age}], marie. L'âge de départ vient de config « age » ou du profil.
+func foyer_visuel() -> Dictionary:
+	var ctx := Gabarits.contexte(self)
+	var prof: Dictionary = sal["profils"].get(profil, {})
+	var age0 := int(config_depart.get("age", prof.get("age", 0)))
+	var enfants := []
+	for ev in calendrier:
+		if ev["type"] == "naissance" and ev.get("declenche", false):
+			for pr in ev.get("prenoms", []):
+				enfants.append({"prenom": str(pr), "age": maxi(0, (m - int(ev["m"])) / 12)})
+	var proche: Dictionary = ctx["proche"].duplicate()
+	var marie := bool(foyer.get("marie", config_depart.get("marie", false)))
+	return {"joueur": {"prenom": str(ctx["joueur"]["prenom"]), "sexe": str(ctx["joueur"]["sexe"]), "age": age0 + (m - m_depart) / 12},
+		"proche": proche, "enfants": enfants, "marie": marie}
+
+
+## Chapitres traversés par la partie, du chapitre de départ au chapitre actif (ids, dans l'ordre de l'index) : ["1984", "1989"].
+func chapitres_traverses() -> Array:
+	var out := []
+	var dedans := false
+	for c: Dictionary in Donnees.chapitres(true):
+		var id := str(c["id"])
+		if id == chapitre_depart:
+			dedans = true
+		if dedans:
+			out.append(id)
+		if id == chapitre:
+			break
+	if out.is_empty():
+		out.append(chapitre_depart)
+	return out
+
+
+## Bilan du chapitre qui se termine (appelé juste avant le changement de données) : titre calculé sur les mois du chapitre
+## avec ses paramètres, écart face à Tata Livret, rang dans la rue. Les mesures du titre repartent à zéro pour le chapitre suivant.
+func _bilan_de_chapitre(id: String) -> void:
+	var g := Titres.grandeurs(self)
+	chapitres_bilan[id] = {"titre": Titres.evaluer(g), "ecart_pct": 100.0 * Titres.ecart_tata(self),
+		"rang": Quartier.rang_de(classement_rue()) if rue_active() else 0, "annee_fin": Dates.annee(ab_de(m - 1)),
+		"patrimoine": patrimoine(joueur)}
+	stats_titre = Titres.stats_initiales()
+	stats_titre["m0"] = m
+	instantane_k = {}
+
+
+## Remise à zéro de ce qui est propre à un chapitre (lot 10a) : compteurs de cadence (budgets du chapitre), projets.
+func _reinitialiser_pour_chapitre(ancien: String) -> void:
+	if banquier_actif():
+		banque["compteurs"] = Cadence.compteurs_vides()
+		banque["interruptions"] = 0
+	Projets.changer_chapitre(self, ancien)
+
+
+## Carte de passage de chapitre (version A, docs/40 §1.2.3) : une pause, résolue par « continuer ». Sans bloc « passage »
+## dans le chapitre.json du nouveau chapitre, aucune carte (la bascule reste silencieuse).
+func _ouvrir_passage(_ancien: String, nouveau: String) -> void:
+	if not (Donnees.infos_chapitre(nouveau).get("passage", null) is Dictionary):
+		return
+	var it := {"kind": "passage", "id": "passage_" + nouveau, "m": m, "prio": 0, "source": "maison", "historique": true}
+	if modale.is_empty():
+		modale = it
+	else:
+		file.push_front(it)
+
+
+func _contenu_passage() -> Dictionary:
+	var a := ab_courant()
+	var inf := Donnees.infos_chapitre(chapitre)
+	var p: Dictionary = inf.get("passage", {})
+	var nom := chapitre
+	for c: Dictionary in Donnees.chapitres(true):
+		if str(c["id"]) == chapitre:
+			nom = str(c.get("nom", chapitre))
+	return {"kind": "passage", "source": "maison", "date": Dates.texte(a, true), "annee": Dates.annee(a), "chapitre": chapitre, "nom_chapitre": nom,
+		"titre": nom, "texte": Gabarits.rendre(str(p.get("texte_attente", "")), Gabarits.contexte(self)), "texte_attente": Gabarits.rendre(str(p.get("texte_attente", "")), Gabarits.contexte(self)),
+		"patrimoine": patrimoine(joueur), "ecart_tata_pct": 100.0 * Titres.ecart_tata(self),
+		"rang": Quartier.rang_de(classement_rue()) if rue_active() else 0, "fin_partie": "%d-12" % Donnees.derniere_annee(),
+		"choix": [{"id": "continuer", "titre": "CONTINUER"}]}
 
 
 ## Après une migration : écarte les références devenues incohérentes (événement de vie absent ou pas encore

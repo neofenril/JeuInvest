@@ -117,9 +117,10 @@ static func projets_realises(e: EtatPartie) -> int:
 ## sortie « Pas les moyens ce mois-ci » (choix « aucun ») ne compte pas.
 static func natures_choisies(e: EtatPartie) -> Dictionary:
 	var r := {"epargne": 0, "depense": 0, "neutre": 0}
+	var m0 := int(e.stats_titre.get("m0", 0))   # lot 10a : les cartes du chapitre en cours seulement
 	for j: Dictionary in Foyer.cartes_jouees(e):
 		var k := str(j.get("choix", ""))
-		if k != "a" and k != "b":
+		if (k != "a" and k != "b") or int(j.get("m", 0)) < m0:
 			continue
 		var nat := str(Foyer.carte(str(j["id"])).get(k, {}).get("nature", "neutre"))
 		r[nat] = int(r.get(nat, 0)) + 1

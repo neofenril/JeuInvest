@@ -7,6 +7,8 @@
   "vitesse_depart": 1,
   "naissance": { "d": "1985-04", "jumeaux_proba": 0.25 },
   "banquier": { "nom": "M. ESSAI-1989" },
+  "cadence": { "budgets": { "classiques": 7 } },
+  "passage": { "texte_attente": "{prenom}, la suite : {conjoint} et vous." },
   "journal": { "nom": "LA GAZETTE", "prix": "4,50 F", "bandeau": "SPECIAL" },
   "titre": { "accroche": "Essai 1989", "sous_titre": "Chapitre d'essai" }
 }
