@@ -107,6 +107,18 @@ func _initialize() -> void:
 		s3.m == m_exec and absf(prix_exec - Produits.f(820.0)) < 0.001 and int(Enveloppes.parts(s3.joueur)) == 6 and s3.ventes_differees().is_empty() and s3.joueur.cc > cc_av + 4.0 * prix_exec - 1.0,
 		"parts %f cc %f" % [Enveloppes.parts(s3.joueur), s3.joueur.cc - cc_av])
 
+	# ---------- Branchement EtatPartie.vendre(enveloppe) ----------
+	var k := _partie("1992-07", "1993-12")
+	k.ouvrir_pea()
+	Enveloppes.verser_pea(k, k.joueur, Produits.f(50000.0))
+	k.acheter(k.joueur, "elf", Produits.f(20000.0), "pea")
+	var cc_k := k.joueur.cc
+	var vk := k.vendre(k.joueur, "elf", 0.0, true, false, "pea")
+	verifier("Vente dans le PEA par vendre(..., enveloppe=pea) : ligne soldée, produit dans les espèces du PEA, compte courant et impôt inchangés",
+		vk["ok"] and k.enveloppe("elf") == "" and is_equal_approx(k.joueur.cc, cc_k) and float(k.joueur.pea["cc"]) > Produits.f(29000.0) and k.joueur.impots == 0.0, str(vk))
+	verifier("Vente PEA d'un titre non détenu refusée ; achat PEA sans enveloppe ouverte refusé", not k.vendre(k.joueur, "elf", 0.0, true, false, "pea")["ok"]
+		and not _partie("1992-07", "1993-12").acheter(_partie("1992-07", "1993-12").joueur, "elf", 1000.0, "pea")["ok"])
+
 	# ---------- PEP (mode message) ----------
 	var n := Enveloppes.notif_message("pep")
 	verifier("PEP : notification sans pause avec texte long « En savoir plus » (long et texte_long), aucune fiche jouable",

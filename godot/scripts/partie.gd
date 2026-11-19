@@ -284,8 +284,16 @@ func _apres(r: Dictionary) -> Dictionary:
 	return r
 
 
-func acheter(id: String, budget: float) -> Dictionary:
-	return _apres(etat.acheter(etat.joueur, id, budget))
+func acheter(id: String, budget: float, enveloppe := "") -> Dictionary:
+	return _apres(etat.acheter(etat.joueur, id, budget, enveloppe))
+
+
+func verser_pea(montant: float) -> Dictionary:
+	return _apres(Enveloppes.verser_pea(etat, etat.joueur, montant))
+
+
+func retirer_pea(montant: float) -> Dictionary:
+	return _apres(Enveloppes.retirer_pea(etat, etat.joueur, montant))
 
 
 func ouvrir_pea() -> bool:
@@ -300,8 +308,8 @@ func annuler_vente_differee(index: int) -> bool:
 	return etat.annuler_vente_differee(index)
 
 
-func vendre(id: String, montant: float, tout := false) -> Dictionary:
-	return _apres(etat.vendre(etat.joueur, id, montant, tout))
+func vendre(id: String, montant: float, tout := false, enveloppe := "") -> Dictionary:
+	return _apres(etat.vendre(etat.joueur, id, montant, tout, false, enveloppe))
 
 
 func deposer_livret(montant: float) -> Dictionary:

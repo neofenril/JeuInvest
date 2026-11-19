@@ -552,7 +552,9 @@ func devis_vente(w: Portefeuille, id: String, montant: float, tout := false) -> 
 
 
 ## forcee : vente pour payer un coup dur (ne compte pas comme une panique).
-func vendre(w: Portefeuille, id: String, montant: float, tout := false, forcee := false) -> Dictionary:
+func vendre(w: Portefeuille, id: String, montant: float, tout := false, forcee := false, enveloppe := "") -> Dictionary:
+	if enveloppe == "pea":
+		return Enveloppes.vendre_pea(self, w, id, montant, tout)
 	var d := devis_vente(w, id, montant, tout)
 	if not d["ok"]:
 		return d
