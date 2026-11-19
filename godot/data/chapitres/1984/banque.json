@@ -12,6 +12,7 @@
     "cc": "8c96a8", "livret": "4ea8de", "pel": "8f8cf2", "emprunt": "d9b44a", "av": "c48bd6", "sicav": "5cc8a0", "action": "ff8a65"
   },
 
+  "libelles": { "journal_heritage": "Héritage de tante Odette (assurance-vie)", "titre_heritage": "Tante Odette : l'assurance-vie", "presente": "M. Lefranc présente : ", "pas_presente": "M. Lefranc ne vous a pas encore présenté ce produit." },
   "_produits": "Les fiches des produits et leurs paramètres datés (pel, av, emprunt, succession) sont dans le catalogue du monde data/produits.json depuis le lot 10a (C1) : un produit est identifié par son id.",
   "_presentations": "Une présentation = un appel de M. Lefranc (13 §1). declencheur et echeance : 12 §2.2 (mois comptés à partir de 0 = janvier 1984). compare : produits de référence, dans l'ordre (le premier détenu, sinon le premier déjà présenté). risque : true = phrase du coussin si le coussin fait moins de 3 mois (11 §2.5).",
   "presentations": {

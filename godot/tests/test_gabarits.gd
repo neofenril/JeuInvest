@@ -13,12 +13,14 @@ func _initialize() -> void:
 	verifier("{prenom} et {conjoint} : Gérard / Sylvie", Gabarits.rendre("{prenom} et {conjoint}", gerard) == "Gérard et Sylvie")
 	verifier("Joueuse : {prenom} et {conjoint} = Sylvie / Gérard (aucun prénom de l'autre profil)", Gabarits.rendre("{prenom} et {conjoint}", joueuse) == "Sylvie et Gérard")
 	verifier("{e} : « ravi » pour un homme, « ravie » pour une femme", Gabarits.rendre("ravi{e}", gerard) == "ravi" and Gabarits.rendre("ravi{e}", joueuse) == "ravie")
-	verifier("{il}, {elle}, {civilite}, {le}, {la}", Gabarits.rendre("{il} / {elle} / {civilite} / {le} / {la}", gerard) == "il / elle / Monsieur / le / la"
-		and Gabarits.rendre("{il} / {elle} / {civilite} / {le} / {la}", joueuse) == "elle / il / Madame / la / le")
+	verifier("Joueur : {il}, {civilite}, {le} ; proche (_p) : {e_p}, {il_p}, {le_p} ; pas de {elle}",
+		Gabarits.rendre("{il} / {civilite} / {le} / {e_p} / {il_p} / {le_p}", gerard) == "il / Monsieur / le / e / elle / la"
+		and Gabarits.rendre("{il} / {civilite} / {le} / {e_p} / {il_p} / {le_p}", joueuse) == "elle / Madame / la /  / il / le"
+		and Gabarits.rendre("{elle}", gerard) == "{elle}")
 	verifier("{de_conjoint} : « de Sylvie », « d'Odette » (élision), « d'Hélène »", Gabarits.rendre("{de_conjoint}", gerard) == "de Sylvie" and Gabarits.rendre("{de_proche}", odette) == "d'Odette"
 		and Gabarits.rendre("{de_proche}", Gabarits.profil({"prenom": "X"}, {"prenom": "Hélène", "sexe": "f"})) == "d'Hélène")
 	verifier("Majuscule conservée : « {Proche} vous verra moins » et « {Elle} »", Gabarits.rendre("{Proche} vous verra moins", gerard) == "Sylvie vous verra moins"
-		and Gabarits.rendre("{Il} sourit.", joueuse) == "Elle sourit." and Gabarits.rendre("{Elle} sourit.", gerard) == "Elle sourit.")
+		and Gabarits.rendre("{Il} sourit.", joueuse) == "Elle sourit." and Gabarits.rendre("{Il_p} sourit.", gerard) == "Elle sourit.")
 	verifier("{prenoms} : enfants joints par « et »", Gabarits.rendre("Bienvenue à {prenoms} !", gerard) == "Bienvenue à Léa et Tom !")
 	verifier("Jetons étrangers laissés intacts ({montant}, {taux}) ; texte sans accolade renvoyé tel quel",
 		Gabarits.rendre("{prenom} : {montant} à {taux} %", gerard) == "Gérard : {montant} à {taux} %" and Gabarits.rendre("Sans jeton.", gerard) == "Sans jeton.")

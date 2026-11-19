@@ -44,6 +44,22 @@ static func _charger_dans(id: String, nom: String) -> Dictionary:
 	return d
 
 
+## Le fichier data/<nom>.json existe-t-il pour le chapitre actif (sinon pour le monde) ? Sans message d'erreur.
+static var _existe: Dictionary = {}
+
+
+static func existe(nom: String) -> bool:
+	var cle := "%s|%s|%s" % [racine_chapitres, chapitre_actif(), nom]
+	if not _existe.has(cle):
+		_existe[cle] = FileAccess.file_exists("%s/%s/%s.json" % [racine_chapitres, chapitre_actif(), nom]) or FileAccess.file_exists("res://data/%s.json" % nom)
+	return _existe[cle]
+
+
+## Fichier de données d'un chapitre précis (sans changer le chapitre actif) : un projet commencé dans un chapitre se termine avec ses données.
+static func charger_dans(id: String, nom: String) -> Dictionary:
+	return _charger_dans(id, nom)
+
+
 ## Lit et analyse un fichier JSON ; erreur seulement si le fichier manque ou est invalide.
 static func _lire(chemin: String) -> Dictionary:
 	var f := FileAccess.open(chemin, FileAccess.READ)

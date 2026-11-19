@@ -885,13 +885,16 @@ func _entrer_mois(initial: bool) -> Dictionary:
 	_verser_dividendes(notifs)
 
 	# 8. Événements de marché, de contexte, puis de vie
-	for ev in per.get("evenements", []):
+	for ev in evenements():
 		if Dates.lire(ev["d"]) != a:
 			continue
 		_journaliser(ev["titre"])
 		var source: String = ev.get("source", "media")
 		if ev["type"] == "-silencieux":
-			notifs.append({"type": "silencieux", "source": source, "cls": "perte", "titre": ev["titre"], "texte": ev["texte"]})
+			var ns := {"type": "silencieux", "source": source, "cls": "perte", "titre": ev["titre"], "texte": ev["texte"]}
+			if ev.has("vitrine_etape"):
+				ns["vitrine_etape"] = 1   # étape de vitrine sans pause (lot 10a)
+			notifs.append(ns)
 			continue
 		if ev["type"] == "-":
 			panique.append({"id": ev["id"], "m0": m, "fin": m + 2, "v0": valeur_risquee(joueur), "vendu": 0.0, "panique": false})
@@ -1089,7 +1092,7 @@ func _tirer_calendrier() -> Array:
 			cal.append(e)
 	# Coïncidence forcée : panne de voiture le mois suivant un événement « - » (après le 12e mois)
 	var krachs := []
-	for ev in per.get("evenements", []):
+	for ev in evenements():
 		if ev["type"] == "-" and Dates.lire(ev["d"]) - mk.ab_debut > int(vie["coincidenceApresMois"]):
 			krachs.append(ev)
 	if not krachs.is_empty() and types.has("voiture"):
@@ -1378,8 +1381,45 @@ func _vie_en_notification(idx: int, notifs: Array) -> void:
 # Événements de marché
 # =====================================================================
 
+## Événements de marché de la période et vitrine du chapitre (lot 10a, C : `vitrine.json` générique). Une étape de vitrine devient
+## un événement : avec pause (`pause` vrai) = modale « marche » de type « - » (courbe et mention dans la modale), sans pause =
+## notification `vitrine_etape` (type « -silencieux »). Étape : { id, mois, pause, titre, texte, gravite?, lecon?, courbe?: [mois],
+## mention?, date_journal?, source? } ; le texte est CALCULÉ sur la série : {indice} (fin de mois), {variation} (% depuis le mois
+## précédent), {indice_avant}. Le chapitre 1984 n'a pas de vitrine.json : le krach de 1987 reste lu dans periode_p1.json + krach.json.
+var _vitrines: Dictionary = {}
+
+
+func evenements() -> Array:
+	var base: Array = per.get("evenements", [])
+	if not Donnees.existe("vitrine"):
+		return base
+	if not _vitrines.has(chapitre):
+		var out: Array = []
+		for et: Dictionary in Donnees.charger("vitrine").get("etapes", []):
+			var ab := Dates.lire(str(et["mois"]))
+			var i := ab - mk.ab_debut
+			var v := mk.valeur_indice(i)
+			var av := mk.valeur_indice(i - 1)
+			var vals := {"indice": Format.nombre(roundf(v), 0), "indice_avant": Format.nombre(roundf(av), 0),
+				"variation": Format.nombre(absf((v / av - 1.0) * 100.0), 1)}
+			var pause := bool(et.get("pause", false))
+			var ev := {"id": "V:" + str(et["mois"]), "d": str(et["mois"]), "type": "-" if pause else "-silencieux", "fenetre": 1, "gravite": str(et.get("gravite", "")),
+				"source": str(et.get("source", "media")), "date_journal": str(et.get("date_journal", "")), "titre": str(et["titre"]),
+				"texte": Format.gabarit(str(et["texte"]), vals), "lecon": str(et.get("lecon", "")), "vitrine_etape": 1 if not pause else 2}
+			if et.has("courbe"):
+				var c := []
+				for mm in et["courbe"]:
+					c.append({"mois": str(mm), "valeur": mk.valeur_indice(Dates.lire(str(mm)) - mk.ab_debut)})
+				ev["courbe"] = c
+			if et.has("mention"):
+				ev["mention"] = str(et["mention"])
+			out.append(ev)
+		_vitrines[chapitre] = out
+	return base + (_vitrines[chapitre] as Array)
+
+
 func evenement(id: String) -> Dictionary:
-	for ev in per.get("evenements", []):
+	for ev in evenements():
 		if ev["id"] == id:
 			return ev
 	return {}
@@ -1481,6 +1521,9 @@ func contenu_modale() -> Dictionary:
 			"titre": ev["titre"], "texte": ev["texte"], "gravite": ev.get("gravite", ""), "type": ev["type"],
 			"impact": impact_marche(ev), "detient": valeur_risquee(joueur) > EPS, "choix": choix_marche(ev),
 			"ecart_livret": ecart_livret(), "ecart_livret_avant": ecart_livret(m_avant), "ab_avant": ab_de(m_avant)}
+		if ev.has("courbe"):
+			c_marche["courbe"] = ev["courbe"]   # vitrine en étapes : courbe [{mois, valeur}] et mention, sans « jours »
+			c_marche["mention"] = str(ev.get("mention", ""))
 		if rue_active() and _est_krach(ev):
 			c_marche["jours"] = Krach.jours()
 		return c_marche
@@ -2168,6 +2211,7 @@ func _suivre_chapitre(emettre: bool) -> void:
 		vie = Donnees.vie()
 		if emettre:
 			chapitre_change.emit(ancien, ch)
+			_reinitialiser_pour_chapitre(ancien)
 			_ouvrir_passage(ancien, ch)
 	else:
 		Donnees.regler_chapitre(chapitre)
@@ -2223,6 +2267,14 @@ func _bilan_de_chapitre(id: String) -> void:
 	stats_titre = Titres.stats_initiales()
 	stats_titre["m0"] = m
 	instantane_k = {}
+
+
+## Remise à zéro de ce qui est propre à un chapitre (lot 10a) : compteurs de cadence (budgets du chapitre), projets.
+func _reinitialiser_pour_chapitre(ancien: String) -> void:
+	if banquier_actif():
+		banque["compteurs"] = Cadence.compteurs_vides()
+		banque["interruptions"] = 0
+	Projets.changer_chapitre(self, ancien)
 
 
 ## Carte de passage de chapitre (version A, docs/40 §1.2.3) : une pause, résolue par « continuer ». Sans bloc « passage »

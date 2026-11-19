@@ -99,7 +99,7 @@ static func programmer(e: EtatPartie, pid: String, montant: float) -> Dictionary
 	if not reglable(pid):
 		return {"ok": false, "msg": texte_non_eligible(pid)}
 	if not Banquier.presente(e, pid):
-		return {"ok": false, "msg": "M. Lefranc ne vous a pas encore présenté ce produit."}
+		return {"ok": false, "msg": Banquier.libelle("pas_presente", "Ce produit ne vous a pas encore été présenté.")}
 	if montant < minimum(pid) - EPS:
 		return {"ok": false, "msg": "Au moins %s par mois." % Format.montant(minimum(pid), a)}
 	var v := _vars(e, pid, montant)

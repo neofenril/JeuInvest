@@ -8,9 +8,9 @@ extends RefCounted
 ##   {prenom}        prénom du joueur                       {prenoms}   prénoms des enfants, joints par « et »
 ##   {proche}        prénom du proche (conjoint ou ami)     {conjoint}  idem (alias lisible pour un couple)
 ##   {de_proche}     « de Sylvie » / « d'Odette » (élision) {de_conjoint} idem
-##   {e}             e muet du joueur (« ravi{e} »)         {il}        pronom du joueur : il / elle
-##   {elle}          pronom du proche : elle / il           {civilite}  Monsieur / Madame (joueur)
-##   {le}            article du joueur : le / la            {la}        article du proche : la / le
+##   {e} {il} {le} {civilite}  JOUEUR : e muet (« ravi{e} »), il / elle, le / la, Monsieur / Madame
+##   {e_p} {il_p} {le_p} {civilite_p}  PROCHE (suffixe _p) : mêmes accords selon le sexe du proche
+##   (pas de {elle} : ambigu quand le proche est un homme ; décision du chef de projet, 19/11)
 ## Les autres jetons du jeu ({montant}, {taux}, …) sont laissés tels quels : Format.gabarit les remplit ensuite.
 ## Un jeton inconnu reste intact (le test de chaque chapitre repère tout « {x} » résiduel).
 
@@ -67,8 +67,8 @@ static func rendre(texte: String, ctx: Dictionary) -> String:
 	var valeurs := {
 		"prenom": str(j.get("prenom", "")), "prenoms": " et ".join(PackedStringArray(ctx.get("enfants", []))),
 		"proche": pp, "conjoint": pp, "de_proche": _elision(pp), "de_conjoint": _elision(pp),
-		"e": "" if h else "e", "il": "il" if h else "elle", "elle": "il" if ph else "elle",
-		"civilite": "Monsieur" if h else "Madame", "le": "le" if h else "la", "la": "le" if ph else "la",
+		"e": "" if h else "e", "il": "il" if h else "elle", "civilite": "Monsieur" if h else "Madame", "le": "le" if h else "la",
+		"e_p": "" if ph else "e", "il_p": "il" if ph else "elle", "civilite_p": "Monsieur" if ph else "Madame", "le_p": "le" if ph else "la",
 	}
 	var sortie := texte
 	for cle: String in valeurs:
