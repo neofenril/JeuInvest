@@ -42,7 +42,7 @@ static func carte(id: String) -> Dictionary:
 static func etat_initial(e: EtatPartie, config: Dictionary) -> Dictionary:
 	var d := donnees()
 	var f := {"actif": bool(config.get("cartes", d.get("actif", false))), "humeur": int(d["humeur"]["depart"]),
-		"creneaux": {}, "c00": 0, "escargots": {}, "salaire": {}, "jouees": [], "derniere_cause": ""}
+		"creneaux": {}, "c00": 0, "escargots": {}, "salaire": {}, "salaires": [], "jouees": [], "derniere_cause": ""}
 	if f["actif"]:
 		f["creneaux"] = _tirer_creneaux(e)
 	return f
@@ -181,11 +181,34 @@ static func apres_naissance(e: EtatPartie, notifs: Array) -> void:
 ## Salaire : effet d'une carte (C07 : + 4 % dès 01/1988), appliqué une fois au mois prévu, juste après
 ## l'indexation de janvier. Commun au joueur et aux témoins (salaire_base est partagé : R-MIROIR).
 static func ajuster_salaire(e: EtatPartie) -> void:
+	# Ancien format (un seul effet, sauvegardes de 0.6.x et de main) : lu tel quel.
 	var s: Dictionary = e.foyer.get("salaire", {})
-	if s.is_empty() or bool(s.get("applique", false)) or e.m < int(s["m_des"]):
-		return
-	e.salaire_base *= 1.0 + float(s["pct"]) / 100.0
-	s["applique"] = true
+	if not s.is_empty() and not bool(s.get("applique", false)) and e.m >= int(s["m_des"]):
+		e.salaire_base *= 1.0 + float(s["pct"]) / 100.0
+		s["applique"] = true
+	# Liste d'effets (lot 10a, M6) : { pct, m_des, m_jusqua (-1 = définitif), applique, retire }. Un effet à durée
+	# (jusqua) est annulé exactement (division par le même facteur) au premier mois qui suit sa fin.
+	for x: Dictionary in e.foyer.get("salaires", []):
+		if not bool(x.get("applique", false)) and e.m >= int(x["m_des"]):
+			e.salaire_base *= 1.0 + float(x["pct"]) / 100.0
+			x["applique"] = true
+		if bool(x.get("applique", false)) and not bool(x.get("retire", false)) and int(x.get("m_jusqua", -1)) >= 0 and e.m > int(x["m_jusqua"]):
+			e.salaire_base /= 1.0 + float(x["pct"]) / 100.0
+			x["retire"] = true
+
+
+## Ajoute l'effet de salaire d'un choix : { pct, des | des_rel, jusqua? } (des : AAAA-MM ; des_rel : mois après la carte ;
+## jusqua : AAAA-MM, dernier mois de l'effet, ou jusqua_rel : durée en mois depuis son début).
+static func ajouter_effet_salaire(e: EtatPartie, eff: Dictionary) -> void:
+	var m_des := _mois_de(e, str(eff["des"])) if eff.has("des") else e.m + int(eff.get("des_rel", 0))
+	var m_jusqua := -1
+	if eff.has("jusqua"):
+		m_jusqua = _mois_de(e, str(eff["jusqua"]))
+	elif eff.has("jusqua_rel"):
+		m_jusqua = m_des + int(eff["jusqua_rel"]) - 1
+	var liste: Array = e.foyer.get("salaires", [])
+	liste.append({"pct": float(eff["pct"]), "m_des": m_des, "m_jusqua": m_jusqua, "applique": false, "retire": false})
+	e.foyer["salaires"] = liste
 
 
 ## Usure de l'humeur chaque 1er janvier, issue des escargots. Appelé à l'entrée dans le mois (hors premier mois).
@@ -492,7 +515,9 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 		e._compter_epargne(mt, a)
 	var ch: Dictionary = c[choix_id]
 	if ch.has("salaire"):
-		e.foyer["salaire"] = {"pct": float(ch["salaire"]["pct"]), "m_des": _mois_de(e, ch["salaire"]["des"]), "applique": false}
+		var effets: Variant = ch["salaire"]
+		for eff: Dictionary in (effets if effets is Array else [effets]):
+			ajouter_effet_salaire(e, eff)
 	var esc: Dictionary = donnees()["escargots"]
 	if id == str(esc["carte"]) and choix_id == str(esc["choix"]):
 		e.foyer["escargots"] = {"m_pret": e.m, "m_issue": e.m + int(esc["delai"]), "prete": -mt, "rendu": Produits.f(float(esc["rendu_F"])), "fait": false}

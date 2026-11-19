@@ -20,7 +20,7 @@ static func etat_initial() -> Dictionary:
 
 
 static func info_produit(pid: String) -> Dictionary:
-	return donnees()["produits"].get(pid, {})
+	return Donnees.produit(pid)
 
 
 static func couleur(pid: String) -> Color:

@@ -144,8 +144,9 @@ static func infos_chapitre(id := "") -> Dictionary:
 
 
 ## Configuration d'un chapitre (chapitre.json) prête pour EtatPartie.demarrer ; « chapitre » = chapitre de départ.
-## La fin est bornée par décembre de derniere_annee. graine < 0 : graine de test.
-static func config_chapitre(id: String, graine := -1) -> Dictionary:
+## fin : "" = décembre de derniere_annee() (partie qui traverse les chapitres ouverts) ; sinon borne explicite
+## « AAAA-MM » (config_demo : 1988-12). graine < 0 : graine de test.
+static func config_chapitre(id: String, graine := -1, fin := "") -> Dictionary:
 	var demo := infos_chapitre(id)
 	var c: Dictionary = demo["config"].duplicate(true)
 	c["chapitre"] = id
@@ -153,15 +154,21 @@ static func config_chapitre(id: String, graine := -1) -> Dictionary:
 	c["naissance"] = demo.get("naissance", {}).duplicate(true)
 	c["cc_depart"] = float(demo["depart_F"]["cc"]) / Format.TAUX_EURO
 	c["livret_depart"] = float(demo["depart_F"]["livret"]) / Format.TAUX_EURO
-	var fin_max := Dates.ab(derniere_annee(), 12)
-	if c.has("fin") and derniere_annee() > 0 and Dates.lire(str(c["fin"])) > fin_max:
+	if fin != "":
+		c["fin"] = fin
+	elif derniere_annee() > 0:
 		c["fin"] = "%d-12" % derniere_annee()
 	return c
 
 
-## Alias permanent : la démo 1984-1988 = chapitre « 1984 ».
+## Alias permanent : la démo 1984-1988 (fin figée en 1988-12 : tests et captures, même quand d'autres chapitres s'ouvrent).
 static func config_demo(graine := -1) -> Dictionary:
-	return config_chapitre("1984", graine)
+	return config_chapitre("1984", graine, "1988-12")
+
+
+## Entrée du catalogue des produits du monde (data/produits.json) ; {} si absent.
+static func produit(id: String) -> Dictionary:
+	return charger("produits").get(id, {})
 
 
 ## Élément en vigueur à la date a dans une liste triée [["AAAA-MM", valeur, ...], ...] (null si aucun).

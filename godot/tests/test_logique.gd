@@ -120,11 +120,12 @@ func _tests_marche() -> void:
 	var chute := mk.valeur_indice(m_krach) / mk.valeur_indice(m_krach - 1) - 1.0
 	verifier("Krach : 1 310 fin sept. 1987 -> 1 033 fin oct. 1987", proche(mk.valeur_indice(m_krach), 1033.0) and proche(mk.valeur_indice(m_krach - 1), 1310.0), Format.pct(chute))
 	var ok_ref := true
-	for i in REF_CASES.size():
+	# Lot 10a : les 2 dernières cases (1990 et 1992) ne sont plus comparées : les ancrages mensuels de 1989-1993 (docs/37 §3) les déplacent ; 1978-1988 reste au bit près (test_marche)
+	for i in REF_CASES.size() - 2:
 		var k: int = REF_CASES[i]
 		if not proche(mk.indice[k], REF_INDICE[i], 1e-9) or not proche(mk.prix["sicav"][k], REF_SICAV[i], 1e-9) or not proche(mk.prix["peugeot"][k], REF_PEUGEOT[i], 1e-9):
 			ok_ref = false
-	verifier("Portage : indice, SICAV et Peugeot identiques à la V1 web (8 dates)", ok_ref)
+	verifier("Portage : indice, SICAV et Peugeot identiques à la V1 web (6 dates jusqu'en 1988)", ok_ref)
 	var avant := mk.indice.duplicate()
 	var sicav_avant: PackedFloat64Array = mk.prix["sicav"].duplicate()
 	Marche.vider_cache()
@@ -233,7 +234,7 @@ func _tests_partie_complete() -> void:
 			e.deposer_livret(e.joueur, minf(e.joueur.cc * 0.3, e.place_livret(e.joueur)))
 	var j := jouer({"profil": "jeune", "graine_vie": 2024}, strat)
 	var e: EtatPartie = j["etat"]
-	verifier("Partie P1 complète : 180 mois, fin normale", e.fin == "fin" and e.m == 179, "fin = %s, m = %d" % [e.fin, e.m])
+	verifier("Partie P1 complète : 192 mois (fin 1993 depuis le lot 10a), fin normale", e.fin == "fin" and e.m == 191, "fin = %s, m = %d" % [e.fin, e.m])
 	var matelas: Portefeuille = e.temoins["matelas"]
 	verifier("CA-19 : Tonton Matelas = somme exacte des épargnes nettes", proche(matelas.cc, e.epargne_nette, 1e-9) and e.patrimoine(matelas) == matelas.cc,
 		"%s" % Format.montant(matelas.cc, e.ab_courant()))
@@ -258,9 +259,9 @@ func _tests_partie_complete() -> void:
 			Format.montant(b["nominal"]["livret"], b["a"]), Format.montant(b["nominal"]["matelas"], b["a"]), b["nb_etoiles"]])
 	var hist_ok := true
 	for k in ["j", "matelas", "livret", "indice"]:
-		if hist_ok and e.hist[k][179] <= 0.0:
+		if hist_ok and e.hist[k][191] <= 0.0:
 			hist_ok = false
-	verifier("Historique mensuel rempli pour les 4 courbes", hist_ok and proche(e.hist["j"][179], e.patrimoine(e.joueur)))
+	verifier("Historique mensuel rempli pour les 4 courbes", hist_ok and proche(e.hist["j"][191], e.patrimoine(e.joueur)))
 	var sources_ok := true
 	for n in j["notifs"]:
 		if not n.get("source", "") in ["maison", "banque", "media"]:

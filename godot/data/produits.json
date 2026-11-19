@@ -1,0 +1,283 @@
+{
+  "_note": "Catalogue des produits du monde (lot 10a, C1) : un produit = une entrée, identifiée par son id partout (état de la banque, sauvegarde, historique, stratégies). type : cc | livret | pel | emprunt | av | sicav | action | pea | scpi | message. naissance (AAAA-MM) : premier mois où le produit existe ; fin (facultative) ; notes (de 1 à 3) : rendement (3 = élevé), risque (3 = élevé), dispo (3 = immédiate), fisc (3 = sans impôt) ; mots : un mot par critère (variables possibles) ; indice : besoin affiché sur la silhouette, jamais une date ; mode_defaut : jouable | message | silhouette ; parametres : paramètres datés, exposés par Produits.params() sous leur clé (pel, av, succession, emprunt, pea, scpi) ; certitude : A vérifié, B probable, C reconstitué. Les fiches de 1984-1988 sont celles de l'ancien banque.json, champ pour champ.",
+  "cc": {
+    "nom": "Compte courant",
+    "court": "Compte",
+    "type": "cc",
+    "famille": "cc",
+    "notes": { "rendement": 0, "risque": 1, "dispo": 3, "fisc": 3 },
+    "mots": { "rendement": "0 %", "risque": "aucun", "dispo": "immédiate", "fisc": "rien à payer" },
+    "frais": "aucun (tenue de compte gratuite)",
+    "naissance": "1950-01",
+    "mode_defaut": "jouable",
+    "certitude": "A"
+  },
+  "livret": {
+    "nom": "Livret A",
+    "court": "Livret A",
+    "type": "livret",
+    "famille": "livret",
+    "presentation": "D01",
+    "notes": { "rendement": 1, "risque": 1, "dispo": 3, "fisc": 3 },
+    "mots": { "rendement": "{taux_livret} %", "risque": "aucun", "dispo": "immédiate", "fisc": "sans impôt" },
+    "frais": "aucun",
+    "indice": "",
+    "definition": "Un compte d'épargne garanti par l'État : la valeur ne baisse jamais. Intérêts versés au 31 décembre.",
+    "naissance": "1950-01",
+    "mode_defaut": "jouable",
+    "certitude": "A"
+  },
+  "pel": {
+    "nom": "Plan épargne logement",
+    "court": "PEL",
+    "type": "pel",
+    "famille": "pel",
+    "presentation": "D02",
+    "notes": { "rendement": 2, "risque": 1, "dispo": 1, "fisc": 3 },
+    "mots": { "rendement": "{taux_pel_detail}", "risque": "aucun", "dispo": "bloqué 4 ans", "fisc": "sans impôt" },
+    "frais": "aucun",
+    "indice": "Pour un projet de logement",
+    "definition": "Un plan à taux fixe, prime de l'État comprise, avec un versement chaque mois. Un retrait ferme le plan.",
+    "naissance": "1965-03",
+    "mode_defaut": "jouable",
+    "certitude": "A",
+    "parametres": {
+      "pel": {
+        "taux": [["1984-01", 8.25, 6.3], ["1984-08", 7, 5.3], ["1985-07", 6, 4.75], ["1986-06", 6, 4.62]],
+        "duree_mois": 48,
+        "taux_cloture_anticipee": 2.75,
+        "mensuel_min_F": 300,
+        "mensuels_F": [300, 500, 1000],
+        "plafond_F": 400000,
+        "_cert": "B (hors prime), C (prime comprise avant 1985)"
+      }
+    }
+  },
+  "emprunt": {
+    "nom": "Emprunt d'État 10 ans",
+    "court": "Emprunt d'État",
+    "type": "emprunt",
+    "famille": "emprunt",
+    "presentation": "D03",
+    "notes": { "rendement": 2, "risque": 1, "dispo": 2, "fisc": 1 },
+    "notes_1984": { "rendement": 3 },
+    "mots": { "rendement": "{taux_emprunt} % fixe", "risque": "faible", "dispo": "si revendu", "fisc": "16 %" },
+    "frais": "aucun",
+    "indice": "Prêter à l'État",
+    "definition": "Vous prêtez à l'État pour 10 ans : il verse chaque année un intérêt fixe (le coupon), puis rend la mise.",
+    "naissance": "1950-01",
+    "mode_defaut": "jouable",
+    "certitude": "A",
+    "parametres": {
+      "emprunt": {
+        "impot_coupons": 16,
+        "_note": "Coupon annuel à la date anniversaire, imposé à 16 % (A6). Revente au prix d'achat plus les intérêts courus (A13, simplifié)."
+      }
+    }
+  },
+  "av": {
+    "nom": "Assurance-vie (fonds en francs)",
+    "court": "Assurance-vie",
+    "type": "av",
+    "famille": "av",
+    "presentation": "D04",
+    "notes": { "rendement": 3, "risque": 1, "dispo": 2, "fisc": 2 },
+    "mots": {
+      "rendement": "{taux_av} % l'an dernier",
+      "risque": "faible",
+      "dispo": "quelques jours",
+      "fisc": "0 % après 6 ans"
+    },
+    "frais": "4 % sur chaque versement",
+    "indice": "Penser à sa famille",
+    "definition": "Une enveloppe garantie par l'assureur : intérêts acquis chaque 31 décembre ; transmise hors succession, sans droits.",
+    "naissance": "1950-01",
+    "mode_defaut": "jouable",
+    "certitude": "A",
+    "parametres": {
+      "av": {
+        "taux": { "1983": 15.5, "1984": 12.5, "1985": 11.5, "1986": 11, "1987": 9.75, "1988": 9.5, "1989": 9 },
+        "entree": 4,
+        "_rachat": "Prélèvement sur les gains d'un retrait selon l'âge du contrat (contrats 1983-1989, A42) : [mois d'ancienneté minimum, taux %].",
+        "rachat": [[0, 45], [24, 25], [48, 15], [72, 0]],
+        "_cert": "C (taux réseau), A/B (fiscalité)"
+      },
+      "succession": { "abattement_ligne_directe_F": 275000, "concubin_pct": 60, "neveu_pct": 55 }
+    }
+  },
+  "sicav": {
+    "nom": "SICAV actions France",
+    "court": "SICAV",
+    "type": "sicav",
+    "famille": "sicav",
+    "presentation": "D05",
+    "notes": { "rendement": 3, "risque": 2, "dispo": 2, "fisc": 1 },
+    "mots": { "rendement": "espéré*", "risque": "moyen", "dispo": "en 2 jours", "fisc": "16 %" },
+    "frais": "2 % à l'entrée + 1,5 % par an",
+    "indice": "Un panier d'entreprises",
+    "definition": "Un fonds qui achète pour vous des dizaines d'actions françaises. Aucune garantie : la valeur monte et baisse.",
+    "naissance": "1963-01",
+    "mode_defaut": "jouable",
+    "certitude": "A"
+  },
+  "elf": {
+    "nom": "Elf Aquitaine",
+    "court": "Elf",
+    "type": "action",
+    "famille": "action",
+    "presentation": "D06",
+    "notes": { "rendement": 3, "risque": 3, "dispo": 2, "fisc": 1 },
+    "mots": { "rendement": "espéré*", "risque": "élevé", "dispo": "en 2 jours", "fisc": "16 %" },
+    "frais": "1,3 % par ordre, 50 F au moins",
+    "indice": "Une entreprise à soi",
+    "definition": "Une action du pétrolier Elf : un morceau d'une seule entreprise, qui verse un dividende chaque année.",
+    "naissance": "1977-12",
+    "mode_defaut": "jouable",
+    "certitude": "A"
+  },
+  "loreal": {
+    "nom": "L'Oréal",
+    "court": "L'Oréal",
+    "type": "action",
+    "famille": "action",
+    "presentation": "D06",
+    "notes": { "rendement": 3, "risque": 3, "dispo": 2, "fisc": 1 },
+    "mots": { "rendement": "espéré*", "risque": "élevé", "dispo": "en 2 jours", "fisc": "16 %" },
+    "frais": "1,3 % par ordre, 50 F au moins",
+    "indice": "Une entreprise à soi",
+    "definition": "Une action du groupe de cosmétiques : un morceau d'une seule entreprise, qui verse un dividende.",
+    "naissance": "1977-12",
+    "mode_defaut": "jouable",
+    "certitude": "A"
+  },
+  "peugeot": {
+    "nom": "Peugeot",
+    "court": "Peugeot",
+    "type": "action",
+    "famille": "action",
+    "presentation": "D06",
+    "notes": { "rendement": 3, "risque": 3, "dispo": 2, "fisc": 1 },
+    "mots": { "rendement": "espéré*", "risque": "élevé", "dispo": "en 2 jours", "fisc": "16 %" },
+    "frais": "1,3 % par ordre, 50 F au moins",
+    "indice": "Une entreprise à soi",
+    "definition": "Une action du constructeur automobile : un morceau d'une seule entreprise, très sensible à la conjoncture.",
+    "naissance": "1977-12",
+    "mode_defaut": "jouable",
+    "certitude": "A"
+  },
+  "saintgobain": {
+    "nom": "Saint-Gobain",
+    "court": "Saint-Gobain",
+    "type": "action",
+    "famille": "action",
+    "presentation": "D07",
+    "notes": { "rendement": 3, "risque": 3, "dispo": 2, "fisc": 1 },
+    "mots": { "rendement": "espéré*", "risque": "élevé", "dispo": "en 2 jours", "fisc": "16 %" },
+    "frais": "aucun pendant l'offre, puis 1,3 % par ordre",
+    "indice": "Une grande première",
+    "definition": "Le verrier privatisé en décembre 1986 : à l'offre, 310 F l'action, sans courtage ; ensuite, une action cotée comme les autres.",
+    "naissance": "1986-11",
+    "mode_defaut": "jouable",
+    "certitude": "A"
+  },
+  "bnp": {
+    "nom": "BNP",
+    "court": "BNP",
+    "type": "action",
+    "famille": "action",
+    "notes": { "rendement": 3, "risque": 3, "dispo": 2, "fisc": 1 },
+    "mots": { "rendement": "espéré*", "risque": "élevé", "dispo": "en 2 jours", "fisc": "16 %" },
+    "frais": "1,3 % par ordre",
+    "indice": "Une grande banque",
+    "definition": "Une grande banque française : un morceau d'une seule entreprise, sensible à la conjoncture.",
+    "naissance": "1993-10",
+    "mode_defaut": "jouable",
+    "certitude": "C"
+  },
+  "sicav_monetaire": {
+    "nom": "SICAV monétaire",
+    "court": "SICAV monétaire",
+    "type": "sicav",
+    "famille": "sicav",
+    "notes": { "rendement": 2, "risque": 1, "dispo": 2, "fisc": 2 },
+    "mots": {
+      "rendement": "proche des taux courts",
+      "risque": "faible",
+      "dispo": "en 2 jours",
+      "fisc": "16 % sur les gains"
+    },
+    "frais": "faibles",
+    "indice": "Un compte qui suit les taux",
+    "definition": "Un fonds qui place l'argent à très court terme. Rendement proche des taux du marché monétaire.",
+    "naissance": "1984-01",
+    "mode_defaut": "jouable",
+    "certitude": "C"
+  },
+  "pea": {
+    "nom": "Plan d'épargne en actions",
+    "court": "PEA",
+    "type": "pea",
+    "famille": "action",
+    "notes": { "rendement": 3, "risque": 3, "dispo": 1, "fisc": 3 },
+    "mots": { "rendement": "espéré*", "risque": "élevé", "dispo": "bloqué 5 ans", "fisc": "sans impôt après 5 ans" },
+    "frais": "ceux des titres achetés",
+    "indice": "Une enveloppe pour les actions",
+    "definition": "Une enveloppe pour acheter des actions françaises et des SICAV actions. Après 5 ans, les gains ne sont plus imposés.",
+    "naissance": "1992-07",
+    "mode_defaut": "jouable",
+    "certitude": "A",
+    "parametres": {
+      "pea": { "duree_exoneration_mois": 60, "eligibles": ["action", "sicav"], "versement": "numeraire" }
+    }
+  },
+  "scpi": {
+    "nom": "Société civile de placement immobilier",
+    "court": "SCPI",
+    "type": "scpi",
+    "famille": "av",
+    "notes": { "rendement": 2, "risque": 2, "dispo": 1, "fisc": 2 },
+    "mots": {
+      "rendement": "loyers trimestriels",
+      "risque": "moyen",
+      "dispo": "lente : 3 mois",
+      "fisc": "16 % sur les loyers"
+    },
+    "frais": "10 % à l'entrée",
+    "indice": "De la pierre, sans acheter un immeuble",
+    "definition": "Des parts d'immeubles de bureaux ou de commerces. Les loyers tombent chaque trimestre ; la revente prend du temps et son prix n'est pas garanti.",
+    "naissance": "1984-01",
+    "mode_defaut": "jouable",
+    "certitude": "C",
+    "parametres": {
+      "scpi": {
+        "part_F": 1000,
+        "frais_entree_pct": 10,
+        "delai_vente_mois": 3,
+        "periodicite_loyers_mois": 3,
+        "impot_loyers_pct": 16,
+        "loyer_pct": [["1989-01", 6.5], ["1992-01", 6.3], ["1993-01", 5.8]],
+        "revente_F": [["1989-01", 900], ["1993-03", 820], ["1993-12", 780]],
+        "_cert": "C : à valider par le banquier (docs/46 §7, docs/47 §3.1 et §9)"
+      }
+    }
+  },
+  "pep": {
+    "nom": "Plan d'épargne populaire",
+    "court": "PEP",
+    "type": "message",
+    "famille": "livret",
+    "notes": { "rendement": 2, "risque": 1, "dispo": 1, "fisc": 3 },
+    "mots": {
+      "rendement": "taux garanti",
+      "risque": "faible",
+      "dispo": "bloqué 8 ans",
+      "fisc": "sans impôt après 8 ans"
+    },
+    "frais": "aucun",
+    "indice": "Un plan d'épargne long",
+    "definition": "Un plan d'épargne à taux garanti ; un retrait avant 8 ans clôt le plan. Présenté par un message : pas de fiche jouable.",
+    "naissance": "1990-01",
+    "mode_defaut": "message",
+    "certitude": "A"
+  }
+}

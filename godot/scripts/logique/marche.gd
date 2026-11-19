@@ -39,6 +39,11 @@ func _init(p: Dictionary) -> void:
 	ab_debut = Dates.ab(debut, 1)
 	ab0 = ab_debut - 1
 	var rng := Hasard.new(int(p["graine"]))
+	# Prolongation (lot 10a) : les segments qui partent de décembre de extension.depuis - 1 (ou après) tirent dans un
+	# flux propre, pour que les cours déjà joués (jusqu'à 1988) ne changent pas quand on ajoute des années.
+	var ext: Dictionary = p.get("extension", {})
+	var rng_ext: Hasard = Hasard.new(int(ext["graine"])) if not ext.is_empty() else null
+	var coupe := Dates.ab(int(ext["depuis"]) - 1, 12) - ab0 if not ext.is_empty() else 1 << 30
 	var annuel: Dictionary = Donnees.series()["annuel"]
 
 	# Indice : ancrages durs = clôtures annuelles, puis points mensuels de la période
@@ -56,7 +61,7 @@ func _init(p: Dictionary) -> void:
 	for d in p.get("moisCrise", []):
 		crise[Dates.lire(d) - ab0] = true
 	var sigma_indice := func(i: int) -> float: return SIGMA_CRISE if crise.has(i) else SIGMA_NORMAL
-	var log_i := _pont(_trier(anc), sigma_indice, rng)
+	var log_i := _pont(_trier(anc), sigma_indice, rng, rng_ext, coupe)
 	indice.resize(n_cases)
 	for k in n_cases:
 		indice[k] = exp(float(log_i[k]))
@@ -70,9 +75,11 @@ func _init(p: Dictionary) -> void:
 		var pts := {}
 		for a in pr["ancrages"]:
 			var i := Dates.lire(a[0]) - ab0
+			if i >= n_cases:
+				continue    # ancrage au-delà de la fenêtre (période tronquée)
 			pts[i] = log(Format.vers_euros(float(a[1]), pr.get("devise", "€"))) - beta * float(log_i[i])
 		var sig := float(pr["volSpe"]) / sqrt(12.0)
-		var resid := _pont(_trier(pts), func(_i: int) -> float: return sig, rng)
+		var resid := _pont(_trier(pts), func(_i: int) -> float: return sig, rng, rng_ext, coupe)
 		var serie := PackedFloat64Array()
 		serie.resize(n_cases)
 		for k in n_cases:
@@ -87,7 +94,7 @@ func _init(p: Dictionary) -> void:
 
 
 ## Pont brownien en log entre des points [[i, x], ...] triés ; cases hors des points = null.
-func _pont(points: Array, sigma: Callable, rng: Hasard) -> Array:
+func _pont(points: Array, sigma: Callable, rng: Hasard, rng_ext: Hasard = null, coupe := 1 << 30) -> Array:
 	var x := []
 	x.resize(n_cases)
 	for p in range(points.size() - 1):
@@ -96,9 +103,10 @@ func _pont(points: Array, sigma: Callable, rng: Hasard) -> Array:
 		var i1: int = points[p + 1][0]
 		var x1: float = points[p + 1][1]
 		var n := i1 - i0
+		var tirage: Hasard = rng_ext if (rng_ext != null and i0 >= coupe) else rng
 		var w: Array[float] = [0.0]
 		for j in range(1, n + 1):
-			w.append(w[j - 1] + float(sigma.call(i0 + j)) * rng.student4())
+			w.append(w[j - 1] + float(sigma.call(i0 + j)) * tirage.student4())
 		x[i0] = x0
 		for j in range(1, n):
 			var t := float(j) / n

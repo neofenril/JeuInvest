@@ -12,7 +12,7 @@ extends RefCounted
 
 const EPS := 0.005
 const VERSION_ETAT := 3          # 2 : historique, versements automatiques ; 3 (lot 02) : flux du mois, cadence V3, migration douce
-const HISTORIQUE_MAX := 600   # limite de l'historique conservé (à revoir au lot 10 : une partie sur plusieurs chapitres en produit davantage)
+const HISTORIQUE_MAX := 1200   # limite de l'historique conservé (lot 10a : une partie de 10 ans en produit ~150, mesuré par test_bascule ; marge x8)
 
 ## Émis quand le mois courant entre dans un autre chapitre (lot 09, D2) ; jamais avec les données réelles du lot 09.
 signal chapitre_change(ancien: String, nouveau: String)
@@ -929,6 +929,10 @@ func mois_dividende(id: String) -> int:
 
 ## Le titre ne verse rien l'année (de paiement) donnée (periode > divNul).
 func dividende_nul(id: String, annee: int) -> bool:
+	# Dividende nul implicite (lot 10a) : un titre qui n'est disponible qu'après le mois de détachement de l'année ne verse rien cette année-là.
+	var dispo := str(produit(id).get("dispo", ""))
+	if dispo != "" and Dates.lire(dispo) > Dates.ab(annee, mois_dividende(id)):
+		return true
 	for x in produit(id).get("divNul", []):
 		if int(x) == annee:
 			return true
