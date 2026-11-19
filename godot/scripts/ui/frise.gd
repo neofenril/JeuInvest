@@ -6,7 +6,9 @@ extends Control
 ## On ne voyage pas dans le temps : la frise ne réagit pas au clic.
 
 var m_debut := 0
-var m_fin := 0                    # m_debut et m_fin : posés par Hud.maj depuis la partie (aucune durée en dur)
+var m_fin := -1                   # m_debut et m_fin : posés par Hud.maj depuis la partie (aucune durée en dur) ;
+                                  # tant que m_fin < m_debut (avant le premier Hud.maj), rien n'est dessiné (M2 de la recette 09-I)
+var coupures: Array = []          # mois (même repère que m) des débuts de chapitre, hors le premier : posés par Hud.maj (docs/40 §1.1)
 var ab_debut := 0                 # mois absolu du mois 0 de la période
 var position_mois := 0.0          # m + progression du mois
 var marqueurs: Array = []         # { m, type: "marche" | "nouveau", passe: bool }
@@ -34,7 +36,24 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 
+## Écart minimal (px) entre deux années écrites : sous 70 px une année sur deux (les paires), sous 35 px une sur cinq ;
+## les débuts de chapitre sont toujours écrits (docs/40 §1.1.3). Statique : partagé avec la courbe de « Mon argent ».
+static func annee_ecrite(annee: int, px_par_an: float, debut_chapitre: bool, seuil := 70.0) -> bool:
+	if debut_chapitre or px_par_an >= seuil:
+		return true
+	if px_par_an >= seuil / 2.0:
+		return annee % 2 == 0
+	return annee % 5 == 0
+
+
+func est_coupure(m: int) -> bool:
+	return coupures.has(m) and m > m_debut and m <= m_fin
+
+
 func _draw() -> void:
+	if m_fin < m_debut:
+		return
+	var px_mois := (size.x - 2.0 * MARGE) / float(m_fin - m_debut + 1)
 	var y := _t(size.y * 0.6)
 	var x0 := _t(_x(m_debut))
 	var x1 := _t(_x(m_fin + 1))
@@ -51,15 +70,26 @@ func _draw() -> void:
 		var x := _t(_x(m))
 		var passe := m <= position_mois
 		if Dates.mois(a) == 1 or m == m_debut:
-			draw_rect(Rect2(x, y - 18, 3, 12), Style.TEXTE_2 if passe else Style.PANNEAU_SURVOL)
-			draw_string(police, Vector2(x + 6, y - 12), str(Dates.annee(a)), HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Style.TEXTE if passe else Style.TEXTE_2)
+			var coupure := est_coupure(m)
+			if coupure:
+				# Début de chapitre : taquet haut, année en gras (la coupure du rail est tracée après, par-dessus)
+				draw_rect(Rect2(x, y - 33, 3, 27), Style.TEXTE_2 if passe else Style.PANNEAU_SURVOL)
+			else:
+				draw_rect(Rect2(x, y - 18, 3, 12), Style.TEXTE_2 if passe else Style.PANNEAU_SURVOL)
+			if annee_ecrite(Dates.annee(a), px_mois * 12.0, coupure or m == m_debut):
+				var f := Style.ui_gras() if coupure else police
+				draw_string(f, Vector2(x + 6, y - 12), str(Dates.annee(a)), HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Style.TEXTE if passe else Style.TEXTE_2)
 		elif Dates.mois(a) % 3 == 1:
 			draw_rect(Rect2(x, y - 12, 3, 6), Color(Style.TEXTE_2, 0.5))
+	# Coupures de chapitre : le rail s'interrompt d'un texel (contour encre de part et d'autre)
+	for mc in coupures:
+		if est_coupure(int(mc)):
+			draw_rect(Rect2(_t(_x(float(mc))), y - 3, 3, 9), Style.ENCRE)
 	# Marqueurs
 	for mq in marqueurs:
 		var x := _t(_x(float(mq["m"]) + 0.5))
 		if mq["type"] == "marche" and mq["passe"]:
-			_losange(Vector2(x, y + 21), Style.PERTE)
+			_losange(Vector2(x, y + 21), Style.PERTE, px_mois < 12.0)
 		elif mq["type"] == "nouveau":
 			_etoile(Vector2(x, y + 21), Style.ALERTE, mq["passe"])
 	var drapeau := CadresPixel.texture("drapeau")
@@ -75,7 +105,15 @@ func _draw() -> void:
 
 
 ## Losange pixel (marche d'escalier de 3 px), contour de la couleur, cœur crème.
-func _losange(c: Vector2, couleur: Color) -> void:
+func _losange(c: Vector2, couleur: Color, petit := false) -> void:
+	if petit:
+		# Pas mensuel < 12 px : losange de 7 texels de large au lieu de 8 (deux mois voisins ne se touchent pas)
+		for k in 3:
+			var w := 3.0 + 6.0 * k
+			draw_rect(Rect2(c.x - w / 2.0, c.y - 9 + 3 * k, w, 3), couleur)
+			draw_rect(Rect2(c.x - w / 2.0, c.y + 6 - 3 * k, w, 3), couleur)
+		draw_rect(Rect2(c.x - 4.5, c.y - 3, 9, 6), Style.TEXTE)
+		return
 	for k in 4:
 		var w := 3.0 + 6.0 * k
 		draw_rect(Rect2(c.x - w / 2.0, c.y - 12 + 3 * k, w, 3), couleur)

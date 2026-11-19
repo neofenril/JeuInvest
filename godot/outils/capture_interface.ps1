@@ -192,6 +192,12 @@ foreach ($e in @("rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "histo
 $plan.Add(@("rue_bloc", "l6_rue_bloc_1152", "1152x648", ""))
 $plan.Add(@("rue_bloc", "l6_rue_bloc_tel169", "1280x720", "169"))
 $plan.Add(@("integrale_jouable", "l6_integrale_jouable", "1280x720", ""))
+# Lot 10b étape 1 (I1-I3) : frise et courbe sur 120 mois (fabriquées), carnet à 13 produits ; PC 1080 et 2 téléphones
+foreach ($e in @("frise_10ans", "mon_argent_10ans", "carnet_13")) {
+    foreach ($t in @(@("1080", "1920x1080", ""), @("tel", "1440x648", "1"), @("tel169", "1280x720", "169"))) {
+        $plan.Add(@($e, ("l10_" + $e + "_" + $t[0]), $t[1], $t[2]))
+    }
+}
 $echecs = 0
 $script:sorties_bloquees = 0
 $i = 0

@@ -12,7 +12,8 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"carte", "carte_refus", "carte_conclusion", "carte_jumeaux", "carte_relue", "bulle_humeur", "etiquette_humeur",
 	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
-	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue", "fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre", "titre_record", "titre_sans_records", "titres_collection", "intro"]
+	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue", "fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre", "titre_record", "titre_sans_records", "titres_collection", "intro",
+	"frise_10ans", "mon_argent_10ans", "carnet_13"]
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -34,6 +35,10 @@ func jouer(etape: String) -> void:
 			await _hud(jeu)
 		"polices_jeu":
 			await _polices_jeu()
+		"frise_10ans", "mon_argent_10ans":
+			await _dix_ans(etape, jeu)
+		"carnet_13":
+			await _carnet_13(jeu)
 		"etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette":
 			await _etiquettes(etape, jeu)
 		"etiquettes_balayage":
@@ -1668,6 +1673,54 @@ func _nom(c: Control) -> String:
 # =====================================================================
 # HUD : bouton HISTORIQUE (CA-I7)
 # =====================================================================
+
+## Lot 10b (I1, I2) : frise et courbe de « Mon argent » sur 120 mois, fabriquées (le moteur de 1989 n'est pas encore là) :
+## la partie de 1984 est jouée jusqu'en 1988 puis l'axe est étendu de 60 mois avec une coupure de chapitre en janvier 1989.
+func _dix_ans(etape: String, jeu: Node) -> void:
+	var hud: Hud = jeu.hud
+	var e := Partie.etat
+	sc.partir_de_la_rue(etape)
+	sc.aller_a(Dates.lire("1988-01"), true)
+	Partie.changer_vitesse(0)
+	await sc.delai(0.8)
+	hud.basculer_panneau(true)
+	await sc.delai(0.8)
+	var coupure := e.m_fin + 1
+	hud.frise.m_fin = e.m_fin + 60
+	hud.frise.coupures = [coupure]
+	hud.courbe.total_mois = hud.frise.m_fin - e.m_depart
+	hud.courbe.coupures = [coupure - e.m_depart]
+	await sc.delai(0.4)
+	var fr := hud.frise
+	print("UI %s mois=%d coupure_visible=%s annee_paire_seule=%s" % [etape, fr.m_fin - fr.m_debut + 1, "oui" if fr.est_coupure(coupure) else "non",
+		"oui" if not Frise.annee_ecrite(1985, 40.0, false) and Frise.annee_ecrite(1986, 40.0, false) else "non"])
+	_mesurer(etape, hud)
+
+
+## Lot 10b (I3) : carnet de la banque à 13 produits (4 produits fabriqués, copies d'un produit existant, ajoutés
+## en mémoire au chapitre pour cette capture seulement) : 4 colonnes au PC, défilement au téléphone.
+func _carnet_13(jeu: Node) -> void:
+	var e := Partie.etat
+	sc.partir_de_la_rue("carnet_13")
+	sc.aller_a(Dates.lire("1986-12"), true)
+	var d := Banquier.donnees()
+	for i in 4:
+		var pid := "fab%d" % i
+		var p: Dictionary = (d["produits"]["elf"] as Dictionary).duplicate(true)
+		p["court"] = "FAB %d" % (i + 1)
+		p["nom"] = "Produit fabriqué %d" % (i + 1)
+		p["presentation"] = pid
+		d["produits"][pid] = p
+		d["ordre_carnet"].append(pid)
+		e.banque["presentes"][pid] = e.m
+	jeu.ouvrir_banque("sicav", -2.0)
+	await sc.delai(3.0)
+	var modales: Modales = jeu.modales
+	var grille := modales.courant.find_child("GrilleCarnet", true, false) as GridContainer if is_instance_valid(modales.courant) else null
+	print("UI carnet_13 cartes=%d colonnes=%d defilant=%s" % [grille.get_child_count() if grille != null else -1, grille.columns if grille != null else -1,
+		"oui" if is_instance_valid(modales.courant) and modales.courant.find_child("Defilant", true, false) != null else "non"])
+	_mesurer("carnet_13", modales.courant)
+
 
 func _hud(jeu: Node) -> void:
 	var hud: Hud = jeu.hud
