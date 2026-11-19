@@ -225,3 +225,7 @@
 - Reference : 1 504 verifications -Recette -Delai 700 (713 s) ; capture_interface -Serie = 207 lancements ~3 000 s, capture_ville -Serie 136 images ~18 min ; branche et ref main enchainees dans un script de fond (testeur_chaine.ps1), ~3 h au total. Echec preexistant (main aussi) : etape hud "saut non lance" x7.
 - Comparaison : octets d'abord, puis pixels (1/4, seuil 40) ; ville = bandeau 10-40 % de hauteur. Ligne THEME 1980 : etape jouer/reprise avec `-- --controle`. Export : --export-pack + --main-pack avec le Godot non console ; construire `--capture=$png` dans une variable (concatenation dans un tableau d'arguments = nom tronque).
 - Deux Godot orphelins d'une autre session visibles : ne pas tuer.
+
+## Lot 10a-moteur (recette 2026-11-19, lot/10a-moteur fa1e851 : OK, 4 mineures)
+- Reference : 1 647 verifications -Recette -Delai 700 (728 s) ; main sur copie isolee : 1 527 (705 s). Scripts reutilisables (hors projet, `--script <abs> --path <projet> -- args`) : md5 des 133 cases de marche (main = branche) et rejeu de sauvegardes (3 de tests/donnees/sauvegardes + copie de partie_en_cours.sav) jusqu'a la fin, chiffres + md5 de l'historique identiques main/branche.
+- `rmdir` via variable refuse par le garde-fou : nommer les copies avec un suffixe aleatoire plutot que de les supprimer. `--export-pack` : verifier les chemins `data/...` dans les octets.

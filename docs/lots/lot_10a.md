@@ -195,6 +195,12 @@ Fait : M2 (cours 1978-1988 identiques au bit), `produits.json` (15 produits), ba
 - vers **10a-contenu** : rien de ce qui précède (10a-contenu reste du contenu) ;
 - vers le **lot 11** (qui rouvre de toute façon les données de 1984 pour le re-gel) : neutralisation des ≈ 50 lignes de **données** de 1984-1988 (CA-M10), réduction du jeu d'essai (M8), option `-Chapitre` de `tests.ps1`. Conséquence : le CA-I10 de `lot_10b.md` (joueuse d'essai) ne porte que sur les écrans de **1989-1993** au lot 10 ; le choix « joueuse » en 1984 attend le lot 12, après le lot 11.
 
+### Suivi (19/11, suite) : fusion de `main` et contrat de 10b-interface étape 2
+
+- `main` (10b-ville, 10b-interface étape 1) fusionné dans `lot/10a-moteur` (ebcb6bf, sans conflit textuel) ; correctif d'intégration 5aef7c7 (`test_recette_titres` version=2 ; `test_interface` et scénario `carnet_13` fabriquent leurs produits dans le catalogue et `produits_vus`). `tests.ps1 -Recette -Delai 700` : 44 étapes, **1 640 OK**, 0 erreur de script ; `test_reference_1984` vert.
+- Contrat §4 livré : vitrine (`vitrine_etape`, `courbe`, `mention`), modale `passage` (tous les champs), `bilan["titres"]`, `record_chapitre`, `record_partie`, `hors_record`, Records v2 (`records_partie`, `nouveau_chapitre`, `nouveau_partie`, `nouveaux_titres`), `foyer_visuel()`, `chapitres_traverses()`, `ventes_differees()`, `enveloppe()`, `ouvrir_pea`, `vendre_scpi`, `annuler_vente_differee`, `produits_vus`, rattrapage (`R_<produit>`), `Banquier.libelle`.
+- **Manque** (à faire par dev-logique avant le début de l'étape 2, ou en tête de 10a-contenu ; ≈ 0,5 j) : `Partie.acheter(id, budget, enveloppe := "")` (seul `EtatPartie.acheter` a le paramètre) ; vente dans le PEA (`EtatPartie.vendre` / `Partie.vendre` avec `enveloppe`, `Enveloppes.vendre_pea` n'est pas branché) ; `Partie.verser_pea(montant)` et `Partie.retirer_pea(montant)` (clôture avant 5 ans). `metier()` relève de 10c (normal).
+
 ## 9. Conflits avec la suite
 
 - `lot_10b.md` : aucune intersection (10b ne touche ni `data/` ni `scripts/logique/`) ; 10b-I étape 2 démarre sur `main` après 10a-moteur.
