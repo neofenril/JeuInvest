@@ -24,7 +24,8 @@ const ETAPES := ["rue", "rue_nuit", "trafic", "crash_anim", "crash_fin", "crash_
 	"banquier_anim", "banquier_signal", "journal_anim", "courrier_anim", "jouer_repos", "sylvie_0", "sylvie_1", "sylvie_2", "planche_personnages", "voisins",
 	"pieces_or", "pieces_fleche", "pieces_cuivre", "pieces_dividende", "pieces_glisse", "pieces_x3", "pieces_saut", "pieces_hors_champ",
 	"pieces_sous_seuil", "camera_retour", "pieces_jeu", "jouer_rapide", "pieces_bascule", "pieces_dividende_jeu",
-	"pieces_or_cuivre", "sylvie_humeurs", "traces_foyer", "carte_sortie"]
+	"pieces_or_cuivre", "sylvie_humeurs", "traces_foyer", "carte_sortie",
+	"foyer_christine", "foyer_gerard_1993", "rue_1991", "tele_golfe"]
 const RUE := preload("res://scripts/ville/rue.gd")
 const VILLE := preload("res://scripts/ville/ville.gd")
 
@@ -209,6 +210,8 @@ func jouer(etape: String) -> void:
 			await _sylvie_humeurs(ville)
 		"traces_foyer":
 			await _traces_foyer(ville)
+		"foyer_christine", "foyer_gerard_1993", "rue_1991", "tele_golfe":
+			await _foyer_10b(ville, etape)
 		"carte_sortie":
 			await _carte_sortie(ville)
 		"camera_retour":
@@ -923,6 +926,49 @@ func _traces_foyer(ville: Node2D) -> void:
 	StrategieTest.politique_cartes = avant
 	await sc.delai(0.6)
 
+
+## Lot 10b-ville (V4) : foyer paramétrable, variantes datées 1989-1993 et télé du salon, sans partie 1989 réelle (le
+## moteur de 10a n'est pas là) : un dictionnaire foyer_visuel() fabriqué et la date posée à la ville (regler_date) ;
+## le temps de la démo est figé (Partie.bloquee). foyer_christine : joueuse, conjoint homme, 2 enfants (8 et 5 ans), mai 1989 (été) ;
+## foyer_gerard_1993 : Gérard 35 ans (tempes grises), Sylvie, 2 enfants (8 et 6 ans), juin 1993 ; rue_1991 : janvier 1991
+## (journal lumineux « BONNE ANNEE », citadine de 1990, Gérard 33 ans) ; tele_golfe : la télé du salon montre les chars.
+## Imprime « RUE foyer=<étape> joueur=… proche=… enfants=… variantes=… ».
+func _foyer_10b(ville: Node2D, etape: String) -> void:
+	_aller_a(Dates.lire("1987-05"), true)
+	Partie.changer_vitesse(1)
+	Partie.bloquee = true
+	var sylvie := {"prenom": "Sylvie", "sexe": "f", "lien": "conjoint"}
+	var d := {}
+	var mois := "1991-01"
+	match etape:
+		"foyer_christine":
+			mois = "1989-05"
+			d = {"joueur": {"prenom": "Christine", "sexe": "f", "age": 30}, "proche": {"prenom": "Patrick", "sexe": "h", "lien": "conjoint"},
+				"enfants": [{"prenom": "Aurélie", "age": 8}, {"prenom": "Julien", "age": 5}], "marie": true}
+		"foyer_gerard_1993":
+			mois = "1993-06"
+			d = {"joueur": {"prenom": "Gérard", "sexe": "h", "age": 35}, "proche": sylvie,
+				"enfants": [{"prenom": "A", "age": 8}, {"prenom": "B", "age": 6}], "marie": false}
+		_:
+			d = {"joueur": {"prenom": "Gérard", "sexe": "h", "age": 33}, "proche": sylvie, "enfants": [{"prenom": "A", "age": 5}], "marie": false}
+	var a := Dates.lire(mois)
+	ville.call("regler_mois", Dates.mois(a), Dates.annee(a))
+	ville.call("regler_date", a)
+	ville.call("regler_foyer_visuel", d)
+	ville.set("phase", 0.18)
+	ville.call("plonger_vers_maison", 0.0)
+	if etape == "tele_golfe":
+		ville.call("montrer_tele", "golfe", 60.0)
+	await sc.delai(1.4)
+	if etape == "foyer_gerard_1993" or etape == "rue_1991":
+		ville.call("faire_passer", "tata", 1, 1.0)
+	var vu: Dictionary = ville.call("foyer_decrit")
+	var variantes: PackedStringArray = ville.get("rue").call("variantes_actives")
+	if _controle:
+		print("RUE foyer=%s joueur=%s proche=%s enfants=%s variantes=%s" % [etape, vu["joueur"], vu["proche"], ",".join(vu["enfants"]), ",".join(variantes)])
+		if etape == "tele_golfe":
+			print("RUE tele sujet=golfe active=%s texte=0" % str(ville.get("maison").call("tele_active")))
+		await _controle_palette(ville, etape)
 
 const TRACES_GRAINE := 7
 

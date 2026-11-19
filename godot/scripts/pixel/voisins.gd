@@ -44,6 +44,13 @@ const PERSOS := {
 	"passant_3": {"veste": ["ciel", "sarcelle", "vert_sombre", "nuit"], "bas": ["ciel", "bleu_vif", "bleu_ardoise", "bleu_nuit"],
 		"cheveux": ["nuit", "nuit", "encre", "encre"], "coiffure": "court", "walkman": true, "col": "blanc_chaud",
 		"chaussure": ["blanc_chaud", "zinc_clair", "gris_pierre", "ardoise"]},
+	# Lot 10b-ville (V1) : la joueuse du foyer visible (chemisier blanc, jean, châtain mi-long ; 36 ans et plus :
+	# veste sarcelle, jupe, chignon grisonnant). Aucun prénom en dur : la tranche d'âge choisit l'image.
+	"joueuse_a": {"veste": ["blanc_chaud", "pierre_claire", "pierre", "bois"], "bas": ["ciel", "bleu_vif", "bleu_ardoise", "bleu_nuit"],
+		"cheveux": ["caramel", "bois", "bois_sombre", "bois_sombre"], "coiffure": "long", "sac": "bleu_vif", "col": "blanc_chaud"},
+	"joueuse_b": {"veste": ["ciel", "sarcelle", "vert_sombre", "nuit"], "bas": ["bleu_ardoise", "bleu_nuit", "nuit", "encre"],
+		"jupe": true, "jambes": ["peau_claire", "peau_claire", "peau_ombre", "caramel"],
+		"cheveux": ["pierre_claire", "caramel", "bois", "bois_sombre"], "coiffure": "chignon", "sac": "bois", "col": "creme"},
 }
 const NOMS := ["tata", "matelas", "jeanmi", "lopez", "lefranc", "passant_1", "passant_2", "passant_3"]
 
@@ -277,7 +284,7 @@ static func _tete(img: Image, y0: int, cfg: Dictionary) -> void:
 # --- Enfants, poussettes, vélo, panneau ----------------------------------------------------------------------
 
 ## Enfant 22 × 36 (profil vers la droite) : couleur du pull, 2 images de marche.
-static func enfant(pull: Array, cheveux: Array, image := 0) -> Image:
+static func enfant(pull: Array, cheveux: Array, image := 0, grand := 0, cartable := false) -> Image:
 	var img := M.vide(ENFANT.x, ENFANT.y)
 	var j := 1 if image % 2 == 0 else -1
 	P._membre(img, Vector2(10, 22), Vector2(10 - 2 * j, 33), 2.2, ["ardoise", "ardoise_sombre", "nuit", "encre"], true)
@@ -301,7 +308,27 @@ static func enfant(pull: Array, cheveux: Array, image := 0) -> Image:
 	P.contour_teinte(img, {pull[0]: pull[3], pull[1]: pull[3], pull[2]: pull[3], "peau_claire": "caramel",
 		"peau_ombre": "caramel", cheveux[0]: cheveux[2], cheveux[1]: cheveux[2], "ardoise": "nuit", "gris_pierre": "nuit",
 		"ardoise_sombre": "nuit", "bois": "bois_sombre", "bois_sombre": "encre"})
+	if cartable:
+		# Cartable dans le dos (lot 10b-ville, V1 : « cartable » dès 1991) : dos à gauche, profil vers la droite
+		M.rect(img, 2, 15, 5, 9, "bleu_nuit")
+		M.rect(img, 3, 15, 3, 7, "bleu_vif")
+		M.rect(img, 3, 15, 3, 1, "ciel")
+		M.rect(img, 2, 22, 5, 1, "encre")
+	if grand > 0:
+		img = _allonger(img, grand)
 	return img
+
+
+## Allonge un personnage de n px en répétant une rangée de jambes (ado : même gabarit que l'enfant, en plus grand).
+static func _allonger(img: Image, n: int) -> Image:
+	var h := img.get_height()
+	var r := M.vide(img.get_width(), h + n)
+	var coupe := 27
+	for y in h + n:
+		var src := y if y < coupe else (coupe if y < coupe + n else y - n)
+		for x in img.get_width():
+			r.set_pixel(x, y, img.get_pixel(x, src))
+	return r
 
 
 ## Poussette (simple 40 × 31 ou double 60 × 31), capote vers la gauche, guidon à droite.
@@ -400,6 +427,12 @@ static func enregistrer(nom: String) -> void:
 			P.enregistrer()
 		_miroirs("gerard", P.POSES.keys())
 		return
+	if nom == "gerard_gris" or nom == "gerard_age":
+		# Lot 10b-ville (V1) : Gérard vieilli (tempes grises dès 33 ans, cheveux grisonnants à 36 ans et plus)
+		for pose in P.POSES.keys():
+			GrillePixel.enregistrer("ville/%s_%s" % [nom, pose], gerard_vieilli(pose, 1 if nom == "gerard_gris" else 2), Vector2i(18, 62))
+		_miroirs(nom, P.POSES.keys())
+		return
 	var cfg: Dictionary = PERSOS[nom]
 	var poses: Array = P.POSES.keys()
 	if nom == "lefranc":
@@ -407,6 +440,28 @@ static func enregistrer(nom: String) -> void:
 	for pose in poses:
 		GrillePixel.enregistrer("ville/%s_%s" % [nom, pose], figurine(cfg, pose), Vector2i(18, 62))
 	_miroirs(nom, poses)
+
+
+## Gérard (personnages.gd) avec des cheveux gris : degré 1 = 5 pixels de tempes (gris_pierre, 2 de chaque côté
+## et un de plus), degré 2 = en plus un cheveu sur deux dans le haut du crâne. Seuls des pixels de cheveux changent.
+static func gerard_vieilli(pose: String, degre: int) -> Image:
+	var img: Image = P.gerard(pose)
+	var dy: int = int(P.POSES[pose][8]) + (1 if pose == "repos_2" else 0)
+	var cheveux := ["bois", "caramel", "bois_sombre"]
+	var cibles: Array = [Vector2i(20, 4), Vector2i(19, 5), Vector2i(12, 8), Vector2i(12, 9), Vector2i(13, 9)]
+	if degre >= 2:
+		for y in range(1, 9):
+			for x in range(10, 21):
+				if (x + y) % 2 == 0:
+					cibles.append(Vector2i(x, y))
+	for q: Vector2i in cibles:
+		var y: int = q.y + dy
+		if y < 0 or y >= img.get_height():
+			continue
+		var c := img.get_pixel(q.x, y)
+		if c.a > 0.0 and PalettePixel.nom_de(c) in cheveux:
+			M.px(img, q.x, y, "gris_pierre")
+	return img
 
 
 static func _miroirs(nom: String, poses: Array) -> void:
@@ -548,3 +603,59 @@ static func enregistrer_objets() -> void:
 	GrillePixel.enregistrer("objet/poussette", poussette(false))
 	GrillePixel.enregistrer("objet/poussette_double", poussette(true))
 	GrillePixel.enregistrer("objet/a_vendre", panneau_vendre(), Vector2i(18, 10))
+
+
+## Lot 10b-ville (V1) : enfants du foyer qui grandissent (« objet/… », origine au milieu du bas) : enfant de 7 à 12
+## ans avec cartable (2 images de marche), ado (plus grand, sans cartable). Idempotent.
+static func enregistrer_foyer() -> void:
+	if GrillePixel.existe("objet/ado_2"):
+		return
+	enregistrer_traces()
+	for i in 2:
+		GrillePixel.enregistrer("objet/enfant_cartable_%d" % (i + 1), enfant(["ciel", "bleu_vif", "bleu_ardoise", "bleu_nuit"], ["caramel", "bois", "bois_sombre"], i, 0, true))
+		GrillePixel.enregistrer("objet/ado_%d" % (i + 1), enfant(["vert_clair", "vert", "vert_sombre", "feuille_profonde"], ["bois", "bois_sombre", "nuit"], i, 9))
+
+
+## Colonne Morris (20 × 52) : fût vert sombre, toit en chapeau, affiche tricolore sans texte (« BICENTENAIRE » sans
+## chiffre lisible à ×1 : bandes bleue, blanche, rouge). Variante datée 06-07/1989.
+static func colonne_bicentenaire() -> Image:
+	var img := M.vide(20, 52)
+	M.rect(img, 2, 8, 16, 44, "vert_sombre")
+	M.rect(img, 2, 8, 3, 44, "vert")
+	M.rect(img, 15, 8, 3, 44, "nuit")
+	P._poly(img, PackedVector2Array([Vector2(0, 8), Vector2(10, 0), Vector2(20, 8)]), "vert_sombre")
+	M.rect(img, 9, 0, 2, 2, "or")
+	M.rect(img, 1, 8, 18, 2, "gris_pierre")
+	M.rect(img, 0, 48, 20, 4, "gris_pierre")
+	M.rect(img, 0, 51, 20, 1, "ardoise")
+	M.rect(img, 5, 14, 10, 28, "blanc_chaud")
+	M.rect(img, 5, 14, 3, 28, "bleu_vif")
+	M.rect(img, 12, 14, 3, 28, "rouge_auvent")
+	M.rect(img, 6, 24, 8, 1, "or")
+	M.rect(img, 6, 30, 8, 1, "or")
+	M.cadre(img, 5, 14, 10, 28, "encre")
+	return img
+
+
+## Panneau électoral (09/1992, référendum) : planche sur deux pieds, « OUI » (bleu) ou « NON » (rouge), lettres 3 × 5.
+static func panneau_vote(oui: bool) -> Image:
+	var img := M.vide(26, 40)
+	M.rect(img, 4, 24, 2, 16, "bois_sombre")
+	M.rect(img, 20, 24, 2, 16, "bois_sombre")
+	M.rect(img, 0, 0, 26, 26, "blanc_chaud")
+	M.cadre(img, 0, 0, 26, 26, "bois_sombre")
+	M.rect(img, 2, 2, 22, 3, "pierre_claire")
+	var mot := "OUI" if oui else "NON"
+	var tw := M.largeur_texte(mot, 2)
+	M.texte(img, (26 - tw) / 2, 9, mot, "bleu_vif" if oui else "rouge_auvent", 2)
+	M.rect(img, 4, 21, 18, 1, "pierre_claire")
+	return img
+
+
+## Variantes datées (« objet/… »). Idempotent.
+static func enregistrer_decor_date() -> void:
+	if GrillePixel.existe("objet/panneau_non"):
+		return
+	GrillePixel.enregistrer("objet/colonne_bicentenaire", colonne_bicentenaire())
+	GrillePixel.enregistrer("objet/panneau_oui", panneau_vote(true))
+	GrillePixel.enregistrer("objet/panneau_non", panneau_vote(false))

@@ -40,6 +40,7 @@ var _b_mode_b: Button
 var _mensuel := 0.0
 var _maj_en_cours := false
 var _largeur_droite := 780.0
+const CARNET_PLEIN := 9            # jusqu'à 9 produits : grille 3 × 3 complète (silhouettes comprises)
 
 
 ## T15 : colonne de droite (fiche, ordre, CHAQUE MOIS) et bouton de validation de l'ordre (null hors
@@ -124,26 +125,43 @@ func construire(etat: EtatPartie, id: String, montant_initial: float) -> void:
 	hb.add_child(_l_cc)
 	bandeau.add_child(hb)
 	gauche.add_child(bandeau)
+	# Au-delà de 9 produits (chapitre 1989 : jusqu'à 13) : grille de 4 colonnes au PC, défilement vertical au
+	# téléphone, produits vus seulement (lot 10b, D4) ; jusqu'à 9 : grille 3 × 3 avec silhouettes, comme avant.
+	var grand := Banquier.ordre_carnet().size() > CARNET_PLEIN
+	var colonnes := 4 if grand and not compact else 3
 	var grille := GridContainer.new()
-	grille.columns = 3
+	grille.name = "GrilleCarnet"
+	grille.columns = colonnes
 	grille.add_theme_constant_override("h_separation", 8 if compact else 12)
 	grille.add_theme_constant_override("v_separation", 8 if compact else 12)
 	for pid in Banquier.ordre_carnet():
+		if grand and not Banquier.presente(e, pid):
+			continue
 		var c := CarteProduit.new()
 		c.pid = pid
 		c.compacte = compact
 		c.touchee.connect(_on_carte)
 		grille.add_child(c)
 		_cartes[pid] = c
-	gauche.add_child(grille)
+	var largeur_grille := colonnes * (140.0 if compact else 170.0) + (colonnes - 1) * (8.0 if compact else 12.0)
+	if grand and compact:
+		# Téléphone : la fenêtre garde la hauteur de 3 rangées, le reste défile (nœud « Defilant », glisser du doigt)
+		var defile := ScrollContainer.new()
+		defile.name = "Defilant"
+		defile.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		defile.custom_minimum_size = Vector2(largeur_grille + 14.0, 3.0 * 116.0 + 2.0 * 8.0)
+		defile.add_child(grille)
+		gauche.add_child(defile)
+		largeur_grille += 14.0
+	else:
+		gauche.add_child(grille)
 	_droite = VBoxContainer.new()
 	_droite.add_theme_constant_override("separation", 6 if compact else 10)
 	_droite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	corps.add_child(_droite)
-	var largeur_grille := 3.0 * (140.0 if compact else 170.0) + 2.0 * (8.0 if compact else 12.0)
 	_largeur_droite = custom_minimum_size.x - 40.0 - largeur_grille - (18.0 if compact else 28.0)
 	# Pied : la simplification historique (A40)
-	var pied := Style.label("Simplifié : en 1984, le Livret A s'ouvrait à la Caisse d'épargne ou à la Poste ; la banque de la rue regroupe ici tous les guichets.", 16 if compact else 18, Style.ui(), Color(Style.TEXTE_2, 0.85))
+	var pied := Style.label("Simplifié : en %d, le Livret A s'ouvrait à la Caisse d'épargne ou à la Poste ; la banque de la rue regroupe ici tous les guichets." % Noms.annee_depart_chapitre(),16 if compact else 18, Style.ui(), Color(Style.TEXTE_2, 0.85))
 	pied.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pied.custom_minimum_size.x = custom_minimum_size.x - 40.0
 	pied.visible = not compact   # téléphone : la fenêtre tient dans la hauteur (cibles de 48 dp)
@@ -267,7 +285,7 @@ func _afficher_silhouette(pid: String) -> void:
 	_vider()
 	_droite.add_child(_texte("À DÉCOUVRIR", 20, Style.capitales(), Style.TEXTE_2))
 	_droite.add_child(_texte(str(Banquier.info_produit(pid).get("indice", "")), 30, Style.ui_gras()))
-	_droite.add_child(_texte("M. Lefranc vous en parlera le moment venu.", 24, Style.ui(), Style.TEXTE_2))
+	_droite.add_child(_texte(Noms.banquier() + " vous en parlera le moment venu.", 24, Style.ui(), Style.TEXTE_2))
 
 
 func _afficher_fiche(pid: String) -> void:
@@ -295,7 +313,7 @@ func _afficher_fiche(pid: String) -> void:
 	relire_b.pressed.connect(func() -> void: relire.emit(id_pres))
 	tete.add_child(relire_b)
 	_droite.add_child(tete)
-	_droite.add_child(_texte("Présenté par M. Lefranc en %s. %s" % [Dates.texte(e.ab_de(p)), str(info.get("definition", ""))], 18 if compact else 20, Style.ui(), Style.TEXTE_2))
+	_droite.add_child(_texte("Présenté par %s en %s. %s" % [Noms.banquier(), Dates.texte(e.ab_de(p)), str(info.get("definition", ""))], 18 if compact else 20, Style.ui(), Style.TEXTE_2))
 	# Les 4 critères et les frais, en valeur absolue (pas de comparaison ici)
 	var g := GridContainer.new()
 	g.columns = 3

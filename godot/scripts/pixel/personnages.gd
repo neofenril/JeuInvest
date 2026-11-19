@@ -243,14 +243,18 @@ static func _tete_gerard(img: Image, dy: int) -> void:
 ## cachées, épaules + 1 px), sourcils en V doux (bout intérieur 1 px plus bas), regard de côté (pupilles décalées
 ## d'1 px vers l'extérieur de la maison, à gauche), bouche en arc tombant. coucou (contente seulement) : 0 = sans,
 ## 1 et 2 = main levée (2 images).
-static func sylvie(humeur: int, coucou := 0) -> Image:
+static func sylvie(humeur: int, coucou := 0, homme := false, pull_h := 0) -> Image:
 	var img := M.vide(SYLVIE.x, SYLVIE.y)
 	var dy := -1 if humeur == 2 else 0                                    # fâchée : épaules remontées d'1 px
-	# Cheveux longs (derrière)
-	_ellipse(img, 13.0, 10.5, 10.5, 10.5, CHEVEUX_S, 0.2)
-	M.rect(img, 3, 10, 5, 13, "bois")
-	M.rect(img, 19, 10, 5, 13, "bois_sombre")
-	M.rect(img, 3, 10, 2, 12, "caramel")
+	if homme:
+		# Lot 10b-ville (V1) : le proche masculin à la fenêtre (cheveux courts, pull de la couleur PULL_H[pull_h])
+		_ellipse(img, 13.5, 9.0, 8.5, 8.0, CHEVEUX_S, 0.2)
+	else:
+		# Cheveux longs (derrière)
+		_ellipse(img, 13.0, 10.5, 10.5, 10.5, CHEVEUX_S, 0.2)
+		M.rect(img, 3, 10, 5, 13, "bois")
+		M.rect(img, 19, 10, 5, 13, "bois_sombre")
+		M.rect(img, 3, 10, 2, 12, "caramel")
 	# Pull jaune moutarde, épaules
 	_ellipse(img, 13.0, 29.0 + dy, 13.0, 8.0, PULL, 0.3)
 	M.rect(img, 0, 27 + dy, 27, 5 - dy, "or")
@@ -283,8 +287,8 @@ static func sylvie(humeur: int, coucou := 0) -> Image:
 	_ellipse(img, 13.5, 12.0, 7.0, 8.5, PEAU, 0.5)
 	M.rect(img, 11, 23, 5, 1, "or")                                    # encolure
 	# Frange
-	for x in range(6, 21):
-		var hh := 4 + int(absf(x - 13.5) / 3.0)
+	for x in range(7 if homme else 6, 20 if homme else 21):
+		var hh := (3 + int(absf(x - 13.5) / 4.0)) if homme else (4 + int(absf(x - 13.5) / 3.0))
 		M.rect(img, x, 3, 1, hh, "bois" if x < 15 else "bois_sombre")
 	M.rect(img, 7, 3, 4, 1, "caramel")
 	# Nez
@@ -330,7 +334,35 @@ static func sylvie(humeur: int, coucou := 0) -> Image:
 		M.rect(img, mx + 2, 13, 1, 2, "peau_claire")
 		M.rect(img, mx + 3, 15, 1, 4, "peau_ombre")
 	contour_teinte(img, _table_contours())
+	if homme:
+		_recolorer_pull(img, PULL_H[clampi(pull_h, 0, PULL_H.size() - 1)])
 	return img
+
+
+## Pull du proche masculin : [éclairé, moyen, ombre] à la place de lumiere / or / orange.
+const PULL_H := [["ciel", "bleu_vif", "bleu_ardoise"], ["vert_clair", "vert", "vert_sombre"], ["blanc_chaud", "pierre_claire", "pierre"]]
+
+
+static func _recolorer_pull(img: Image, t: Array) -> void:
+	var table := {"lumiere": t[0], "or": t[1], "orange": t[2]}
+	for y in img.get_height():
+		for x in img.get_width():
+			var c := img.get_pixel(x, y)
+			if c.a > 0.0:
+				var n := PalettePixel.nom_de(c)
+				if table.has(n):
+					M.px(img, x, y, table[n])
+
+
+## Images du proche masculin (3 humeurs, 2 images de coucou) pour la couleur de pull k : « ville/proche_h<k>_… ».
+static func enregistrer_proche_h(k: int) -> void:
+	if GrillePixel.existe("ville/proche_h%d_contrariee" % k):
+		return
+	var noms := ["contente", "neutre", "contrariee"]
+	for h in 3:
+		GrillePixel.enregistrer("ville/proche_h%d_%s" % [k, noms[h]], sylvie(h, 0, true, k), Vector2i(13, 31))
+	for c in [1, 2]:
+		GrillePixel.enregistrer("ville/proche_h%d_contente_coucou_%d" % [k, c], sylvie(0, c, true, k), Vector2i(13, 31))
 
 
 ## Pot de géraniums (Sylvie contente, posé à gauche de l'appui), 11 × 9.

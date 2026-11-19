@@ -25,7 +25,7 @@ func releve(n: Dictionary, a: int) -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8 if compact else 12)
 	p.add_child(v)
-	v.add_child(Style.label(str(n.get("titre", "")).to_upper() + " · M. LEFRANC", 22, Style.capitales(), Style.TEXTE_2))
+	v.add_child(Style.label(str(n.get("titre", "")).to_upper() + " · " + Noms.banquier_brut(), 22, Style.capitales(), Style.TEXTE_2))
 	var l := Style.label(str(n.get("texte", "")), 20 if compact else 24, Style.ui(), Style.TEXTE)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.custom_minimum_size.x = largeur - 40.0
@@ -591,7 +591,10 @@ func _phrase_synthese(e: EtatPartie, a: int) -> String:
 	var ecart := e.ecart_livret()
 	var x := Format.ecart(absf(ecart), a).trim_prefix("+")
 	if Format.en_devise(ecart, Format.devise(a)) >= 0.5:
-		return "« Vos placements ont fait mieux que le Livret A de %s, krach de 1987 compris. »" % x
+		var an_krach := Noms.annee_krach()
+		if an_krach > 0:
+			return "« Vos placements ont fait mieux que le Livret A de %s, krach de %d compris. »" % [x, an_krach]
+		return "« Vos placements ont fait mieux que le Livret A de %s. »" % x
 	if Format.en_devise(ecart, Format.devise(a)) <= -0.5:
 		return "« Cette fois, le Livret A a fait mieux de %s. Les frais et le krach sont passés par là : rejouez pour voir ce qui change. »" % x
 	return "« Vous avez fait comme Tata Livret : sûr et sans frais. Et si vous essayiez autre chose ? »"

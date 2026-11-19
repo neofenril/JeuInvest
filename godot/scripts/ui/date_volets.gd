@@ -9,8 +9,8 @@ signal triple_touche
 const MOIS := ["JANV", "FÉVR", "MARS", "AVR", "MAI", "JUIN", "JUIL", "AOÛT", "SEPT", "OCT", "NOV", "DÉC"]
 const TAILLE := 44
 
-var mois_txt := "SEPT"
-var annee_txt := "1986"
+var mois_txt := ""        # posés par le premier regler() (aucune date de chapitre en dur)
+var annee_txt := ""
 var _pli_mois := 1.0
 var _pli_annee := 1.0
 var _touches: Array = []
@@ -25,7 +25,7 @@ func _init() -> void:
 func regler(a: int, anime := true) -> void:
 	var m: String = MOIS[Dates.mois(a) - 1]
 	var y := str(Dates.annee(a))
-	if not anime or Juice.animations_reduites:
+	if not anime or Juice.animations_reduites or annee_txt == "":
 		mois_txt = m
 		annee_txt = y
 		queue_redraw()

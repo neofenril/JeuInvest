@@ -18,6 +18,7 @@ var couleur := Style.ACCENT
 var tete_gain := true
 var compacte := false
 var total_mois := 12            # nombre de mois de la tranche (largeur de l'axe)
+var coupures: Array = []        # indices de points (0 = premier mois de la courbe) des débuts de chapitre : pointillé vertical
 ## Écart affiché au bout de la courbe : exactement la valeur de la pastille « VS TOUT AU LIVRET A »
 ## (EtatPartie.ecart_livret, courriers en attente compris). NAN : calculé à partir des deux courbes.
 var ecart_impose := NAN
@@ -86,10 +87,19 @@ func _draw() -> void:
 		if i > 0 and (not compacte or i == n_grad):
 			etiquettes.append([Vector2(zone.position.x + 4, y - 6), Format.montant(v, ab_premier)])
 	var n := valeurs.size()
+	var total := maxi(maxi(n - 1, total_mois), 1)
+	# Coupures de chapitre : ligne pointillée verticale, sans texte (docs/40 §1.1.4)
+	for mc in coupures:
+		var ic := int(mc)
+		if ic > 0 and ic <= total:
+			var xc := zone.position.x + zone.size.x * ic / float(total)
+			var yy := zone.position.y
+			while yy < zone.end.y:
+				draw_line(Vector2(xc, yy), Vector2(xc, minf(yy + 6.0, zone.end.y)), Style.PANNEAU_SURVOL, 2.0)
+				yy += 12.0
 	if n < 2:
 		_graduations(etiquettes, police)
 		return
-	var total := maxi(n - 1, total_mois)
 	var pts := PackedVector2Array()
 	var pts_ref := PackedVector2Array()
 	for i in n:
@@ -133,7 +143,7 @@ func _draw() -> void:
 	# Années sous l'axe
 	for i in n:
 		var a := ab_premier + i
-		if Dates.mois(a) == 1:
+		if Dates.mois(a) == 1 and Frise.annee_ecrite(Dates.annee(a), zone.size.x / float(total) * 12.0, coupures.has(i) or i == 0, 52.0):
 			var x := zone.position.x + zone.size.x * i / float(total)
 			draw_string(police, Vector2(x - 20, size.y - 2), str(Dates.annee(a)), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(Style.TEXTE_2, 0.8))
 	_graduations(etiquettes, police)

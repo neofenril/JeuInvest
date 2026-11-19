@@ -67,6 +67,28 @@ const MODELES := {
 		"couleurs": ["rouge_auvent", "tuile", "brique"],
 		"pare_chocs": "rouge_auvent",
 	},
+	# Lot 10b-ville (V2, docs/40 §1.3) : petite citadine de 1990 (silhouette générique, sans logo), bleue
+	"citadine": {
+		"taille": Vector2i(68, 31),
+		"profil": [Vector2(1, 25), Vector2(1, 14), Vector2(4, 12), Vector2(11, 3), Vector2(41, 3), Vector2(52, 13),
+			Vector2(65, 15), Vector2(67, 17), Vector2(67, 25)],
+		"vitres": [[Vector2(13, 5), Vector2(26, 5), Vector2(26, 12), Vector2(8, 12)],
+			[Vector2(29, 5), Vector2(40, 5), Vector2(49, 12), Vector2(29, 12)]],
+		"roues": [14, 54],
+		"couleurs": ["bleu_vif", "ciel", "bleu_ardoise"],
+		"pare_chocs": "ardoise_sombre",
+	},
+	# Lot 10b-ville (V2) : petite citadine ronde de 1993 (silhouette générique, sans logo), jaune vif
+	"citadine_ronde": {
+		"taille": Vector2i(62, 34),
+		"profil": [Vector2(1, 28), Vector2(1, 15), Vector2(3, 11), Vector2(9, 3), Vector2(34, 3), Vector2(46, 13),
+			Vector2(58, 16), Vector2(60, 18), Vector2(60, 28)],
+		"vitres": [[Vector2(11, 5), Vector2(22, 5), Vector2(22, 12), Vector2(7, 12)],
+			[Vector2(25, 5), Vector2(33, 5), Vector2(43, 12), Vector2(25, 12)]],
+		"roues": [13, 49],
+		"couleurs": ["or", "lumiere", "orange"],
+		"pare_chocs": "ardoise_sombre",
+	},
 }
 
 

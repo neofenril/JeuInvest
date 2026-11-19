@@ -323,15 +323,7 @@ static func generer() -> int:
 		if not GrillePixel.existe("decor/halo_%d" % h[0]):
 			GrillePixel.enregistrer("decor/halo_%d" % h[0], MatieresPixel.disque(h[0], "lumiere"), Vector2i(h[0], h[0]))
 	for modele in ["r5", "205", "4l", "fourgonnette", "944"]:
-		var v: Dictionary = Vehicules.caisse(modele)
-		var img2: Image = v["image"]
-		GrillePixel.enregistrer("rue/voiture_" + modele, img2, v["origine"])
-		var mir := Image.new()
-		mir.copy_from(img2)
-		mir.flip_x()
-		var o: Vector2i = v["origine"]
-		GrillePixel.enregistrer("miroir/voiture_" + modele, mir, Vector2i(img2.get_width() - 1 - o.x, o.y))
-		_voitures[modele] = {"roues": v["roues"], "phare": v["phare"], "feu": v["feu"], "taille": img2.get_size(), "origine": o}
+		_enregistrer_voiture(modele)
 	for i in 2:
 		GrillePixel.enregistrer("rue/roue_%d" % (i + 1), Vehicules.roue(i), Vector2i(Vehicules.ROUE / 2, Vehicules.ROUE - 1))
 	# Neige des toits, quelle que soit la saison de départ (A3 : pas de toit nu puis enneigé au chargement d'un hiver)
@@ -738,6 +730,91 @@ func _construire() -> void:
 	_maj_lumieres()
 	preparer_capture()
 	_mettre_en_prechauffe()
+
+
+## Images d'un modèle de voiture (et son miroir) et ses mesures ; idempotent (les variantes datées de 1990 et 1993
+## sont enregistrées à la demande, pas au lancement).
+static func _enregistrer_voiture(modele: String) -> void:
+	if _voitures.has(modele) and GrillePixel.existe("miroir/voiture_" + modele):
+		return
+	var v: Dictionary = Vehicules.caisse(modele)
+	var img2: Image = v["image"]
+	GrillePixel.enregistrer("rue/voiture_" + modele, img2, v["origine"])
+	var mir := Image.new()
+	mir.copy_from(img2)
+	mir.flip_x()
+	var o: Vector2i = v["origine"]
+	GrillePixel.enregistrer("miroir/voiture_" + modele, mir, Vector2i(img2.get_width() - 1 - o.x, o.y))
+	_voitures[modele] = {"roues": v["roues"], "phare": v["phare"], "feu": v["feu"], "taille": img2.get_size(), "origine": o}
+
+
+## Lot 10b-ville (V1) : le joueur du foyer (figurine qui marche devant la maison) : clé d'une figurine de
+## voisins.gd (gerard, gerard_gris, gerard_age, joueuse_a, joueuse_b). Même clé : rien.
+func regler_joueur(cle: String) -> void:
+	if gerard == null or str(gerard.get("qui")) == cle:
+		return
+	Voisins.enregistrer(cle)
+	gerard.call("regler_qui", cle)
+
+
+# --- Variantes datées (lot 10b-ville, V2 ; docs/40 §1.3) ---------------------------------------------------------
+
+const Y_DECOR_DATE := 409
+var _vd_actives := PackedStringArray()
+var _vd_noeuds := {}                  # jeton -> [nœuds] (accessoires ou voitures ajoutés par la variante)
+const VD_ACCESSOIRES := {
+	"bicentenaire": [["objet/colonne_bicentenaire", 410]],
+	"panneaux_vote": [["objet/panneau_oui", 452], ["objet/panneau_non", 492]],
+}
+const VD_VOITURES := {
+	"citadine_1990": ["citadine", 300.0, 0, 58.0, -1],              # voie du fond, vers la gauche
+	"citadine_1993": ["citadine_ronde", -700.0, 1, 66.0, 1],        # voie proche, vers la droite
+}
+
+
+## Applique les variantes datées actives (jetons de VariantesDatees.actives : « bonne_annee:1990 », « bicentenaire »,
+## « citadine_1990 », « panneaux_vote », « citadine_1993 »). Idempotent ; aucune variante : la rue d'origine (aucun
+## nœud ajouté, aucune image enregistrée).
+func appliquer_variantes(actives: PackedStringArray) -> void:
+	if actives == _vd_actives:
+		return
+	_vd_actives = actives
+	var voulus := {}
+	var annonce := ""
+	for j in actives:
+		if j.begins_with("bonne_annee:"):
+			annonce = "BONNE ANNEE %s · " % j.substr(12)
+		else:
+			voulus[j] = true
+	if media != null and str(media.get("annonce")) != annonce:
+		media.set("annonce", annonce)
+	for j in _vd_noeuds.keys():
+		if not voulus.has(j):
+			for n in _vd_noeuds[j]:
+				if is_instance_valid(n):
+					oublier(n)
+					voitures.erase(n)
+					n.queue_free()
+			_vd_noeuds.erase(j)
+	for j in voulus:
+		if _vd_noeuds.has(j):
+			continue
+		var l: Array = []
+		if VD_ACCESSOIRES.has(j):
+			Voisins.enregistrer_decor_date()
+			for a in VD_ACCESSOIRES[j]:
+				l.append(ajouter([a[0]], Vector2(a[1], Y_DECOR_DATE), 0.0, true))
+		elif VD_VOITURES.has(j):
+			var c: Array = VD_VOITURES[j]
+			_enregistrer_voiture(c[0])
+			var v := _voiture(c[0], c[1], Y_VOIE_PROCHE if c[2] == 1 else Y_VOIE_LOIN, c[3], c[4])
+			voitures.append(v)
+			l.append(v)
+		_vd_noeuds[j] = l
+
+
+func variantes_actives() -> PackedStringArray:
+	return _vd_actives
 
 
 ## Opérations de la couche « Batiments » (façades, neige, fenêtres allumées la nuit) : refaites à neuf par
