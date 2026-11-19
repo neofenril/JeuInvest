@@ -88,7 +88,9 @@ func _init(p: Dictionary) -> void:
 
 	# Fonds : VL(m) = VL(m-1) × I(m)/I(m-1) × (1 + d/12) × (1 − f/12)
 	for pr in p["produits"]:
-		if pr["type"] == "sicav":
+		if pr.has("taux_nets"):
+			prix[pr["id"]] = _monetaire(pr)   # lot 10a bis : SICAV monétaire (taux courts de l'année, sans aléa)
+		elif pr["type"] == "sicav":
 			var gestion := float(Donnees.regles()["sicav"]["gestion"])
 			prix[pr["id"]] = _fonds(0, Format.vers_euros(float(pr["vl0"]), pr.get("devise", "€")), gestion, annuel)
 
@@ -122,6 +124,23 @@ func _trier(d: Dictionary) -> Array:
 	for k in cles:
 		out.append([int(k), float(d[k])])
 	return out
+
+
+## SICAV monétaire : VL(m) = VL(m-1) × (1 + taux net de l'année / 12), à partir de décembre avant « debut » ; NAN avant.
+func _monetaire(pr: Dictionary) -> PackedFloat64Array:
+	var vl := PackedFloat64Array()
+	vl.resize(n_cases)
+	vl.fill(NAN)
+	var i0 := Dates.lire(str(pr["debut"])) - 1 - ab0
+	if i0 < 0 or i0 >= n_cases:
+		return vl
+	vl[i0] = Format.vers_euros(float(pr["vl0"]), pr.get("devise", "€"))
+	var taux: Dictionary = pr["taux_nets"]
+	for i in range(i0 + 1, n_cases):
+		var an := str(Dates.annee(ab0 + i))
+		var t := float(taux.get(an, taux[str(taux.keys()[taux.size() - 1])])) / 100.0
+		vl[i] = vl[i - 1] * (1.0 + t / 12.0)
+	return vl
 
 
 func _fonds(debut_i: int, vl_debut: float, gestion: float, annuel: Dictionary) -> PackedFloat64Array:

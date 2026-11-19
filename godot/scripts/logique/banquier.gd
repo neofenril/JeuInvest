@@ -253,7 +253,7 @@ static func _verifier_generique(e: EtatPartie) -> void:
 	if not d.has("declencheurs"):
 		for id in d["presentations"]:
 			var p: Dictionary = d["presentations"][id]
-			if not p.has("quand") or _vu(e, str(id)):
+			if not p.has("quand") or _vu(e, str(id)) or str(p.get("mode", "")) == "message":   # message : voir messages_du_mois
 				continue
 			if rel >= int(p["quand"]) and (not p.has("apres") or _vu(e, str(p["apres"]))):
 				_proposer(e, str(id), base + int(p.get("echeance", p["quand"])))
@@ -302,7 +302,7 @@ static func dates_connues(e: EtatPartie) -> Dictionary:
 	if dd.is_empty():
 		for id in donnees()["presentations"]:
 			var p: Dictionary = donnees()["presentations"][id]
-			if p.has("quand") and not _vu(e, str(id)) and not out.has(id):
+			if p.has("quand") and not _vu(e, str(id)) and not out.has(id) and str(p.get("mode", "")) != "message":
 				out[id] = debut_chapitre(e) + int(p.get("echeance", p["quand"]))
 	if not _vu(e, "D08") and donnees().get("heritage", {}).has("av"):
 		out["D08"] = Dates.lire(str(donnees()["heritage"]["av"]["d"])) - e.mk.ab_debut
@@ -337,6 +337,11 @@ static func coussin_mois(e: EtatPartie) -> float:
 
 
 static func prenoms_enfants(e: EtatPartie) -> String:
+	var initiaux := []
+	for x: Dictionary in e.config_depart.get("enfants_initiaux", []):
+		initiaux.append(str(x["prenom"]))
+	if not initiaux.is_empty():
+		return " et ".join(PackedStringArray(initiaux))
 	for ev in e.calendrier:
 		if ev["type"] == "naissance" and ev.get("declenche", false):
 			return " et ".join(PackedStringArray(ev.get("prenoms", [])))
@@ -663,6 +668,8 @@ static func messages_du_mois(e: EtatPartie, notifs: Array) -> void:
 		_message(e, notifs, d["baisse_titre"], t, false)
 	if Dates.lire(d["plafond"]["d"]) == a:
 		_message(e, notifs, d["plafond"]["titre"], d["plafond"]["texte"], false)
+	_messages_dates(e, notifs, d, v)
+	_presentations_message(e, notifs)
 	var p04 := int(e.banque["presentes"].get("D04", -1))
 	if p04 >= 0 and e.m == p04 + 1:
 		_message(e, notifs, d["D04bis"]["titre"], d["D04bis"]["texte"], true)
@@ -687,6 +694,55 @@ static func messages_du_mois(e: EtatPartie, notifs: Array) -> void:
 	# Versements automatiques (11 §8) : proposition VP-A, plafond du Livret A relevé
 	Versements.messages_du_mois(e, notifs, v)
 
+
+## Messages datés du chapitre (banque.json > messages > datees, lot 10a bis) : notification sans pause à leur mois ; « si_parts »
+## (alerte de la SCPI) seulement si le joueur détient des parts ; « produit » + « texte_long » = produit en mode message (PEP).
+## Variables propres : {prix_revente} (valeur de revente d'une part) et {decote} (en % sous le prix d'achat).
+static func _messages_dates(e: EtatPartie, notifs: Array, d: Dictionary, v: Dictionary) -> void:
+	var a := e.ab_courant()
+	var vals := v.duplicate()
+	if Donnees.produit("scpi").has("parametres"):
+		vals["prix_revente"] = Format.entier(Enveloppes.prix_revente(a), a)
+		vals["decote"] = Format.nombre((1.0 - Enveloppes.prix_revente(a) / Enveloppes.prix_part()) * 100.0, 0)
+	for x: Dictionary in d.get("datees", []):
+		if Dates.lire(str(x["d"])) != a:
+			continue
+		if str(x.get("si_parts", "")) == "scpi" and Enveloppes.parts(e.joueur) < 1.0:
+			continue
+		var n := {"type": "message", "source": str(x.get("source", "banque")), "cls": "neutre", "titre": str(x["titre"]),
+			"texte": Format.gabarit(str(x["texte"]), vals), "persistant": false}
+		if x.has("produit"):
+			n["produit"] = str(x["produit"])
+		if x.has("texte_long"):
+			n["long"] = str(x["texte_long"])
+			n["texte_long"] = str(x["texte_long"])
+		notifs.append(n)
+
+
+## Présentations en mode « message » (BNP, docs/47 §5) : à leur mois (quand, relatif au début du chapitre), le produit entre dans
+## les produits vus (donc achetable) par une notification sans pause ; jamais une fiche à boutons.
+static func _presentations_message(e: EtatPartie, notifs: Array) -> void:
+	var d := donnees()
+	if d.has("declencheurs"):
+		return
+	var rel := e.m - debut_chapitre(e)
+	for id in d["presentations"]:
+		var p: Dictionary = d["presentations"][id]
+		if str(p.get("mode", "")) != "message" or not p.has("quand") or e.banque["presentes"].has(id) or rel < int(p["quand"]):
+			continue
+		var vus := produits_vus(e)   # avant de marquer la présentation (produits_vus la relit depuis « presentes »)
+		var nouveaux := false
+		for pid in p["produits"]:
+			if not vus.has(pid):
+				nouveaux = true
+		e.banque["presentes"][id] = e.m
+		for pid in p["produits"]:
+			if not vus.has(pid):
+				vus.append(pid)
+				e.banque["nouveaux"].append(pid)
+		if nouveaux:
+			notifs.append({"type": "message", "source": "banque", "cls": "neutre", "titre": str(p["titre"]), "texte": str(p["texte"]), "persistant": false,
+				"produit": str(p["produits"][0]), "long": str(p.get("plus", "")), "texte_long": str(p.get("plus", ""))})
 
 ## Notification des dividendes du mois (lot 03, D4) : lignes = [{id, nom, net}] du joueur ; le détail nomme
 ## les 2 plus gros titres (« Elf 840 F, L'Oréal 120 F et 1 autre »). Quand tous les titres sont nommés, le

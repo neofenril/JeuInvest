@@ -153,10 +153,50 @@ static func pas_mensuel(etat: Dictionary, ab: int, cours: float, cours_prec: flo
 	return {"etat": s, "mouvement": mouvement, "evenements": evts}
 
 
+## Saison 2 de Jean-Mi (lot 10a bis ; temoins.json > jeanmi > plan_scpi, docs/47 §2) : tout son argent dans UNE SCPI achetée comptant
+## (même produit que le joueur : frais d'entrée de 10 % dans le prix de la part, valeur de revente datée, loyers trimestriels
+## imposés, vente différée de 3 mois). Comptes en FRANCS. Renvoie {"etat", "mouvement"} (variation du compte courant) ; l'état
+## porte scpi_parts, scpi_valeur (parts × revente du mois), scpi_vente (mois d'exécution de l'ordre, 0 = aucun), scpi_vendue.
+static func pas_scpi(etat: Dictionary, ab: int, compte_f: float, plan: Dictionary, params: Dictionary) -> Dictionary:
+	var s := etat.duplicate(true)
+	var mouvement := 0.0
+	var part_f := float(params["part_F"])
+	var revente := float((Donnees.en_vigueur(params["revente_F"], ab) if Donnees.en_vigueur(params["revente_F"], ab) != null else params["revente_F"][0])[1])
+	var loyer := float((Donnees.en_vigueur(params["loyer_pct"], ab) if Donnees.en_vigueur(params["loyer_pct"], ab) != null else params["loyer_pct"][0])[1])
+	var parts := float(s.get("scpi_parts", 0.0))
+	var vendue := bool(s.get("scpi_vendue", false))
+	if not vendue and ab >= Dates.lire(str(plan["achat"])) and parts <= 0.0 and not bool(s.get("scpi_achetee", false)):
+		var n := floorf(maxf(0.0, compte_f) * float(plan["part_compte"]) / part_f)
+		if n >= 1.0:
+			parts = n
+			mouvement -= n * part_f
+			s["scpi_achetee"] = true
+			s["etape"] = "position"
+	if parts > 0.0 and not vendue and Dates.mois(ab) % int(params["periodicite_loyers_mois"]) == 0 and bool(s.get("scpi_achetee", false)) and int(s.get("scpi_dernier", -1)) != ab:
+		s["scpi_dernier"] = ab
+		var brut := parts * part_f * loyer / 100.0 / 12.0 * float(params["periodicite_loyers_mois"])
+		mouvement += brut * (1.0 - float(params["impot_loyers_pct"]) / 100.0)
+		if ab < Dates.lire(str(plan["ordre_vente"])):
+			var dispo := maxf(0.0, compte_f + mouvement - float(plan.get("reserve_F", 3000.0)))
+			var n2 := floorf(dispo * float(plan["part_epargne_trimestre"]) / part_f)
+			if n2 >= 1.0:
+				parts += n2
+				mouvement -= n2 * part_f
+	if ab == Dates.lire(str(plan["ordre_vente"])) and parts > 0.0:
+		s["scpi_vente"] = ab + int(params["delai_vente_mois"])
+	if int(s.get("scpi_vente", 0)) > 0 and ab >= int(s["scpi_vente"]) and parts > 0.0:
+		mouvement += parts * revente
+		parts = 0.0
+		s["scpi_vendue"] = true
+		s["etape"] = "liquide"
+	s["scpi_parts"] = parts
+	s["scpi_valeur"] = parts * revente
+	return {"etat": s, "mouvement": mouvement}
+
 ## Patrimoine de Jean-Mi (D3) : compte courant + équité du compte de bourse + voiture (valeur de marché)
 ## − capital restant dû − dette de bourse. Négatif possible.
 static func patrimoine_jeanmi(etat: Dictionary, compte_f: float) -> float:
-	return compte_f + float(etat["equite"]) + float(etat["voiture"]) - float(etat["credit"]) - float(etat["dette"])
+	return compte_f + float(etat["equite"]) + float(etat["voiture"]) - float(etat["credit"]) - float(etat["dette"]) + float(etat.get("scpi_valeur", 0.0))
 
 
 ## Nombres de la phrase du levier, arrondis au franc de façon cohérente : dette = perte − couverture.

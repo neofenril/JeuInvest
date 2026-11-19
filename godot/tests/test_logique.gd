@@ -241,20 +241,23 @@ func _tests_partie_complete() -> void:
 	verifier("CA-19 : Tata Livret ne dépose jamais au-delà du plafond", not plafond_depasse[0])
 	var nb_marche := 0
 	var m_marche := -1
+	var m_premiere := -1
 	var source_marche := ""
 	var sources_vie_ok := true
 	for c in j["modales"]:
 		if c["kind"] == "marche":
 			nb_marche += 1
+			if nb_marche == 1:
+				m_premiere = c["m"]
 			m_marche = c["m"]
 			source_marche = c["source"]
 		elif c["source"] != "maison":
 			sources_vie_ok = false
-	verifier("Krach : une seule modale de marché, en octobre 1987, source « media »",
-		nb_marche == 1 and m_marche == Dates.lire("1987-10") - e.mk.ab_debut and source_marche == "media")
+	verifier("Marché : trois modales (krach d'octobre 1987, Golfe en 09/1990, Maastricht en 09/1992 : chapitre 1989 ouvert au lot 10a-contenu), source « media »",
+		nb_marche == 3 and m_marche == Dates.lire("1992-09") - e.mk.ab_debut and source_marche == "media" and m_premiere == Dates.lire("1987-10") - e.mk.ab_debut)
 	verifier("Courriers de vie : source « maison »", sources_vie_ok)
 	var b := Bilan.calculer(e)
-	verifier("Mini-bilan : 4 patrimoines classés, réplique et leçon du krach", b["classement"].size() == 4 and b["replique"]["texte"] != "" and b["lecons"].size() == 1,
+	verifier("Mini-bilan : 4 patrimoines classés, réplique et leçons des trois événements de marché (1987, 1990, 1992)", b["classement"].size() == 4 and b["replique"]["texte"] != "" and b["lecons"].size() == 3,
 		"vous %s ; Cousin %s ; Tata %s ; Tonton %s ; %d étoile(s)" % [Format.montant(b["nominal"]["vous"], b["a"]), Format.montant(b["nominal"]["indice"], b["a"]),
 			Format.montant(b["nominal"]["livret"], b["a"]), Format.montant(b["nominal"]["matelas"], b["a"]), b["nb_etoiles"]])
 	var hist_ok := true

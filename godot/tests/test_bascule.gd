@@ -96,7 +96,7 @@ func _initialize() -> void:
 
 func _etat(e: EtatPartie) -> Dictionary:
 	return {"humeur": int(e.foyer.get("humeur", 0)), "projets": JSON.stringify((e.projets.get("projets", {}) as Dictionary).keys()),
-		"dette_jeanmi": snappedf(float(e.jeanmi.get("dette", 0.0)), 0.001), "vus": JSON.stringify((e.banque.get("presentes", {}) as Dictionary).keys()),
+		"dette_jeanmi": snappedf(float(e.jeanmi.get("dette", 0.0)), 0.001), "vus": JSON.stringify((e.banque.get("presentes", {}) as Dictionary).keys()).replace("1984:D08", "D08"),   # lot 10a bis : marqueurs rangés par chapitre
 		"salaires": JSON.stringify(e.foyer.get("salaires", []))}
 
 

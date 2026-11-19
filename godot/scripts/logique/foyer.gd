@@ -50,8 +50,8 @@ static func etat_initial(e: EtatPartie, config: Dictionary) -> Dictionary:
 
 ## Candidates tirées au démarrage (graine de vie décalée, un tirage par créneau : séquence stable). Une carte
 ## déjà tirée par un créneau précédent n'est plus candidate ; les autres candidates servent de remplaçantes.
-static func _tirer_creneaux(e: EtatPartie) -> Dictionary:
-	var rng := Hasard.new(e.graine_vie + DECALAGE_GRAINE)
+static func _tirer_creneaux(e: EtatPartie, decalage := 0) -> Dictionary:
+	var rng := Hasard.new(e.graine_vie + DECALAGE_GRAINE + decalage)
 	var out := {}
 	var tirees := []
 	for cr: Dictionary in donnees()["creneaux"]:
@@ -72,6 +72,56 @@ static func _tirer_creneaux(e: EtatPartie) -> Dictionary:
 ## Les cartes s'ouvrent-elles dans cette partie ? (drapeau de la partie et démo avec le banquier, donc Cadence)
 static func actif(e: EtatPartie) -> bool:
 	return bool(e.foyer.get("actif", false)) and e.banquier_actif()
+
+
+## Bascule de chapitre (lot 10a bis) : les créneaux du nouveau chapitre sont tirés avec une graine propre au chapitre (aucun tirage
+## de 1984 ne bouge), l'humeur, les cartes jouées et les effets de salaire continuent ; créneaux conditionnels (si_jouee / sauf_jouee :
+## promotion CNAM de la continuité de Gérard, docs/47 §6).
+static func changer_chapitre(e: EtatPartie, nouveau: String) -> void:
+	if not bool(e.foyer.get("actif", false)):
+		return
+	var tires := _tirer_creneaux(e, 7919 * int(nouveau))
+	var jouees: Array = e.foyer.get("jouees", [])
+	var cond := {}
+	for cr: Dictionary in donnees()["creneaux"]:
+		for cle in ["si_jouee", "sauf_jouee"]:
+			if cr.has(cle):
+				var ok := false
+				for j: Dictionary in jouees:
+					ok = ok or (str(j["id"]) == str(cr[cle]["carte"]) and str(j["choix"]) == str(cr[cle]["choix"]))
+				cond[str(cr["id"])] = ok if cle == "si_jouee" else not ok
+	for k in tires:
+		if not e.foyer["creneaux"].has(k) and bool(cond.get(k, true)):   # créneau conditionnel (si_jouee) : absent si la condition est fausse
+			e.foyer["creneaux"][k] = tires[k]
+
+
+## Promotion (docs/47 §6, chapitre.json > continuite.promotion) : si la carte de formation du chapitre précédent a été prise (choix a),
+## salaire + pct dans la fenêtre ; sinon une bulle sans conséquence.
+static func _programmer_promotion(e: EtatPartie, nouveau: String) -> void:
+	var p: Dictionary = Donnees.infos_chapitre(nouveau).get("continuite", {}).get("promotion", {})
+	if p.is_empty() or e.foyer.has("promotion"):
+		return
+	var pris := false
+	for j: Dictionary in e.foyer.get("jouees", []):
+		if str(j["id"]) == str(p["si_carte"]) and str(j["choix"]) == "a":
+			pris = true
+	var rng := Hasard.new(e.graine_vie * 13 + 5)
+	var deb := _mois_de(e, str(p["fenetre"][0]))
+	var fin := _mois_de(e, str(p["fenetre"][1]))
+	e.foyer["promotion"] = {"m": deb + int(rng.u() * float(fin - deb + 1)), "pris": pris, "fait": false}
+
+
+## Notification de la promotion (ou de la bulle de remplacement) au mois tiré.
+static func promotion_du_mois(e: EtatPartie, notifs: Array) -> void:
+	var pr: Dictionary = e.foyer.get("promotion", {})
+	if pr.is_empty() or bool(pr.get("fait", false)) or e.m < int(pr["m"]):
+		return
+	pr["fait"] = true
+	var p: Dictionary = Donnees.infos_chapitre(e.chapitre).get("continuite", {}).get("promotion", {})
+	if p.is_empty():
+		return
+	if not bool(pr["pris"]):   # la promotion de ceux qui ont pris la formation est la carte H16 (créneau T11)
+		notifs.append({"type": "voisin", "source": "rue", "cls": "neutre", "titre": "Mme Lopez", "texte": str(p.get("sinon_bulle", ""))})
 
 
 ## Après le rechargement d'une sauvegarde : une sauvegarde sans champ foyer (0.4 et avant) reste sans cartes (D11).
@@ -215,6 +265,7 @@ static func ajouter_effet_salaire(e: EtatPartie, eff: Dictionary) -> void:
 ## Usure (D15) : erosion_positive pas vers 0 si l'humeur est positive, erosion_negative (0 : aucun) si elle est
 ## négative ; une humeur négative ne remonte que par un choix, la naissance ou la réconciliation (C00).
 static func debut_mois(e: EtatPartie, notifs: Array) -> void:
+	promotion_du_mois(e, notifs)
 	if Dates.mois(e.ab_courant()) == 1:
 		var h := int(e.foyer.get("humeur", 0))
 		var p: Dictionary = donnees()["humeur"]

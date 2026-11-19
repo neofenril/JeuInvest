@@ -1,0 +1,60 @@
+{
+  "_note": "Les témoins du bilan (03 §7.8) et leurs répliques selon leur rang (04 §1 Q4). devant : le témoin est devant le joueur ; derriere : le joueur est premier et ce témoin est deuxième.",
+  "matelas": {
+    "nom": "Tonton Matelas", "initiale": "M",
+    "regle": "Garde tout sur son compte courant.",
+    "devant": "Au moins, mes billets, je peux les toucher !",
+    "derriere": "Bah… sous le matelas, au moins, je dors tranquille."
+  },
+  "livret": {
+    "nom": "Tata Livret", "initiale": "L",
+    "regle": "Met tout sur le Livret A, dans la limite du plafond.",
+    "devant": "Le Livret A, mon petit, ça ne fait jamais de mauvaise surprise.",
+    "derriere": "Vous avez pris des risques… et ça a payé. Bravo !"
+  },
+  "indice": {
+    "nom": "Cousin Indice", "initiale": "C",
+    "regle": "Garde 3 mois de dépenses sur le livret, puis place tout le reste chaque mois dans un fonds indiciel, sans jamais paniquer.",
+    "devant": "J'ai tout mis dans l'indice chaque mois, sans jamais regarder les cours. Ennuyeux, mais efficace !",
+    "derriere": "Chapeau ! Vous avez fait mieux que l'indice. Peu de gens y arrivent."
+  },
+  "jeanmi": {
+    "nom": "Jean-Mi", "initiale": "J",
+    "regle": "Garde tout sur son compte, en attendant mieux.",
+    "regle_apres": "Tout dans une seule SCPI, payée comptant.",
+    "devant": "Même avec mon panier unique, je suis devant ? Il s'est passé quoi chez vous ?",
+    "derriere": "Bravo. Moi, toute ma pierre dans un seul panier : ça m'a appris quelque chose.",
+    "_provisoire": "Saison 2 de Jean-Mi (docs/47 §2, arbitrage A10 du lot 10a) : plus jamais de crédit ni de Bourse, tout dans UNE SCPI achetée comptant (même produit que celui de M. Lefranc), puis l'épargne versée chaque trimestre ; V15 : il passe au Livret A. J1 supprimée ; J2 (derrière Tata d'au moins 10 % en 12/1993) mesurée par test_chapitre_1989.",
+    "_moteur": "Quartier.pas_mensuel ne sait lire que le plan « Peugeot à crédit + voiture » de 1984 ; la saison 2 est lue par Quartier.pas_scpi (lot 10a bis) depuis « plan_scpi ». « plan » ci-dessous est donc INERTE (ouverture et liquidation en 2099, aucune voiture) : en 1989-1993 Jean-Mi continue d'honorer sa dette de bourse de 1987 puis garde son argent sur son compte (miroir du joueur). « plan_scpi » est la DONNÉE de la saison 2, prête pour le jour où le moteur la lira (lot suivant, à décider par le chef de projet) ; part_compte et part_epargne_trimestre sont les réglages permis pour atteindre J2 (jamais les chiffres du produit).",
+    "plan": {
+      "ouverture": "2099-12",
+      "couverture_part": 0.8,
+      "couverture_min": 30000.0,
+      "levier": 5.0,
+      "report_mensuel": 0.007,
+      "renfort": { "mois": "2099-12", "part": 0.0 },
+      "liquidation": "2099-12",
+      "voiture": {
+        "achat": "2099-12",
+        "prix": 0.0,
+        "apport": 0.0,
+        "credit": 0.0,
+        "duree_mois": 48,
+        "taux": 0.12,
+        "vente": "2099-12",
+        "decote": [ ["2099-12", 0.0] ]
+      },
+      "remboursement": { "debut": "1987-12", "mensuel": 1000.0 }
+    },
+    "plan_scpi": {
+      "fin_dette": "1990-06",
+      "achat": "1990-10",
+      "part_compte": 0.9,
+      "part_epargne_trimestre": 1.0,
+      "reserve_F": 3000,
+      "ordre_vente": "1993-06",
+      "livret": "1993-12",
+      "_cert": "C : calage à mesurer (J2) ; le produit est celui de data/produits.json > scpi"
+    }
+  }
+}

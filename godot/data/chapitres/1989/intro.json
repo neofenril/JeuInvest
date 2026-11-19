@@ -1,0 +1,13 @@
+{
+  "_note": "Pop-up de début de partie en janvier 1989 (Christine ; docs/39 §3, docs/47 §4.3). Gabarits : {salaire}, {depart}, {date} (comme 1984) puis Gabarits.rendre ({prenom}, {conjoint}, {e}…). Texte modifiable sans code.",
+  "titre": "{DATE}",
+  "sous_titre": "Votre vie d'épargne continue",
+  "bouton": "COMMENCER",
+  "titre_historique": "{date} : votre situation",
+  "blocs": [
+    { "titre": "QUI VOUS ÊTES", "texte": "Vous êtes {prenom}, 34 ans, secrétaire de direction, marié{e} à {conjoint}, avec deux enfants. Vous gagnez {salaire} par mois et vous démarrez avec {depart} sur votre compte, plus un Livret A garni." },
+    { "titre": "CE QUI VOUS ATTEND", "texte": "Cinq ans de vie, de 1989 à 1993 : des imprévus, des projets, des surprises. M. Lefranc, votre banquier, vous présentera ses placements. Les marchés auront leurs secousses." },
+    { "titre": "VOTRE OBJECTIF", "texte": "Faire mieux que Tata Livret, qui laisse tout sur son Livret A. Mener vos projets à bien. Deux salaires, deux enfants : tenir le cap, et finir avec un titre." },
+    { "titre": "COMMENT JOUER", "texte": "Le temps passe seul. COURRIER (touche N) avance jusqu'au prochain événement ; à vous de décider quand on vous le demande." }
+  ]
+}
