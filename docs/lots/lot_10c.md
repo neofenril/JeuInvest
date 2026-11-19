@@ -21,7 +21,7 @@ Worktrees : `C:\Users\arthu\Documents\temp\JeuClaude_lots\lot10c-logique`, `lot1
 | # | Décision |
 |---|---|
 | D1 | **Une augmentation va entièrement à l'épargne possible** (le train de vie ne suit pas) et une baisse la réduit d'autant : nouveau terme `revenu_mois` (écart de revenu hors train de vie) dans le calcul du mois, partagé avec les voisins (R-MIROIR). La liste d'effets de salaire de 10a reste pour les effets « train de vie » (CNAM, promotion). |
-| D2 | K4 et K5 **toujours présentées** (docs/47 §6) : cartes **fixes** des créneaux S2 et S5 de 1989 (C02 passe en S1, C12 en S9, la formation de docs/39 est remplacée par K5). |
+| D2 | K4 et K5 **toujours présentées** (docs/47 §6) : cartes **fixes** des créneaux **T2 et T5** du chapitre 1989 (ids propres au chapitre, `lot_10a.md` §8 ter ; S2 / S5 dans docs/47) (C02 passe en S1, C12 en S9, la formation de docs/39 est remplacée par K5). |
 | D3 | Statut « prenant » (K4 a) : usure de l'humeur de −1 chaque janvier quelle que soit l'humeur ; fin du statut à la sortie de K5 a. **Compteur d'années tendues** (proche fâché au 31/12 et statut prenant) sauvegardé, **sans effet** (le divorce viendra au lot 12). Temps libre = humeur seulement. |
 | D4 | K5 a : 90 % du salaire pendant 10 mois (docs/46 §4.3, au lieu de −10 % : identique), puis + 8 % en 01/1992. Nature des deux cartes : `neutre` (aucun effet sur fourmi ou cigale). Aucun titre ni étoile lié. |
 | D5 | Plafond : 3 moments de carrière par chapitre (K4, promotion CNAM, K5), au moins 4 mois entre deux (docs/47 §6). |

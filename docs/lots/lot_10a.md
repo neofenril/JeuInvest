@@ -201,6 +201,34 @@ Fait : M2 (cours 1978-1988 identiques au bit), `produits.json` (15 produits), ba
 - Contrat §4 livré : vitrine (`vitrine_etape`, `courbe`, `mention`), modale `passage` (tous les champs), `bilan["titres"]`, `record_chapitre`, `record_partie`, `hors_record`, Records v2 (`records_partie`, `nouveau_chapitre`, `nouveau_partie`, `nouveaux_titres`), `foyer_visuel()`, `chapitres_traverses()`, `ventes_differees()`, `enveloppe()`, `ouvrir_pea`, `vendre_scpi`, `annuler_vente_differee`, `produits_vus`, rattrapage (`R_<produit>`), `Banquier.libelle`.
 - **Manque** (à faire par dev-logique avant le début de l'étape 2, ou en tête de 10a-contenu ; ≈ 0,5 j) : `Partie.acheter(id, budget, enveloppe := "")` (seul `EtatPartie.acheter` a le paramètre) ; vente dans le PEA (`EtatPartie.vendre` / `Partie.vendre` avec `enveloppe`, `Enveloppes.vendre_pea` n'est pas branché) ; `Partie.verser_pea(montant)` et `Partie.retirer_pea(montant)` (clôture avant 5 ans). `metier()` relève de 10c (normal).
 
+## 8 ter. 10a bis (moteur) : ce qui manque pour le chemin principal Gérard 1984 → 1993 (19/11)
+
+10a-contenu est livré (`lot/10a-contenu` : `data/chapitres/1989/` complet, 896 textes rendus, 1 681 OK, `test_chapitre_1989` 36 OK, Christine dans les cibles). `salaires.json` (profil `christine`) : **accepté** (fichier de dev-logique, autorisé « si besoin » au §2). Mais le moteur ne lit pas encore tout : **Gérard venu de 1984 n'a aucune carte, ni « un an après », ni oncle Raymond, ni mariage en 1989-1993** (11,4 pauses au lieu de 24-26). C'est le chemin principal du joueur : **bloquant pour la 0.7**.
+
+**Branche** : dev-logique continue sur `lot/10a-contenu` (même worktree), commits « 10a bis ». Fichiers : `scripts/logique/*.gd` (surtout `foyer.gd`, `etat_partie.gd`, `cadence.gd`, `banquier.gd`, `quartier.gd`, `krach.gd`, `projets.gd`, `gabarits.gd`, `marche.gd`), `partie.gd`, `data/**` (corrections), tests logiques. Toujours interdits : `test_reference_1984`, `scripts/ui/`, `principal.gd`, `test_interface`.
+
+| Ordre | Manque | Correction | Charge |
+|---|---|---|---|
+| 1 | (a) Foyer : créneaux du nouveau chapitre jamais tirés à la bascule ; (g) `vie` relue seulement au démarrage (mariage de Gérard jamais tiré) ; (e) `config.naissance` sans `d` plante `_naissance_de_scenario` | à `chapitre_change` : tirage des créneaux du chapitre (graine décalée propre au chapitre : aucun tirage de 1984 ne bouge), relecture de `vie` / `evenements_vie`, tirage du mariage (docs/47 §4.1) ; `naissance` sans `d` = pas de naissance scriptée | 1,5 j |
+| 2 | (b) « un an après » et héritage (oncle Raymond) bloqués par des marqueurs de 1984 (`gazette_vue`, id D08) | marqueurs **par chapitre** (clés `<chapitre>:<id>`), migration douce des sauvegardes | 1 j |
+| 3 | (c) `Gabarits.rendre` appelé seulement pour le mariage et le passage | rendu **central** à la création de toute notification, modale, entrée d'historique et texte de titre (foyer, projets, rue, banque, intro, vitrine, `nom_f`) ; test : 200 parties × 3 profils (Gérard, Christine, joueuse d'essai), **0 jeton** dans tout `contenu_modale()`, toute notification, tout l'historique | 1,5 j |
+| 4 | (d) Données non lues : `messages.datees` (sauf `plafond`), mode « message » (PEP, BNP : **sans pause**), promotion CNAM (`chapitre.json > continuite`), plan SCPI de Jean-Mi (`temoins.json > plan_scpi`), enfants initiaux de Christine, variables `{prix_revente}`, `{decote}`, `{mise}` | lecture de chaque bloc ; J2 de Jean-Mi revérifié avec le vrai plan SCPI | 2 j |
+| 5 | (h) SICAV monétaire sans série de cours | valeur liquidative calculée sur les taux courts de docs/37 §4 (comme la SICAV actions), achetable dès sa présentation | 0,5 j |
+| 6 | API PEA de l'étape 2 (§8 bis, suite) si pas encore faite : `Partie.acheter(…, enveloppe)`, vente dans le PEA, `verser_pea`, `retirer_pea` | — | 0,5 j |
+| 7 | Recalibrage après 1-5 : Gérard 1984 → 1993 | mesures ci-dessous ; R-CADENCE 1/200 corrigée | 0,5 j |
+
+**Total ≈ 7,5 j.** Critères (10a bis) : **CA-B1 ★** Gérard 1984 → 1993 sur 200 graines P-REF : 8 à 10 cartes jouées en 1989-1993, mariage dans 70 % ± 7 points, oncle Raymond et « un an après » (09/1991) présents à 100 %, 24 à 26 pauses en 1989-1993, R-CADENCE 200/200 ; **CA-B2 ★** titres de 1989-1993 pour Gérard **et** Christine : chaque titre ≥ 3 %, aucun > 25 % ; **CA-B3 ★** 0 jeton résiduel (tâche 3) ; **CA-B4 ★** PEP et BNP sans pause, SICAV monétaire achetable avec une valeur qui suit les taux courts ; **CA-B5 ★** `test_reference_1984` inchangé, `tests.ps1 -Recette` vert sauf les 2 KO de `test_interface` attendus (ci-dessous).
+
+**Relève de 10b-interface (étape 2), pas de 10a bis** :
+- `principal._config()` et `test_interface` : la fin par défaut est désormais **1993-12** (voulu) ; mettre à jour l'attente du test ; « Frise : aucune coupure pour un seul chapitre » devient « une coupure en 01/1989 pour une partie 1984 → 1993 » (et garder le cas sans coupure avec `config_demo`, fin 1988-12).
+- `jours: []` dans `krach.json` de 1989 : la modale du krach affiche la **courbe** quand `courbe` existe, le tableau quand `jours` est non vide, et rien d'autre (jamais un tableau vide) ; vérifier que 1984 garde ses 7 jours.
+
+**Ordre des fusions** : (1) 10a bis sur `lot/10a-contenu` → recette courte du testeur (CA-N, CA-B ; les 2 KO de `test_interface` sont connus et notés) → push, **pas de fusion seule dans `main`** (`main` doit rester vert) ; (2) le coordinateur fusionne `lot/10a-contenu` dans `lot/10b-interface` ; dev-interface finit l'étape 2 et corrige les 2 tests ; (3) recette de `lot/10b-interface` = fusion 10a-contenu + 10a bis + 10b ; (4) fusion dans `main` de `lot/10a-contenu` puis de `lot/10b-interface` (dans cet ordre, l'une après l'autre, tests relancés après la seconde ; ou directement `lot/10b-interface`, qui contient déjà la première).
+
+**Pilote carrière 10c** : **reste dans la 0.7**. 10c-logique démarre dès la fin de 10a bis (pendant que dev-interface finit l'étape 2, qui est le chemin le plus long) ; il vise les créneaux **T2** et **T5** du chapitre 1989 (ids propres au chapitre), pas S2 / S5. Il glisse en 0.7.1 seulement si CA-B1 ou CA-B2 ne sont pas tenus à la fin de 10a bis.
+
+Valeurs C toujours à confirmer avant l'export (non bloquantes) : 08/1990 = 1 640, 09/1991 = 1 830, SCPI. Note : W15 de Jean-Mi tombe en 11/1993 au lieu de 12/1993 (V15 de docs/47) : accepté si c'est la cadence qui l'a décalé (dosage inchangé).
+
 ## 9. Conflits avec la suite
 
 - `lot_10b.md` : aucune intersection (10b ne touche ni `data/` ni `scripts/logique/`) ; 10b-I étape 2 démarre sur `main` après 10a-moteur.
