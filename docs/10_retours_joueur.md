@@ -239,3 +239,10 @@ Verbatim du joueur :
 ## 2026-11-18 (joueuse : réponses, verbatim)
 
 > Ok pour toutes tes propositions sauf celle du conjoint de même sexe, pas besoin d'aller aussi loin pour ce jeu on restera "standard"
+
+
+---
+
+## 2026-11-19 (idée pour plus tard : simulation annuelle des impôts, verbatim)
+
+> A noter comme idée pour plus tard, un simulation annuelle des impôts, avec explicatif des points fort / faibles du patrimoine en fonction de la situation actuelle au moment des impôts
