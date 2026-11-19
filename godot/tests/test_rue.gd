@@ -77,6 +77,148 @@ func _empreinte(rue: Node2D, noms: Array) -> String:
 	return s.md5_text()
 
 
+## Lot 10b-ville (V1, CA-V2) : le foyer visible suit foyer_visuel() (dictionnaires fabriqués : aucune dépendance au code de
+## la logique). Une ligne « RUE foyer=… » par cas ; idempotent ; 0 nœud fuité ; aucune couleur hors palette.
+func _tester_foyer(ville: Node2D) -> void:
+	var rue: Node2D = ville.get("rue")
+	var sylvie := {"prenom": "Sylvie", "sexe": "f", "lien": "conjoint"}
+	var gerard_j := {"prenom": "Gérard", "sexe": "h", "age": 26}
+	var cas := [
+		["gerard26_bebe", {"joueur": gerard_j, "proche": sylvie, "enfants": [{"prenom": "A", "age": 0}], "marie": false},
+			"gerard", "sylvie", ["objet/poussette"]],
+		["gerard35_2enfants", {"joueur": {"prenom": "Gérard", "sexe": "h", "age": 35}, "proche": sylvie, "enfants": [{"prenom": "A", "age": 8}, {"prenom": "B", "age": 5}], "marie": false},
+			"gerard_gris", "sylvie", ["objet/tricycle", "objet/enfant_cartable_1"]],
+		["gerard35_jumeaux", {"joueur": {"prenom": "Gérard", "sexe": "h", "age": 35}, "proche": sylvie, "enfants": [{"prenom": "A", "age": 4}, {"prenom": "B", "age": 4}], "marie": false},
+			"gerard_gris", "sylvie", ["objet/tricycles"]],
+		["christine_patrick_2enfants", {"joueur": {"prenom": "Christine", "sexe": "f", "age": 30}, "proche": {"prenom": "Patrick", "sexe": "h", "lien": "conjoint"}, "enfants": [{"prenom": "Aurélie", "age": 8}, {"prenom": "Julien", "age": 5}], "marie": true},
+			"joueuse_a", "h", ["objet/tricycle", "objet/enfant_cartable_1"]],
+		["joueuse_conjoint_h", {"joueur": {"prenom": "Sylvie", "sexe": "f", "age": 41}, "proche": {"prenom": "Gérard", "sexe": "h", "lien": "conjoint"}, "enfants": [{"prenom": "C", "age": 15}], "marie": true},
+			"joueuse_b", "h", ["objet/ado_1"]],
+		["sans_proche", {"joueur": {"prenom": "Marc", "sexe": "h", "age": 40}, "proche": {}, "enfants": [], "marie": false},
+			"gerard_age", "", []],
+	]
+	ville.call("regler_date", -1)                           # date inconnue (une partie de test a pu en poser une)
+	var n0 := _noeuds(ville)
+	for c in cas:
+		var d: Dictionary = c[1]
+		ville.call("regler_foyer_visuel", d)
+		await _images(2)
+		var n1 := _noeuds(ville)
+		ville.call("regler_foyer_visuel", d)                 # idempotent : rien ne bouge
+		await _images(1)
+		var idem := _noeuds(ville) == n1
+		var vu: Dictionary = ville.call("foyer_decrit")
+		var attendu_proche: String = c[3]
+		var proche_ok: bool = str(vu["proche"]) == attendu_proche or (attendu_proche == "h" and str(vu["proche"]).begins_with("h"))
+		var noms: Array = ["ville/%s_marche_1" % vu["joueur"], "miroir/%s_repos_2" % vu["joueur"]] + (vu["enfants"] as Array)
+		if str(vu["proche"]) != "":
+			noms.append(rue.get("maison").call("image_sylvie"))
+		var hors := 0
+		var manquantes := 0
+		for nom: String in noms:
+			if not GrillePixel.existe(nom):
+				manquantes += 1
+				continue
+			for v in [PalettePixel.JOUR, PalettePixel.NUIT, PalettePixel.ORAGE]:
+				hors += PalettePixel.compter_hors_palette(GrillePixel.image(nom, v), v)
+		print("RUE foyer=%s joueur=%s proche=%s enfants=%s sprites=%d hors_palette=%d idempotent=%s" % [c[0], vu["joueur"], vu["proche"], ",".join(vu["enfants"]), noms.size() - manquantes, hors, "oui" if idem else "non"])
+		_verifier(vu["joueur"] == c[2] and proche_ok and (vu["enfants"] as Array) == c[4] and hors == 0 and manquantes == 0 and idem,
+			"foyer %s : joueur %s, proche %s, enfants %s, 0 couleur hors palette, idempotent" % [c[0], c[2], c[3], str(c[4])], str(vu))
+	ville.call("regler_foyer_visuel", {"joueur": gerard_j, "proche": sylvie, "enfants": [], "marie": false})
+	await _images(2)
+	_verifier(_noeuds(ville) == n0 and ville.call("foyer_decrit")["joueur"] == "gerard", "foyer : retour au foyer d'origine, 0 nœud fuité", "%d → %d" % [n0, _noeuds(ville)])
+	# 1984-1988 : les enfants ne sont jamais dessinés avant 01/1989 (ce sont les cartes du foyer qui les montrent)
+	ville.call("regler_date", Dates.lire("1988-12"))
+	ville.call("regler_foyer_visuel", cas[0][1])
+	await _images(1)
+	var avant_1989: Array = ville.call("foyer_decrit")["enfants"]
+	ville.call("regler_date", Dates.lire("1989-01"))
+	await _images(1)
+	var apres_1989: Array = ville.call("foyer_decrit")["enfants"]
+	_verifier(avant_1989.is_empty() and apres_1989 == ["objet/poussette"], "foyer : enfants dessinés seulement à partir de 01/1989", "%s / %s" % [str(avant_1989), str(apres_1989)])
+	ville.call("regler_date", -1)
+	ville.call("regler_foyer_visuel", {"joueur": gerard_j, "proche": sylvie, "enfants": [], "marie": false})
+	await _images(1)
+
+
+## Lot 10b-ville (V2, V3, CA-V3) : variantes datées lues par la date, aucune avant 01/1989 ; télé sans texte ; routage.
+func _tester_variantes(ville: Node2D) -> void:
+	var rue: Node2D = ville.get("rue")
+	var facades: Array = []
+	for i in RUE.BATIMENTS.size():
+		facades.append("rue/batiment_%d" % i)
+		facades.append("neige/rue/batiment_%d" % i)
+	facades += ["rue/maison", "rue/banque", "rue/gazette"]
+	var vide := PackedStringArray()
+	var n0 := _noeuds(ville)
+	var v0: int = (rue.get("voitures") as Array).size()
+	var emp0 := _empreinte(rue, facades)
+	var attendu := {"1984-06": [], "1988-12": [], "1989-01": ["bonne_annee:1989"], "1989-06": ["bicentenaire"], "1989-08": [], "1990-01": ["bonne_annee:1990", "citadine_1990"],
+		"1991-01": ["bonne_annee:1991", "citadine_1990"], "1992-09": ["citadine_1990", "panneaux_vote"], "1993-01": ["bonne_annee:1993", "citadine_1990", "citadine_1993"]}
+	var tout_juste := true
+	var detail := ""
+	for mois: String in attendu:
+		ville.call("regler_date", Dates.lire(mois))
+		await _images(1)
+		var act: PackedStringArray = rue.call("variantes_actives")
+		var tri: Array = Array(act)
+		tri.sort()
+		var voulu: Array = (attendu[mois] as Array).duplicate()
+		voulu.sort()
+		var ok: bool = tri == voulu
+		tout_juste = tout_juste and ok
+		if not ok:
+			detail += " %s=%s" % [mois, str(act)]
+		if mois == "1988-12":
+			_verifier(_noeuds(ville) == n0 and _empreinte(rue, facades) == emp0 and (rue.get("voitures") as Array).size() == v0 and str(rue.get("media").get("annonce")) == "",
+				"variantes datées : rien avant 01/1989 (aucun nœud, décor identique)")
+			print("RUE theme=1980 avant_1989 identique_main=%s" % ("oui" if _noeuds(ville) == n0 and _empreinte(rue, facades) == emp0 else "non"))
+		if mois == "1990-01":
+			_verifier(str(rue.get("media").get("annonce")).contains("1990") and (rue.get("voitures") as Array).size() == v0 + 1, "variantes datées : BONNE ANNEE 1990 au journal lumineux et la citadine de 1990 rejoint le trafic")
+		if mois == "1992-09":
+			_verifier(_noeuds(ville) >= n0 + 2, "variantes datées : deux panneaux électoraux en 09/1992")
+		if mois == "1993-01":
+			_verifier((rue.get("voitures") as Array).size() == v0 + 2, "variantes datées : la citadine ronde de 1993 s'ajoute")
+	_verifier(tout_juste, "variantes datées : jetons actifs aux bonnes dates", detail)
+	var hors := 0
+	for nom in ["objet/colonne_bicentenaire", "objet/panneau_oui", "objet/panneau_non", "rue/voiture_citadine", "rue/voiture_citadine_ronde"]:
+		if not GrillePixel.existe(nom):
+			hors += 1000
+			continue
+		for v in [PalettePixel.JOUR, PalettePixel.NUIT, PalettePixel.ORAGE]:
+			hors += PalettePixel.compter_hors_palette(GrillePixel.image(nom, v), v)
+	_verifier(hors == 0, "variantes datées : images enregistrées, 0 couleur hors palette", str(hors))
+	ville.call("regler_date", Dates.lire("1988-12"))
+	await _images(2)
+	_verifier(_noeuds(ville) == n0 and _empreinte(rue, facades) == emp0 and (rue.get("voitures") as Array).size() == v0 and rue.call("variantes_actives") == vide,
+		"variantes datées : retour exact à 1988 (0 nœud fuité)", "%d → %d" % [n0, _noeuds(ville)])
+	ville.call("regler_date", -1)
+	# Télévision de la maison (V3)
+	var maison: Node2D = ville.get("maison")
+	var enfants0 := maison.get_child_count()
+	ville.call("montrer_tele", "golfe", 0.4)
+	await _images(3)
+	var textes := 0
+	for e in maison.find_children("*", "Label", true, false):
+		textes += 1
+	var active: bool = maison.call("tele_active")
+	await create_timer(0.7).timeout
+	print("RUE tele sujet=golfe active=%s texte=%d eteinte=%s" % [str(active), textes, str(not maison.call("tele_active"))])
+	_verifier(active and textes == 0 and maison.get_child_count() == enfants0 and not maison.call("tele_active"), "télé : « golfe » s'allume sans texte, s'éteint seule")
+	# Routage des modales (V3)
+	var seq: Node = load("res://scripts/ville/sequences.gd").new()
+	var routes := {"passage": "carte", "carte": "carte", "projet": "carte", "marche": "journal", "banquier": "banquier", "gazette": "gazette", "courrier": "courrier"}
+	var routes_ok := true
+	for k: String in routes:
+		routes_ok = routes_ok and seq.call("route", {"kind": k}) == routes[k]
+	routes_ok = routes_ok and seq.call("route", {"kind": "courrier", "effet": "naissance"}) == "naissance" and seq.call("route", {"kind": "marche", "courbe": [{"mois": 1, "valeur": 1.0}]}) == "journal"
+	var modales_a_passage := false
+	for m: Dictionary in load("res://scripts/ui/modales.gd").get_script_method_list():
+		modales_a_passage = modales_a_passage or m["name"] == "passage"
+	print("RUE passage route=carte appel=%s" % ("modales" if modales_a_passage else "courrier"))
+	_verifier(routes_ok, "routage : « passage » comme une carte (Modales.passage si elle existe, sinon le courrier), « marche » avec courbe comme le journal")
+	seq.free()
+
 ## Lot 09-V (V3, V5) : le thème « 1980 » ne change rien ; une table d'essai (enseigne de la boulangerie) change des
 ## pixels hors ancres sans fuite de nœuds ; le changement de thème attend la fin d'une séquence animée.
 func _tester_themes(ville: Node2D) -> void:
@@ -98,7 +240,7 @@ func _tester_themes(ville: Node2D) -> void:
 		for v in [PalettePixel.JOUR, PalettePixel.NUIT, PalettePixel.ORAGE]:
 			hors += PalettePixel.compter_hors_palette(GrillePixel.image(n, v), v)
 	print("RUE theme=1980 identique_main=%s couleurs_hors_palette=%d ancres_identiques=oui" % ["oui" if identique else "non", hors])
-	_verifier(table_vide.is_empty() and ville.call("theme_actuel") == "1980" and identique and hors == 0,
+	_verifier(not table_vide.has("batiments") and ville.call("theme_actuel") == "1980" and identique and hors == 0,
 		"thème 1980 : table vide, décor identique (images et couches), 0 couleur hors palette", "table=%s hors=%d" % [str(table_vide), hors])
 	_verifier(ThemeDecor.table("nexiste_pas").is_empty(), "ThemeDecor : thème inconnu = table vide")
 	# Thème d'essai : l'enseigne de la boulangerie (x 1134) devient « PAIN »
@@ -435,6 +577,8 @@ func _initialize() -> void:
 	print("RUE pieces arc=%d portes=%s,%s touches_arc=%d touches_arc_120=%d" % [roundi(arc), str(d_p), str(a_p), touches_arc, touches_120])
 	_verifier(d_p.x >= 0.0 and a_p.x >= 0.0 and touches_arc == 0, "m1 : de la banque à la maison, l'arc choisi (%d px) ne touche aucune enseigne (l'ancien arc de 120 px : %d points)" % [roundi(arc), touches_120])
 	seq.free()
+	await _tester_foyer(ville)
+	await _tester_variantes(ville)
 	await _tester_themes(ville)
 	# D9 (lot 03) : durée de génération, meilleure de 2 mesures (relance seulement si la 1re dépasse le seuil ;
 	# --rue-relance la force pour l'éprouver)

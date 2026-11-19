@@ -82,18 +82,38 @@ func installer(p_jeu: Node, p_ville: Node2D, p_hud: Hud, p_modales: Modales, cal
 
 ## Modale ouverte par le moteur : la séquence qui l'amène.
 func jouer_modale(c: Dictionary) -> void:
-	if c.get("kind", "") == "banquier":
-		vedette(_sequence_banquier.bind(c))
-	elif c.get("kind", "") == "marche":
-		vedette(_sequence_journal.bind(c))
-	elif c.get("effet", "") == "naissance":
-		vedette(_sequence_naissance.bind(c))
-	elif c.get("kind", "") in ["carte", "projet"]:   # carte du foyer et projet : même sortie de la maison (lot 05, 04-I)
-		vedette(_sequence_carte.bind(c))
-	elif c.get("kind", "") == "gazette":           # « Le krach, un an après » : la caméra va au bâtiment média, pas de porte
-		vedette(_sequence_gazette.bind(c))
-	else:
-		vedette(_sequence_courrier.bind(c))
+	match route(c):
+		"banquier":
+			vedette(_sequence_banquier.bind(c))
+		"journal":
+			vedette(_sequence_journal.bind(c))
+		"naissance":
+			vedette(_sequence_naissance.bind(c))
+		"carte":
+			vedette(_sequence_carte.bind(c))
+		"gazette":
+			vedette(_sequence_gazette.bind(c))
+		_:
+			vedette(_sequence_courrier.bind(c))
+
+
+## Séquence qui amène une modale (fonction pure, éprouvée par test_rue) : banquier, journal (« marche » : le krach ET
+## la vitrine du Golfe, dont la modale lit « courbe » au lieu de « jours »), naissance, carte (carte du foyer, projet et
+## carte de passage de chapitre : même sortie de la porte de la maison ; Modales.passage si elle existe, sinon le
+## courrier : lot 10b-ville, V3), gazette (« un an après »), sinon courrier.
+static func route(c: Dictionary) -> String:
+	var kind := str(c.get("kind", ""))
+	if kind == "banquier":
+		return "banquier"
+	if kind == "marche":
+		return "journal"
+	if c.get("effet", "") == "naissance":
+		return "naissance"
+	if kind in ["carte", "projet", "passage"]:
+		return "carte"
+	if kind == "gazette":
+		return "gazette"
+	return "courrier"
 
 
 func fin() -> void:
@@ -616,6 +636,8 @@ func _confettis(pos: Vector2) -> void:
 func petite_news(n: Dictionary) -> void:
 	var media: Node2D = ville.get("media")
 	var cam := _camera()
+	if int(n.get("vitrine_etape", 0)) == 1 and ville.has_method("montrer_tele"):
+		ville.call("montrer_tele", "golfe")          # étape 1 de la vitrine du Golfe : la télé de la maison, sans pause (lot 10b-ville, V3)
 	media.call("ondes", Color.WHITE, 1)
 	media.set("ticker", str(n.get("titre", "")).to_upper() + " · " + str(n.get("texte", "")).to_upper() + " · ")
 	hud.notifier(n, Partie.etat.ab_courant(), _depart(media, Vector2(0, -300)))

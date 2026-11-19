@@ -201,6 +201,7 @@ func regler_theme(id: String) -> void:
 		return
 	_theme = id
 	rue.call("appliquer_theme", ThemeDecor.table(id))
+	_maj_variantes()
 	if _controle:
 		print("THEME %s" % id)
 
@@ -474,11 +475,93 @@ func _foyer_change_res(_r: Dictionary) -> void:
 	suivre_foyer(Partie.etat)
 
 
+# =====================================================================
+# Foyer paramétrable, variantes datées, télévision (lot 10b-ville : V1, V2, V3)
+# =====================================================================
+
+const FOYER := preload("res://scripts/ville/foyer_visuel.gd")
+const VARIANTES := preload("res://scripts/ville/variantes_datees.gd")
+const VOISINS := preload("res://scripts/pixel/voisins.gd")
+const ANNEE_ETENDUE := "1989-01"          # avant : décor et foyer de 1984-1988, identiques à main (D1)
+var _ab := -1                             # mois courant connu (Dates) ; -1 : inconnu (tests, titre)
+var _foyer := {}                          # dernier foyer_visuel() reçu
+var _foyer_sig := ""                      # empreinte du plan appliqué (idempotence)
+var _foyer_joueur := "gerard"
+var _enfants_foyer: Array = []            # accessoires des enfants (trottoir)
+var _vd_liste: Array = []
+var _vd_theme := ""
+
+
+## Contrat de 10b-interface : appelé au démarrage, à la reprise, chaque janvier, à chaque naissance ou mariage avec
+## EtatPartie.foyer_visuel(). Idempotent : un foyer inchangé ne touche à rien.
+func regler_foyer_visuel(d: Dictionary) -> void:
+	_foyer = d.duplicate(true)
+	_appliquer_foyer()
+
+
+func _etendu() -> bool:
+	return _ab < 0 or _ab >= Dates.lire(ANNEE_ETENDUE)
+
+
+func _appliquer_foyer() -> void:
+	if _foyer.is_empty() or rue == null:
+		return
+	var plan: Dictionary = FOYER.plan(_foyer, _etendu())
+	var sig := str(plan)
+	if sig == _foyer_sig:
+		return
+	_foyer_sig = sig
+	_foyer_joueur = str(plan["joueur"])
+	rue.call("regler_joueur", _foyer_joueur)
+	maison.set("proche", str(plan["proche"]))
+	for a in _enfants_foyer:
+		if is_instance_valid(a):
+			a.call("liberer")
+	_enfants_foyer.clear()
+	if not (plan["enfants"] as Array).is_empty():
+		VOISINS.enregistrer_foyer()
+	for e: Dictionary in plan["enfants"]:
+		_enfants_foyer.append(rue.call("ajouter", e["images"], Vector2(e["x"], Y_TRACES_SOL), 1.5 if (e["images"] as Array).size() > 1 else 0.0, true))
+
+
+## Ce que la ville montre du foyer (contrôles : « RUE foyer= » des tests et des captures).
+func foyer_decrit() -> Dictionary:
+	var enfants: Array = []
+	for a in _enfants_foyer:
+		if is_instance_valid(a):
+			enfants.append(str((a.get("images") as Array)[0]))
+	return {"joueur": _foyer_joueur, "proche": str(maison.get("proche")), "enfants": enfants}
+
+
+## Variantes datées (V2) : le mois courant (Dates) ; sans date connue ou avant 01/1989, aucune variante.
+func regler_date(ab: int) -> void:
+	_ab = ab
+	_maj_variantes()
+	_appliquer_foyer()
+
+
+func _maj_variantes() -> void:
+	if _vd_theme != _theme:
+		_vd_theme = _theme
+		_vd_liste = []
+		if FileAccess.file_exists(ThemeDecor.DOSSIER + _theme + ".json"):
+			_vd_liste = ThemeDecor.table(_theme).get("variantes_datees", [])
+	rue.call("appliquer_variantes", VARIANTES.actives(_vd_liste, _ab) if _ab >= 0 else PackedStringArray())
+
+
+## V3 : la télé du salon montre un sujet (« golfe » : silhouettes de chars) pendant duree_s ; jamais de texte, ni pause, ni caméra.
+func montrer_tele(sujet: String, duree_s := 6.0) -> void:
+	maison.call("montrer_tele", sujet, duree_s)
+
+
 ## D10 : règle Sylvie (humeur visible si les cartes sont allumées, sinon neutre) et les traces des cartes ;
 ## idempotent (rien ne bouge si rien ne change) ; e null = rien.
 func suivre_foyer(e: EtatPartie) -> void:
 	if e == null:
 		return
+	_ab = e.ab_courant()
+	_maj_variantes()
+	_appliquer_foyer()
 	regler_humeur_sylvie(e.humeur_visible() if e.cartes_actives() else 1)
 	var t := traces_foyer(e)
 	maison.set("traces", t)

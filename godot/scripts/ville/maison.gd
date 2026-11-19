@@ -8,6 +8,7 @@ extends Batiment
 ## l'appui à droite, escargot sur le mur ; porte d'entrée en 3 images (porte_ouverte 0 à 3, sortie de la carte).
 
 const F := preload("res://scripts/pixel/facades.gd")
+const PERSOS := preload("res://scripts/pixel/personnages.gd")
 const HUMEURS := ["sylvie_contente", "sylvie_neutre", "sylvie_contrariee"]
 const FENETRE_GERARD := Rect2i(168, 99, 36, 48)       # dans l'image (coin haut gauche)
 const BOITE := Rect2i(142, 198, 13, 18)
@@ -39,6 +40,18 @@ var traces := PackedStringArray():                      # traces des cartes (vil
 		if v != traces:
 			traces = v
 			queue_redraw()
+var proche := "sylvie":                                # proche à la fenêtre : "sylvie" (d'origine), "h0".."h2" (homme, couleur du pull), "" (personne)
+	set(v):
+		if v != proche:
+			proche = v
+			if proche.begins_with("h"):
+				PERSOS.enregistrer_proche_h(int(proche.substr(1)))
+			queue_redraw()
+var tele_sujet := "":                                   # sujet montré à l'écran de la télé du salon (lot 10b-ville, V3), "" : aucun
+	set(v):
+		tele_sujet = v
+		queue_redraw()
+var _tele_fin := 0.0
 var porte_ouverte := 0:                                 # 0 fermée … 3 grande ouverte
 	set(v):
 		porte_ouverte = clampi(v, 0, 3)
@@ -70,6 +83,15 @@ func _process(delta: float) -> void:
 			if _suivante != humeur:
 				humeur = _suivante
 			queue_redraw()
+	if tele_sujet != "":
+		if Time.get_ticks_msec() / 1000.0 >= _tele_fin:
+			tele_sujet = ""
+		else:
+			_tele_t += delta
+			if _tele_t >= 0.35:
+				_tele_t = 0.0
+				_tele = (_tele + 1) % 3
+				queue_redraw()
 	if not anime:
 		return
 	if humeur == 0:
@@ -128,9 +150,26 @@ func humeur_visee() -> int:
 
 ## Image de Sylvie dessinée en ce moment (contrôles des captures).
 func image_sylvie() -> String:
+	if proche.begins_with("h"):
+		var k := proche
+		if humeur == 0 and _coucou > 0:
+			return "ville/proche_%s_contente_coucou_%d" % [k, _coucou]
+		return "ville/proche_%s_%s" % [k, ["contente", "neutre", "contrariee"][clampi(humeur, 0, 2)]]
 	if humeur == 0 and _coucou > 0:
 		return "ville/sylvie_contente_coucou_%d" % _coucou
 	return "ville/" + HUMEURS[clampi(humeur, 0, 2)]
+
+
+## Montre un sujet sur l'écran de la télé du salon pendant duree_s (« golfe » : silhouettes de chars, jamais de
+## texte) ; la télé s'éteint seule. Pas de pause, pas de caméra.
+func montrer_tele(sujet: String, duree_s := 6.0) -> void:
+	tele_sujet = sujet
+	_tele_fin = Time.get_ticks_msec() / 1000.0 + maxf(0.1, duree_s)
+	_tele_t = 0.0
+
+
+func tele_active() -> bool:
+	return tele_sujet != ""
 
 
 ## Rebord de la fenêtre de Gérard (milieu de l'appui), coordonnées locales.
@@ -166,15 +205,17 @@ func _dessiner_dessus(d: Vector2i) -> void:
 	var c := coin_image() + d
 	var fs: Rect2i = F.FENETRE_SYLVIE
 	var ps := c + Vector2i(fs.position.x + fs.size.x / 2, fs.end.y - 1)
-	rue.image(self, image_sylvie(), ps)
-	if _cligne > 0.0:
-		rue.image(self, "ville/sylvie_cligne", ps)     # aussi depuis « contente » quand l'humeur change
-	match humeur:
-		0:
-			rue.image(self, "ville/geraniums", c + POS_GERANIUMS)
-		2:
-			rue.image(self, "ville/rideau_tire", c + POS_RIDEAU)
+	if proche != "":
+		rue.image(self, image_sylvie(), ps)
+		if _cligne > 0.0:
+			rue.image(self, "ville/sylvie_cligne", ps)     # aussi depuis « contente » quand l'humeur change
+		match humeur:
+			0:
+				rue.image(self, "ville/geraniums", c + POS_GERANIUMS)
+			2:
+				rue.image(self, "ville/rideau_tire", c + POS_RIDEAU)
 	_dessiner_traces(c)
+	_dessiner_tele_sujet(c)
 	_dessiner_porte(c)
 	if flash > 0.0:
 		var fg := Rect2i(c + FENETRE_GERARD.position + Vector2i(3, 4), FENETRE_GERARD.size - Vector2i(5, 4))
@@ -186,6 +227,30 @@ func _dessiner_dessus(d: Vector2i) -> void:
 		rue.rect(self, Rect2i(b.x + 2, b.y + 4 - h, 9, 1), "lumiere")
 		if drapeau > 0.5:
 			rue.rect(self, Rect2i(b.x + 3, b.y + 7 - h, 7, 3), "creme")
+
+
+## Écran de la télé du salon : « golfe » = ciel de désert au couchant, deux chars en silhouette qui avancent ; aucun
+## texte. Couleurs de jour (l'écran éclaire), de jour comme de nuit.
+func _dessiner_tele_sujet(c: Vector2i) -> void:
+	if tele_sujet == "":
+		return
+	var r := Rect2i(c + FENETRE_TELE.position + Vector2i(4, 4), FENETRE_TELE.size - Vector2i(8, 6))
+	draw_rect(Rect2(r).grow(1.0), PalettePixel.couleur("encre"))
+	var ciel: String = ["terre_cuite_claire", "orange", "terre_cuite_claire"][_tele]
+	draw_rect(Rect2(r.position, Vector2i(r.size.x, r.size.y * 6 / 10)), PalettePixel.couleur("terre_cuite_claire"))
+	draw_rect(Rect2(r.position + Vector2i(0, r.size.y * 4 / 10), Vector2i(r.size.x, r.size.y * 2 / 10)), PalettePixel.couleur(ciel))
+	var sol_y := r.position.y + r.size.y * 6 / 10
+	draw_rect(Rect2(Vector2i(r.position.x, sol_y), Vector2i(r.size.x, r.end.y - sol_y)), PalettePixel.couleur("caramel"))
+	draw_rect(Rect2(Vector2i(r.position.x, sol_y), Vector2i(r.size.x, 1)), PalettePixel.couleur("bois"))
+	for k in 2:
+		var x := r.position.x + ((k * 17 + _tele * 3 + 2) % (r.size.x + 14)) - 14
+		var y := sol_y + 2 + k * 6
+		var pieces: Array = [Rect2i(x, y - 4, 11, 3), Rect2i(x + 3, y - 7, 5, 3), Rect2i(x + 8, y - 6, 6, 1), Rect2i(x, y - 1, 11, 2)]
+		for p: Rect2i in pieces:
+			var q := p.intersection(r)
+			if q.size.x > 0 and q.size.y > 0:
+				draw_rect(Rect2(q), PalettePixel.couleur("encre" if p.size.y != 2 else "nuit"))
+	draw_rect(Rect2(Vector2i(r.position.x, r.position.y + (_tele * 14) % r.size.y), Vector2i(r.size.x, 1)), PalettePixel.couleur("creme"))
 
 
 func _dessiner_traces(c: Vector2i) -> void:
