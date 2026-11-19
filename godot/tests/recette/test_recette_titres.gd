@@ -182,7 +182,7 @@ func _corrompu() -> void:
 	var bon := {"titre": {"id": "apprenti", "nom": "A"}, "record_possible": true, "ecart_tata_pct": 3.5, "prenom": "G", "nominal": {"vous": 100.0}, "rue": []}
 	Records.enregistrer(bon, "a", rec, "2020-01-01")
 	var txt := FileAccess.get_file_as_string(rec)
-	var cas := {"absent": null, "tronque": txt.substr(0, txt.length() / 2), "sans_fin": txt.replace("; fin", ""), "vide": "", "binaire": "\u0001\u0002\u0003zz{{{", "autre_version": txt.replace("version=1", "version=7"),
+	var cas := {"absent": null, "tronque": txt.substr(0, txt.length() / 2), "sans_fin": txt.replace("; fin", ""), "vide": "", "binaire": "\u0001\u0002\u0003zz{{{", "autre_version": txt.replace("version=2", "version=7"),
 		"record_incomplet": "[meta]\nversion=1\n[record]\necart_pct=2.0\n; fin\n"}
 	if OS.get_environment("TESTEUR_ANALYSEUR") != "":   # imprime 2 lignes ERROR du moteur (anomalie A1) : hors suite par defaut
 		cas["section_cassee"] = "[meta]\nversion=1\n[record\nbidule=\n; fin\n"

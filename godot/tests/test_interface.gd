@@ -295,15 +295,16 @@ func _test_dix_ans() -> void:
 	await get_tree().create_timer(0.5).timeout
 	# Carnet à 13 produits (4 copies fabriquées en mémoire, retirées ensuite) : produits vus seulement, 4 colonnes au PC
 	var d := Banquier.donnees()
+	var cat := Donnees.charger("produits")   # lot 10a : les produits vivent dans le catalogue du monde, l'identité dans produits_vus
 	var ordre_avant: Array = (d["ordre_carnet"] as Array).duplicate()
 	for i in 4:
 		var pid := "fab%d" % i
-		var p: Dictionary = (d["produits"]["elf"] as Dictionary).duplicate(true)
+		var p: Dictionary = (cat["elf"] as Dictionary).duplicate(true)
 		p["court"] = "FAB %d" % (i + 1)
 		p["presentation"] = pid
-		d["produits"][pid] = p
+		cat[pid] = p
 		d["ordre_carnet"].append(pid)
-		e.banque["presentes"][pid] = e.m
+		Banquier.produits_vus(e).append(pid)
 	var vus := 0
 	for pid in d["ordre_carnet"]:
 		if Banquier.presente(e, pid):
@@ -318,8 +319,8 @@ func _test_dix_ans() -> void:
 	md.banque.fermer_demande.emit()
 	await get_tree().create_timer(0.5).timeout
 	for i in 4:
-		d["produits"].erase("fab%d" % i)
-		e.banque["presentes"].erase("fab%d" % i)
+		cat.erase("fab%d" % i)
+		Banquier.produits_vus(e).erase("fab%d" % i)
 	d["ordre_carnet"] = ordre_avant
 	Partie.sauvegarde_auto = false
 	scene.queue_free()

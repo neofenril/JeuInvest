@@ -1704,15 +1704,16 @@ func _carnet_13(jeu: Node) -> void:
 	sc.partir_de_la_rue("carnet_13")
 	sc.aller_a(Dates.lire("1986-12"), true)
 	var d := Banquier.donnees()
+	var cat := Donnees.charger("produits")   # lot 10a : catalogue du monde ; identité dans produits_vus
 	for i in 4:
 		var pid := "fab%d" % i
-		var p: Dictionary = (d["produits"]["elf"] as Dictionary).duplicate(true)
+		var p: Dictionary = (cat["elf"] as Dictionary).duplicate(true)
 		p["court"] = "FAB %d" % (i + 1)
 		p["nom"] = "Produit fabriqué %d" % (i + 1)
 		p["presentation"] = pid
-		d["produits"][pid] = p
+		cat[pid] = p
 		d["ordre_carnet"].append(pid)
-		e.banque["presentes"][pid] = e.m
+		Banquier.produits_vus(e).append(pid)
 	jeu.ouvrir_banque("sicav", -2.0)
 	await sc.delai(3.0)
 	var modales: Modales = jeu.modales
