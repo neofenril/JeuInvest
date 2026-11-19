@@ -13,7 +13,9 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"mon_foyer", "mon_foyer_eteint", "banque_fermee",
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
 	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue", "fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre", "titre_record", "titre_sans_records", "titres_collection", "intro",
-	"frise_10ans", "mon_argent_10ans", "carnet_13"]
+	"frise_10ans", "mon_argent_10ans", "carnet_13",
+	"passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres"]
+const RACINE_ESSAI := "res://tests/donnees/chapitres"   # jeu d'essai à deux chapitres ouverts (en attendant les données de 1989)
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
 
@@ -39,6 +41,8 @@ func jouer(etape: String) -> void:
 			await _dix_ans(etape, jeu)
 		"carnet_13":
 			await _carnet_13(jeu)
+		"passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres":
+			await _chapitres(etape, jeu)
 		"etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette":
 			await _etiquettes(etape, jeu)
 		"etiquettes_balayage":
@@ -1579,7 +1583,7 @@ func _mesurer(nom: String, racine: Node) -> void:
 			if not pr.grow(1.0).encloses(r):
 				hors_cadre.append("%s dépasse de son cadre %s" % [_nom(ctl), _nom(ctl.get_parent())])
 		if not vue.intersects(r):
-			if fenetre and ctl is BaseButton and not (ctl as BaseButton).disabled:
+			if fenetre and ctl is BaseButton and not (ctl as BaseButton).disabled and defile == null:   # dans une liste qui défile : hors vue = normal
 				boutons_caches.append(_nom(ctl))
 			continue
 		# Défilement : seules les lignes visibles comptent
@@ -1721,6 +1725,103 @@ func _carnet_13(jeu: Node) -> void:
 	print("UI carnet_13 cartes=%d colonnes=%d defilant=%s" % [grille.get_child_count() if grille != null else -1, grille.columns if grille != null else -1,
 		"oui" if is_instance_valid(modales.courant) and modales.courant.find_child("Defilant", true, false) != null else "non"])
 	_mesurer("carnet_13", modales.courant)
+
+
+## Lot 10b étape 2 : écrans du chapitre 1989-1993 sur le jeu d'essai (tests/donnees/chapitres : « 1984 » et « 1989 » ouverts).
+## Les contenus (passage, vitrine, bilan) viennent d'une vraie partie jouée dans le processus, la rue derrière reste celle de 1984 :
+## seules les modales sont montrées. PEA / SCPI : vraie partie du jeu d'essai posée à août 1992 (le PEA existe depuis 07/1992).
+func _chapitres(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	Donnees.racine_chapitres = RACINE_ESSAI
+	Donnees.regler_chapitre("")
+	Donnees.vider_cache()
+	jeu.modales.donnees_demo = Donnees.charger("demo").duplicate(true)
+	match etape:
+		"choix_depart":
+			sc.partir_de_la_rue(etape)
+			modales.choix_depart(ChoixDepart.cartes())
+			await sc.delai(1.2)
+			_mesurer(etape, modales.courant)
+		"collection_chapitres":
+			sc.partir_de_la_rue(etape)
+			var rec := {"chapitres": {"1984": {"collection": {"fourmi": {"nombre": 2, "premiere": "2026-11-10"}, "bon_pere": {"nombre": 1, "premiere": "2026-11-12"}}},
+				"1989": {"collection": {"cigale": {"nombre": 1, "premiere": "2026-11-18"}}}}}
+			modales.titres(rec, Titres.tous(), Noms.titres_par_chapitre())
+			await sc.delai(1.2)
+			_mesurer(etape, modales.courant)
+		"passage_1989", "vitrine_golfe", "fin_1993":
+			sc.partir_de_la_rue(etape)
+			var e := EtatPartie.new()
+			var cfg := Donnees.config_chapitre("1984", 5)
+			cfg["banquier"] = true
+			cfg["rue"] = true
+			e.demarrer(cfg)
+			var passage := {}
+			var vitrine := {}
+			var garde := 0
+			while e.fin == "" and garde < 400:
+				garde += 1
+				while not e.modale.is_empty():
+					var c0 := e.contenu_modale()
+					if str(c0.get("kind", "")) == "passage" and passage.is_empty():
+						passage = c0
+					if str(c0.get("kind", "")) == "marche" and c0.has("courbe") and vitrine.is_empty():
+						vitrine = c0
+					e.resolution_auto()
+				e.avancer()
+			if etape == "passage_1989":
+				modales.passage(passage, Vector2(-1, -1))
+			elif etape == "vitrine_golfe":
+				modales.journal(vitrine, Vector2(-1, -1), false)
+			else:
+				var b := Bilan.calculer(e)
+				var chemin := "user://capture_chap_%d.sav" % OS.get_process_id()
+				b["record"] = Records.enregistrer(b, "capture", chemin, "2026-11-19")
+				modales.dernier_bilan = b
+				Records.effacer(chemin)
+				Partie.chemin_records = chemin
+				modales.fin_demo(e)
+			await sc.delai(1.6)
+			_mesurer(etape, modales.courant)
+			if etape == "passage_1989":
+				print("UI passage titre=%s valeurs=%s promesse=%s" % [modales.etat_passage().infos.get("titre", ""), str(modales.etat_passage().infos.get("valeurs", [])), modales.etat_passage().infos.get("promesse", "")])
+			elif etape == "fin_1993":
+				print("UI fin_1993 plaques=%s records=%s" % [str(modales.etat_fin().infos_fin.get("plaques", 0)), str(modales.etat_fin().infos_fin.get("records", []))])
+		_:
+			# Fiches SCPI / PEA / PEP : vraie partie du jeu d'essai posée à août 1992
+			var cfg2 := Donnees.config_chapitre("1984", 5)
+			cfg2["banquier"] = true
+			sc.partir_de_la_rue(etape)
+			jeu.set("_ignorer_modales", true)   # aucune séquence de la rue pour la modale d'accueil : seule la fenêtre Banque est montrée
+			Partie.nouvelle_partie(cfg2)
+			jeu.set("_ignorer_modales", false)
+			var e2 := Partie.etat
+			StrategieTest.aller_a(e2, Dates.lire("1989-06"), true)
+			StrategieTest.aller_a(e2, Dates.lire("1992-08"), true)
+			while not e2.modale.is_empty():
+				e2.resolution_auto()
+			e2.file.clear()
+			e2.joueur.cc = Produits.f(60000.0)
+			var d := Banquier.donnees()
+			for pid in ["scpi", "pea", "pep", "elf"]:
+				if not (d["ordre_carnet"] as Array).has(pid):
+					d["ordre_carnet"].append(pid)
+				if not Banquier.produits_vus(e2).has(pid):
+					Banquier.produits_vus(e2).append(pid)
+			if etape in ["vente_differee", "fiche_scpi"]:
+				Partie.acheter("scpi", Produits.f(5000.0))
+				if etape == "vente_differee":
+					Partie.vendre_scpi(2)
+			if etape == "fiche_pea":
+				Partie.ouvrir_pea()
+				Partie.verser_pea(Produits.f(5000.0))
+				Partie.acheter("elf", Produits.f(2000.0), "pea")
+			jeu.hud.maj(e2, false)
+			Partie.bloquee = true
+			modales.ouvrir_banque(e2, {"fiche_scpi": "scpi", "vente_differee": "scpi", "fiche_pea": "pea", "pep_en_savoir_plus": "pep"}[etape], -2.0)
+			await sc.delai(2.0)
+			_mesurer(etape, modales.courant)
+	await sc.delai(0.3)   # la racine d'essai reste en place jusqu'à la sortie du processus de capture (la modale est encore ouverte)
 
 
 func _hud(jeu: Node) -> void:

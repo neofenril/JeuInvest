@@ -1,4 +1,4 @@
-class_name ModaleTitres
+﻿class_name ModaleTitres
 extends RefCounted
 ## Morceau de Modales : la collection des titres d'époque (lot 07-I, docs/29 §3). Fenêtre de lecture : une grille 3 × 3,
 ## les titres obtenus avec leur nombre et leur première date, les autres en « ??? » sans aucun indice sur la condition.
@@ -18,13 +18,18 @@ static func date_texte(iso: String) -> String:
 	return "%s/%s/%s" % [p[2], p[1], p[0]] if p.size() == 3 else iso
 
 
-## records : Records.lire() ; tous : Titres.tous() (9 × {id, nom, ordre}).
-func ouvrir(records: Dictionary, tous: Array) -> void:
+## records : Records.lire() ; tous : Titres.tous() (9 × {id, nom, ordre}). par_chapitre : [{id, annees, titres}] quand plusieurs chapitres
+## sont ouverts (lot 10b, I7 ; docs/40 §3.4) : un onglet par chapitre, chacun avec sa collection ; sinon la fenêtre de toujours.
+func ouvrir(records: Dictionary, tous: Array, par_chapitre: Array = []) -> void:
 	m.compact = Ecran.compact()
 	var compact := m.compact
 	m.genre_courant = "titres"
 	m.assombrir(0.65)
+	var multi := par_chapitre.size() > 1
 	var coll: Dictionary = records.get("collection", {})
+	if multi:
+		tous = par_chapitre[0]["titres"]
+		coll = _collection(records, str(par_chapitre[0]["id"]))
 	var p := PanelContainer.new()
 	p.name = "Collection"
 	var sf := Style.panneau(22)
@@ -40,16 +45,12 @@ func ouvrir(records: Dictionary, tous: Array) -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10 if compact else 16)
 	p.add_child(v)
-	var obtenus := 0
-	for t: Dictionary in tous:
-		if coll.has(str(t["id"])):
-			obtenus += 1
 	# En-tête : titre, compteur, FERMER à droite (une ligne au téléphone)
 	var tete := HBoxContainer.new()
 	tete.add_theme_constant_override("separation", 18)
 	var lt := Style.label("LES TITRES D'ÉPOQUE", 28 if compact else 36, Style.capitales(), Style.TEXTE)
 	tete.add_child(lt)
-	var lc := Style.label("%d SUR %d OBTENUS" % [obtenus, tous.size()], 22 if compact else 24, Style.ui_gras(), Style.ACCENT)
+	var lc := Style.label("", 22 if compact else 24, Style.ui_gras(), Style.ACCENT)
 	lc.name = "Compteur"
 	lc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -59,6 +60,26 @@ func ouvrir(records: Dictionary, tous: Array) -> void:
 	fermer.pressed.connect(m.fermer.bind("fermer"))
 	tete.add_child(fermer)
 	v.add_child(tete)
+	# Onglets par chapitre (plusieurs chapitres ouverts seulement)
+	var onglets: Array = []
+	if multi:
+		var rangee := HBoxContainer.new()
+		rangee.name = "Onglets"
+		rangee.add_theme_constant_override("separation", 10)
+		var groupe := ButtonGroup.new()
+		for c: Dictionary in par_chapitre:
+			var b := Button.new()
+			b.name = "Onglet_%s" % str(c["id"])
+			b.text = str(c["annees"])
+			b.toggle_mode = true
+			b.button_group = groupe
+			b.theme_type_variation = "BoutonBascule"
+			b.focus_mode = Control.FOCUS_NONE
+			b.custom_minimum_size = Vector2(240, 72 if compact else 81)
+			b.set_pressed_no_signal(onglets.is_empty())
+			onglets.append(b)
+			rangee.add_child(b)
+		v.add_child(rangee)
 	if not compact:
 		v.add_child(Style.label("Un titre par partie terminée, selon votre façon de jouer.", 20, Style.ui(), Style.TEXTE_2))
 	# Grille 3 × 3, dans l'ordre 1 → 9
@@ -69,25 +90,36 @@ func ouvrir(records: Dictionary, tous: Array) -> void:
 	grille.add_theme_constant_override("h_separation", ecart)
 	grille.add_theme_constant_override("v_separation", ecart)
 	var lt_tuile := floorf((interieur - 2.0 * ecart) / 3.0)
-	var ht_tuile := 138.0 if compact else 168.0
-	var n_obt := 0
-	var n_non := 0
-	for t: Dictionary in tous:
-		var id := str(t["id"])
-		var ligne: Dictionary = coll.get(id, {})
-		var ok := not ligne.is_empty()
-		if ok:
-			n_obt += 1
-		else:
-			n_non += 1
-		grille.add_child(_tuile(t, ligne, ok, lt_tuile, ht_tuile, compact))
+	var ht_tuile := (120.0 if multi else 138.0) if compact else 168.0   # téléphone avec onglets : la rangée d'onglets prend la place
+	var remplir := func(liste: Array, c: Dictionary) -> void:
+		for n in grille.get_children():
+			grille.remove_child(n)
+			n.queue_free()
+		var n_obt := 0
+		for t: Dictionary in liste:
+			var id := str(t["id"])
+			var ligne: Dictionary = c.get(id, {})
+			var ok := not ligne.is_empty()
+			if ok:
+				n_obt += 1
+			grille.add_child(_tuile(t, ligne, ok, lt_tuile, ht_tuile, compact))
+		lc.text = "%d SUR %d OBTENUS" % [n_obt, liste.size()]
+		infos = {"tuiles": liste.size(), "obtenus": n_obt, "non_obtenus": liste.size() - n_obt, "onglets": onglets.size()}
+	remplir.call(tous, coll)
+	for i in onglets.size():
+		(onglets[i] as Button).pressed.connect(func() -> void:
+			remplir.call(par_chapitre[i]["titres"], _collection(records, str(par_chapitre[i]["id"]))))
 	v.add_child(grille)
-	if compact:
+	if compact and not multi:
 		v.add_child(Style.label("Un titre par partie terminée, selon votre façon de jouer.", 20, Style.ui(), Style.TEXTE_2))
-	infos = {"tuiles": tous.size(), "obtenus": n_obt, "non_obtenus": n_non}
 	m.poser(p)
 	await m.centrer(p)
 	m.apparaitre(p)
+
+
+## Collection d'un chapitre dans Records.lire() ({} sans données).
+static func _collection(records: Dictionary, id: String) -> Dictionary:
+	return ((records.get("chapitres", {}) as Dictionary).get(id, {}) as Dictionary).get("collection", {})
 
 
 func _tuile(t: Dictionary, ligne: Dictionary, ok: bool, larg: float, haut: float, compact: bool) -> Control:

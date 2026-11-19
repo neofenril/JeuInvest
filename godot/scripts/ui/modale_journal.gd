@@ -4,6 +4,7 @@ extends RefCounted
 ## ses choix (touches 1-3) et la confirmation de « Tout vendre ».
 
 var m: Modales
+var courbe_vue: CourbeVitrine = null   # contrôles : courbe de la vitrine (null sans courbe)
 
 
 func _init(modales: Modales) -> void:
@@ -15,6 +16,7 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 	m.compact = Ecran.compact()
 	var compact := m.compact
 	var lecture := lecture_choix != ""
+	courbe_vue = null
 	m.genre_courant = "info" if lecture else "journal"
 	m.assombrir(0.6)
 	var t := m.get_viewport_rect().size
@@ -64,6 +66,18 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 	var avec_jours: bool = c.has("jours") and not (c["jours"] as Array).is_empty()
 	if avec_jours:
 		v.add_child(tableau_jours(c, p.custom_minimum_size.x, compact))   # lot 06 (E5, A5) : le Lundi noir jour par jour
+	# Vitrine en étapes (lot 10b, I6) : courbe de fins de mois et mention fixe à la place du tableau des jours
+	if c.has("courbe") and not (c["courbe"] as Array).is_empty():
+		var cv := CourbeVitrine.new()
+		cv.name = "CourbeVitrine"
+		cv.regler(c["courbe"], compact)
+		v.add_child(cv)
+		courbe_vue = cv
+		if str(c.get("mention", "")) != "":
+			var lm := Style.label(str(c["mention"]), 22 if compact else 24, Style.ui_gras(), Style.TEXTE_PAPIER_2)
+			lm.name = "Mention"
+			lm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			v.add_child(lm)
 	v.add_child(_impact(c, p.custom_minimum_size.x))
 	if lecture:
 		var hl := HBoxContainer.new()
@@ -86,7 +100,7 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 			manchette.visible_ratio = 1.0
 			m.apparaitre(p)
 		return
-	if not (avec_jours and compact):   # téléphone : avec le tableau, le libellé cède sa place (les 3 boutons parlent d'eux-mêmes)
+	if not ((avec_jours or courbe_vue != null) and compact):   # téléphone : avec le tableau ou la courbe, le libellé cède sa place (les boutons parlent d'eux-mêmes)
 		v.add_child(Style.label("QUE FAITES-VOUS ?", 20, Style.capitales(), Style.ENCRE))
 	var zone_choix := HBoxContainer.new()
 	zone_choix.add_theme_constant_override("separation", 14)

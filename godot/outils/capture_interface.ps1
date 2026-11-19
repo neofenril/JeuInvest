@@ -198,6 +198,12 @@ foreach ($e in @("frise_10ans", "mon_argent_10ans", "carnet_13")) {
         $plan.Add(@($e, ("l10_" + $e + "_" + $t[0]), $t[1], $t[2]))
     }
 }
+# Lot 10b étape 2 : passage, vitrine, bilan à deux titres, départ, collection, PEA / SCPI / PEP (jeu d'essai tests/donnees/chapitres)
+foreach ($e in @("passage_1989", "vitrine_golfe", "fin_1993", "choix_depart", "collection_chapitres", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus")) {
+    foreach ($t in @(@("1080", "1920x1080", ""), @("tel", "1440x648", "1"), @("tel169", "1280x720", "169"))) {
+        $plan.Add(@($e, ("l10_" + $e + "_" + $t[0]), $t[1], $t[2]))
+    }
+}
 $echecs = 0
 $script:sorties_bloquees = 0
 $i = 0

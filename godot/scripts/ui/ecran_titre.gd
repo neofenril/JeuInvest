@@ -146,7 +146,10 @@ func maj(sauvee: Dictionary, en_cours: bool) -> void:
 
 
 ## Palmarès selon Records.lire() : absent sans collection ; phrase seule si un record existe ; TITRES « n / 9 » toujours.
-func maj_palmares(records: Dictionary, nb_titres: int) -> void:
+func maj_palmares(records: Dictionary, nb_titres: int, par_chapitre: Array = []) -> void:
+	if par_chapitre.size() > 1:
+		_palmares_chapitres(records, par_chapitre)
+		return
 	var coll: Dictionary = records.get("collection", {})
 	var rec: Dictionary = records.get("record", {})
 	rangee_palmares.visible = not coll.is_empty() or not rec.is_empty()
@@ -162,6 +165,37 @@ func maj_palmares(records: Dictionary, nb_titres: int) -> void:
 	else:
 		l_palmares.text = ""
 	bouton_titres.text = "TITRES  %d / %d" % [coll.size(), nb_titres]
+
+
+## Plusieurs chapitres ouverts (lot 10b, I7 ; docs/40 §3.2) : une ligne « Départ 1984 : meilleur résultat » par chapitre de départ qui a un
+## record, puis une ligne par record de partie (« 1984 › 1993 »), le tout sur la même plaque ; TITRES « obtenus / total » sur tous les chapitres.
+func _palmares_chapitres(records: Dictionary, par_chapitre: Array) -> void:
+	var chapitres: Dictionary = records.get("chapitres", {})
+	var lignes: Array = []
+	var obtenus := 0
+	var total := 0
+	for c: Dictionary in par_chapitre:
+		var id := str(c["id"])
+		var d: Dictionary = chapitres.get(id, {})
+		total += (c["titres"] as Array).size()
+		obtenus += (d.get("collection", {}) as Dictionary).size()
+		var rc: Dictionary = d.get("record_chapitre", {})
+		if not rc.is_empty():
+			var t := "Départ %s · meilleur résultat : %s face à Tata Livret" % [str(c["annees"]).left(4), ModaleReleveFin.pct_texte(float(rc.get("ecart_pct", 0.0)))]
+			if int(rc.get("rang", 0)) > 0:
+				t += " · %s de la rue" % BlocRue.rang_texte(int(rc["rang"]))
+			lignes.append(t + " · %s" % str(rc.get("titre_nom", "")))
+		var rp: Dictionary = d.get("records_partie", {})
+		var annees: Array = rp.keys()
+		annees.sort()
+		for fin in annees:
+			var r: Dictionary = rp[fin]
+			lignes.append("Départ %s, partie jusqu'en %s : %s face à Tata Livret%s" % [str(c["annees"]).left(4), str(fin), ModaleReleveFin.pct_texte(float(r.get("ecart_pct", 0.0))),
+				(" · %s de la rue" % BlocRue.rang_texte(int(r["rang"]))) if int(r.get("rang", 0)) > 0 else ""])
+	rangee_palmares.visible = obtenus > 0 or not lignes.is_empty()
+	l_palmares.get_parent().visible = not lignes.is_empty()
+	l_palmares.text = "\n".join(PackedStringArray(lignes))
+	bouton_titres.text = "TITRES  %d / %d" % [obtenus, total]
 
 
 func _unhandled_input(ev: InputEvent) -> void:

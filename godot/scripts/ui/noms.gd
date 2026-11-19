@@ -46,6 +46,42 @@ static func texte_mois_krach(majuscules := false) -> String:
 	return Dates.texte(Dates.lire(m), majuscules) if m != "" else ""
 
 
+## Préfixe du portrait du proche (conjoint) selon son genre dans foyer_visuel() : Sylvie (f, défaut) ou le conjoint homme.
+static func portrait_proche(e: EtatPartie) -> String:
+	if e == null:
+		return "portrait_sylvie_"
+	var p: Dictionary = e.foyer_visuel().get("proche", {})
+	return "portrait_proche_h_" if str(p.get("sexe", "f")) == "h" else "portrait_sylvie_"
+
+
+## Années d'une partie écrites en lettres (« cinq ans », « dix ans »), sinon en chiffres.
+static func duree_texte(nb_annees: int) -> String:
+	var mots := {1: "un an", 2: "deux ans", 3: "trois ans", 4: "quatre ans", 5: "cinq ans", 6: "six ans", 7: "sept ans", 8: "huit ans", 9: "neuf ans", 10: "dix ans"}
+	return str(mots.get(nb_annees, "%d ans" % nb_annees))
+
+
+## « 1984-1988 » : années de début et de fin d'un chapitre de l'index (id inconnu : id seul).
+static func annees_chapitre(id: String) -> String:
+	for c: Dictionary in Donnees.chapitres(true):
+		if str(c["id"]) == id:
+			return "%d-%d" % [Dates.annee(Dates.lire(str(c["debut"]))), Dates.annee(Dates.lire(str(c["fin"])))]
+	return id
+
+
+## Titres d'époque de chaque chapitre ouvert : [{id, annees, titres: [{id, nom, ordre}]}] (titres.json de chaque chapitre, sans changer
+## le chapitre actif) ; sert à la collection et à l'écran titre quand plusieurs chapitres sont ouverts.
+static func titres_par_chapitre() -> Array:
+	var out: Array = []
+	for c: Dictionary in Donnees.chapitres():
+		var id := str(c["id"])
+		var liste: Array = Donnees._charger_dans(id, "titres").get("titres", [])
+		var titres: Array = []
+		for i in liste.size():
+			titres.append({"id": str(liste[i]["id"]), "nom": str(liste[i]["nom"]), "ordre": i + 1})
+		out.append({"id": id, "annees": annees_chapitre(id), "titres": titres})
+	return out
+
+
 ## Année de départ du chapitre actif (1984 pour le chapitre 1984).
 static func annee_depart_chapitre() -> int:
 	var d := str(Donnees.infos_chapitre().get("config", {}).get("debut", ""))

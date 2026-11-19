@@ -84,7 +84,7 @@ func ouvrir(c: Dictionary, depart: Vector2) -> void:
 	var tete := HBoxContainer.new()
 	tete.name = "Entete"
 	tete.add_theme_constant_override("separation", 18 if compact else 24)
-	var portrait := CadresPixel.icone("portrait_sylvie_" + ModaleCarte.nom_humeur(ModaleCarte._humeur_actuelle()))
+	var portrait := CadresPixel.icone(Noms.portrait_proche(Partie.etat) + ModaleCarte.nom_humeur(ModaleCarte._humeur_actuelle()))
 	portrait.name = "Portrait"
 	_portrait = portrait
 	portrait.size_flags_vertical = Control.SIZE_SHRINK_BEGIN

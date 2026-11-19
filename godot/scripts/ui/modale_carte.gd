@@ -73,7 +73,7 @@ func ouvrir(c: Dictionary, depart: Vector2) -> void:
 	v.add_child(Style.label("MA MAISON · " + str(c.get("date", "")).to_upper(), 20, Style.capitales(), Style.TEXTE_PAPIER_2))
 	var corps := HBoxContainer.new()
 	corps.add_theme_constant_override("separation", 18 if compact else 24)
-	var portrait := CadresPixel.icone("portrait_sylvie_" + nom_humeur(_humeur_actuelle()))
+	var portrait := CadresPixel.icone(Noms.portrait_proche(Partie.etat) + nom_humeur(_humeur_actuelle()))
 	portrait.name = "Portrait"
 	portrait.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	corps.add_child(portrait)
