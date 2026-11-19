@@ -4,7 +4,7 @@ extends RefCounted
 ## Règles (décisions des cartes jouées, contrat de 03-foyer `cartes_jouees()`) :
 ## - tele : C02 « a » ou C03 « a » (lueur bleue de télévision le soir) ; antenne : C03 « a » ;
 ## - poussette / poussette_double (jumeaux) : C04 jouée, quel que soit le choix, jusqu'à 12/1986 ;
-## - tricycle / tricycles (jumeaux) : C04 jouée, à partir de 01/1988 (rien en 1987) ;
+## - tricycle / tricycles (jumeaux) : C04 jouée, de 01/1988 à 12/1988 (rien en 1987) ; ensuite l'âge des enfants le décide (foyer_visuel.gd) ;
 ## - chien (niche et chien) : C10 jouée, l'un ou l'autre choix ;
 ## - diplome : C07 « a », à partir de 01/1988 ;
 ## - escargot : l'historique contient une notification « escargots » (C06 prêtée, jamais rendue en entier).
@@ -21,6 +21,7 @@ static func calculer(actives: bool, jouees: Array, ab: int, jumeaux: bool, escar
 		return PackedStringArray()
 	var fin_poussette := Dates.lire("1986-12")
 	var debut_1988 := Dates.lire("1988-01")
+	var fin_1988 := Dates.lire("1988-12")
 	for c: Dictionary in jouees:
 		var id := str(c.get("id", ""))
 		var choix := str(c.get("choix", ""))
@@ -35,7 +36,7 @@ static func calculer(actives: bool, jouees: Array, ab: int, jumeaux: bool, escar
 			"C04":
 				if ab <= fin_poussette:
 					t["poussette_double" if jumeaux else "poussette"] = true
-				elif ab >= debut_1988:
+				elif ab >= debut_1988 and ab <= fin_1988:
 					t["tricycles" if jumeaux else "tricycle"] = true
 			"C10":
 				t["chien"] = true

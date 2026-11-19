@@ -227,6 +227,13 @@ if ($Serie) {
         @{ Nom = "${p}sylvie_humeurs_tel169"; Etape = "sylvie_humeurs"; Telephone169 = $true; Controle = $true },
         @{ Nom = "${p}traces_foyer"; Etape = "traces_foyer"; Controle = $true },
         @{ Nom = "${p}traces_foyer_tel"; Etape = "traces_foyer"; Telephone = $true; Controle = $true },
+        # Lot 10b-ville (V4) : foyer paramétrable, variantes datées 1989-1993, télé du salon
+        @{ Nom = "${p}foyer_christine"; Etape = "foyer_christine"; Controle = $true },
+        @{ Nom = "${p}foyer_christine_tel"; Etape = "foyer_christine"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}foyer_gerard_1993"; Etape = "foyer_gerard_1993"; Controle = $true },
+        @{ Nom = "${p}rue_1991"; Etape = "rue_1991"; Controle = $true },
+        @{ Nom = "${p}rue_1991_tel"; Etape = "rue_1991"; Telephone = $true; Controle = $true },
+        @{ Nom = "${p}tele_golfe"; Etape = "tele_golfe"; Controle = $true },
         @{ Nom = "${p}carte_sortie"; Etape = "carte_sortie"; Controle = $true }
     )
     foreach ($o in $liste) {

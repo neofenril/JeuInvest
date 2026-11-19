@@ -31,6 +31,10 @@ var ticker := "LA GAZETTE · TOUTE L'ACTUALITÉ DE LA BOURSE · ":
 	set(v):
 		ticker = v
 		_ticker_sale = true
+var annonce := "":                    # variante datée (« BONNE ANNEE 1990 · ») placée avant le bandeau
+	set(v):
+		annonce = v
+		_ticker_sale = true
 var ticker_rouge := false
 var flash_ticker := false
 var gresillement := 0.0
@@ -132,7 +136,7 @@ static func _ligne(img: Image, a: Vector2i, b: Vector2i, c: String) -> void:
 
 func _construire_ticker() -> void:
 	_ticker_sale = false
-	var t := MatieresPixel.normaliser(ticker)
+	var t := MatieresPixel.normaliser(annonce + ticker)
 	var img := MatieresPixel.vide(maxi(4, MatieresPixel.largeur_texte(t) + 4), 5)
 	MatieresPixel.texte(img, 0, 0, t, "ambre")
 	var rouge := MatieresPixel.vide(img.get_width(), 5)

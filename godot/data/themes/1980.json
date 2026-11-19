@@ -1,3 +1,14 @@
 {
-	"_note": "Thème « 1980 » = la rue actuelle : table vide, tout prend la valeur du code (non-régression au pixel près). Format des tables de thème (clés « batiments », « palette_ajouts », « mobilier »...) : docs/36 §10.6. Seule la clé « batiments » (remplacements de champs par x gauche de BATIMENTS) est lue pour l'instant."
+	"_note": "Thème « 1980 » = la rue actuelle : aucune clé « batiments » (non-régression au pixel près). Format des tables de thème : docs/36 §10.6. Clé « batiments » : remplacements de champs par x gauche de BATIMENTS. Clé « variantes_datees » (lot 10b-ville, docs/40 §1.3) : détails de la vie de la rue, lus par la date ; aucun avant 01/1989 ; effets : bonne_annee (journal lumineux), bicentenaire (colonne Morris tricolore), citadine_1990, panneaux_vote (référendum), citadine_1993.",
+	"variantes_datees": [
+		{"debut": "1989-01", "fin": "1989-01", "effet": "bonne_annee"},
+		{"debut": "1989-06", "fin": "1989-07", "effet": "bicentenaire"},
+		{"debut": "1990-01", "fin": "1990-01", "effet": "bonne_annee"},
+		{"debut": "1990-01", "fin": "", "effet": "citadine_1990"},
+		{"debut": "1991-01", "fin": "1991-01", "effet": "bonne_annee"},
+		{"debut": "1992-01", "fin": "1992-01", "effet": "bonne_annee"},
+		{"debut": "1992-09", "fin": "1992-09", "effet": "panneaux_vote"},
+		{"debut": "1993-01", "fin": "1993-01", "effet": "bonne_annee"},
+		{"debut": "1993-01", "fin": "", "effet": "citadine_1993"}
+	]
 }

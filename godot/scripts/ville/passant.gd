@@ -106,6 +106,15 @@ func _maj() -> void:
 		queue_redraw()
 
 
+## Change la figurine (foyer visible : le joueur vieillit, joueuse) ; les images de la nouvelle clé doivent exister.
+func regler_qui(q: String) -> void:
+	if q == qui:
+		return
+	qui = q
+	_nom_dessine = ""
+	_maj()
+
+
 ## Pose déterministe (captures).
 func poser_capture(x: float, s: int) -> void:
 	sens = s
