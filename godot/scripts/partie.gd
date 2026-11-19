@@ -288,6 +288,18 @@ func acheter(id: String, budget: float) -> Dictionary:
 	return _apres(etat.acheter(etat.joueur, id, budget))
 
 
+func ouvrir_pea() -> bool:
+	return etat.ouvrir_pea()
+
+
+func vendre_scpi(parts: int) -> bool:
+	return etat.vendre_scpi(parts)
+
+
+func annuler_vente_differee(index: int) -> bool:
+	return etat.annuler_vente_differee(index)
+
+
 func vendre(id: String, montant: float, tout := false) -> Dictionary:
 	return _apres(etat.vendre(etat.joueur, id, montant, tout))
 

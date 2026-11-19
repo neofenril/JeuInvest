@@ -87,14 +87,14 @@ func _ecrire_brut(chemin: String, t: String) -> void:
 
 func _tests_fichier() -> void:
 	var c := _chemin()
-	verifier("CA-T7 : fichier absent -> record et collection vides, sans erreur", Records.lire(c) == {"record": {}, "collection": {}})
+	verifier("CA-T7 : fichier absent -> record et collection vides, sans erreur", Records.lire(c) == {"chapitres": {}, "record": {}, "collection": {}})
 	var r := Records.enregistrer(_bilan("bon_pere", 8.2), "p1", c, "2026-11-14")
 	verifier("Première fin : écrit, nouveau record, nouveau titre, pas de record ancien, pas hors record",
 		r["ecrit"] and r["nouveau"] and r["nouveau_titre"] and r["ancien"].is_empty() and not r["hors_record"] and not r["deja_compte"])
 	var texte := _texte(c)
-	verifier("D7 : fichier texte [meta] version=1, [record], [collection], [parties], dernière ligne « ; fin »",
-		texte.begins_with("[meta]") and texte.contains("version=1") and texte.contains("[record]") and texte.contains("[collection]")
-		and texte.contains("[parties]") and texte.strip_edges().ends_with("; fin") and Records.VERSION == 1 and Records.CHEMIN == "user://records.sav")
+	verifier("D7 : fichier texte [meta] version=2 (lot 10a), [chapitre_1984], [collection_1984], [parties], dernière ligne « ; fin »",
+		texte.begins_with("[meta]") and texte.contains("version=2") and texte.contains("[chapitre_1984]") and texte.contains("[collection_1984]")
+		and texte.contains("[parties]") and texte.strip_edges().ends_with("; fin") and Records.VERSION == 2 and Records.CHEMIN == "user://records.sav")
 	var l := Records.lire(c)
 	var rec: Dictionary = l["record"]
 	verifier("lire : record complet (écart, rang, titre, prénom, patrimoine, date réelle AAAA-MM-JJ)",
@@ -110,17 +110,17 @@ func _tests_fichier() -> void:
 	verifier("Date réelle par défaut au format AAAA-MM-JJ", regex.search(d) != null, d)
 	# Fichier tronqué, vide, illisible, autre version : vide, aucune erreur
 	var complet := _texte(c)
-	var vide_attendu := {"record": {}, "collection": {}}
+	var vide_attendu := {"chapitres": {}, "record": {}, "collection": {}}
 	_ecrire_brut(cb, complet.substr(0, complet.length() >> 1))
 	var tronque := Records.lire(cb) == vide_attendu
-	_ecrire_brut(cb, complet.substr(0, complet.find("[collection]") + 8))
+	_ecrire_brut(cb, complet.substr(0, complet.find("[collection_1984]") + 8))
 	tronque = tronque and Records.lire(cb) == vide_attendu
 	_ecrire_brut(cb, "")
 	tronque = tronque and Records.lire(cb) == vide_attendu
 	verifier("CA-T7 : fichier tronqué (au milieu, au milieu d'une ligne) ou vide -> vide, sans erreur", tronque)
 	_ecrire_brut(cb, "n'importe quoi\n\u0001\u0002 [ ] = ;;")
 	verifier("CA-T7 : fichier illisible -> vide, sans erreur", Records.lire(cb) == vide_attendu)
-	_ecrire_brut(cb, complet.replace("version=1", "version=2"))
+	_ecrire_brut(cb, complet.replace("version=2", "version=3"))
 	verifier("CA-T7 : autre version -> vide, sans erreur", Records.lire(cb) == vide_attendu)
 	var avec_nouveau := Records.enregistrer(_bilan("cigale", 3.0), "y", cb)
 	verifier("Après un fichier invalide, un nouvel enregistrement repart de zéro (nouveau record)", avec_nouveau["nouveau"] and avec_nouveau["ancien"].is_empty()
@@ -172,7 +172,7 @@ func _tests_regles() -> void:
 		Records.enregistrer(_bilan("apprenti", 0.0), "id%d" % i, c, "2026-09-09")
 	var d := Records._charger(c)
 	verifier("[parties] : les 200 derniers identifiants seulement (205 parties jouées)", (d["ids"] as Array).size() == 200 and d["ids"][0] == "id5" and d["ids"][199] == "id204"
-		and int(d["collection"]["apprenti"]["nombre"]) == 205)
+		and int(d["chapitres"]["1984"]["collection"]["apprenti"]["nombre"]) == 205)
 	Records.effacer(c)
 
 

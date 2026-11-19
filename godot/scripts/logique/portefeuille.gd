@@ -18,6 +18,10 @@ var ombre_realise := 0.0       # jumeau sans frais : écart déjà réalisé lor
 # Versements automatiques mensuels (11 §8), hors PEL (dont le versement est dans pel.mensuel) :
 # pid -> { montant, depuis, refus (refus de suite), suspendu ("" | "refus" | "plafond") }, dans l'ordre de création.
 var versements: Dictionary = {}
+# Lot 10a (M5) : PEA (enveloppe), SCPI (parts) et ventes différées ; règles : Enveloppes (enveloppes.gd)
+var pea: Dictionary = {}               # {} ou { ouvert_m, verse, cc, lignes }
+var scpi: Dictionary = {}              # {} ou { parts, cout, depuis, dernier_loyer }
+var ventes_differees: Array = []       # [ { produit, parts, m_ordre, m_execution, estime } ]
 
 
 func qte(id: String) -> float:
@@ -48,7 +52,7 @@ func valeur_epargne() -> float:
 	return valeur_pel() + valeur_emprunts() + valeur_av()
 
 
-const CHAMPS := ["cc", "livret", "livret_int", "interets_total", "lignes", "frais", "impots", "agios", "pel", "emprunts", "av", "ombre_realise", "versements"]
+const CHAMPS := ["cc", "livret", "livret_int", "interets_total", "lignes", "frais", "impots", "agios", "pel", "emprunts", "av", "ombre_realise", "versements", "pea", "scpi", "ventes_differees"]
 
 
 ## Sauvegarde : copie profonde de tous les champs.

@@ -207,6 +207,7 @@
       "fisc": "16 % sur les gains"
     },
     "frais": "faibles",
+    "pea_eligible": false,
     "indice": "Un compte qui suit les taux",
     "definition": "Un fonds qui place l'argent à très court terme. Rendement proche des taux du marché monétaire.",
     "naissance": "1984-01",

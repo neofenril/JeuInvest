@@ -53,7 +53,7 @@ static func categorie(it: Dictionary) -> String:
 ## Rang de priorité (le plus petit passe d'abord). Un projet porte « echeance_projet » (échéance) ou non (choix).
 static func rang(e: EtatPartie, it: Dictionary) -> float:
 	match str(it.get("kind", "")):
-		"marche":
+		"marche", "passage":
 			return 0.0
 		"gazette":
 			return 1.0

@@ -27,6 +27,12 @@ static func _projets(e: EtatPartie) -> Dictionary:
 
 
 static func calculer(e: EtatPartie) -> Dictionary:
+	var b := _calculer(e)
+	_ajouts_chapitres(e, b)
+	return b
+
+
+static func _calculer(e: EtatPartie) -> Dictionary:
 	var a := e.ab_courant()
 	var nominal := {
 		"vous": e.patrimoine(e.joueur),
@@ -99,3 +105,31 @@ static func calculer(e: EtatPartie) -> Dictionary:
 		"chapitre_depart": str(e.config_depart.get("chapitre", Donnees.index().get("chapitre_defaut", ""))),
 		"annee_depart": Dates.annee(e.ab_de(e.m_depart)), "annee_fin": Dates.annee(e.ab_de(e.m_fin)),
 	}
+
+
+## Champs du lot 10a (M3/M4) ajoutés au bilan : un titre par chapitre traversé, record de chapitre (écart à la fin des 5 ans du
+## chapitre de départ) et record de partie (écart à la fin de la partie), hors_record.
+static func _ajouts_chapitres(e: EtatPartie, b: Dictionary) -> void:
+	var titres := []
+	for id: String in e.chapitres_traverses():
+		if e.chapitres_bilan.has(id):
+			var t: Dictionary = (e.chapitres_bilan[id]["titre"] as Dictionary).duplicate()
+			t["chapitre"] = id
+			titres.append(t)
+	var dernier: Dictionary = b["titre"]
+	if not dernier.is_empty():
+		var d2 := dernier.duplicate()
+		d2["chapitre"] = e.chapitre
+		titres.append(d2)
+	var rang := Quartier.rang_de(b["rue"]) if not (b["rue"] as Array).is_empty() else 0
+	var partie := {"ecart_pct": b["ecart_tata_pct"], "rang": rang, "annee_fin": b["annee_fin"]}
+	var depart: Dictionary = e.chapitres_bilan.get(e.chapitre_depart, {})
+	var chap := partie.duplicate()
+	if not depart.is_empty():
+		chap = {"ecart_pct": float(depart["ecart_pct"]), "rang": int(depart["rang"]), "annee_fin": int(depart["annee_fin"])}
+	b["titres"] = titres
+	b["record_chapitre"] = chap
+	b["record_partie"] = partie
+	b["hors_record"] = not bool(b["record_possible"])
+	b["version_contenu"] = int(Donnees.infos_chapitre(e.chapitre_depart).get("version_contenu", 1))
+
