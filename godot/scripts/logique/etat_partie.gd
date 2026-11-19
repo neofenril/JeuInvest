@@ -293,8 +293,18 @@ func cout_mensuel_enfant() -> float:
 	return salaire_base * float(vie.get("naissance", {}).get("cout_mensuel_par_enfant", 0.09))
 
 
+## Épargne possible du mois : salaire - dépenses + écart de revenu des cartes de carrière (lot 10c, D1 : il ne change pas le train de vie).
 func epargne_du_mois() -> float:
-	return salaire_base - float(depenses()["total"])
+	return salaire_base - float(depenses()["total"]) + Foyer.revenu_mois(self)
+
+
+## Métier du joueur (profil, puis cartes de carrière acceptées) et statut de carrière ("normal" | "prenant"), lot 10c.
+func metier() -> String:
+	return Foyer.metier(self)
+
+
+func statut_carriere() -> String:
+	return Foyer.statut_carriere(self)
 
 
 ## Part du salaire qu'il reste possible d'épargner (A21), avec nb enfants à l'année donnée.

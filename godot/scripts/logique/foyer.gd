@@ -23,6 +23,7 @@ extends RefCounted
 const EPS := 0.005
 const DECALAGE_GRAINE := 2000003
 const PICTOS := {1: "contente", 0: "neutre", -1: "fachee"}
+const ECART_CARRIERE := 4   # lot 10c : mois minimum entre deux moments de carrière
 const CHOIX_AUCUN := "aucun"   # lot 04 (D1) : sortie d'une carte dont aucun choix n'est payable
 
 
@@ -42,7 +43,8 @@ static func carte(id: String) -> Dictionary:
 static func etat_initial(e: EtatPartie, config: Dictionary) -> Dictionary:
 	var d := donnees()
 	var f := {"actif": bool(config.get("cartes", d.get("actif", false))), "humeur": int(d["humeur"]["depart"]),
-		"creneaux": {}, "c00": 0, "escargots": {}, "salaire": {}, "salaires": [], "jouees": [], "derniere_cause": ""}
+		"creneaux": {}, "c00": 0, "escargots": {}, "salaire": {}, "salaires": [], "jouees": [], "derniere_cause": "",
+		"revenus": [], "statut": "normal", "annees_tendues": 0, "metier": [], "derniere_cause_type": ""}
 	if f["actif"]:
 		f["creneaux"] = _tirer_creneaux(e)
 	return f
@@ -202,12 +204,13 @@ static func humeur_phrase(e: EtatPartie) -> String:
 
 
 ## Règle la valeur cachée (bornée) ; notification (bulle) si l'état visible change et que les cartes sont allumées.
-static func _regler_humeur(e: EtatPartie, valeur: int, cause: String, notifs: Array) -> void:
+static func _regler_humeur(e: EtatPartie, valeur: int, cause: String, notifs: Array, type_cause := "") -> void:
 	var p: Dictionary = donnees()["humeur"]
 	var avant := humeur_visible(e)
 	e.foyer["humeur"] = clampi(valeur, int(p["min"]), int(p["max"]))
 	if cause != "":
 		e.foyer["derniere_cause"] = cause
+		e.foyer["derniere_cause_type"] = type_cause   # lot 10c : « carriere » seulement pour les cartes de carrière (docs/45 §2 bis)
 	var apres := humeur_visible(e)
 	if apres == avant or not actif(e):
 		return
@@ -216,7 +219,8 @@ static func _regler_humeur(e: EtatPartie, valeur: int, cause: String, notifs: Ar
 	if apres == 1 and avant == 0:
 		titre = str(t["neutre_depuis_contente"])
 	notifs.append({"type": "humeur", "source": "maison", "cls": "neutre", "humeur": apres, "titre": titre,
-		"texte": str(e.foyer.get("derniere_cause", "")) if cause != "" else humeur_phrase(e) + ".", "bulle": true})
+		"texte": str(e.foyer.get("derniere_cause", "")) if cause != "" else humeur_phrase(e) + ".", "bulle": true,
+		"cause": type_cause if cause != "" else ""})
 
 
 ## Naissance : humeur + naissance (appelé par EtatPartie._declencher_vie).
@@ -261,6 +265,65 @@ static func ajouter_effet_salaire(e: EtatPartie, eff: Dictionary) -> void:
 	e.foyer["salaires"] = liste
 
 
+## Écart de revenu des cartes de carrière (lot 10c, D1), en euros par mois, signé, au mois m (défaut : le mois courant) : somme des
+## effets { pct, m_des, m_jusqua } actifs × salaire de base. Il va ENTIÈREMENT à l'épargne possible (le train de vie ne suit pas) :
+## epargne_du_mois() = salaire - dépenses + revenu_mois. Fonction pure du mois : aucun drapeau « appliqué », donc aucune dérive.
+static func revenu_mois(e: EtatPartie, m := -999) -> float:
+	var mm := e.m if m == -999 else m
+	var pct := 0.0
+	for x: Dictionary in e.foyer.get("revenus", []):
+		if mm >= int(x["m_des"]) and (int(x["m_jusqua"]) < 0 or mm <= int(x["m_jusqua"])):
+			pct += float(x["pct"])
+	return e.salaire_base * pct / 100.0
+
+
+## Ajoute un effet de revenu : { pct, des | des_rel (mois après la carte), jusqua | jusqua_rel (durée en mois depuis son début) }.
+static func ajouter_effet_revenu(e: EtatPartie, eff: Dictionary) -> void:
+	var m_des := _mois_de(e, str(eff["des"])) if eff.has("des") else e.m + int(eff.get("des_rel", 0))
+	var liste: Array = e.foyer.get("revenus", [])
+	if bool(eff.get("apres_precedent", false)) and not liste.is_empty() and int(liste[-1]["m_jusqua"]) >= 0:
+		m_des = maxi(m_des, int(liste[-1]["m_jusqua"]) + 1)   # le gain de K5 ne chevauche jamais le congé (K5 en 03/1991 : 10 mois courent jusqu'en 01/1992)
+	var m_jusqua := -1
+	if eff.has("jusqua"):
+		m_jusqua = _mois_de(e, str(eff["jusqua"]))
+	elif eff.has("jusqua_rel"):
+		m_jusqua = m_des + int(eff["jusqua_rel"]) - 1
+	liste.append({"pct": float(eff["pct"]), "m_des": m_des, "m_jusqua": m_jusqua})
+	e.foyer["revenus"] = liste
+
+
+## Revenu mensuel d'un choix de carte, tel qu'il jouera dès le mois suivant (affichage « avant -> après »).
+static func revenu_choix(e: EtatPartie, c: Dictionary, k: String) -> float:
+	var pct := 0.0
+	var m1 := e.m + 1
+	for eff: Dictionary in c[k].get("revenu", []):
+		var d := _mois_de(e, str(eff["des"])) if eff.has("des") else e.m + int(eff.get("des_rel", 0))
+		var j := -1
+		if eff.has("jusqua"):
+			j = _mois_de(e, str(eff["jusqua"]))
+		elif eff.has("jusqua_rel"):
+			j = d + int(eff["jusqua_rel"]) - 1
+		if m1 >= d and (j < 0 or m1 <= j):
+			pct += float(eff["pct"])
+	return e.salaire_base * pct / 100.0
+
+
+## "normal" | "prenant" (K4 a ; fin à la sortie de K5 a).
+static func statut_carriere(e: EtatPartie) -> String:
+	return str(e.foyer.get("statut", "normal"))
+
+
+## Métier courant : celui de la dernière carte de carrière acceptée, sinon celui du profil (forme selon le sexe du joueur).
+static func metier(e: EtatPartie) -> String:
+	var paire: Array = e.foyer.get("metier", [])
+	if paire.is_empty():
+		paire = e.sal["profils"].get(e.profil, {}).get("metier", [])
+	if paire.is_empty():
+		return ""
+	var f: bool = str(Gabarits.contexte(e)["joueur"]["sexe"]) == "f"
+	return str(paire[mini(1 if f else 0, paire.size() - 1)])
+
+
 ## Usure de l'humeur chaque 1er janvier, issue des escargots. Appelé à l'entrée dans le mois (hors premier mois).
 ## Usure (D15) : erosion_positive pas vers 0 si l'humeur est positive, erosion_negative (0 : aucun) si elle est
 ## négative ; une humeur négative ne remonte que par un choix, la naissance ou la réconciliation (C00).
@@ -269,9 +332,21 @@ static func debut_mois(e: EtatPartie, notifs: Array) -> void:
 	if Dates.mois(e.ab_courant()) == 1:
 		var h := int(e.foyer.get("humeur", 0))
 		var p: Dictionary = donnees()["humeur"]
-		var pas := int(p["erosion_positive"]) if h > 0 else int(p["erosion_negative"])
-		if h != 0 and pas > 0:
-			_regler_humeur(e, h - signi(h) * mini(pas, absi(h)), "", notifs)
+		var prenant := statut_carriere(e) == "prenant"
+		# Compteur d'années tendues (lot 10c, docs/45 §2 bis) : proche fâché au 31/12 ET statut prenant ; une année calme en efface une.
+		# Sauvegardé, SANS effet au lot 10 (le divorce viendra au lot 12).
+		var tendues := int(e.foyer.get("annees_tendues", 0))
+		if prenant and humeur_visible(e) == 2:
+			tendues += 1
+		elif tendues > 0:
+			tendues -= 1
+		e.foyer["annees_tendues"] = tendues
+		if prenant:   # statut « prenant » : -1 chaque janvier quelle que soit l'humeur (docs/42 §3.3), à la place de l'usure normale
+			_regler_humeur(e, h - 1, "", notifs)
+		else:
+			var pas := int(p["erosion_positive"]) if h > 0 else int(p["erosion_negative"])
+			if h != 0 and pas > 0:
+				_regler_humeur(e, h - signi(h) * mini(pas, absi(h)), "", notifs)
 	var esc: Dictionary = e.foyer.get("escargots", {})
 	if not esc.is_empty() and not bool(esc.get("fait", false)) and e.m >= int(esc["m_issue"]):
 		var d: Dictionary = donnees()["escargots"]
@@ -344,7 +419,9 @@ static func preparer(e: EtatPartie) -> void:
 				continue
 			if e.m < _mois_de(e, cr["fenetre"][0]) or e.m < _depart(e, cr):
 				continue
-			it = {"kind": "carte", "id": "", "creneau": sid, "m": e.m, "prio": 6, "source": "maison", "fin_fenetre": fin, "fixe": bool(cr.get("fixe", false))}
+			if bool(cr.get("carriere", false)) and _carriere_trop_proche(e):
+				continue   # lot 10c (D5) : au moins 4 mois entre deux moments de carrière (la carte glisse dans sa fenêtre)
+			it = {"kind": "carte", "id": "", "creneau": sid, "m": e.m, "prio": 6, "source": "maison", "fin_fenetre": fin, "fixe": bool(cr.get("fixe", false)), "carriere": bool(cr.get("carriere", false))}
 			e.file.append(it)
 			s["etat"] = "en_file"
 		elif it.is_empty():
@@ -361,6 +438,14 @@ static func preparer(e: EtatPartie) -> void:
 			s["abandon"] = "non_payable"
 			continue
 		it["id"] = id
+
+
+## Un moment de carrière a-t-il été joué il y a moins de 4 mois ? (docs/47 §6 : plafond de 3 par chapitre, 4 mois d'écart)
+static func _carriere_trop_proche(e: EtatPartie) -> bool:
+	for j: Dictionary in e.foyer.get("jouees", []):
+		if bool(j.get("carriere", false)) and e.m - int(j["m"]) < ECART_CARRIERE:
+			return true
+	return false
 
 
 ## Carte réelle du créneau ce mois-ci ("" : aucune jouable).
@@ -457,7 +542,14 @@ static func _remplir(e: EtatPartie, t: String, c: Dictionary) -> String:
 		"prenoms": Banquier.prenoms_enfants(e)}
 	var propres: Dictionary = c.get("gabarits", {})
 	for k in propres:
-		vals[k] = str(propres[k])
+		var v: Variant = propres[k]
+		# valeur par profil (lot 10c) : { "technicien": "…", "christine": "…", "defaut": "…" }, sans genre en dur (jetons {e})
+		vals[k] = str((v as Dictionary).get(e.profil, (v as Dictionary).get("defaut", ""))) if v is Dictionary else str(v)
+	for eff: Dictionary in c.get("a", {}).get("revenu", []):   # {pct_a} : 1er effet du choix a (« 15 % ») ; {pct_conge} : 100 + pct (« 90 % »)
+		var ap := absf(float(eff["pct"]))
+		vals["pct_a"] = (str(int(ap)) if is_equal_approx(ap, floorf(ap)) else Format.nombre(ap, 1)) + Format.ESPACE + "%"
+		vals["pct_conge"] = str(int(100.0 + float(eff["pct"]))) + Format.ESPACE + "%"
+		break
 	return Format.gabarit(t, vals)
 
 
@@ -482,11 +574,22 @@ static func contenu(e: EtatPartie) -> Dictionary:
 		if desactive:
 			sous = Format.gabarit(str(donnees()["manque"]), {"x": Format.entier(manque, a)})
 		var h: Variant = c[k]["humeur"]
-		ch.append({"id": k, "titre": str(c[k]["libelle"]), "montant": mt, "humeur": h if h is String else int(h),
-			"picto": _picto(h), "desactive": desactive, "manque": manque, "sous": sous})
-	return {"kind": "carte", "source": str(it.get("source", "maison")), "date": Dates.texte(a, true), "ab": a, "id": id,
+		var entree := {"id": k, "titre": str(c[k]["libelle"]), "montant": mt, "humeur": h if h is String else int(h),
+			"picto": _picto(h), "desactive": desactive, "manque": manque, "sous": sous}
+		if bool(c.get("carriere", false)):   # lot 10c : montant mensuel signé et épargne possible avant -> après
+			var rv := revenu_choix(e, c, k)
+			var avant := e.epargne_du_mois()
+			entree["revenu_mois"] = rv
+			entree["epargne_avant"] = avant
+			entree["epargne_apres"] = avant + rv
+			entree["avertissement"] = _remplir(e, str(c[k].get("avertissement", "")), c)
+		ch.append(entree)
+	var sortie := {"kind": "carte", "source": str(it.get("source", "maison")), "date": Dates.texte(a, true), "ab": a, "id": id,
 		"creneau": str(it.get("creneau", "")), "titre": str(c["titre"]), "texte": texte_carte(e, c), "type": str(c["type"]),
 		"disponible": dispo, "choix": ch}
+	if bool(c.get("carriere", false)):
+		sortie["carriere"] = true   # lot 10c : champ ajouté seulement pour une carte de carrière (le contrat des autres cartes ne change pas)
+	return sortie
 
 
 ## « aucun » (lot 04, D1) n'est accepté que si aucun des deux choix n'est payable.
@@ -569,6 +672,12 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 		var effets: Variant = ch["salaire"]
 		for eff: Dictionary in (effets if effets is Array else [effets]):
 			ajouter_effet_salaire(e, eff)
+	for eff: Dictionary in ch.get("revenu", []):
+		ajouter_effet_revenu(e, eff)
+	if ch.has("statut"):
+		e.foyer["statut"] = str(ch["statut"])
+	if ch.has("metier") and (ch["metier"] as Dictionary).has(e.profil):
+		e.foyer["metier"] = (ch["metier"][e.profil] as Array).duplicate()
 	var esc: Dictionary = donnees()["escargots"]
 	if id == str(esc["carte"]) and choix_id == str(esc["choix"]):
 		e.foyer["escargots"] = {"m_pret": e.m, "m_issue": e.m + int(esc["delai"]), "prete": -mt, "rendu": Produits.f(float(esc["rendu_F"])), "fait": false}
@@ -578,10 +687,11 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 	var avant := humeur_visible(e)
 	var h: Variant = ch["humeur"]
 	var cause := str(ch.get("replique", ch["libelle"]))
+	var type_cause := "carriere" if bool(c.get("carriere", false)) else ""
 	if h is String:
-		_regler_humeur(e, 0, cause, notifs)
+		_regler_humeur(e, 0, cause, notifs, type_cause)
 	elif int(h) != 0:
-		_regler_humeur(e, int(e.foyer.get("humeur", 0)) + int(h), cause, notifs)
+		_regler_humeur(e, int(e.foyer.get("humeur", 0)) + int(h), cause, notifs, type_cause)
 	var cons := consequence(e, c, choix_id)
 	var s: Dictionary = e.foyer["creneaux"].get(str(it.get("creneau", "")), {})
 	if not s.is_empty():
@@ -589,7 +699,8 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 		s["jouee"] = id
 		s["m"] = e.m
 	(e.foyer["jouees"] as Array).append({"id": id, "creneau": str(it.get("creneau", "")), "titre": str(c["titre"]), "choix": choix_id,
-		"libelle": str(ch["libelle"]), "montant": mt, "humeur_effet": h if h is String else int(h), "picto": _picto(h), "m": e.m, "ab": a})
+		"libelle": str(ch["libelle"]), "montant": mt, "humeur_effet": h if h is String else int(h), "picto": _picto(h), "m": e.m, "ab": a,
+		"carriere": bool(c.get("carriere", false)) or bool(c.get("moment_carriere", false)), "cause": type_cause})
 	e._enregistrer_hist()
 	vu["consequence"] = cons
 	vu["montant_choisi"] = mt
