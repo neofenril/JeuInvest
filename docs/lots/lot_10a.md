@@ -178,6 +178,23 @@ Définitions (docs/40 §3.1, docs/39 §11.2) : **record de chapitre** = écart f
 - 10a-contenu : recette courte (tests + mesures CA-N) ; les captures du chapitre 1989 sont faites à la recette finale de 10b (fusion complète).
 - Valeurs C à confirmer **avant l'export 0.7** (non bloquantes pour le développement) : A2 (boursier), A4 (banquier), dividendes 1989-1993 et dates BNP (docs/37 §9) ; toute correction = commit de données + relance de `test_chapitre_1989`, jamais de re-gel de 1984.
 
+## 8 bis. Suivi (19/11) : 10a-moteur partiel (a8bbec2, 9d51d5c)
+
+Fait : M2 (cours 1978-1988 identiques au bit), `produits.json` (15 produits), bascule et modale `passage`, Bilan (`titres`, records), records v2 + migration, PEA / SCPI / PEP, effets de salaire, mariage, jumeaux 1/6, `foyer_visuel()`, `config_chapitre(id, graine, fin)`, `HISTORIQUE_MAX` 1 200, `version_contenu`, `Gabarits`. Écarts **acceptés** : `Records.lire()` garde `record` / `collection` en compatibilité ; modales `passage` et mariage seulement si le chapitre porte leurs blocs ; valeurs de tests 181→193, 180→192, 600→1 200 et 2 dates de `test_logique` (1990, 1992) : conséquences voulues de M2 / M7 (ancrages ajoutés après 1988).
+
+**Reste à faire AVANT la recette et la fusion de 10a-moteur** (indispensable : 10a-contenu écrit ses données dans ces formats, 10b-interface étape 2 lit ces contrats) :
+1. **Catalogue par id de produit (C2-C4)**, sans toucher l'interface : chaque présentation garde un champ `id` de **présentation** (D01…D08 pour 1984, B1… pour 1989) que l'interface et `test_interface` continuent de lire, et porte `produit` ; l'**identité** (`produits_vus`, R-UNE-FOIS, rattrapage, sauvegarde) passe par l'id de produit ; `presentations: [{id, produit, quand, echeance, …}]` avec `quand` relatif au début du chapitre (1984 : mêmes nombres) ; R-RATTRAPAGE ; `StrategieTest.ouvrir` accepte les id de produit **et** les D0x (table de correspondance) ; migration des sauvegardes D0x → `produits_vus`. Aucun champ lu par l'UI ne change : le risque D0x est ainsi nul côté interface.
+2. **Ids de projets préfixés par chapitre** et **budgets de cadence par chapitre** (sinon P1 / P2 de 1989 écrasent l'état de 1984).
+3. **Vitrine générique** (`vitrine.json` du chapitre, étape sans pause `n["vitrine_etape"]`, modale `marche` avec `courbe` et `mention`) : contrat de 10b-interface étape 2 ; 1984 lu comme vitrine sans changement de résultat.
+4. **Neutralisation des ≈ 15 lignes de code** à nom en dur (`banquier.gd` : « tante Odette », `notes_1984`, `versements.gd` : « M. Lefranc »…) : nécessaire pour la partie de Christine. Les ≈ 50 lignes de **données** de 1984 peuvent glisser (ci-dessous).
+5. **Jetons de `Gabarits`** (décision) : sans suffixe = **joueur** (`{prenom}`, `{e}`, `{il}`, `{le}`, `{civilite}`) ; suffixe `_p` = **proche** (`{e_p}`, `{il_p}`, `{le_p}`) ; noms : `{proche}`, `{de_proche}`, `{conjoint}`, `{de_conjoint}`, `{prenoms}`. **Refusé** : `{elle}` = proche (ambigu quand le proche est un homme). Mettre à jour docs/35 §1.4 dans le compte rendu (son `{e}` visait le proche : devient `{e_p}`).
+6. Jeu d'essai mis au **nouveau format** des présentations (sa réduction au minimum peut glisser).
+7. `tests.ps1 -Recette -Delai 700` vert ; `test_reference_1984` inchangé ; compte rendu avec la liste des valeurs de tests modifiées.
+
+**Peut glisser** :
+- vers **10a-contenu** : rien de ce qui précède (10a-contenu reste du contenu) ;
+- vers le **lot 11** (qui rouvre de toute façon les données de 1984 pour le re-gel) : neutralisation des ≈ 50 lignes de **données** de 1984-1988 (CA-M10), réduction du jeu d'essai (M8), option `-Chapitre` de `tests.ps1`. Conséquence : le CA-I10 de `lot_10b.md` (joueuse d'essai) ne porte que sur les écrans de **1989-1993** au lot 10 ; le choix « joueuse » en 1984 attend le lot 12, après le lot 11.
+
 ## 9. Conflits avec la suite
 
 - `lot_10b.md` : aucune intersection (10b ne touche ni `data/` ni `scripts/logique/`) ; 10b-I étape 2 démarre sur `main` après 10a-moteur.
