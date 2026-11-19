@@ -80,7 +80,7 @@ Le format de `foyer_visuel()` vient de `lot_10a.md` §4 ; 10b-ville le teste ave
 - **V4** Scénarios de capture `ville` : `foyer_christine`, `foyer_gerard_1993`, `rue_1991`, `tele_golfe` ; `test_rue` : lignes `RUE foyer=… sprites=… hors_palette=0`, `RUE theme=1980 avant_1989 identique_main=oui`.
 
 ### 4.2 10b-interface, étape 1 (indépendante de 10a)
-- **I1** Frise sur toute la partie (docs/40 §1.1 : rail continu, coupures de chapitre, drapeau à la dernière année implémentée) à partir de `m_depart`, `m_fin`, `Donnees.chapitres()` ; PC et téléphones.
+- **I1** (corrige aussi M2 de `lot_09i_recette.md` : `m_fin` de la frise à 0 avant le premier `Hud.maj`) Frise sur toute la partie (docs/40 §1.1 : rail continu, coupures de chapitre, drapeau à la dernière année implémentée) à partir de `m_depart`, `m_fin`, `Donnees.chapitres()` ; PC et téléphones.
 - **I2** Courbe de « Mon argent » sur toute la durée (vous / Tata), avec la coupure de chapitre.
 - **I3** Carnet de la banque au-delà de 9 produits (D4), sans changer l'aspect à 9 produits ou moins (1984-1988 identique).
 - **I4** Noms et textes encore en dur relevés par 09-I (inventaire H17) : lus dans `infos_chapitre()` / `foyer_visuel()` ou dans les données, à textes identiques pour 1984-1988.
