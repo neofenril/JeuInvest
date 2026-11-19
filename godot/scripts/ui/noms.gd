@@ -54,6 +54,14 @@ static func portrait_proche(e: EtatPartie) -> String:
 	return "portrait_proche_h_" if str(p.get("sexe", "f")) == "h" else "portrait_sylvie_"
 
 
+## Préfixe du portrait de la joueuse (« portrait_joueuse_ » + contente | neutre | fachee) ; "" pour un joueur : aucun portrait du joueur
+## n'existe pour Gérard (les écrans de 1984-1988 restent identiques).
+static func portrait_joueuse(e: EtatPartie) -> String:
+	if e == null:
+		return ""
+	return "portrait_joueuse_" if str(e.foyer_visuel().get("joueur", {}).get("sexe", "h")) == "f" else ""
+
+
 ## Années d'une partie écrites en lettres (« cinq ans », « dix ans »), sinon en chiffres.
 static func duree_texte(nb_annees: int) -> String:
 	var mots := {1: "un an", 2: "deux ans", 3: "trois ans", 4: "quatre ans", 5: "cinq ans", 6: "six ans", 7: "sept ans", 8: "huit ans", 9: "neuf ans", 10: "dix ans"}

@@ -14,7 +14,7 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
 	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue", "fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre", "titre_record", "titre_sans_records", "titres_collection", "intro",
 	"frise_10ans", "mon_argent_10ans", "carnet_13",
-	"passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres"]
+	"portraits_foyer", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres"]
 const RACINE_ESSAI := "res://tests/donnees/chapitres"   # jeu d'essai à deux chapitres ouverts (en attendant les données de 1989)
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
@@ -41,6 +41,19 @@ func jouer(etape: String) -> void:
 			await _dix_ans(etape, jeu)
 		"carnet_13":
 			await _carnet_13(jeu)
+		"portraits_foyer":
+			sc.partir_de_la_rue(etape)
+			var planche := PanelContainer.new()
+			planche.add_theme_stylebox_override("panel", Style.panneau(18))
+			var rangee := HBoxContainer.new()
+			rangee.add_theme_constant_override("separation", 18)
+			planche.add_child(rangee)
+			for pre: String in ["portrait_sylvie_", "portrait_proche_h_", "portrait_joueuse_"]:
+				for h: String in ["contente", "neutre", "fachee"]:
+					rangee.add_child(CadresPixel.icone(pre + h))
+			jeu.modales.add_child(planche)
+			planche.position = Vector2(60, 200)
+			await sc.delai(0.8)
 		"passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres":
 			await _chapitres(etape, jeu)
 		"etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette":

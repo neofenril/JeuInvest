@@ -31,6 +31,7 @@ static func textes(e: EtatPartie) -> Dictionary:
 
 func ouvrir(e: EtatPartie) -> void:
 	var d := textes(e)
+	infos = {}
 	m.compact = Ecran.compact()
 	var compact := m.compact
 	m.genre_courant = "intro"
@@ -54,6 +55,14 @@ func ouvrir(e: EtatPartie) -> void:
 	var titre := Style.label(str(d["titre"]), 36 if compact else 44, Style.neon(), Style.ACCENT)
 	titre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(titre)
+	# « Qui vous êtes » : le portrait de la joueuse (3 humeurs dessinées ; ici neutre) ; aucun pour un joueur (1984-1988 inchangé)
+	var pj := Noms.portrait_joueuse(e)
+	if pj != "":
+		var portrait := CadresPixel.icone(pj + "neutre", {}, 2 if compact else 3)
+		portrait.name = "PortraitJoueuse"
+		portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		v.add_child(portrait)
+		infos["portrait"] = true
 	if str(d["sous_titre"]) != "":
 		var st := Style.label(str(d["sous_titre"]), 26, Style.ui(), Style.TEXTE_2)
 		st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -81,7 +90,7 @@ func ouvrir(e: EtatPartie) -> void:
 	go.name = "Commencer"
 	go.pressed.connect(m.fermer.bind("commencer"))
 	v.add_child(go)
-	infos = {"blocs": n}
+	infos["blocs"] = n
 	m.poser(p)
 	await m.centrer(p)
 	go.grab_focus.call_deferred()
