@@ -74,7 +74,7 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false, bandeau := "") -> 
 	vt.add_theme_constant_override("separation", 0)
 	vt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	vt.add_child(Style.label(str(m.donnees_demo.get("banquier", {}).get("nom", "M. LEFRANC")).to_upper() + " · votre banquier", 28, Style.capitales(), Style.ENCRE))
+	vt.add_child(Style.label(str(m.donnees_demo.get("banquier", {}).get("nom", Noms.banquier_brut())).to_upper() + " · votre banquier", 28, Style.capitales(), Style.ENCRE))
 	var sous := str(c.get("date", ""))
 	if lecture:
 		sous += " · relecture"

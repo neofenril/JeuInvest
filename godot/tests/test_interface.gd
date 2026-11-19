@@ -39,6 +39,7 @@ func _ready() -> void:
 	var empreinte_avant := FileAccess.get_sha256(Sauvegarde.CHEMIN)
 	await _test_scene_principale(empreinte_avant)
 	await _test_courrier()
+	await _test_dix_ans()
 	await _test_demo_complete(true)
 	await _test_demo_complete(false)
 	await _test_demo_complete(true, true)    # lot 04 : toute la démo avec les cartes du foyer allumées
@@ -254,6 +255,78 @@ func _vider_modale(e: EtatPartie, md: Modales, scene: Node) -> void:
 	while (bool(scene.get("sequences").get("occupe")) or md.ouverte()) and Time.get_ticks_msec() - t0 < 8000:
 		await get_tree().process_frame
 	Partie.changer_vitesse(0)
+
+
+# ---------------------------------------------------------------------
+# a ter) Lot 10b, étape 1 : frise et courbe sur 10 ans, carnet au-delà de 9 produits, noms lus dans les données
+# ---------------------------------------------------------------------
+
+func _test_dix_ans() -> void:
+	var neuve := Frise.new()
+	_verifier("Frise neuve : m_fin n'est plus à 0 avant le premier Hud.maj (M2 de 09-I)", neuve.m_fin < neuve.m_debut)
+	neuve.free()
+	_verifier("Années écrites (docs/40 §1.1.3) : toutes à 70 px par an et plus, les paires sous 70 px, 1 sur 5 sous 35 px ; débuts de chapitre toujours",
+		Frise.annee_ecrite(1985, 185.0, false) and not Frise.annee_ecrite(1985, 60.0, false) and Frise.annee_ecrite(1986, 60.0, false)
+		and not Frise.annee_ecrite(1986, 30.0, false) and Frise.annee_ecrite(1990, 30.0, false) and Frise.annee_ecrite(1989, 30.0, true))
+	_verifier("Noms : banquier lu dans chapitre.json (« M. Lefranc », « M. LEFRANC »), krach 1987-10, chapitre de départ 1984",
+		Noms.banquier() == "M. Lefranc" and Noms.banquier_brut() == "M. LEFRANC" and Noms.annee_krach() == 1987 and Noms.texte_mois_krach() == "octobre 1987" and Noms.annee_depart_chapitre() == 1984,
+		"%s %s %d" % [Noms.banquier(), Noms.texte_mois_krach(), Noms.annee_depart_chapitre()])
+	var scene: Node = load("res://scenes/principal.tscn").instantiate()
+	add_child(scene)
+	await _images(5)
+	scene.call("nouvelle_partie", Donnees.config_demo(GRAINE))
+	await _images(3)
+	var h: Hud = scene.get("hud")
+	var md: Modales = scene.get("modales")
+	var e := Partie.etat
+	e.resolution_auto()
+	scene.call("demarrer_direct", 0)
+	await _images(3)
+	h.maj(e, false)
+	_verifier("Frise : m_debut / m_fin posés par Hud.maj depuis la partie, aucune coupure pour un seul chapitre",
+		h.frise.m_debut == e.m_depart and h.frise.m_fin == e.m_fin and h.frise.m_fin - h.frise.m_debut + 1 == 60 and h.frise.coupures.is_empty() and h.courbe.coupures.is_empty())
+	# Carnet à 9 produits : grille 3 × 3 complète (silhouettes comprises), inchangée
+	scene.call("ouvrir_banque", "", -2.0)
+	await _images(3)
+	var g9 := md.courant.find_child("GrilleCarnet", true, false) as GridContainer if is_instance_valid(md.courant) else null
+	_verifier("Carnet à 9 produits : grille 3 colonnes, 9 cartes (silhouettes comprises), pas de défilement",
+		g9 != null and g9.columns == 3 and g9.get_child_count() == 9 and md.courant.find_child("Defilant", true, false) == null, "" if g9 == null else "%d colonnes, %d cartes" % [g9.columns, g9.get_child_count()])
+	md.banque.fermer_demande.emit()
+	await get_tree().create_timer(0.5).timeout
+	# Carnet à 13 produits (4 copies fabriquées en mémoire, retirées ensuite) : produits vus seulement, 4 colonnes au PC
+	var d := Banquier.donnees()
+	var ordre_avant: Array = (d["ordre_carnet"] as Array).duplicate()
+	for i in 4:
+		var pid := "fab%d" % i
+		var p: Dictionary = (d["produits"]["elf"] as Dictionary).duplicate(true)
+		p["court"] = "FAB %d" % (i + 1)
+		p["presentation"] = pid
+		d["produits"][pid] = p
+		d["ordre_carnet"].append(pid)
+		e.banque["presentes"][pid] = e.m
+	var vus := 0
+	for pid in d["ordre_carnet"]:
+		if Banquier.presente(e, pid):
+			vus += 1
+	scene.call("ouvrir_banque", "", -2.0)
+	await _images(3)
+	var g13 := md.courant.find_child("GrilleCarnet", true, false) as GridContainer if is_instance_valid(md.courant) else null
+	var attendu_col := 3 if Ecran.compact() else 4
+	_verifier("Carnet à 13 produits : produits vus seulement (%d), %d colonnes, défilement seulement au téléphone" % [vus, attendu_col],
+		g13 != null and g13.columns == attendu_col and g13.get_child_count() == vus and (md.courant.find_child("Defilant", true, false) != null) == Ecran.compact(),
+		"" if g13 == null else "%d colonnes, %d cartes" % [g13.columns, g13.get_child_count()])
+	md.banque.fermer_demande.emit()
+	await get_tree().create_timer(0.5).timeout
+	for i in 4:
+		d["produits"].erase("fab%d" % i)
+		e.banque["presentes"].erase("fab%d" % i)
+	d["ordre_carnet"] = ordre_avant
+	Partie.sauvegarde_auto = false
+	scene.queue_free()
+	await _images(2)
+	Juice.camera = null
+	Juice.hud = null
+	Juice.calque_effets = null
 
 
 func _images(n: int) -> void:

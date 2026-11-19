@@ -91,7 +91,9 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false) -> void:
 	for b: Dictionary in barres:
 		maxi = maxf(maxi, float(b.get("valeur", 0.0)))
 	var tete := HBoxContainer.new()
-	var lt := Style.label("VOS PLACEMENTS EN BOURSE D'OCTOBRE 1987, UN AN APRÈS", 20, Style.capitales(), Style.TEXTE_PAPIER_2)
+	var mois_k := Noms.texte_mois_krach(true)
+	var de_mois := ("D'" if mois_k.left(1) in ["A", "E", "I", "O", "U"] else "DE ") + mois_k
+	var lt := Style.label("VOS PLACEMENTS EN BOURSE %s, UN AN APRÈS" % de_mois, 20, Style.capitales(), Style.TEXTE_PAPIER_2)
 	lt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lt.clip_text = true
 	lt.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

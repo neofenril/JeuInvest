@@ -1545,6 +1545,16 @@ func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 	frise.m_debut = e.m_depart
 	frise.m_fin = e.m_fin
 	frise.ab_debut = e.mk.ab_debut
+	# Coupures de chapitre (docs/40 §1.1) : début de chaque chapitre ouvert sauf le premier, en mois de la frise et de la courbe
+	var cp_frise := []
+	var cp_courbe := []
+	var chs := Donnees.chapitres()
+	for k in range(1, chs.size()):
+		var ab_c := Dates.lire(str(chs[k]["debut"]))
+		cp_frise.append(ab_c - e.mk.ab_debut)
+		cp_courbe.append(ab_c - e.ab_de(e.m_depart))
+	frise.coupures = cp_frise
+	courbe.coupures = cp_courbe
 	var mq := []
 	for ev in e.per.get("evenements", []):
 		var mm := Dates.lire(ev["d"]) - e.mk.ab_debut
@@ -1684,7 +1694,7 @@ func notifier(n: Dictionary, a: int, depart := Vector2(-1, -1)) -> void:
 	var persistant: bool = n.get("persistant", false)
 	if persistant:
 		# m1 : l'indication passe à la ligne et tient dans le cadre de la notification
-		var ind := Style.label("Message de M. Lefranc · touchez pour le fermer (rangé dans l'historique)" if source != "rue" else "Touchez pour fermer (rangé dans l'historique)", 20, Style.ui(), Style.SOURCES["rue"] if source == "rue" else Style.SOURCES["banque"])
+		var ind := Style.label("Message de " + Noms.banquier() + " · touchez pour le fermer (rangé dans l'historique)" if source != "rue" else "Touchez pour fermer (rangé dans l'historique)", 20, Style.ui(), Style.SOURCES["rue"] if source == "rue" else Style.SOURCES["banque"])
 		ind.name = "IndicationPersistante"
 		ind.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		ind.custom_minimum_size = Vector2(320, 0)
