@@ -6,7 +6,7 @@ extends Control
 ## On ne voyage pas dans le temps : la frise ne réagit pas au clic.
 
 var m_debut := 0
-var m_fin := 179
+var m_fin := 0                    # m_debut et m_fin : posés par Hud.maj depuis la partie (aucune durée en dur)
 var ab_debut := 0                 # mois absolu du mois 0 de la période
 var position_mois := 0.0          # m + progression du mois
 var marqueurs: Array = []         # { m, type: "marche" | "nouveau", passe: bool }
