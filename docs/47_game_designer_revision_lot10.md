@@ -146,6 +146,38 @@ Repères calculés par le code : `rebond` = 09/1991 / 09/1990 ; `ecart` = 09/199
 - **Compteur d'années tendues** (Sylvie fâchée au 31/12 et statut prenant actif) : sauvegardé, **sans effet** au lot 10 ; la séparation se branchera plus tard (docs/45 §2 bis).
 - Promotion CNAM (si C07 en 1984-1988) : fenêtre 01-10/1990, ≥ 4 mois de K4 et de K5 ; plafond de 3 moments de carrière par chapitre respecté (K4, promotion, K5). R-MIROIR : voisins recopient salaires et statuts. Retraite et PER : repoussés.
 
+### 6 bis. G-K1 : réglage du pilote (réponse au chef de projet, `lot_10c.md` §6 bis ; données seulement)
+
+**Constat** (mesure de dev-logique, fb6627b) : l'humeur sature à +3 et l'usure « prenant » (−1 en janvier) ne diffère de l'usure normale que si l'humeur est ≤ 0 ; un seul −1 au choix est donc vite effacé. Côté argent, + 15 % entièrement épargnés donnent un écart de 35 à 55 % (≈ 2,3 points d'écart par point de revenu chez Gérard, ≈ 3,7 chez Christine) : il faut une **fenêtre de revenu net de + 2,15 à + 2,7 %** pour tenir 5-10 % chez les deux.
+**Principe** : on garde le **brut crédible** (+ 15 %) et on montre ce que coûte le poste (garde, repas, route). Leçon honnête, sans conseil : *une augmentation se juge après ses frais, et le temps a un prix*. Aucune option « bonne » : a = argent, b = soirées.
+
+**K4 « Le poste itinérant »** (V1 à mesurer)
+| Champ | Valeur |
+|---|---|
+| `texte` | « Poste : {poste}, salaire {pct_brut}. Mais trois nuits par semaine à l'hôtel, et une nourrice le soir à payer. » (≤ 26 mots rendus ; `pct_brut` = « + 15 % ») |
+| `a.revenu` | `[ { "pct": 15, "des_rel": 1 }, { "pct": -12.5, "des_rel": 1 } ]` → net **+ 2,5 %** affiché dans le bouton (≈ + 220 F / mois pour Gérard) ; le second effet = garde, repas et route |
+| `a.humeur` | **−2** (au lieu de −1) ; `statut` « prenant » inchangé |
+| `a.avertissement` | « Garde et frais de route déduits. {Proche} vous verra beaucoup moins : le couple peut en souffrir. » (16 mots) |
+| `a.replique` | « Encore une valise… » (inchangée) |
+| `b.avertissement` | « Pas d'augmentation. Vos soirées restent à la maison. » (8 mots) |
+| `pourquoi` | « Une augmentation se juge après ses frais : ici, il en reste peu. Le reste se paie en soirées loin des siens. » (21 mots) |
+
+**K5 « Le congé formation »** (V1 à mesurer)
+| Champ | Valeur |
+|---|---|
+| `a.revenu` | `[ { "pct": -10, "des_rel": 1, "jusqua_rel": 10 }, { "pct": 9.5, "des": "1992-01", "apres_precedent": true } ]` (+ 9,5 % au lieu de + 8 % : bilan net ≈ 128 %-mois au lieu de 92 → Gérard ≈ 6,1 %, Christine ≈ 9,0 %, par proportion) |
+| `a.humeur` | **−2** (au lieu de −1) ; `statut` « normal » à la sortie inchangé (pour qui a pris K4 a, c'est la porte de sortie du poste prenant : vrai dilemme) |
+| `a.avertissement` | « Dix mois à 90 % du salaire et des soirs de révision ; ensuite un poste mieux payé, sans garantie. » (17 mots) |
+| `b.avertissement` | « Rien ne change : ni le salaire, ni vos soirées. » (9 mots) |
+| `texte`, répliques, `pourquoi` | inchangés |
+
+**Échelle de réglage pour dev-logique** (une marche à la fois, remesurer CA-C4 sur 200 graines × 2 profils) :
+1. Gérard K4 < 5 % → frais −12 (net + 3 %) ; Christine K4 > 10 % → frais −13 (net + 2 %). Les deux à la fois : garder −12,5 et me renvoyer la mesure.
+2. K5 hors fenêtre → gain + 9 % (si > 10 % chez Christine) ou + 10 % (si < 5 % chez Gérard).
+3. (ii) humeur < 80 % : K4 a −3, puis K5 a −2 → −3 (en dernier : −3 met le proche « fâché » d'emblée, ce qui déclenche la réconciliation H00 existante, qui coûte aussi de l'argent).
+4. Si (ii) échoue encore à −3 : **aucune donnée ne suffit** (la saturation à +3 efface l'écart). Je recommanderais alors une seule retouche de code, à décider par le chef de projet : sous statut prenant, l'humeur ne dépasse pas +1 (« Souvent absent » : jamais pleinement content). Sinon, le critère accepte 70 %.
+- **Aucun changement** à `c00.max` (2), à l'usure de janvier ni aux natures (`neutre`). R-MIROIR : les voisins recopient les deux effets de revenu. Valeurs de certitude C (banquier : coût d'une garde du soir en 1989-1993).
+
 ---
 
 ## 7. Calendrier de référence révisé (Gérard venu de 1984 ; ■ pause, ○ sans pause)

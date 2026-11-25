@@ -42,6 +42,8 @@ Spectateur ; tunnels vides ; ≈ 8 décisions dont 1 forte ; résultat à ±4 % 
 
 - **Doc 47 (18/11, prime sur docs/39 §2.1, §5, §6.1, §13, §14)** : vitrine du Golfe en 2 étapes mensuelles réelles (08/1990 sans pause + bandeau −16 % ; 09/1990 pause, courbe de 3 fins de mois « fins de mois seulement », ordres au cours de fin septembre), jamais de jours fictifs ; « un an après » 09/1991 calculé (rebond / écart à juillet). Jean-Mi saison 2 = tout dans une seule SCPI comptant (8 passages, 5 ★, J1 supprimée, J2 gardée). SCPI jouable (part 1 000 F dont 100 F de frais, loyers 6,5 → 5,8 %, revente 900 → 780 F en 1993, **vente différée de 3 mois**, exclue de la vente automatique), B2 02-04/1990, alerte 03/1993 si parts. **PEP = simple message** (tranché). Mariage par âge (< 30 : 60 %, 30-39 : 70 %, 40-49 : 40 %, ≥ 50 : 20 %, fenêtre M9-M42). Jumeaux 1/6. K4 / K5 toujours présentées. Privatisations retirées (BNP action ordinaire 10/1993). 24-26 pauses. Tabac : devanture existante, ticket fictif « Le Trèfle » 10 F, 1/mois, une seule zone (pas de « presque gagné »), retour 65 %, pré-tiré (flux `tabac`), compteur net + Livret A, hors R-CADENCE, non recopié, ni titre ni étoile.
 
+- **G-K1 (25/11, docs/47 §6 bis)** : à + 15 % épargnés, K4 a donnait 35 / 55 % d'écart de patrimoine (≈ 2,3 / 3,7 points par point de revenu, Gérard / Christine) et l'humeur saturait. Réglage : brut + 15 % et frais −12,5 % (net + 2,5 %, deux effets `revenu`), humeur K4 a −2 ; K5 a + 9,5 % après le congé, humeur −2 ; avertissements pour a et b ; échelle de réglage ; dernier recours (code) : humeur plafonnée à +1 sous statut prenant.
+
 ## 3 bis. Faits vérifiés dans le code (13/11, lot/05-logique)
 - Calendrier de vie : `etat_partie._tirer_calendrier` (15 ans tirés au départ, indépendant des choix, sauvegardé dans `CHAMPS_ETAT`) ; flux décalés pour naissances (+1000003) et foyer ; `_espacer_repetitions` (24 mois) ; panne forcée = krach + 1 mois ; héritage daté dans `banque.json` > `heritage.av.d` (D08) ; `test_cadence` vérifie les dates exactes.
 - `Foyer.humeur_visible` : **0 = contente, 1 = neutre, 2 = fâchée** (piège : lot_07 D2 l'avait inversé).
@@ -72,5 +74,6 @@ Spectateur ; tunnels vides ; ≈ 8 décisions dont 1 forte ; résultat à ±4 % 
 - Ne pas oublier que la démo vouvoie le joueur (textes de cartes écrits d'abord au tutoiement, corrigé).
 - Ne pas concevoir une séquence sur des données qui n'existent pas (7 vendredis du Golfe sans clôtures journalières) : demander d'abord au boursier la granularité disponible.
 - Ne pas faire vivre au rival une mécanique interdite au joueur (studio à crédit) : le joueur l'a rejetée.
+- Un malus d'humeur ponctuel s'efface : l'humeur plafonne à +3 et l'usure « prenant » (codée en dur à −1, `foyer.gd` `debut_mois`) n'agit que sous 0. Un revenu entièrement épargné écrase tout dilemme de carrière (le train de vie ne suit pas : `revenu_mois` va à l'épargne).
 - Recompter les mots des gabarits (un texte « un an après » faisait 35 mots).
 - Un projet coûteux réalisé en fin de démo fait chuter le patrimoine affiché : l'apport immobilier reste un actif (ligne « Apport du T3 »), pas une dépense.
