@@ -218,8 +218,9 @@ static func _regler_humeur(e: EtatPartie, valeur: int, cause: String, notifs: Ar
 	var titre := str(t[_cle_visible(apres)])
 	if apres == 1 and avant == 0:
 		titre = str(t["neutre_depuis_contente"])
-	notifs.append({"type": "humeur", "source": "maison", "cls": "neutre", "humeur": apres, "titre": titre,
-		"texte": str(e.foyer.get("derniere_cause", "")) if cause != "" else humeur_phrase(e) + ".", "bulle": true,
+	# Lot 10d (A1) : gabarits ({Proche}, {e_p}…) rendus à l'émission (la bulle de la maison affiche le titre tel quel).
+	notifs.append({"type": "humeur", "source": "maison", "cls": "neutre", "humeur": apres, "titre": str(e.rendre(titre)),
+		"texte": str(e.rendre(str(e.foyer.get("derniere_cause", "")) if cause != "" else humeur_phrase(e) + ".")), "bulle": true,
 		"cause": type_cause if cause != "" else ""})
 
 

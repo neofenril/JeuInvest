@@ -27,7 +27,7 @@
     { "id": "B2", "produit": "scpi", "quand": 13, "echeance": 15, "mode": "jouable", "titre": "LA PIERRE EN PARTS", "bouton": "OUVRIR", "compare": ["livret", "av"], "risque": true,
       "texte": "Une SCPI permet de détenir une part d'immeubles de bureaux ou de commerces pour quelques milliers de francs. Frais d'entrée élevés, revente non garantie.",
       "ticket": ["Des loyers chaque trimestre", "Frais d'entrée élevés ; revente : il faut un acheteur"],
-      "plus": "L'immobilier est un autre panier : il rapporte des loyers et son prix suit un cycle différent de la Bourse. Mais on le revend moins vite, à un prix non garanti. Simplifié : en vrai, les loyers relèvent des revenus fonciers ; le jeu applique 16 %." },
+      "plus": "L'immobilier est un autre panier : il rapporte des loyers et son prix suit un cycle différent de la Bourse. Mais on le revend moins vite, à un prix non garanti. Le taux affiché est calculé sur le prix payé, frais d'entrée compris ; vous revendez environ 10 % sous ce prix, même sans crise. Simplifié : en vrai, les loyers relèvent des revenus fonciers ; le jeu applique 16 %." },
     { "id": "B4", "produit": "pea", "quand": 42, "echeance": 44, "mode": "jouable", "titre": "PLAN D'ÉPARGNE EN ACTIONS", "bouton": "OUVRIR", "compare": ["sicav"], "risque": true,
       "texte": "Le Plan d'épargne en actions (loi de juillet 1992) abrite actions et SICAV : après 5 ans sans retrait, gains et dividendes échappent à l'impôt sur le revenu.",
       "ticket": ["Actions et SICAV actions", "Bloqué 5 ans pour l'avantage fiscal"],
