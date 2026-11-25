@@ -752,7 +752,8 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 		garde += 1
 	hud.maj(e, false)
 	var af := e.ab_courant()
-	var attendus := [Format.montant(e.joueur.cc, af), Format.montant(e.patrimoine(e.joueur), af), Format.entier(e.frais_payes(), af)]
+	# M4 : un compte exactement à zéro s'écrit « 0 F » (entier), pas « 0,00 F »
+	var attendus := [Format.entier(0.0, af) if absf(e.joueur.cc) < 0.005 else Format.montant(e.joueur.cc, af), Format.montant(e.patrimoine(e.joueur), af), Format.entier(e.frais_payes(), af)]
 	var affiches := [hud.l_cc.text, hud.l_patr.text, hud.l_frais.text]
 	_verifier("%s : le HUD affiche les chiffres de l'état (compte, patrimoine, frais payés)" % nom, affiches == attendus, "%s / attendu %s" % [str(affiches), str(attendus)])
 	_verifier("%s : démo jouée jusqu'au bout (décembre 1988, sans faillite), HUD mis à jour chaque mois (%d)" % [nom, mois_hud],
