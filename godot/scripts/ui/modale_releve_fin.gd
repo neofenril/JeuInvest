@@ -140,8 +140,8 @@ func _bilan(e: EtatPartie) -> Dictionary:
 static func pct_texte(x: float) -> String:
 	var n := roundi(x)
 	if n == 0:
-		return "0 %"
-	return ("+ %d %%" % n) if n > 0 else ("− %d %%" % absi(n))
+		return "0\u00A0%"
+	return ("+ %d\u00A0%%" % n) if n > 0 else ("− %d\u00A0%%" % absi(n))
 
 
 ## Fin de partie (docs/29 §1) : titre d'époque, foyer, 4 barres, comparaison avec Tata Livret, record, détail.

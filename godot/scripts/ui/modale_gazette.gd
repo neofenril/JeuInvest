@@ -101,7 +101,7 @@ func ouvrir(c: Dictionary, depart: Vector2, lecture := false) -> void:
 	tete.add_child(lt)
 	base_txt = ""
 	if base > 0.0:
-		base_txt = "au krach : %s" % Format.entier(base, a)
+		base_txt = ("au krach : %s" if str(c.get("titre", "")).to_upper().contains("KRACH") else "avant la baisse : %s") % Format.entier(base, a)
 		var lb := Style.label(base_txt, 20, Style.ui(), Style.ENCRE)
 		lb.name = "RepereBase"
 		tete.add_child(lb)

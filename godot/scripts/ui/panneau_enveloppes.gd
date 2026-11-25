@@ -54,7 +54,7 @@ static func _scpi(p: PanneauBanque, d: Control, pid: String) -> void:
 	var a := e.ab_courant()
 	var compact := p.compact
 	d.add_child(p._texte("Une part coûte %s ; revendue aujourd'hui, elle vaut %s. Loyers : %s %% par an, chaque trimestre." % [
-		Format.montant(Enveloppes.prix_part(), a), Format.montant(Enveloppes.prix_revente(a), a), Format.nombre(Enveloppes.taux_loyer(a), 1)], 20 if compact else 22, Style.ui(), Style.TEXTE))
+		Format.entier(Enveloppes.prix_part(), a), Format.entier(Enveloppes.prix_revente(a), a), Format.nombre(Enveloppes.taux_loyer(a), 1)], 20 if compact else 22, Style.ui(), Style.TEXTE))
 	var lv := p._texte(texte_scpi(e), 22 if compact else 24, Style.chiffres())
 	lv.name = "VousAvez"
 	d.add_child(lv)
@@ -211,12 +211,12 @@ static func _vendre_pea(p: PanneauBanque, pid: String, tid: String) -> void:
 
 static func _message(p: PanneauBanque, d: Control, pid: String) -> void:
 	var cat := Donnees.produit(pid)
-	var long := str(cat.get("texte_long", cat.get("definition", "")))
+	var long := str(cat.get("texte_long", Noms.definition(cat)))
 	if long != "":
 		var lt := p._texte(long, 20 if p.compact else 22, Style.ui(), Style.TEXTE)
 		lt.name = "TexteLong"
 		d.add_child(lt)
-	d.add_child(p._texte("Ce produit est présenté par un message : pas d'achat dans cette fenêtre.", 18 if p.compact else 20, Style.ui(), Style.TEXTE_2))
+	d.add_child(p._texte("Ce plan ne s'achète pas ici : votre banquier vous en parle par un message.", 18 if p.compact else 20, Style.ui(), Style.TEXTE_2))
 
 
 # ---------------------------------------------------------------------

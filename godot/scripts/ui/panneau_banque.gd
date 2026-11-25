@@ -338,7 +338,7 @@ func _afficher_fiche(pid: String) -> void:
 		# Téléphone (648 px) : PEA, SCPI et PEP vont droit à l'essentiel (la définition et les 4 critères restent au PC)
 		PanneauEnveloppes.completer(self, pid, str(info.get("type", "")))
 		return
-	_droite.add_child(_texte("Présenté par %s en %s. %s" % [Noms.banquier(), Dates.texte(e.ab_de(p)), str(info.get("definition", ""))], 18 if compact else 20, Style.ui(), Style.TEXTE_2))
+	_droite.add_child(_texte("Présenté par %s en %s. %s" % [Noms.banquier(), Dates.texte(e.ab_de(p)), Noms.definition(info)], 18 if compact else 20, Style.ui(), Style.TEXTE_2))
 	# Les 4 critères et les frais, en valeur absolue (pas de comparaison ici)
 	var g := GridContainer.new()
 	g.columns = 3

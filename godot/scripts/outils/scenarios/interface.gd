@@ -14,7 +14,7 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
 	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue", "fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre", "titre_record", "titre_sans_records", "titres_collection", "intro",
 	"frise_10ans", "mon_argent_10ans", "carnet_13",
-	"portraits_foyer", "intro_christine", "titre_palmares_v2", "golfe_un_an_apres", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres"]
+	"portraits_foyer", "fin_1988", "intro_christine", "titre_palmares_v2", "golfe_un_an_apres", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres"]
 const RACINE_ESSAI := "res://tests/donnees/chapitres"   # jeu d'essai à deux chapitres ouverts (en attendant les données de 1989)
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
@@ -54,7 +54,7 @@ func jouer(etape: String) -> void:
 			jeu.modales.add_child(planche)
 			planche.position = Vector2(60, 200)
 			await sc.delai(0.8)
-		"intro_christine", "titre_palmares_v2", "golfe_un_an_apres", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres":
+		"fin_1988", "intro_christine", "titre_palmares_v2", "golfe_un_an_apres", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres":
 			await _chapitres(etape, jeu)
 		"etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette":
 			await _etiquettes(etape, jeu)
@@ -1769,6 +1769,25 @@ func _chapitres(etape: String, jeu: Node) -> void:
 				jeu.titre.maj_palmares(rec, 9, par)
 				await sc.delai(1.8)
 				_mesurer(etape, jeu.titre)
+		"fin_1988":
+			# Fin d'une partie 1984-1988 figée (config_demo) : l'écran de fin de 1988, inchangé
+			sc.partir_de_la_rue(etape)
+			var e8 := EtatPartie.new()
+			var c8 := Donnees.config_demo(5)
+			c8["banquier"] = true
+			c8["rue"] = true
+			e8.demarrer(c8)
+			var g8 := 0
+			while e8.fin == "" and g8 < 400:
+				g8 += 1
+				while not e8.modale.is_empty():
+					e8.resolution_auto()
+				e8.avancer()
+			modales.dernier_bilan = Bilan.calculer(e8)
+			Partie.chemin_records = "user://capture_fin88_%d.sav" % OS.get_process_id()
+			modales.fin_demo(e8)
+			await sc.delai(1.6)
+			_mesurer(etape, modales.courant)
 		"intro_christine":
 			sc.partir_de_la_rue(etape)
 			jeu.set("_ignorer_modales", true)

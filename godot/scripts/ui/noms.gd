@@ -68,6 +68,11 @@ static func portrait_joueuse(e: EtatPartie) -> String:
 	return "portrait_joueuse_" if str(e.foyer_visuel().get("joueur", {}).get("sexe", "h")) == "f" else ""
 
 
+## Définition d'un produit pour le joueur : sans la mention technique « Présenté par un message… » des produits en mode message.
+static func definition(info: Dictionary) -> String:
+	return str(info.get("definition", "")).split(" Présenté par un message")[0].strip_edges()
+
+
 ## Années d'une partie écrites en lettres (« cinq ans », « dix ans »), sinon en chiffres.
 static func duree_texte(nb_annees: int) -> String:
 	var mots := {1: "un an", 2: "deux ans", 3: "trois ans", 4: "quatre ans", 5: "cinq ans", 6: "six ans", 7: "sept ans", 8: "huit ans", 9: "neuf ans", 10: "dix ans"}

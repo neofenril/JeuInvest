@@ -577,6 +577,8 @@ func _replier_barre() -> void:
 	var h := barre.get_child(0) as HBoxContainer
 	var dispo := Ecran.taille().x - 30.0
 	var trop := func() -> bool: return h.get_combined_minimum_size().x > dispo
+	# Replis supplémentaires pour les montants à 6 chiffres : seulement dès 1989 (1984-1988 garde exactement ses replis d'origine)
+	var nouveaux_montants := Partie.etat != null and Dates.annee(Partie.etat.ab_courant()) >= 1989
 	replis_barre = PackedStringArray()
 	manque_cc = 0.0
 	# Largeur du badge : la plus large de ses deux chaînes (rien ne bouge quand le saut commence)
@@ -617,13 +619,14 @@ func _replier_barre() -> void:
 		if trop.call():
 			badge_pause.set_meta("replie", true)
 			replis_barre.append("pause")
-		if trop.call():   # montants à 6 chiffres (1991-1993) : la ligne « VS LIVRET A » cède sa place, la flèche et le montant restent
+			badge_pause.visible = false   # le badge replié ne compte plus dans la mesure (sinon les replis suivants se déclenchent à tort)
+		if nouveaux_montants and trop.call():   # montants à 6 chiffres (1991-1993) : la ligne « VS LIVRET A » cède sa place, la flèche et le montant restent
 			l_titre_livret.visible = false
 			replis_barre.append("titre_livret_cache")
-		if trop.call():
+		if nouveaux_montants and trop.call():
 			l_titre_cc.visible = false
 			replis_barre.append("titre_cc_cache")
-		if trop.call():   # dernier recours (1280 px, montants à 6 chiffres) : chiffres un peu plus petits
+		if nouveaux_montants and trop.call():   # dernier recours (1280 px, montants à 6 chiffres) : chiffres un peu plus petits
 			l_cc.add_theme_font_size_override("font_size", 24)
 			l_patr.add_theme_font_size_override("font_size", 32)
 			l_ecart.add_theme_font_size_override("font_size", 22)

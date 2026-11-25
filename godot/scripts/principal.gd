@@ -141,7 +141,9 @@ func nouvelle_partie(config := {}) -> void:
 	_max_patr = 0.0
 	pluie_jusqua = -1
 	_ignorer_modales = true
-	Partie.nouvelle_partie(_config() if config.is_empty() else config)
+	# REJOUER AUTREMENT (config vide, partie précédente) : même chapitre de départ que la partie qui vient de finir
+	var depart_precedent: String = Partie.etat.chapitre_depart if (config.is_empty() and Partie.etat != null and Partie.etat.fin != "") else ""
+	Partie.nouvelle_partie(_config(depart_precedent) if config.is_empty() else config)
 	_ignorer_modales = false
 	_apres_mise_en_place()
 
