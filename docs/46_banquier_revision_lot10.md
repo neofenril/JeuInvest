@@ -387,3 +387,48 @@ Mots comptés un à un ; à recompter après toute retouche. P1 et P5 sont des *
 - Régimes matrimoniaux : [Sénat, loi du 23/12/1985](https://conferenceconsensuslogement.senat.fr/leg/1985-1986/i1985_1986_0015.pdf), [Larousse, régime matrimonial](https://www.larousse.fr/encyclopedie/divers/r%C3%A9gime_matrimonial/68721).
 - PEP : [La Finance pour tous](https://www.lafinancepourtous.com/outils/questions-reponses/jai-souscrit-un-pep-bancaire-au-011990-qui-a-ete-proroge-jusquau-012010-aujourdhui-je-souhaite-encore-le-proroger/), [MoneyVox](https://www.moneyvox.fr/retraite/plan-epargne-populaire.php), [Que Choisir](https://www.quechoisir.org/enquete-pep-le-retour-n10011/), [réponse ministérielle sur la fermeture](https://questions.assemblee-nationale.fr/dyn/12/questions/QANR5L12QE59337.pdf), [BOFiP BOI-RPPM-RCM-40-60](https://bofip.impots.gouv.fr/doctrine/pgp/846-PGP).
 - SCPI et autres dates : docs/41 §8 (Portail SCPI, Nalo, Sénat) ; docs/38 §11.
+
+---
+
+## 9. Contrôle du 25/11/2026 : carte K4 (garde et frais de route) et SCPI du chapitre 1989-1993
+
+Fichiers lus : `godot/data/chapitres/1989/foyer.json` (K4, K5), `banque.json` (B2), `godot/data/produits.json` (scpi), `godot/data/salaires.json`. Aucun code modifié.
+
+### 9.1 K4 « Le poste itinérant » : coût de la garde et des frais de route
+
+| Élément | Valeur du jeu | Contrôle | Certitude |
+|---|---|---|---|
+| Revenu | +15 % (brut) puis −12,5 % (garde et frais) = **+2,5 % net**, soit ≈ +222 F/mois pour un salaire ≈ 8 900 F (technicien 1989, `salaires.json`) | Arithmétique exacte : 12,5 % × 8 900 ≈ **1 110 F/mois** de coût, ≈ 52 h de garde à 21 F/h ou 13 soirs à 85 F | A (calcul) |
+| +15 % pour un poste itinérant | Ordre de grandeur courant d'une prime de mobilité / changement de poste (voiture de service) | Aucune source chiffrée trouvée | C |
+| Frais de route (hôtel, repas, essence) | Inclus dans les −12,5 % | **Correction de fond** : à l'époque, un salarié itinérant se voit rembourser hôtels et repas par l'employeur (frais professionnels sur justificatifs ou forfait). Le reste à charge réel est faible (repas du midi, petites dépenses). Les −12,5 % sont donc **essentiellement la garde**, pas les « frais de route » | B |
+| Garde du soir | 3 nuits par semaine à l'hôtel = ≈ 13 soirs/mois | Un baby-sitter ou une nourrice à domicile coûte, au SMIC horaire brut de 1989-1993 (29,91 F au 01/07/1989 ; 31,28 F au 01/07/1990 ; 34,06 F au 01/07/1992 ; 34,83 F au 01/07/1993, A, IPP / Dares), **≈ 30 à 45 F de l'heure charges comprises si elle est déclarée** : 4 h × 13 soirs = 52 h ≈ **1 500 à 2 300 F/mois** déclaré ; ≈ 1 100 à 1 300 F/mois en baby-sitting étudiant non déclaré ou en garde par un proche rémunéré | C (aucun tarif de 1990 trouvé en ligne) |
+
+Verdict : **vraisemblable mais à l'extrémité basse** (certitude C). Le coût de 1 110 F/mois correspond à une garde peu chère (baby-sitting, famille), pas à une nourrice déclarée. Un coût plus réaliste de garde déclarée (≈ 1 800 F) ferait même **perdre** de l'argent net (+15 % = 1 335 F de brut, moins ≈ 20 % de charges et d'impôt à la marge), ce qui nourrirait la morale « une augmentation se juge après ses frais ». Le message pédagogique de la carte (« il en reste peu ») est donc **juste**, plus encore que ne le dit le jeu.
+
+Points à corriger ou à décider (sans toucher au code, proposition) :
+1. **Cohérence avec la situation du joueur** : le texte parle d'« une nourrice le soir à payer » ; si le foyer n'a **pas d'enfant** (Gérard sans naissance, ou Christine seule), il n'y a pas de garde et le coût de −12,5 % est injustifié. Proposer deux variantes : avec enfant de moins de 12 ans (−12,5 %, texte « garde le soir »), sans enfant (−5 % : repas, déplacements non remboursés, vie courante qui explose ; texte « frais de déplacement qui ne sont pas tous remboursés »). Cert. C.
+2. **Libellé de l'avertissement** : remplacer « Garde et frais de route déduits » par « La garde du soir est déduite » (avec enfant) ou « Les frais de déplacement non remboursés sont déduits » (sans enfant), car « frais de route » suggère à tort que l'hôtel est à la charge du salarié.
+3. **Option de réalisme** (non requise) : la réduction d'impôt pour frais de garde d'enfants de moins de 7 ans existait déjà (taux et plafond de 1989-1993 non vérifiés, C) ; le jeu ne la modélise pas, ce qui renforce légèrement le coût net. À ne pas ajouter (simplification acceptable, à signaler en « En savoir plus » seulement si le game designer le souhaite).
+4. **K5 congé formation** (contrôle rapide) : −10 % pendant 10 mois = 90 % du salaire, conforme au CIF du décret n° 84-613 (80 % à 90 % selon le cas, docs/46 §4.3, A) ; +9,5 % ensuite à partir de 01/1992 = choix de jeu (C), sans garantie, texte correct.
+
+### 9.2 SCPI (B2, `produits.json` > `scpi`)
+
+| Paramètre | Valeur du jeu | Valeur retenue après contrôle | Source | Certitude |
+|---|---|---|---|---|
+| Frais d'entrée (commission de souscription) | 10 % | **Confirmé, plage réelle 8 à 12 %** ; 10 % est la valeur médiane et ronde. Précision de vocabulaire : en SCPI ces frais sont inclus dans le prix de souscription de la part ; le prix de retrait ou de revente est inférieur d'autant | docs/41 ; sites SCPI actuels (« 8 à 10 % TTC », « 10 à 12 % ») ; pas de source d'époque | B (valeur actuelle) / C (1989-1993) |
+| Prix de la part | 1 000 F | Convention de jeu (parts de 500 à 2 000 F courantes à l'époque, non vérifié) | — | C |
+| Loyer (taux de distribution) | 6,5 % (1989-1991), 6,3 % (1992), 5,8 % (1993) | 1992 = 6,28 % et 1993 = 5,78 % déjà notés B dans docs/41 ; **6,5 % pour 1989-1991 non vérifié** : plausible (rendements de 6 à 7 % avant la crise immobilière de 1991-1997), à garder comme repère de jeu. Les taux sont calculés sur le prix de souscription, frais compris, et nets de frais de gestion (≈ 10 % des loyers) | docs/41 (IEIF/ASPIM, via sources secondaires) ; recherche du 25/11/2026 : aucune série 1989-1991 retrouvée en ligne | B (1992-1993) / C (1989-1991) |
+| Revente | 900 F (01/1989), 820 F (03/1993), 780 F (12/1993) pour une part de 1 000 F | 900 F = prix de retrait sans décote du marché (1 000 − 10 %) : **cohérent**. Décote de 1993 : 820 F = −8,9 % puis 780 F = −13,3 % par rapport à 900 F ; l'ordre de grandeur correspond aux décotes de 10 à 30 % observées dans la crise ; **plausible, à garder** | docs/41, Portail SCPI | C |
+| Délai de revente | 3 mois | Plausible : marché secondaire encadré par la loi n° 93-6 du 04/01/1993 (confrontation périodique) ; avant, la revente passait par le retrait ou la recherche d'un acheteur par la société de gestion | docs/41 | C |
+| Fiscalité des loyers | 16 % (convention du jeu) | Réalité : **revenus fonciers au barème de l'IR** (taux marginal de 5 à 56,8 %), sans prélèvements sociaux avant 1991 ; la bulle « Simplifié » de B2 le dit déjà | CGI, art. 28 et suivants | A (principe) |
+| Périodicité | trimestrielle | Exact (acomptes trimestriels) | — | A |
+| `naissance` dans `produits.json` | « 1984-01 » | Convention d'implémentation ; la SCPI est née légalement le 31/12/1970 (A). Sans effet pour le joueur ; ne pas l'afficher | — | A |
+
+Verdict : **paramètres acceptables pour un jeu**. Aucune valeur n'est fausse ; les seules valeurs 1989-1991 sont reconstituées (C). Une précision utile pour la bulle « En savoir plus » : « Le taux affiché est calculé sur le prix payé, frais d'entrée compris ; vous revendez environ 10 % sous ce prix, même sans crise. »
+
+### 9.3 Sources de ce contrôle
+
+- SMIC horaire : [IPP, Salaire minimum de croissance](https://www.ipp.eu/baremes-ipp/marche-du-travail/marche_travail.salaire_minimum.smic/table) ; [Dares, salariés au Smic en juillet 1990](https://www.dares.travail-emploi.gouv.fr/sites/default/files/0c41599fcab06173f73bfbe9e1dd6987/Dares_Les%20salari%C3%A9s%20au%20smic%20en%20juillet%201990.pdf) ; [Dares, salariés au Smic au 1er juillet 1993](https://www.dares.travail-emploi.gouv.fr/sites/default/files/57818f012b699b8459ab0ebabf134211/Dares_Les%20salari%C3%A9s%20au%20smic%20au%201er%20juillet%201993.pdf).
+- Assistantes maternelles : loi n° 92-642 du 12/07/1992 et décret n° 92-1245 du 27/11/1992 (rémunération minimale après 1992) ; aucun tarif de garde de 1989-1993 retrouvé.
+- SCPI : [Sofidy Immorente (crise des années 1990)](https://francescpi.com/societe-gestion/sofidy/scpi-immorente) ; [AMF, SCPI : comment bien s'informer](https://www.amf-france.org/sites/institutionnel/files/pdf/59266/fr/SCPI__comment_bien_s%27informer_.pdf?1789465409) ; docs/41 §8.
+- Non trouvé : taux de distribution moyen des SCPI en 1989-1991 ; tarif horaire de garde d'enfant en 1990. À fiabiliser par IEIF / ASPIM (séries historiques) ou archives de presse (Le Revenu, Mieux Vivre Votre Argent).

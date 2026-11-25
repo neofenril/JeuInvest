@@ -313,6 +313,12 @@ Priorité si le client demande une fiabilisation : d'abord les données **utilis
 - Parents : rappel fiscal des donations sans limite jusqu'au 31/12/1991, 10 ans 1992-2005, 6 ans 2006-07/2011, 10 ans 07/2011-16/08/2012, 15 ans ensuite (A, service-public) ; don de sommes d'argent 20 000 EUR (2004-05) puis 31 865 EUR (TEPA 21/08/2007) ; réserve 1/2, 2/3, 3/4 ; déclaration de succession 6 mois ; barème usufruit 2004+ (40 % 61-70 ans, 30 % 71-80) ; avant 2004 : C. 6 messages P1-P6, 3 messages divorce D1-D3.
 - Incertains : abattement donation avant 1992, taux exacts allocation de base avant 1992 (42 % + fixe / 57,4 % : B), taux PEP 1990-93, ASFNE avant 2000.
 
+### Faits ajoutés le 2026-11-25 (docs/46 §9, contrôle K4 et SCPI)
+- K4 : +15 % puis −12,5 % (garde + frais) = +2,5 % net ≈ +222 F sur ~8 900 F ; coût ≈ 1 110 F/mois = extrémité basse (baby-sitting/proche) ; garde déclarée ≈ 1 500-2 300 F (C). Les frais de route (hôtel, repas) sont en réalité remboursés par l'employeur : le coût est surtout la garde. Proposé : variante sans enfant (−5 %), libellé « garde du soir déduite » (cert. C).
+- SMIC horaire brut : 29,91 F (07/1989), 31,28 F (07/1990), 34,06 F (07/1992), 34,83 F (07/1993) (A, IPP/Dares).
+- SCPI du jeu : frais d'entrée 10 % (plage 8-12 %, B/C), loyer 6,5 % (1989-91, C), 6,3 % (1992), 5,8 % (1993) (B), revente 900/820/780 F pour 1 000 F (C) : acceptable. Loyers réels = revenus fonciers au barème (16 % = simplification).
+- Introuvable en ligne : taux de distribution SCPI 1989-91, tarifs de garde d'enfants 1990.
+
 ### Erreurs à ne pas refaire
 - La recherche web ne donne pas de prix de détail français des années 1980 : ne pas prétendre à A pour ces prix.
 - Ne pas affirmer qu'un texte du banquier est « sous 60 mots » sans compter ; vérifier chaque calcul (une première version de 11 §5.3 mélangeait deux définitions de « part des gains mangée » : toujours préciser la référence, « par rapport à 0,5 % » ou « par rapport à sans frais »).
