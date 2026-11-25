@@ -1492,7 +1492,8 @@ func sauter_picto_humeur() -> void:
 
 func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 	var a := e.ab_courant()
-	var fmt := func(v: float) -> String: return Format.montant(v, a)
+	# M4 : un compte exactement à zéro s'écrit « 0 F » (pas « 0,00 F »)
+	var fmt := func(v: float) -> String: return Format.entier(0.0, a) if absf(v) < 0.005 else Format.montant(v, a)
 	date.regler(a, anime)
 	maj_humeur(e)
 	maj_projet(e)
