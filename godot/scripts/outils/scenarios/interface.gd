@@ -453,9 +453,10 @@ func _carte(etape: String, jeu: Node) -> void:
 			if r.is_empty():
 				print("UI carte conclusion=absente (choix refusé)")
 				return
+			jeu.derniere_bulle = null   # M7 : repère posé AVANT la conclusion (la bulle peut naître pendant le délai ci-dessous)
 			modales.conclure_carte(r, porte)
 			await sc.delai(1.0)
-			var lq := modales.courant.find_child("Consequence", true, false) as Label if modales.courant != null else null
+			var lq :=modales.courant.find_child("Consequence", true, false) as Label if modales.courant != null else null
 			print("UI carte consequence=« %s » = r=« %s » egal=%s" % [lq.text if lq != null else "?", str(r.get("consequence", "")), "oui" if lq != null and lq.text == str(r.get("consequence", "")) else "non"])
 			_mesurer(etape, modales.courant)
 			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
@@ -463,11 +464,10 @@ func _carte(etape: String, jeu: Node) -> void:
 			var nom_png := "res://captures/l4_carte_conclusion_vue%s.png" % ("_tel" if Ecran.compact() else "")
 			sc.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path(nom_png))
 			# La bulle d'humeur née de cette carte n'apparaît qu'après le rangement (CA-I3)
-			var avant: Bulle = jeu.derniere_bulle if is_instance_valid(jeu.derniere_bulle) else null
 			await sc.attendre_que(func() -> bool: return not modales.carte_en_cours, 8.0)
 			await sc.delai(0.3)
 			var apres: Bulle = jeu.derniere_bulle if is_instance_valid(jeu.derniere_bulle) else null
-			print("UI bulle apres_carte=%s texte=« %s »" % ["oui" if apres != null and apres != avant else "non", apres.texte_label.text if apres != null else ""])
+			print("UI bulle apres_carte=%s texte=« %s »" % ["oui" if apres != null else "non", apres.texte_label.text if apres != null else ""])
 		"carte_relue":
 			await jouer_carte(jeu, "a")
 			await sc.delai(0.3)
@@ -1987,9 +1987,20 @@ func _hud(jeu: Node) -> void:
 	StrategieTest.jouer_mois(e, true)
 	if not e.modale.is_empty():
 		e.resolution_auto()
+	# M7 : à 0,1 s par mois le saut peut déjà être fini après 0,4 s (arrêt proche) : on observe l'état deux images après
+	# l'appui, et le signal saut_change dit si le saut a bien été lancé
+	var lance := [false]
+	var surveille := func(actif: bool) -> void:
+		if actif:
+			lance[0] = true
+	Partie.saut_change.connect(surveille)
 	jeu.demander_saut()
-	await sc.delai(0.4)
-	print("UI barre format=%s etat=%s %s" % [format, "saut" if Partie.saut_actif else "SAUT_IMPOSSIBLE", hud.etat_barre()])
+	await sc.get_tree().process_frame
+	await sc.get_tree().process_frame
+	var barre := hud.etat_barre()
+	var en_saut := Partie.saut_actif
+	Partie.saut_change.disconnect(surveille)
+	print("UI barre format=%s etat=%s %s" % [format, "saut" if (en_saut or lance[0]) else "SAUT_IMPOSSIBLE", barre])
 	if Partie.saut_actif:
 		jeu.demander_saut()
 	Partie.changer_vitesse(0)
