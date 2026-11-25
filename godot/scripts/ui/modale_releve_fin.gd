@@ -141,7 +141,7 @@ static func pct_texte(x: float) -> String:
 	var n := roundi(x)
 	if n == 0:
 		return "0\u00A0%"
-	return ("+ %d\u00A0%%" % n) if n > 0 else ("− %d\u00A0%%" % absi(n))
+	return ("+ %d\u00A0%%" % n) if n > 0 else ("− %d\u00A0%%" % absi(n))
 
 
 ## Fin de partie (docs/29 §1) : titre d'époque, foyer, 4 barres, comparaison avec Tata Livret, record, détail.
@@ -161,16 +161,18 @@ func fin_demo(e: EtatPartie) -> void:
 	var vue := m.get_viewport_rect().size
 	var p := PanelContainer.new()
 	var sf := Style.panneau(22)
+	# M5 : plusieurs titres (dix ans) = contenu plus haut : marges et interlignes resserrés au PC pour que tout tienne sans défilement
+	var serre := not compact and (b.get("titres", []) as Array).size() > 1
 	sf.content_margin_left = 20 if compact else 40
 	sf.content_margin_right = 20 if compact else 40
-	sf.content_margin_top = 8 if compact else 30
-	sf.content_margin_bottom = 8 if compact else 30
+	sf.content_margin_top = 8 if compact else (12 if serre else 30)
+	sf.content_margin_bottom = 8 if compact else (12 if serre else 30)
 	p.add_theme_stylebox_override("panel", sf)
 	var largeur := (vue.x - 24.0) if compact else minf(1500.0, vue.x - 60.0)   # téléphone : toute la largeur libre
 	p.custom_minimum_size = Vector2(largeur, (vue.y - 12.0) if compact else 0.0)
 	var interieur := largeur - (40.0 if compact else 80.0)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6 if compact else 12)
+	v.add_theme_constant_override("separation", 6 if compact else (6 if serre else 12))
 	p.add_child(v)
 	# En-tête : Atkinson gras (il contient un chiffre : jamais Pixelify)
 	var duree := _duree(b)
@@ -191,7 +193,7 @@ func fin_demo(e: EtatPartie) -> void:
 	var ligne := HBoxContainer.new()
 	ligne.add_theme_constant_override("separation", 24)
 	var bloc := VBoxContainer.new()
-	bloc.add_theme_constant_override("separation", 6)
+	bloc.add_theme_constant_override("separation", 2 if serre else 6)
 	var gauche := 870.0 if not compact else interieur - 24.0
 	var droite_l := interieur - gauche - 24.0   # PC : colonne de droite
 	bloc.custom_minimum_size.x = gauche
@@ -223,7 +225,7 @@ func fin_demo(e: EtatPartie) -> void:
 		infos_rue.merge({"rang": BlocRue._rang_de(classement), "total": classement.size(), "replique": not rep.is_empty()}, true)
 	details_rue.append(Style.label("Argent mis de côté en %s : " % duree + Format.montant(e.epargne_nette, a), 24 if compact else 18, Style.ui(), Style.TEXTE_2))
 	var comparaison := _bloc_comparaison_livret(e, a, pct, (interieur - 24.0 - 640.0 - 24.0 - 80.0) if compact else droite_l - 110.0)
-	var courbe := _courbe_cinq_ans(e, duree)
+	var courbe := _courbe_cinq_ans(e, duree, 90.0 if serre else 150.0)
 	# Détail : frais, produits, exemple, phrase de synthèse
 	var detail: Array = _lignes_detail(e, a, compact, interieur)
 	var boutons := HBoxContainer.new()
@@ -252,7 +254,7 @@ func fin_demo(e: EtatPartie) -> void:
 			bloc.add_child(c)
 		ligne.add_child(bloc)
 		var droite := VBoxContainer.new()
-		droite.add_theme_constant_override("separation", 8)
+		droite.add_theme_constant_override("separation", 3 if serre else 8)
 		droite.custom_minimum_size.x = droite_l
 		var lp := HBoxContainer.new()
 		lp.add_child(Style.label("VOTRE PATRIMOINE", 20, Style.capitales(), Style.TEXTE_2))
@@ -666,12 +668,12 @@ func _ligne_record(rec: Dictionary, compact: bool, larg: float, en_ligne := fals
 
 
 ## « Cinq ans en un coup d'œil » (PC seulement) : la courbe du joueur et celle de Tata Livret.
-func _courbe_cinq_ans(e: EtatPartie, duree := "cinq ans") -> VBoxContainer:
+func _courbe_cinq_ans(e: EtatPartie, duree := "cinq ans", haut := 150.0) -> VBoxContainer:
 	var droite := VBoxContainer.new()
 	droite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	droite.add_child(Style.label("%s EN UN COUP D'ŒIL" % duree.to_upper(), 18, Style.capitales(), Style.TEXTE_2))
 	var courbe := Courbe.new()
-	courbe.custom_minimum_size = Vector2(0, 150)
+	courbe.custom_minimum_size = Vector2(0, haut)
 	courbe.total_mois = e.m_fin - e.m_depart
 	var vals: Array = e.hist["j"].slice(e.m_depart, e.m + 1)
 	var ref: Array = e.hist["livret"].slice(e.m_depart, e.m + 1)

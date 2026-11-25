@@ -132,12 +132,12 @@ func ouvrir(e: EtatPartie, depart: Vector2, fab := {}) -> void:
 	tete.add_child(croix)
 	v.add_child(tete)
 	# Corps : deux colonnes (PC) ou une seule qui défile (téléphone, version jouable)
-	var corps: BoxContainer = VBoxContainer.new() if compact else HBoxContainer.new()
+	var corps: BoxContainer = HBoxContainer.new()
 	corps.name = "Defilant"
 	corps.add_theme_constant_override("separation", 14 if compact else 30)
 	v.add_child(corps)
 	var interieur := largeur - 66.0
-	var col := (interieur - 30.0) / 2.0 if not compact else interieur
+	var col := (interieur - 30.0) / 2.0 if not compact else interieur - 30.0
 	onglet_foyer = VBoxContainer.new()
 	onglet_foyer.name = "ColonneFoyer"
 	onglet_foyer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -160,6 +160,12 @@ func ouvrir(e: EtatPartie, depart: Vector2, fab := {}) -> void:
 	corps.add_child(onglet_foyer)
 	if not compact:
 		corps.add_child(onglet_cartes)
+	else:
+		# M6 : réserve à droite pour la barre de défilement (les valeurs longues ne la touchent plus)
+		var reserve := Control.new()
+		reserve.name = "ReserveDefilement"
+		reserve.custom_minimum_size = Vector2(30, 0)
+		corps.add_child(reserve)
 	var bh := ModaleOutils.bouton_papier("TOUS LES COURRIERS DE LA MAISON  ›", "", compact)
 	bh.name = "Historique"
 	bh.pressed.connect(m.fermer.bind("extra"))
