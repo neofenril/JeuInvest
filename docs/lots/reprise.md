@@ -1,18 +1,27 @@
-# Reprise (mise à jour le 2026-11-18, fin de soirée)
+# Reprise (mise à jour le 2026-11-25, arrêt demandé par le joueur)
 
 ## État
-- `main` contient les lots 08b (rééquilibrage des titres), 09-V (thème de décor), 09-L (socle des chapitres, logique). Tests de recette : 1 501 vérifications OK. Pas de nouvel export depuis la 0.6.2 ; **prochain export 0.7 à la fin du lot 10** (décision du joueur).
-- Branche `lot/09-interface` (3b0ef6c, poussée ? non : commit local du worktree `JeuClaude_lots\lot09-interface`) : dev-interface a fini (1 504 OK). **Recette du testeur lancée (série de captures complète, rapport attendu dans `docs/lots/lot_09i_recette.md`)** ; si l'agent a été interrompu, la relancer.
+- `main` contient tout le lot 10 (09, 10a, 10b, 10c) : 1 766 vérifications OK. Version 0.7 configurée, **pas encore exportée**.
+- Recette finale du lot 10 : KO (`lot_10_recette_finale.md`), corrigée en lot 10d ; passage ciblé : KO (`lot_10d_recette.md`) ; deuxième tour de correctifs fait, **pas encore testé**.
+- `lot/10d-logique` (0905c70, commits locaux) : liste des projets (N1), SCPI/PEA ouverts sur leur fiche (N2), « 0 F » côté historique (M6) ; 1 786 vérifications OK.
+- `lot/10d-interface` (fa2e6de, commits locaux) : fin de dix ans au PC (M5), garde sur le prix (N2), « Mon foyer » (M6), BOM du test de recette. Compte rendu du développeur à lire (pas encore reçu à l'arrêt).
+- Rien de 10d n'est poussé ni fusionné dans `main`.
 
 ## À faire au retour, dans l'ordre
-1. Récupérer le verdict de la recette 09-I (relancer le testeur si besoin). OK → pousser `lot/09-interface`, faire valider par le chef de projet, fusionner `--no-ff` dans `main`, relancer `tests.ps1 -Recette -Delai 700` (≈ 12 min, sans autre Godot), pousser `main`.
-2. Lancer le lot 10 (plans prêts : `docs/lots/lot_10a.md`, `lot_10b.md`, `lot_10c.md`, `feuille_de_route_v3.md`) : en parallèle `lot/10a-moteur` (dev-logique), `lot/10b-ville` (dev-ville), `lot/10b-interface` étape 1 (dev-interface) ; puis 10a-contenu et 10b-interface étape 2 ; puis 10c ; recette finale (série de captures complète, 2 parties réelles, exe + APK) ; export 0.7.
-3. Demander au chef de projet de retirer la mention « conjoint de même sexe possible » de `feuille_de_route_v3.md` (ligne 31) : refusée par le joueur.
+1. Lire le compte rendu de dev-interface (tour 2).
+2. Réunir `lot/10d-logique` et `lot/10d-interface` (les deux touchent N2 et M6 : attendre des conflits ou des doublons).
+3. Faire finir le « 0 F » dans les trois affichages signalés par dev-logique, si le tour 2 d'interface ne l'a pas couvert : `modale_foyer.texte_carte`, `modale_carte.gd` (« Votre choix »), `modale_historique.gd` (« par mois »), avec `Foyer.montant_joue_txt`.
+4. Recette ciblée du testeur (y compris le projet encore en cours à la bascule, corrigé sans demande). **Le joueur a demandé de ne pas lancer le testeur le soir du 25.**
+5. OK → push, fusion `--no-ff` dans `main`, tests, push, puis exports 0.7 (`Exporter_Windows.bat`, `Exporter_Android.bat`) et mise à jour de `CLAUDE.md`.
 
-## Décisions du joueur (toutes consignées dans `docs/lots/decisions_extension_annees.md` et `docs/10_retours_joueur.md`)
-Chapitres de 5 ans (1989-1993 en premier), début 1977, fin = dernière année implémentée, mort du personnage, double record, décor par 2 chapitres, 1977-1983 en un chapitre de 7 ans, Gérard vieillit, Christine seule au lot 10, carte de passage A, mariage 70 %, jumeaux 1/6, divorce accepté (humeur → probabilité, via carrière), décès d'un parent, événements de vie aléatoires (marché = dates historiques), pilote carrière K4/K5 au lot 10, retraite/PER plus tard, SCPI/immobilier comme diversification (pas de privatisation, pas de studio), catalogue de produits déplaçable entre chapitres, tabac validé (casino plus tard, classer 17+), joueuse possible (conjoint de genre inverse, pas de même sexe), investissements alternatifs pour les années 2000.
+## Pour le lot 11
+- Titre `bon_pere` impossible sur dix ans avec 3 ou 4 projets réalisés (`Titres.projets_realises` exige `== 2`) : à arbitrer.
+- `Projets.option_choisie` lit les projets archivés : un choix de 1984 peut déclencher une condition de 1989.
+- Bug `cadence.gd` (l. 171-175), textes 1984 à neutraliser, re-gel de `test_reference_1984`.
+- Contrat 10c à mettre à jour (flèche « › », « Épargne possible » toujours visible).
+- À confirmer : légende « avant la baisse : 2 000 F » (Golfe), « 10,2 % » contre −10,4 % ; valeurs CAC 1990-91 en C (relevé officiel à déposer dans `docs/sources/` si disponible).
+- Variante de la carte K4 pour un foyer sans enfant (docs/46 §9).
 
-## Points d'attention
-- Plusieurs commits `main` ne sont poussés que localement si le push a échoué ; vérifier `git status` / `git log origin/main..main`.
-- Valeurs C à confirmer avant l'export 0.7 : fins de mois 08/1990 et 09/1991 (boursier), SCPI (banquier).
+## Divers
 - Retours des testeurs externes de la 0.6.x : à classer dans `docs/10`.
+- Décisions du joueur : `docs/lots/decisions_extension_annees.md` et `docs/10_retours_joueur.md`.
