@@ -61,7 +61,7 @@ e.foyer["annees_tendues"] : int        # sauvegardé, sans effet
 - **CA-C1 ★** `test_reference_1984` inchangé et vert ; aucune carte K en 1984-1988.
 - **CA-C2 ★** K4 présentée dans 100 % des parties 1989 (Gérard et Christine, 200 graines P-REF chacune), K5 aussi (sauf faillite) ; jamais deux moments de carrière à moins de 4 mois.
 - **CA-C3 ★** `epargne_apres − epargne_avant` == `revenu_mois` au centime ; R-MIROIR : Tata et Tonton reçoivent le même écart de revenu ; K5 a : 10 mois à 90 %, puis + 8 % exactement en 01/1992.
-- **CA-C4 ★ Aucune option dominante** (critère du client, docs/44 §7) : sur P-REF, pour K4 comme pour K5, chaque option est la meilleure en patrimoine **ou** en humeur selon les graines (lignes imprimées : part des graines où a bat b en patrimoine, en humeur) ; écart de patrimoine médian en fin de chapitre entre a et b **entre 5 et 10 %** (mesure ; hors plage = point d'arrêt, réglage par les montants seulement).
+- **CA-C4 ★ Aucune option dominante** : **reformulé le 19/11, voir §6 bis point 1** (écart médian 5-10 % ; option « temps » meilleure en humeur moyenne sur les mois restants dans ≥ 80 % des graines ; jamais a meilleure partout).
 - **CA-C5 ★** Statut prenant (usure de janvier), compteur d'années tendues sauvegardé et relu ; aucune valeur de titre ou d'étoile ne dépend de K4 / K5.
 - **CA-C6 ★** Calibrage de 10a-contenu toujours tenu (CA-N3, CA-N4 de `lot_10a.md`) avec K4 et K5 ; version 0.7 / code 11 dans `project.godot` et les 4 lignes d'`export_presets.cfg`.
 
@@ -82,6 +82,32 @@ Sur `main` après la fusion de 10c-interface (fusion complète 10a + 10b + 10c) 
 4. Exe et APK : `--export-pack` + `--main-pack` (étapes `titre`, `jouer`, `reprise`, `passage_1989`) : aucune erreur, données de `data/chapitres/1989/` et `data/produits.json` présentes.
 5. Valeurs C confirmées ou gardées avec mention (A2, A4 de `lot_10a.md`) : le coordinateur demande au boursier (fins de mois 08/1990, 09/1991, dividendes 1989-1993, BNP) et au banquier (SCPI) **pendant** le développement ; une correction arrivée avant l'export = commit de données de dev-logique + relance de `test_chapitre_1989`.
 6. Rapport : `docs/lots/lot_10_recette.md`. OK → fusion, export 0.7 (exe + APK), fiche de retour pour le joueur (questions : hésitation sur K4 / K5, passage de chapitre, longueur de la partie, SCPI et Jean-Mi).
+
+## 6 bis. Suivi (19/11) : 10c-logique livré (fb6627b, sur `lot/10a-contenu` 5f4be40)
+
+| # | Point | Décision |
+|---|---|---|
+| 1 | **CA-C4** : à + 15 %, K4 « argent » bat « rester » en patrimoine dans 100 % des graines (écart médian 35 % Gérard, 55 % Christine) ; réglée à + 2,5 % par le développeur (écart 6,1 % / 9,5 %) ; K5 : 4,4 % (Gérard) / 6,5 % ; « rester » ne bat « argent » en humeur que dans 5 à 52 % des graines | **Critère non tenu** au sens de docs/44 §7 (« jamais les deux à coup sûr ») : l'option argent gagne toujours en patrimoine et égale souvent en humeur finale. **+ 2,5 % est refusé** (une augmentation de 2,5 % pour trois nuits par semaine à l'hôtel n'est pas crédible et rend la carte sans enjeu). Le patrimoine sera toujours meilleur avec l'option argent : la contrepartie doit être **réelle** côté temps et humeur. Demande au **game designer** (G-K1, à envoyer tout de suite) : contrepartie de K4 a (ex. humeur −2, statut prenant plus coûteux, frais du poste ou garde en `depenses_M_mois`, réconciliation C00 plus probable) et réglage de K5 pour un écart 5-10 % chez Gérard ; valeurs en **données** seulement. **CA-C4 reformulé** : (i) écart médian de patrimoine a / b entre 5 et 10 % (Gérard et Christine) ; (ii) l'option « temps » (b) est meilleure en **humeur moyenne sur les mois restants du chapitre** (pas l'humeur finale, qui sature) dans ≥ 80 % des graines ; (iii) a bat b dans 100 % des graines en patrimoine **et** en humeur moyenne : interdit. Valeurs provisoires du dev (+ 2,5 %) gardées le temps de la réponse ; la recette de 10c-logique attend les valeurs du game designer ; **10c-interface n'est pas bloqué** (contrat inchangé). |
+| 2 | `cadence.gd` (hors liste du plan) : cartes de carrière au rang 0,9, ne reculent que devant une date ferme | **Validé** (exception de périmètre notée) : K4 / K5 « toujours présentées » l'exigent. |
+| 3 | Gérard 23,8 pauses (cible 24-26), cartes 10,02 (tolérance 10,1) | **Accepté** : tolérance 23,5-26 pauses et ≤ 10,1 cartes pour la 0.7 ; à remesurer après le réglage de G-K1. |
+| 4 | Bug préexistant `cadence.gd` l. 171 (`\n` littéral dans un commentaire qui avale le `return` de `peut_passer` pour les cartes) | Le développeur essaie la correction **et** relance `test_reference_1984` : si la référence reste identique → corriger maintenant avec remesure de 1989-1993 ; si elle bouge → **ne pas corriger** maintenant : ticket pour le **re-gel du lot 11** (journal de re-gel). Dans les deux cas, le rendre dans le compte rendu. |
+| 5 | Erreur d'import de `tests/recette/test_recette_fin_titres.tscn` (« Expected '[' », à froid seulement) | Ticket au **testeur** (son fichier) ; non bloquant (absent de `tests.ps1`). |
+
+### Contrat de 10c-interface (figé, livré par fb6627b)
+
+```
+# contenu_modale() d'une carte de carrière : kind "carte" (mêmes champs que les autres cartes du foyer) + :
+"carriere": true                                  # absent pour les autres cartes (leur contrat ne change pas)
+"choix"[i]["revenu_mois"]    : float signé        # écart de revenu mensuel (euros internes) ; 0 pour l'option « rester »
+"choix"[i]["epargne_avant"]  : float              # épargne possible du mois avant le choix
+"choix"[i]["epargne_apres"]  : float              # = epargne_avant + revenu_mois
+"choix"[i]["avertissement"]  : String             # texte déjà rendu (gabarits), ex. « {Proche} vous verra moins… » ; "" si aucun
+# EtatPartie
+func metier() -> String            # déjà accordé au genre du joueur (« Technicienne… ») ; ligne « Métier » de « Mon foyer »
+func statut_carriere() -> String   # "normal" | "prenant" ; « prenant » : mention « Souvent absent{e} » rendue par la logique si affichée
+# Historique : entrée de la carte avec "carriere": true et "cause": "carriere"
+```
+Affichage (docs/43 §7, variante minimale) : dans chaque bouton, le montant **par mois** (« + 230 F / mois », Atkinson, signe et couleur de gain / perte existants ; 0 → « Pas de changement ») ; sous les deux boutons, une ligne grise « Épargne possible : {avant} → {après} par mois » (celle du choix survolé ou sélectionné ; au téléphone, les deux valeurs « après » sous chaque bouton) ; `avertissement` en petite ligne sous le bouton concerné ; picto d'humeur du proche inchangé ; « Mon foyer » : ligne « Métier » (+ « Souvent absent » si `statut_carriere() == "prenant"`). Aucun montant calculé dans l'UI. Fichiers : `ui/modale_carte.gd`, `ui/modale_foyer.gd`, scénarios d'interface (`carriere_k4`, `carriere_k5`, `mon_foyer_metier`), `test_interface`. Base : `lot/10b-interface` après la fusion de `lot/10c-logique` dedans (le coordinateur fusionne). Critères : CA-C7, CA-C8, CA-C9.
 
 ## 7. Conflits avec la suite
 
