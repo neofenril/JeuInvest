@@ -96,6 +96,7 @@ var chapitre_depart: String:
 func demarrer(config: Dictionary = {}) -> Dictionary:
 	_configurer(config)
 	m = m_depart
+	enfants = (config.get("enfants_initiaux", []) as Array).size()   # lot 10a bis : enfants déjà nés du profil (Christine : 2)
 	salaire_base = valeur_table(profil, Dates.annee(ab_courant()))
 	temoins = {"matelas": Portefeuille.new(), "livret": Portefeuille.new(), "indice": Portefeuille.new(), "jeanmi": Portefeuille.new()}
 	for k in ["j", "mis", "matelas", "livret", "indice", "jeanmi"]:
@@ -228,7 +229,7 @@ func tous() -> Array:
 
 
 func prenom() -> String:
-	return sal["profils"][profil]["prenoms"].get(id_periode, "")
+	return str(config_depart.get("prenom", sal["profils"][profil]["prenoms"].get(id_periode, "")))
 
 
 func journaliser(texte: String) -> void:
@@ -314,6 +315,8 @@ func valeur_ligne(w: Portefeuille, id: String, mois: int = -999) -> float:
 func valeur_risquee(w: Portefeuille, mois: int = -999) -> float:
 	var s := 0.0
 	for id in w.lignes:
+		if produit(id).get("monetaire", false):
+			continue   # une SICAV monétaire n'est pas un placement risqué (lot 10a bis)
 		s += valeur_ligne(w, id, mois)
 	return s
 
@@ -802,7 +805,7 @@ func _fin_de_mois(notifs: Array) -> void:
 				interets_joueur = i
 	var g := float(regles["sicav"]["gestion"]) / 100.0 / 12.0
 	for id in joueur.lignes:
-		if produit(id).get("type", "") == "sicav":
+		if produit(id).get("type", "") == "sicav" and not produit(id).get("monetaire", false):
 			var gestion := valeur_ligne(joueur, id) * g / (1.0 - g)
 			_noter_frais(joueur, gestion)
 			noter_flux("frais", id, gestion)
@@ -819,7 +822,35 @@ func _fin_de_mois(notifs: Array) -> void:
 
 
 ## Ordre de traitement d'un mois (03 §3.3), réduit au périmètre de la démo.
+## Rendu central des gabarits de genre et de prénom (lot 10a bis, tâche 3) : toute chaîne de v (dictionnaires et tableaux parcourus) passe
+## par Gabarits.rendre avec le contexte de la partie. Les chaînes sans accolade sont rendues telles quelles.
+func rendre(v: Variant) -> Variant:
+	return _rendre_v(v, Gabarits.contexte(self))
+
+
+static func _rendre_v(v: Variant, ctx: Dictionary) -> Variant:
+	if v is String:
+		return Gabarits.rendre(v, ctx)
+	if v is Dictionary:
+		var d: Dictionary = (v as Dictionary).duplicate()
+		for k in d:
+			d[k] = _rendre_v(d[k], ctx)
+		return d
+	if v is Array:
+		var a: Array = (v as Array).duplicate()
+		for i in a.size():
+			a[i] = _rendre_v(a[i], ctx)
+		return a
+	return v
+
+
 func _entrer_mois(initial: bool) -> Dictionary:
+	var res := _entrer_mois_brut(initial)
+	res["notifs"] = rendre(res["notifs"])
+	return res
+
+
+func _entrer_mois_brut(initial: bool) -> Dictionary:
 	var a := ab_courant()
 	var y := Dates.annee(a)
 	var res := {"notifs": [], "modale": {}, "fin": "", "m": m}
@@ -1107,7 +1138,7 @@ func _tirer_calendrier() -> Array:
 	cal = cal.filter(func(e: Dictionary) -> bool: return e["m"] > m_depart and e["m"] <= m_fin)
 	if naissances_aleatoires:
 		cal.append_array(_tirer_naissances(cal))
-	if not naissance_scriptee.is_empty():
+	if naissance_scriptee.has("d"):   # lot 10a bis : une naissance sans date n'est pas une naissance scriptée
 		var n := _naissance_de_scenario()
 		if int(n["m"]) > m_depart and int(n["m"]) <= m_fin:
 			cal.append(n)
@@ -1117,6 +1148,86 @@ func _tirer_calendrier() -> Array:
 	cal.sort_custom(func(x: Dictionary, z: Dictionary) -> bool: return x["m"] < z["m"])
 	return cal
 
+
+## Relecture des événements de vie à la bascule de chapitre (lot 10a bis) : les événements aléatoires à venir tirés avec les paramètres
+## de l'ancien chapitre sont remplacés par un tirage avec evenements_vie.json du nouveau, dans un flux propre (aucun tirage de
+## l'ancien chapitre ne bouge) ; une panne forcée suit un événement de marché « - » du chapitre ; les événements déjà arrivés, les
+## naissances et le mariage sont conservés (les indices de calendrier déjà utilisés ne changent pas : les anciens restent en tête).
+func _relire_vie_chapitre() -> void:
+	if sans_vie or not vie.has("types"):
+		return
+	var fin_chap := m_fin
+	for c: Dictionary in Donnees.chapitres(true):
+		if str(c["id"]) == chapitre:
+			fin_chap = mini(m_fin, Dates.lire(str(c["fin"])) - mk.ab_debut)
+	var types: Dictionary = vie["types"]
+	var passes: Array = []
+	var gardes: Array = []
+	for ev: Dictionary in calendrier:
+		var futur_alea := int(ev["m"]) >= m and not bool(ev.get("declenche", false)) and not bool(ev.get("force", false)) and types.has(str(ev["type"]))
+		if futur_alea:
+			continue
+		if int(ev["m"]) < m or bool(ev.get("declenche", false)):
+			passes.append(ev)
+		else:
+			gardes.append(ev)
+	var rng := Hasard.new(graine_vie * 17 + 4001 * int(chapitre))
+	var ids := types.keys()
+	var nouveaux: Array = []
+	var an0 := m / 12
+	var an1 := fin_chap / 12
+	for an in range(an0, an1 + 1):
+		var liste := []
+		for id in ids:
+			if rng.u() < float(types[id]["freq"]):
+				liste.append(id)
+		if liste.is_empty():
+			var pool: Array = vie["pool"]
+			liste.append(pool[int(rng.u() * pool.size())])
+		for i in range(liste.size() - 1, 0, -1):
+			var j := int(rng.u() * (i + 1))
+			var tmp: Variant = liste[i]
+			liste[i] = liste[j]
+			liste[j] = tmp
+		liste = liste.slice(0, int(vie["parAn"]["max"]))
+		var mois_libres := range(12)
+		for id in liste:
+			var mo: int = mois_libres.pop_at(int(rng.u() * mois_libres.size()))
+			var r1 := rng.u()
+			rng.u()
+			rng.u()
+			var t: Dictionary = types[id]
+			var bornes: Array = t["coutM"] if t["effet"] == "cout" else t["gainM"]
+			var mg := an * 12 + mo
+			if mg > m and mg <= fin_chap:
+				nouveaux.append({"m": mg, "type": id, "M": lerpf(float(bornes[0]), float(bornes[1]), r1)})
+	var krachs := []
+	for ev in evenements():
+		var mk_ev := Dates.lire(str(ev["d"])) - mk.ab_debut
+		if ev["type"] == "-" and mk_ev > m and mk_ev <= fin_chap:
+			krachs.append(ev)
+	if not krachs.is_empty() and types.has("voiture"):
+		var ev: Dictionary = krachs[int(rng.u() * krachs.size())]
+		var bornes: Array = types["voiture"]["coutM"]
+		nouveaux.append({"m": mini(fin_chap, Dates.lire(str(ev["d"])) - mk.ab_debut + 1), "type": "voiture",
+			"M": lerpf(float(bornes[0]), float(bornes[1]), rng.u()), "force": true})
+	# écart entre deux événements du même type (déjà arrivés compris), sauf les forcés
+	var ecart := int(vie.get("ecartRepetitionMois", 0))
+	var tries := nouveaux.duplicate()
+	tries.sort_custom(func(x: Dictionary, z: Dictionary) -> bool: return x["m"] < z["m"])
+	var retenus: Array = []
+	for x: Dictionary in tries:
+		var trop := false
+		if ecart > 0 and not bool(x.get("force", false)):
+			for g: Dictionary in passes + retenus:
+				if g["type"] == x["type"] and (bool(g.get("force", false)) or retenus.has(g) or passes.has(g)) and absi(int(g["m"]) - int(x["m"])) < ecart:
+					trop = true
+					break
+		if not trop:
+			retenus.append(x)
+	var suite: Array = gardes + retenus
+	suite.sort_custom(func(x: Dictionary, z: Dictionary) -> bool: return x["m"] < z["m"])
+	calendrier = passes + suite
 
 ## Pas deux fois le même événement aléatoire à moins de « ecartRepetitionMois » mois (evenements_vie.json) :
 ## les événements forcés (coïncidence après un krach) sont gardés, l'aléatoire trop proche est retiré.
@@ -1145,7 +1256,7 @@ func _espacer_repetitions(cal: Array) -> Array:
 ## marié (profil : proche de lien « conjoint », config « marie » faux), fenêtre en mois depuis le début de la partie, jamais
 ## dans les 9 mois après une naissance, au plus un mariage. Flux propre (graine de vie décalée) : aucun tirage existant ne bouge.
 ## cal : événements déjà retenus (naissances comprises).
-func _tirer_mariage(cal: Array) -> int:
+func _tirer_mariage(cal: Array, depuis := -1) -> int:
 	var p: Dictionary = vie.get("mariage", {})
 	if p.is_empty():
 		return -1
@@ -1156,6 +1267,10 @@ func _tirer_mariage(cal: Array) -> int:
 	var u_proba := rng.u()
 	var u_mois := rng.u()
 	var age := int(config_depart.get("age", sal["profils"].get(profil, {}).get("age", 30)))
+	if depuis >= 0:   # bascule de chapitre : âge à ce mois (config « age » = âge au départ ; sinon âge du profil en janvier 1978 + mois écoulés)
+		age = int(config_depart["age"]) + (depuis - m_depart) / 12 if config_depart.has("age") else int(sal["profils"].get(profil, {}).get("age", 30)) + depuis / 12
+		if bool(foyer.get("marie", false)):
+			return -1
 	var proba := 0.0
 	for t: Dictionary in p["table"]:
 		if age <= int(t["age_max"]):
@@ -1163,8 +1278,9 @@ func _tirer_mariage(cal: Array) -> int:
 			break
 	if u_proba >= proba:
 		return -1
-	var debut := m_depart + int(p["fenetre"][0])
-	var fin_f := mini(m_depart + int(p["fenetre"][1]), m_fin)
+	var base_m := m_depart if depuis < 0 else depuis
+	var debut := base_m + int(p["fenetre"][0])
+	var fin_f := mini(base_m + int(p["fenetre"][1]), m_fin)
 	if fin_f < debut:
 		return -1
 	var mois := debut + int(u_mois * float(fin_f - debut + 1))
@@ -1405,7 +1521,7 @@ func evenements() -> Array:
 			var vals := {"indice": Format.nombre(roundf(v), 0), "indice_avant": Format.nombre(roundf(av), 0),
 				"variation": Format.nombre(absf((v / av - 1.0) * 100.0), 1)}
 			var pause := bool(et.get("pause", false))
-			var ev := {"id": "V:" + str(et["mois"]), "d": str(et["mois"]), "type": "-" if pause else "-silencieux", "fenetre": 1, "gravite": str(et.get("gravite", "")),
+			var ev := {"id": "V:" + str(et["mois"]), "d": str(et["mois"]), "type": str(et.get("type", "-" if pause else "-silencieux")), "fenetre": 1, "gravite": str(et.get("gravite", "")),
 				"source": str(et.get("source", "media")), "date_journal": str(et.get("date_journal", "")), "titre": str(et["titre"]),
 				"texte": Format.gabarit(str(et["texte"]), vals), "lecon": str(et.get("lecon", "")), "vitrine_etape": 1 if not pause else 2}
 			if et.has("courbe"):
@@ -1502,6 +1618,10 @@ func _noter_vente_panique(brut: float) -> void:
 
 ## Contenu de la modale ouverte, prêt à afficher : { kind, source, titre, texte, choix, … }.
 func contenu_modale() -> Dictionary:
+	return rendre(_contenu_modale_brut())
+
+
+func _contenu_modale_brut() -> Dictionary:
 	if modale.is_empty():
 		return {}
 	var a := ab_courant()
@@ -1750,6 +1870,7 @@ const SOURCES_HISTORIQUE := ["maison", "banque", "media", "rue"]
 
 ## Chaque entrée porte « lu » : faux si elle a été créée pendant un saut (notification franchie sans être vue).
 func _ajouter_historique(entree: Dictionary) -> void:
+	entree = rendre(entree)
 	entree["lu"] = not saut_en_cours
 	historique.append(entree)
 	while historique.size() > HISTORIQUE_MAX:
@@ -1915,7 +2036,7 @@ func humeur_visible() -> int:
 
 ## « Sylvie est contente » | « Sylvie va bien » | « Sylvie fait la tête ».
 func humeur_phrase() -> String:
-	return Foyer.humeur_phrase(self)
+	return str(rendre(Foyer.humeur_phrase(self)))
 
 
 ## Dernière cause d'un changement d'humeur (≤ 10 mots), "" si aucune.
@@ -1974,6 +2095,11 @@ func _pas_jeanmi() -> void:
 	var r := Quartier.pas_mensuel(jeanmi, ab_courant(), c, cp, w.cc * Format.TAUX_EURO)
 	jeanmi = r["etat"]
 	w.cc += float(r["mouvement"]) / Format.TAUX_EURO
+	var plan_scpi: Dictionary = Quartier.donnees_jeanmi().get("plan_scpi", {})
+	if not plan_scpi.is_empty():   # saison 2 (1989-1993) : tout dans une seule SCPI
+		var rs := Quartier.pas_scpi(jeanmi, ab_courant(), w.cc * Format.TAUX_EURO, plan_scpi, Produits.params()["scpi"])
+		jeanmi = rs["etat"]
+		w.cc += float(rs["mouvement"]) / Format.TAUX_EURO
 	if "liquidation" in (r["evenements"] as Array):
 		quartier["levier"] = (jeanmi["levier"] as Dictionary).duplicate(true)
 
@@ -2214,6 +2340,11 @@ func _suivre_chapitre(emettre: bool) -> void:
 		if emettre:
 			chapitre_change.emit(ancien, ch)
 			_reinitialiser_pour_chapitre(ancien)
+			Foyer.changer_chapitre(self, ch)   # lot 10a bis : créneaux et promotion du nouveau chapitre
+			_relire_vie_chapitre()   # lot 10a bis : événements de vie tirés avec evenements_vie.json du nouveau chapitre
+			var mm := _tirer_mariage(calendrier, m)   # mariage selon l'âge (docs/47 §4.1), tiré une fois à l'entrée du chapitre
+			if mm >= 0:
+				calendrier.append({"m": mm, "type": "mariage", "M": 0.0, "force": true})
 			_ouvrir_passage(ancien, ch)
 	else:
 		Donnees.regler_chapitre(chapitre)
@@ -2232,6 +2363,8 @@ func foyer_visuel() -> Dictionary:
 	var prof: Dictionary = sal["profils"].get(profil, {})
 	var age0 := int(config_depart.get("age", prof.get("age", 0)))
 	var enfants := []
+	for x: Dictionary in config_depart.get("enfants_initiaux", []):
+		enfants.append({"prenom": str(x["prenom"]), "age": int(x.get("age", 0)) + (m - m_depart) / 12})
 	for ev in calendrier:
 		if ev["type"] == "naissance" and ev.get("declenche", false):
 			for pr in ev.get("prenoms", []):
@@ -2263,7 +2396,7 @@ func chapitres_traverses() -> Array:
 ## avec ses paramètres, écart face à Tata Livret, rang dans la rue. Les mesures du titre repartent à zéro pour le chapitre suivant.
 func _bilan_de_chapitre(id: String) -> void:
 	var g := Titres.grandeurs(self)
-	chapitres_bilan[id] = {"titre": Titres.evaluer(g), "ecart_pct": 100.0 * Titres.ecart_tata(self),
+	chapitres_bilan[id] = {"titre": Titres.pour_joueur(Titres.evaluer(g), self), "ecart_pct": 100.0 * Titres.ecart_tata(self),
 		"rang": Quartier.rang_de(classement_rue()) if rue_active() else 0, "annee_fin": Dates.annee(ab_de(m - 1)),
 		"patrimoine": patrimoine(joueur)}
 	stats_titre = Titres.stats_initiales()
@@ -2273,7 +2406,16 @@ func _bilan_de_chapitre(id: String) -> void:
 
 ## Remise à zéro de ce qui est propre à un chapitre (lot 10a) : compteurs de cadence (budgets du chapitre), projets.
 func _reinitialiser_pour_chapitre(ancien: String) -> void:
+	# Marqueurs par chapitre (lot 10a bis) : « un an après » et héritage du chapitre qui se termine sont rangés sous « <chapitre>:<id> ».
+	for cle in ["gazette_vue", "gazette_ajoutee"]:
+		if quartier.has(cle):
+			quartier[ancien + ":" + cle] = quartier[cle]
+			quartier.erase(cle)
 	if banquier_actif():
+		for cle in ["presentes", "en_file"]:
+			if (banque[cle] as Dictionary).has("D08"):
+				banque[cle][ancien + ":D08"] = banque[cle]["D08"]
+				(banque[cle] as Dictionary).erase("D08")
 		banque["compteurs"] = Cadence.compteurs_vides()
 		banque["interruptions"] = 0
 	Projets.changer_chapitre(self, ancien)

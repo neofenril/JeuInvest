@@ -140,8 +140,8 @@ func _bilan(e: EtatPartie) -> Dictionary:
 static func pct_texte(x: float) -> String:
 	var n := roundi(x)
 	if n == 0:
-		return "0 %"
-	return ("+ %d %%" % n) if n > 0 else ("− %d %%" % absi(n))
+		return "0\u00A0%"
+	return ("+ %d\u00A0%%" % n) if n > 0 else ("− %d\u00A0%%" % absi(n))
 
 
 ## Fin de partie (docs/29 §1) : titre d'époque, foyer, 4 barres, comparaison avec Tata Livret, record, détail.
@@ -173,14 +173,20 @@ func fin_demo(e: EtatPartie) -> void:
 	v.add_theme_constant_override("separation", 6 if compact else 12)
 	p.add_child(v)
 	# En-tête : Atkinson gras (il contient un chiffre : jamais Pixelify)
-	var titre := Style.label("%s · CINQ ANS DE LA VIE DE %s" % [Dates.texte(a).to_upper(), e.prenom().to_upper()], 28 if compact else 36, Style.ui_gras(), Style.ACCENT)
+	var duree := _duree(b)
+	var titre := Style.label("%s · %s DE LA VIE DE %s" % [Dates.texte(a).to_upper(), duree.to_upper(), e.prenom().to_upper()], 28 if compact else 36, Style.ui_gras(), Style.ACCENT)
 	titre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(titre)
 	var val := Style.label(Format.montant(0.0, a), 52 if compact else 60, Style.chiffres(), Style.TEXTE)
 	val.name = "Patrimoine"
 	var patr := e.patrimoine(e.joueur)
+	# Plusieurs chapitres : au PC les deux lignes de record (chapitre, partie) se rangent sous la plaque de leur titre ; au téléphone elles vont dans le récap
+	_records_separes = []
+	_etats_records = []
+	var multi := (b.get("titres", []) as Array).size() > 1 and not bool(rec.get("hors_record", false))
+	var ligne_record := _lignes_records(b, rec, compact, (interieur - 24.0) if compact else floorf((870.0 - 14.0) / 2.0) - 60.0)
 	var foyer := _bloc_foyer(e, b, compact, interieur - 24.0 - 40.0 - 110.0)
-	var plaque: Control = _plaque_titre(b, rec, compact, foyer, 870.0 if not compact else interieur - 24.0) if not titre_b.is_empty() else null
+	var plaque: Control = _plaques(b, rec, compact, foyer, 870.0 if not compact else interieur - 24.0) if not titre_b.is_empty() else null
 	infos_fin = {"titre": str(titre_b.get("nom", "")), "pourquoi": plaque != null and str(titre_b.get("pourquoi", "")) != ""}
 	var ligne := HBoxContainer.new()
 	ligne.add_theme_constant_override("separation", 24)
@@ -215,10 +221,9 @@ func fin_demo(e: EtatPartie) -> void:
 			hr.add_child(lr)
 			details_rue.append(hr)
 		infos_rue.merge({"rang": BlocRue._rang_de(classement), "total": classement.size(), "replique": not rep.is_empty()}, true)
-	details_rue.append(Style.label("Argent mis de côté en cinq ans : " + Format.montant(e.epargne_nette, a), 24 if compact else 18, Style.ui(), Style.TEXTE_2))
+	details_rue.append(Style.label("Argent mis de côté en %s : " % duree + Format.montant(e.epargne_nette, a), 24 if compact else 18, Style.ui(), Style.TEXTE_2))
 	var comparaison := _bloc_comparaison_livret(e, a, pct, (interieur - 24.0 - 640.0 - 24.0 - 80.0) if compact else droite_l - 110.0)
-	var ligne_record := _ligne_record(rec, compact, (interieur - 24.0) if compact else droite_l)
-	var courbe := _courbe_cinq_ans(e)
+	var courbe := _courbe_cinq_ans(e, duree)
 	# Détail : frais, produits, exemple, phrase de synthèse
 	var detail: Array = _lignes_detail(e, a, compact, interieur)
 	var boutons := HBoxContainer.new()
@@ -257,7 +262,7 @@ func fin_demo(e: EtatPartie) -> void:
 		lp.add_child(val)
 		droite.add_child(lp)
 		droite.add_child(comparaison)
-		if ligne_record != null:
+		if ligne_record != null and not multi:
 			droite.add_child(ligne_record)
 		droite.add_child(courbe)
 		ligne.add_child(droite)
@@ -276,9 +281,9 @@ func fin_demo(e: EtatPartie) -> void:
 		dv.add_theme_constant_override("separation", 10)
 		dv.custom_minimum_size.x = interieur - 24.0
 		defile.add_child(dv)
-		if plaque != null:
+		if plaque != null and not multi:
 			dv.add_child(plaque)
-		else:
+		elif plaque == null:
 			dv.add_child(foyer)
 		var lp := HBoxContainer.new()
 		lp.add_theme_constant_override("separation", 24)
@@ -292,6 +297,8 @@ func fin_demo(e: EtatPartie) -> void:
 		dv.add_child(lp)
 		if ligne_record != null:
 			dv.add_child(ligne_record)
+		if plaque != null and multi:
+			dv.add_child(plaque)   # plusieurs titres : le récap (patrimoine, écart, records) passe d'abord, les plaques ensuite
 		bloc.custom_minimum_size.x = interieur - 24.0
 		dv.add_child(bloc)
 		if plaque != null and foyer.has_meta("ligne"):
@@ -310,6 +317,9 @@ func fin_demo(e: EtatPartie) -> void:
 		v.add_child(defile)
 		v.add_child(boutons)
 	infos_fin["record"] = _etat_record(rec)
+	if multi:
+		infos_fin["records"] = _etats_records
+	infos_fin["plaques"] = maxi(1, (b.get("titres", []) as Array).size()) if not titre_b.is_empty() else 0
 	infos_fin["projets"] = "%d/%d" % [int((b.get("projets", {}) as Dictionary).get("realises", 0)), int((b.get("projets", {}) as Dictionary).get("total", 0))]
 	infos_fin["humeur"] = int(b.get("humeur_fin", 1))
 	infos_fin["collection"] = bool(rec.get("nouveau_titre", false))
@@ -355,49 +365,94 @@ func _lignes_detail(e: EtatPartie, a: int, compact: bool, interieur: float) -> A
 	return out
 
 
+var _etats_records: Array = []      # états des deux lignes de record (chapitre, partie), recopiés dans infos_fin
+var _records_separes: Array = []   # PC, plusieurs chapitres : [ligne du record de chapitre, ligne du record de partie] (rangées sous les plaques)
+
+
+## Durée jouée en lettres (« cinq ans », « dix ans ») d'après les années du bilan ; cinq ans sans ces champs.
+func _duree(b: Dictionary) -> String:
+	if not b.has("annee_depart") or not b.has("annee_fin"):
+		return "cinq ans"
+	return Noms.duree_texte(int(b["annee_fin"]) - int(b["annee_depart"]) + 1)
+
+
+## Une plaque de titre par chapitre traversé (bilan["titres"], lot 10b I7 ; docs/40 §2) ; un seul titre : la plaque de toujours.
+## PC : les plaques côte à côte dans la largeur de la plaque unique ; téléphone : l'une sous l'autre (le portrait reste dans la 1re).
+func _plaques(b: Dictionary, rec: Dictionary, compact: bool, foyer: Control, largeur: float) -> Control:
+	var titres: Array = b.get("titres", [])
+	if titres.size() <= 1:
+		return _plaque_titre(b, rec, compact, foyer, largeur)
+	var nouveaux: Array = rec.get("nouveaux_titres", [])
+	var boite: BoxContainer = VBoxContainer.new() if compact else HBoxContainer.new()
+	boite.name = "PlaquesTitres"
+	boite.add_theme_constant_override("separation", 10 if compact else 14)
+	var l_une := largeur if compact else floorf((largeur - 14.0 * (titres.size() - 1)) / titres.size())
+	for t: Dictionary in titres:
+		var est_nouveau := 0
+		for nv: Dictionary in nouveaux:
+			if str(nv.get("id", "")) == str(t.get("id", "")) and str(nv.get("chapitre", "")) == str(t.get("chapitre", "")):
+				est_nouveau = 1
+		var pl := _plaque_titre(b, rec, compact, foyer, l_une, t, Noms.annees_chapitre(str(t.get("chapitre", ""))), est_nouveau)
+		pl.name = "PlaqueTitre_%s" % str(t.get("chapitre", ""))
+		pl.custom_minimum_size.x = l_une
+		var k := boite.get_child_count()
+		if k < _records_separes.size():
+			(pl.find_child("ColPlaque", true, false) as Control).add_child(_records_separes[k])
+		boite.add_child(pl)
+	return boite
+
+
 ## Plaque du titre d'époque : nom, « pourquoi » ; au téléphone, le portrait et la ligne du foyer y sont repliés.
-func _plaque_titre(b: Dictionary, rec: Dictionary, compact: bool, foyer: Control, largeur: float) -> Control:
-	var t: Dictionary = b["titre"]
+func _plaque_titre(b: Dictionary, rec: Dictionary, compact: bool, foyer: Control, largeur: float, t_force := {}, annees := "", nouveau := -1) -> Control:
+	var t: Dictionary = t_force if not t_force.is_empty() else b["titre"]
 	var pc := PanelContainer.new()
 	pc.name = "PlaqueTitre"
 	pc.add_theme_stylebox_override("panel", Style.carte())
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 14)
 	pc.add_child(h)
-	if compact and foyer.has_meta("portrait"):
+	if compact and foyer.has_meta("portrait") and (foyer.get_meta("portrait") as Control).get_parent() != null:
 		var portrait: Control = foyer.get_meta("portrait")
 		portrait.get_parent().remove_child(portrait)
 		portrait.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		h.add_child(portrait)
 	var col_w := largeur - 54.0 - (110.0 if compact else 0.0)
 	var col := VBoxContainer.new()
+	col.name = "ColPlaque"
 	col.add_theme_constant_override("separation", 4)
 	col.custom_minimum_size.x = col_w
 	h.add_child(col)
 	var ligne1 := HBoxContainer.new()
 	ligne1.add_theme_constant_override("separation", 14)
-	var l1 := Style.label("VOTRE TITRE D'ÉPOQUE", 24 if compact else 20, Style.capitales(), Style.ACCENT)
+	var l1 := Style.label("VOTRE TITRE D'ÉPOQUE" + ((" · " + annees) if annees != "" else ""), 24 if compact else 20, Style.capitales(), Style.ACCENT)
 	l1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ligne1.add_child(l1)
 	ligne1.custom_minimum_size.x = col_w
-	if bool(rec.get("nouveau_titre", false)):
+	var badge: PanelContainer = null
+	if (bool(rec.get("nouveau_titre", false)) if nouveau < 0 else nouveau == 1):
 		var nv := PanelContainer.new()
 		nv.name = "NouveauCollection"
 		nv.add_theme_stylebox_override("panel", _plaque_ambre(4))
-		nv.add_child(Style.label("NOUVEAU DANS LA COLLECTION", 24 if compact else 20, Style.capitales(), Style.ENCRE))
-		ligne1.add_child(nv)
+		nv.add_child(Style.label("NOUVEAU DANS LA COLLECTION" if annees == "" else "NOUVEAU", 24 if compact else 20, Style.capitales(), Style.ENCRE))
+		if annees == "":
+			ligne1.add_child(nv)
+		else:
+			badge = nv   # plusieurs plaques côte à côte : le badge passe sous le nom (la plaque est étroite)
 	col.add_child(ligne1)
-	var nom := Style.label(str(t.get("nom", "")).to_upper(), 40 if compact else 48, Style.neon(), Style.TEXTE)
+	var nom := Style.label(str(t.get("nom", "")).to_upper(), 40 if compact else (36 if annees != "" else 48), Style.neon(), Style.TEXTE)
 	nom.name = "NomTitre"
 	nom.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	nom.custom_minimum_size.x = col_w
 	nom.max_lines_visible = 2
 	col.add_child(nom)
-	var pq := Style.label("« %s »" % str(t.get("pourquoi", "")), 26 if compact else 24, Style.ui(), Style.TEXTE)
+	var pq := Style.label("« %s »" % str(t.get("pourquoi", "")), 26 if compact else (22 if annees != "" else 24), Style.ui(), Style.TEXTE)
 	pq.name = "PourquoiTitre"
 	pq.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pq.custom_minimum_size.x = col_w
 	col.add_child(pq)
+	if badge != null:
+		badge.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		col.add_child(badge)
 	return pc
 
 
@@ -420,7 +475,7 @@ func _bloc_foyer(e: EtatPartie, b: Dictionary, compact: bool, larg_ligne: float)
 	var realises := int(proj.get("realises", 0))
 	var visage: Control = null
 	if e.has_method("cartes_actives") and e.cartes_actives():
-		visage = CadresPixel.icone("portrait_sylvie_" + ModaleCarte.nom_humeur(int(b.get("humeur_fin", e.humeur_visible()))), {}, 2 if compact else 3)   # téléphone : plus petit, le récap passe avant
+		visage = CadresPixel.icone(Noms.portrait_proche(e) + ModaleCarte.nom_humeur(int(b.get("humeur_fin", e.humeur_visible()))), {}, 2 if compact else 3)   # téléphone : plus petit, le récap passe avant
 		visage.name = "VisageSylvie"
 		visage.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		infos_rue["visage"] = true
@@ -506,13 +561,56 @@ func _etat_record(rec: Dictionary) -> String:
 	return "aucun"
 
 
+## Records d'une partie qui traverse plusieurs chapitres (lot 10b I7 ; docs/40 §3) : deux lignes légendées, « record de chapitre »
+## (écart à la fin des 5 ans du chapitre de départ) et « record de partie » (écart à la fin de la partie, rangé par année de fin) ;
+## un seul chapitre, ou hors record : la ligne unique de toujours.
+func _lignes_records(b: Dictionary, rec: Dictionary, compact: bool, larg: float) -> Control:
+	if (b.get("titres", []) as Array).size() <= 1 or bool(rec.get("hors_record", false)):
+		return _ligne_record(rec, compact, larg)
+	var boite := VBoxContainer.new()
+	boite.name = "LignesRecords"
+	boite.add_theme_constant_override("separation", 10 if compact else 8)
+	var chap := str(b.get("chapitre_depart", ""))
+	var l1 := _ligne_record(rec, compact, larg)
+	var leg1 := Style.label("RECORD DE CHAPITRE · " + Noms.annees_chapitre(chap), 20, Style.capitales(), Style.TEXTE_2)
+	boite.add_child(leg1)
+	if l1 != null:
+		boite.add_child(l1)
+	var stock: Dictionary = Records.lire(Partie.chemin_records)
+	var parties: Dictionary = ((stock.get("chapitres", {}) as Dictionary).get(chap, {}) as Dictionary).get("records_partie", {})
+	var rp: Dictionary = parties.get(str(int(b.get("annee_fin", 0))), b.get("record_partie", {}))
+	var rec2 := {"hors_record": false, "nouveau": bool(rec.get("nouveau_partie", false)), "record": rp, "ancien": {}, "sans_suffixe": true}
+	var l2 := _ligne_record(rec2, compact, larg)
+	var leg2 := Style.label("RECORD DE PARTIE · %d-%d" % [int(b.get("annee_depart", 0)), int(b.get("annee_fin", 0))], 20, Style.capitales(), Style.TEXTE_2)
+	boite.add_child(leg2)
+	if l2 != null:
+		boite.add_child(l2)
+	_etats_records = [_etat_record(rec), _etat_record(rec2)]
+	if not compact:
+		# PC : une ligne sous chaque plaque (chapitre sous le titre du 1er chapitre, partie sous le dernier) : _plaques les range
+		var c1 := VBoxContainer.new()
+		var c2 := VBoxContainer.new()
+		for n in [leg1, l1]:
+			if n != null:
+				boite.remove_child(n)
+				c1.add_child(n)
+		for n in [leg2, l2]:
+			if n != null:
+				boite.remove_child(n)
+				c2.add_child(n)
+		_records_separes = [c1, c2]
+		boite.free()
+		return null
+	return boite
+
+
 ## Ligne du record (docs/29 §1.4), états exclusifs ; null quand il n'y a rien à dire.
-func _ligne_record(rec: Dictionary, compact: bool, larg: float) -> Control:
+func _ligne_record(rec: Dictionary, compact: bool, larg: float, en_ligne := false) -> Control:
 	var etat := _etat_record(rec)
 	if etat == "aucun":
 		return null
 	var r: Dictionary = rec.get("record", {})
-	var h: BoxContainer = HBoxContainer.new() if compact else VBoxContainer.new()   # PC : colonne étroite, la pastille puis le texte
+	var h: BoxContainer = HBoxContainer.new() if (compact or en_ligne) else VBoxContainer.new()   # PC : colonne étroite, la pastille puis le texte
 	h.name = "LigneRecord"
 	h.add_theme_constant_override("separation", 12 if compact else 4)
 	var t := 28 if compact else 24
@@ -549,27 +647,29 @@ func _ligne_record(rec: Dictionary, compact: bool, larg: float) -> Control:
 	if etat == "nouveau":
 		var ancien: Dictionary = rec.get("ancien", {})
 		if ancien.is_empty():
-			texte += " · votre premier résultat enregistré"
+			if not bool(rec.get("sans_suffixe", false)):
+				texte += " · votre premier résultat enregistré"
 		else:
 			texte += " (ancien : %s)" % pct_texte(float(ancien.get("ecart_pct", 0.0)))
 	else:
+		var tn := str(r.get("titre_nom", ""))
 		if int(r.get("rang", 0)) > 0:
-			texte += " (%s de la rue, %s)" % [BlocRue.rang_texte(int(r["rang"])), str(r.get("titre_nom", ""))]
-		else:
-			texte += " (%s)" % str(r.get("titre_nom", ""))
+			texte += " (%s de la rue%s)" % [BlocRue.rang_texte(int(r["rang"])), (", " + tn) if tn != "" else ""]
+		elif tn != "":
+			texte += " (%s)" % tn
 	var l := Style.label(texte, t - (2 if etat != "nouveau" else 0), Style.ui_gras() if etat == "nouveau" else Style.ui(), c)
 	l.name = "TexteRecord"
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size.x = (larg - 60.0 - 300.0) if compact else larg - 20.0
+	l.custom_minimum_size.x = (larg - 60.0 - 300.0) if (compact or en_ligne) else larg - 20.0
 	h.add_child(l)
 	return h
 
 
 ## « Cinq ans en un coup d'œil » (PC seulement) : la courbe du joueur et celle de Tata Livret.
-func _courbe_cinq_ans(e: EtatPartie) -> VBoxContainer:
+func _courbe_cinq_ans(e: EtatPartie, duree := "cinq ans") -> VBoxContainer:
 	var droite := VBoxContainer.new()
 	droite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	droite.add_child(Style.label("CINQ ANS EN UN COUP D'ŒIL", 18, Style.capitales(), Style.TEXTE_2))
+	droite.add_child(Style.label("%s EN UN COUP D'ŒIL" % duree.to_upper(), 18, Style.capitales(), Style.TEXTE_2))
 	var courbe := Courbe.new()
 	courbe.custom_minimum_size = Vector2(0, 150)
 	courbe.total_mois = e.m_fin - e.m_depart

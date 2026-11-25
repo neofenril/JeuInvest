@@ -143,7 +143,11 @@ func _draw() -> void:
 	# Années sous l'axe
 	for i in n:
 		var a := ab_premier + i
-		if Dates.mois(a) == 1 and Frise.annee_ecrite(Dates.annee(a), zone.size.x / float(total) * 12.0, coupures.has(i) or i == 0, 52.0):
+		var voisin_coupure := false   # année voisine d'un début de chapitre (écrit en priorité) : on ne l'écrit pas, sinon les deux se chevauchent
+		for cc in coupures:
+			if absi(i - int(cc)) <= 12 and i != int(cc) and total > 0 and zone.size.x / float(total) * 12.0 < 52.0:
+				voisin_coupure = true
+		if Dates.mois(a) == 1 and not voisin_coupure and Frise.annee_ecrite(Dates.annee(a), zone.size.x / float(total) * 12.0, coupures.has(i) or i == 0, 52.0):
 			var x := zone.position.x + zone.size.x * i / float(total)
 			draw_string(police, Vector2(x - 20, size.y - 2), str(Dates.annee(a)), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(Style.TEXTE_2, 0.8))
 	_graduations(etiquettes, police)

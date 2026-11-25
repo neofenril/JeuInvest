@@ -122,8 +122,8 @@ func modales_init() -> void:
 
 
 ## Configuration d'une nouvelle partie : graine de vie tirée au hasard (graine fixe pour les captures).
-func _config() -> Dictionary:
-	var c := Donnees.config_chapitre(str(Donnees.index()["chapitre_defaut"]), -1 if ScenariosCapture.mode_capture() else randi_range(1, 2147483646))
+func _config(id := "") -> Dictionary:
+	var c := Donnees.config_chapitre(id if id != "" else str(Donnees.index()["chapitre_defaut"]), -1 if ScenariosCapture.mode_capture() else randi_range(1, 2147483646))
 	# Lot 04 (D9, I5) et lot 05 (D11, P6) : les cartes du foyer et les projets sont allumés pour toute nouvelle partie du
 	# joueur ; éteints en capture (aucune étape existante ne change : `integrale` reste la référence), sauf étape qui les demande.
 	if not ScenariosCapture.mode_capture():
@@ -141,7 +141,9 @@ func nouvelle_partie(config := {}) -> void:
 	_max_patr = 0.0
 	pluie_jusqua = -1
 	_ignorer_modales = true
-	Partie.nouvelle_partie(_config() if config.is_empty() else config)
+	# REJOUER AUTREMENT (config vide, partie précédente) : même chapitre de départ que la partie qui vient de finir
+	var depart_precedent: String = Partie.etat.chapitre_depart if (config.is_empty() and Partie.etat != null and Partie.etat.fin != "") else ""
+	Partie.nouvelle_partie(_config(depart_precedent) if config.is_empty() else config)
 	_ignorer_modales = false
 	_apres_mise_en_place()
 
@@ -168,6 +170,7 @@ func _apres_mise_en_place() -> void:
 	hud.maj_badge(e.non_lues())
 	hud.point_banque(false)
 	_regler_theme(true)
+	_regler_foyer(true)
 	if titre != null:
 		maj_titre()
 
@@ -199,14 +202,14 @@ func _entrer_titre() -> void:
 ## Boutons de l'écran titre selon la présence d'une sauvegarde.
 func maj_titre() -> void:
 	titre.maj(Sauvegarde.lire(Partie.chemin_sauvegarde), Partie.etat != null and Partie.etat.fin == "")
-	titre.maj_palmares(Records.lire(Partie.chemin_records), Titres.tous().size())
+	titre.maj_palmares(Records.lire(Partie.chemin_records), Titres.tous().size(), Noms.titres_par_chapitre())
 
 
 ## Collection des titres (écran titre : bouton TITRES, touche T). Lecture seule.
 func ouvrir_titres() -> void:
 	if not en_titre or modales.ouverte():
 		return
-	modales.titres(Records.lire(Partie.chemin_records), Titres.tous())
+	modales.titres(Records.lire(Partie.chemin_records), Titres.tous(), Noms.titres_par_chapitre())
 	await modales.choix_fait
 	titre.donner_focus()
 
@@ -221,14 +224,39 @@ func demander_nouvelle_partie() -> void:
 		if r[1] != "oui":
 			titre.donner_focus()
 			return
+	var id := await _demander_depart()
+	if id == "":
+		titre.donner_focus()
+		return
 	Sauvegarde.effacer(Partie.chemin_sauvegarde)
-	nouvelle_partie()
+	nouvelle_partie(_config(id))
+	_depart_fait = true
 	jouer()
+
+
+## Choix du départ (lot 10b, I9) quand plusieurs chapitres sont ouverts : l'id du chapitre, "" si le joueur revient en arrière.
+var _depart_fait := false
+
+func _demander_depart() -> String:
+	var cartes := ChoixDepart.cartes()
+	if cartes.size() < 2 or ScenariosCapture.mode_capture() or DisplayServer.get_name() == "headless":   # captures et tests : départ par défaut (étape « choix_depart » pour la fenêtre)
+		return str(Donnees.index()["chapitre_defaut"])
+	modales.choix_depart(cartes)
+	var r: Array = await modales.choix_fait
+	return "" if str(r[1]) == "retour" else str(r[1])
 
 
 func jouer() -> void:
 	if not en_titre or modales.ouverte():
 		return
+	if not _reprise and not _depart_fait:
+		var id := await _demander_depart()
+		if id == "":
+			titre.donner_focus()
+			return
+		if Partie.etat == null or id != Partie.etat.chapitre_depart:
+			nouvelle_partie(_config(id))
+	_depart_fait = false
 	en_titre = false
 	var media: Node = ville.get("media")
 	if _tween_titre != null and _tween_titre.is_valid():
@@ -428,11 +456,25 @@ func _regler_theme(premier := false) -> void:
 
 
 ## Le mois courant entre dans un autre chapitre (Partie.chapitre_change ; jamais émis avec les données réelles avant le lot 10).
-## Place de la future carte de passage de chapitre (version A, docs/40) ; pour l'instant : textes et décor du chapitre.
+## La carte de passage (version A, docs/40) arrive par Sequences ; ici : textes, décor et foyer du chapitre.
 func _on_chapitre_change(_ancien: String, _nouveau: String) -> void:
 	demo = Donnees.infos_chapitre()
 	modales.donnees_demo = demo
 	_regler_theme()
+	_regler_foyer()
+
+
+## Foyer visible dans la ville (lot 10b, I10) : ville.regler_foyer_visuel(foyer_visuel()) au démarrage, à la reprise et à chaque
+## changement (janvier, naissance, mariage) ; idempotent, appelé seulement quand le foyer change.
+var _dernier_foyer: Dictionary = {}
+
+func _regler_foyer(force := false) -> void:
+	if Partie.etat == null or not ville.has_method("regler_foyer_visuel"):
+		return
+	var d: Dictionary = Partie.etat.foyer_visuel()
+	if force or d != _dernier_foyer:
+		_dernier_foyer = d.duplicate(true)
+		ville.call("regler_foyer_visuel", d)
 
 
 func _on_mois(res: Dictionary) -> void:
@@ -443,6 +485,7 @@ func _on_mois(res: Dictionary) -> void:
 	var a := e.ab_courant()
 	ville.call("regler_mois", Dates.mois(a), Dates.annee(a))
 	_regler_theme()
+	_regler_foyer()
 	hud.maj(e, anime)
 	sequences.maj_media(anime)
 	var patr := e.patrimoine(e.joueur)

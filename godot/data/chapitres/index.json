@@ -3,7 +3,8 @@
   "premiere_annee": 1977,
   "chapitre_defaut": "1984",
   "chapitres": [
-    { "id": "1984", "nom": "Les années fric", "debut": "1984-01", "fin": "1988-12", "marche": "P1", "ouvert": true }
+    { "id": "1984", "nom": "Les années fric", "debut": "1984-01", "fin": "1988-12", "marche": "P1", "ouvert": true },
+    { "id": "1989", "nom": "Le franc fort", "debut": "1989-01", "fin": "1993-12", "marche": "P1", "ouvert": true }
   ],
   "themes": [ { "de": "1977-01", "theme": "1980" } ]
 }

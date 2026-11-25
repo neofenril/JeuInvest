@@ -154,7 +154,7 @@ func _bloc_humeur(e: EtatPartie, col: float, compact: bool) -> Control:
 	var hh := HBoxContainer.new()
 	hh.name = "BlocHumeur"
 	hh.add_theme_constant_override("separation", 18)
-	portrait = CadresPixel.icone("portrait_sylvie_" + ModaleCarte.nom_humeur(e.humeur_visible()))
+	portrait = CadresPixel.icone(Noms.portrait_proche(e) + ModaleCarte.nom_humeur(e.humeur_visible()))
 	portrait.name = "Portrait"
 	portrait.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	hh.add_child(portrait)

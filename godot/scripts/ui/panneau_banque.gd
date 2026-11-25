@@ -40,6 +40,7 @@ var _b_mode_b: Button
 var _mensuel := 0.0
 var _maj_en_cours := false
 var _largeur_droite := 780.0
+var message_enveloppe := ""        # résultat du dernier ordre PEA / SCPI refusé, affiché en tête de la fiche (PanneauEnveloppes)
 const CARNET_PLEIN := 9            # jusqu'à 9 produits : grille 3 × 3 complète (silhouettes comprises)
 
 
@@ -222,8 +223,22 @@ func _maj_carnet() -> void:
 		c.indice = str(info.get("indice", ""))
 		c.cadenas = false
 		c.calendrier = Versements.actif(e, pid)
+		# Lot 10b (D5) : la tuile d'une SCPI affiche sa valeur de REVENTE, celle d'un PEA sa valeur ; sinon l'état commun
+		if c.etat in ["presente", "nouveau"] and ((info.get("type", "") == "scpi" and Enveloppes.parts(e.joueur) >= 1.0) or (info.get("type", "") == "pea" and Enveloppes.a_pea(e.joueur))):
+			c.etat = "detenu"
+			if info.get("type", "") == "scpi":
+				c.ligne1 = Format.entier(Enveloppes.valeur_scpi(e.joueur, a), a)
+				c.ligne2 = "%d part%s" % [int(Enveloppes.parts(e.joueur)), "s" if Enveloppes.parts(e.joueur) >= 2.0 else ""]
+			else:
+				c.ligne1 = Format.entier(Enveloppes.valeur_pea(e, e.joueur), a)
+				c.ligne2 = "enveloppe"
 		match c.etat:
 			"detenu":
+				if info.get("type", "") in ["scpi", "pea"] and c.ligne1 != "":
+					c.cadenas = false
+					c.choisie = pid == produit
+					c.queue_redraw()
+					continue
 				c.ligne1 = Format.entier(Banquier.valeur(e, pid), a)
 				c.ligne2 = _sous_titre(pid)
 				c.cadenas = pid == "pel" or (pid == "av" and e.m - int(e.joueur.av["ouvert_m"]) < 72)
@@ -288,6 +303,12 @@ func _afficher_silhouette(pid: String) -> void:
 	_droite.add_child(_texte(Noms.banquier() + " vous en parlera le moment venu.", 24, Style.ui(), Style.TEXTE_2))
 
 
+## Relit la fiche du produit (après un ordre PEA / SCPI) et le carnet.
+func rafraichir_fiche(pid: String) -> void:
+	_afficher_fiche(pid)
+	_maj_carnet()
+
+
 func _afficher_fiche(pid: String) -> void:
 	_vider()
 	_ligne_projet_en_tete(true)
@@ -313,7 +334,11 @@ func _afficher_fiche(pid: String) -> void:
 	relire_b.pressed.connect(func() -> void: relire.emit(id_pres))
 	tete.add_child(relire_b)
 	_droite.add_child(tete)
-	_droite.add_child(_texte("Présenté par %s en %s. %s" % [Noms.banquier(), Dates.texte(e.ab_de(p)), str(info.get("definition", ""))], 18 if compact else 20, Style.ui(), Style.TEXTE_2))
+	if compact and PanneauEnveloppes.gere(str(info.get("type", ""))):
+		# Téléphone (648 px) : PEA, SCPI et PEP vont droit à l'essentiel (la définition et les 4 critères restent au PC)
+		PanneauEnveloppes.completer(self, pid, str(info.get("type", "")))
+		return
+	_droite.add_child(_texte("Présenté par %s en %s. %s" % [Noms.banquier(), Dates.texte(e.ab_de(p)), Noms.definition(info)], 18 if compact else 20, Style.ui(), Style.TEXTE_2))
 	# Les 4 critères et les frais, en valeur absolue (pas de comparaison ici)
 	var g := GridContainer.new()
 	g.columns = 3
@@ -332,6 +357,10 @@ func _afficher_fiche(pid: String) -> void:
 	_droite.add_child(g)
 	if int(notes.get("risque", 1)) >= 2:
 		_droite.add_child(_texte("* espéré, jamais garanti ; le passé ne prédit rien.", 16, Style.ui(), Style.TEXTE_2))
+	# Lot 10b (I8) : PEA, SCPI (vente différée) et PEP (message) ont leur propre bas de fiche
+	if PanneauEnveloppes.gere(str(info.get("type", ""))):
+		PanneauEnveloppes.completer(self, pid, str(info.get("type", "")))
+		return
 	_droite.add_child(_texte(_vous_avez(pid), 22 if compact else 24, Style.chiffres()))
 	var div := texte_dividendes(e, pid)
 	if div != "":

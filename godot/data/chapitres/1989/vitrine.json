@@ -1,0 +1,24 @@
+{
+  "_note": "Vitrine du chapitre 1989-1993 : la guerre du Golfe en deux étapes mensuelles réelles (docs/47 §1, arbitrage A1 du lot 10a), puis le second événement à pause, Maastricht et le SME (docs/37 §7.1, 09/1992). AUCUNE donnée journalière : seulement des fins de mois de series.json / periode_p1.json (08/1990 : 1 640, C ; 09/1990 : 1 472, A). Les chiffres des textes sont CALCULÉS sur la série du jeu ({indice} fin de mois, {indice_avant} fin du mois précédent, {variation} = écart en % avec le mois précédent) : si le boursier corrige un ancrage, les textes suivent. pause : false = notification sans pause (étape 1) ; true = modale « marche » avec choix ; type (facultatif) : « +opportunite » pour un événement positif à pause (01/1991, docs/37 §7.1). courbe : mois dont la fin de mois est tracée ; mention : sous la courbe. lecon : rappel à 12 mois.",
+  "etapes": [
+    {
+      "mois": "1990-08", "pause": false, "source": "media", "date_journal": "août 1990", "gravite": "baisse",
+      "titre": "L'Irak envahit le Koweït",
+      "texte": "Fin août : la Bourse de Paris recule de {variation} % depuis fin juillet. Le pétrole flambe, les marchés s'inquiètent."
+    },
+    {
+      "mois": "1990-09", "pause": true, "source": "media", "date_journal": "septembre 1990", "gravite": "baisse",
+      "titre": "Le Golfe : la baisse dure",
+      "texte": "Deux mois que la Bourse glisse : encore {variation} % en septembre. En 1987, la chute avait pris une journée. Cette fois, elle dure.",
+      "courbe": ["1990-07", "1990-08", "1990-09"],
+      "mention": "Fins de mois seulement : entre deux, la Bourse a fait des allers-retours.",
+      "lecon": "Une baisse peut durer des mois : on ne place en actions que l'argent dont on n'a pas besoin bientôt."
+    },
+    {
+      "mois": "1992-09", "pause": true, "source": "media", "date_journal": "septembre 1992", "gravite": "baisse",
+      "titre": "Maastricht et le franc sous pression",
+      "texte": "Référendum sur Maastricht : oui à 51 %. La livre et la lire quittent le système monétaire européen ; les taux s'envolent pour défendre le franc.",
+      "lecon": "Un référendum et une crise de change font peur : vendre au plus bas, c'est transformer la baisse en perte."
+    }
+  ]
+}

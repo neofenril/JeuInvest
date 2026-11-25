@@ -40,6 +40,8 @@ func _ready() -> void:
 	await _test_scene_principale(empreinte_avant)
 	await _test_courrier()
 	await _test_dix_ans()
+	await _test_chapitre_2()
+	await _test_enveloppes()
 	await _test_demo_complete(true)
 	await _test_demo_complete(false)
 	await _test_demo_complete(true, true)    # lot 04 : toute la démo avec les cartes du foyer allumées
@@ -76,7 +78,7 @@ func _test_scene_principale(empreinte_avant: String) -> void:
 	_verifier("principal._config() hors capture : \"cartes\", \"projets\" et \"rue\" vrais", cfg.get("cartes", false) == true and cfg.get("projets", false) == true and cfg.get("rue", false) == true, str(cfg.keys()))
 	# Lot 09-I (CA-I5) : la config du joueur porte le chapitre de départ et la fin bornée par la dernière année implémentée
 	print("INTERFACE _config chapitre=%s fin=%s" % [cfg.get("chapitre", "?"), cfg.get("fin", "?")])
-	_verifier("principal._config() : chapitre « 1984 » et fin « 1988-12 »", str(cfg.get("chapitre", "")) == "1984" and str(cfg.get("fin", "")) == "1988-12", str(cfg.get("chapitre", "")) + " " + str(cfg.get("fin", "")))
+	_verifier("principal._config() : chapitre « 1984 » et fin = décembre de la dernière année ouverte (1993 avec le chapitre 1989)", str(cfg.get("chapitre", "")) == "1984" and str(cfg.get("fin", "")) == "%d-12" % Donnees.derniere_annee(), str(cfg.get("chapitre", "")) + " " + str(cfg.get("fin", "")))
 	# Lot 08 : la pop-up de début s'ouvre à une nouvelle partie (JOUER, REJOUER), temps figé, pas à la reprise
 	Reglages.intro_force = true
 	scene.call("nouvelle_partie")
@@ -328,6 +330,234 @@ func _test_dix_ans() -> void:
 	Juice.camera = null
 	Juice.hud = null
 	Juice.calque_effets = null
+
+
+# ---------------------------------------------------------------------
+# a quater) Lot 10b, étape 2 : passage de chapitre, vitrine en courbe, bilan à deux titres, choix du départ, PEA / SCPI / PEP
+# (jeu d'essai tests/donnees/chapitres : chapitres « 1984 » et « 1989 » ouverts)
+# ---------------------------------------------------------------------
+
+func _monter_modales() -> Array:
+	var calque := CanvasLayer.new()
+	calque.layer = 5
+	add_child(calque)
+	var md := Modales.new()
+	md.donnees_demo = Donnees.charger("demo").duplicate(true)
+	calque.add_child(md)
+	Juice.hud = calque
+	return [calque, md]
+
+
+func _boutons_texte(racine: Node, texte: String) -> Array:
+	var out: Array = []
+	for b: Button in racine.find_children("*", "Button", true, false):
+		if b.text == texte and b.is_visible_in_tree():
+			out.append(b)
+	return out
+
+
+func _test_chapitre_2() -> void:
+	var racine_avant := Donnees.racine_chapitres
+	Donnees.racine_chapitres = "res://tests/donnees/chapitres"
+	Donnees.regler_chapitre("")
+	Donnees.vider_cache()
+	# Partie 1984 -> 1993 sur le jeu d'essai : on garde la carte de passage (1989-01) et la vitrine (1989-11) avant de les résoudre
+	var e := EtatPartie.new()
+	var cfg := Donnees.config_chapitre("1984", 3)
+	cfg["banquier"] = true
+	cfg["rue"] = true
+	e.demarrer(cfg)
+	var passage := {}
+	var vitrine := {}
+	var garde := 0
+	while e.fin == "" and garde < 400:
+		garde += 1
+		while not e.modale.is_empty():
+			var c0 := e.contenu_modale()
+			if str(c0.get("kind", "")) == "passage" and passage.is_empty():
+				passage = c0
+			if str(c0.get("kind", "")) == "marche" and c0.has("courbe") and vitrine.is_empty():
+				vitrine = c0
+			e.resolution_auto()
+		e.avancer()
+	var env := _monter_modales()
+	var md: Modales = env[1]
+	# Carte de passage (version A)
+	md.passage(passage, Vector2(-1, -1))
+	await _images(8)
+	var pp := md.etat_passage()
+	var ab_p := Dates.lire("1989-01")
+	_verifier("Passage : carte ouverte, titre « JANVIER 1989 », chiffres == contenu_modale (patrimoine, écart, rang), un seul bouton CONTINUER",
+		md.genre_courant == "passage" and str(pp.infos.get("titre", "")) == "JANVIER 1989" and (pp.infos["valeurs"] as Array)[0] == Format.montant(float(passage["patrimoine"]), ab_p)
+		and (pp.infos["valeurs"] as Array)[1] == ModaleReleveFin.pct_texte(float(passage["ecart_tata_pct"])) and int(pp.infos.get("boutons", 0)) == 1 and md.courant.find_children("*", "Button", true, false).size() == 1,
+		str(pp.infos))
+	_verifier("Passage : aucun titre révélé (promesse « Votre titre d'époque 1984-1988 vous attend au bilan final. »), texte d'attente == contenu",
+		str(pp.infos.get("promesse", "")) == "Votre titre d'époque 1984-1988 vous attend au bilan final." and str(pp.infos.get("attente", "")) == str(passage["texte_attente"]), str(pp.infos.get("promesse", "")))
+	var ferme := []
+	md.choix_fait.connect(func(g: String, i: String) -> void: ferme.append([g, i]))
+	await _touche(KEY_ESCAPE)
+	var apres_echap := md.genre_courant == "passage"
+	await _touche(KEY_ENTER)
+	await _images(3)
+	_verifier("Passage : Échap sans effet, Entrée ferme avec « continuer »", apres_echap and ferme == [["passage", "continuer"]], str(ferme))
+	await get_tree().create_timer(0.4).timeout
+	# Vitrine en courbe : 3 points, mention fixe, pas de tableau des jours
+	md.journal(vitrine, Vector2(-1, -1), false)
+	await _images(10)
+	var cv: CourbeVitrine = md._journal.courbe_vue
+	var lm := md.courant.find_child("Mention", true, false) as Label if is_instance_valid(md.courant) else null
+	_verifier("Vitrine : courbe de %d points (valeurs == contenu), mention fixe == contenu, aucun tableau des jours" % (vitrine["courbe"] as Array).size(),
+		cv != null and cv.lues.size() == (vitrine["courbe"] as Array).size() and cv.lues[0][1] == ModaleJournal.texte_indice(float(vitrine["courbe"][0]["valeur"]))
+		and lm != null and lm.text == str(vitrine["mention"]) and md._journal.lignes_jours.is_empty(), str(cv.lues) if cv != null else "pas de courbe")
+	md.fermer("fermer")
+	await get_tree().create_timer(0.4).timeout
+	# Bilan final 1984 -> 1993 : deux plaques == bilan[titres], deux records, courbe sur toute la durée
+	var chemin_rec := "user://test_interface_chap2_%d.sav" % OS.get_process_id()
+	var b := Bilan.calculer(e)
+	b["record"] = Records.enregistrer(b, "test_chap2", chemin_rec, "2026-11-19")
+	md.dernier_bilan = b
+	var avant_records := Partie.chemin_records
+	Partie.chemin_records = chemin_rec
+	Partie.etat = e
+	md.fin_demo(e)
+	await _images(12)
+	var fin := md.etat_fin()
+	var noms_plaques := []
+	for t: Dictionary in b["titres"]:
+		var pl := md.courant.find_child("PlaqueTitre_%s" % str(t["chapitre"]), true, false) if is_instance_valid(md.courant) else null
+		var nom := pl.find_child("NomTitre", true, false) as Label if pl != null else null
+		noms_plaques.append(nom.text if nom != null else "?")
+	var attendus := (b["titres"] as Array).map(func(t: Dictionary) -> String: return str(t["nom"]).to_upper())
+	_verifier("Bilan 1984 -> 1993 : %d plaques de titre == bilan[titres] (noms, une par chapitre)" % (b["titres"] as Array).size(),
+		(b["titres"] as Array).size() == 2 and int(fin.infos_fin.get("plaques", 0)) == 2 and noms_plaques == attendus, "%s / %s" % [str(noms_plaques), str(attendus)])
+	_verifier("Bilan : deux lignes de record (chapitre, partie) == bilan, nouveaux à la 1re partie ; durée « dix ans »",
+		fin.infos_fin.get("records", []) == ["nouveau", "nouveau"]
+		and _tous_textes(md.courant).any(func(t: String) -> bool: return t.contains("RECORD DE CHAPITRE") and t.contains("1984-1988"))
+		and _tous_textes(md.courant).any(func(t: String) -> bool: return t.contains("RECORD DE PARTIE") and t.contains("1984-1993")) and _tous_textes(md.courant).any(func(t: String) -> bool: return t.contains("DIX ANS")),
+		str(fin.infos_fin.get("records", [])))
+	md.fermer("quitter")
+	await get_tree().create_timer(0.4).timeout
+	Partie.chemin_records = avant_records
+	Records.effacer(chemin_rec)
+	# Collection et écran titre par chapitre
+	var par_chapitre := Noms.titres_par_chapitre()
+	md.titres(Records.lire(chemin_rec), Titres.tous(), par_chapitre)
+	await _images(6)
+	_verifier("Collection : un onglet par chapitre ouvert (%d), 9 tuiles chacun" % par_chapitre.size(), md.etat_titres().infos.get("onglets", 0) == par_chapitre.size() and par_chapitre.size() == 2 and md.etat_titres().infos.get("tuiles", 0) == 9,
+		str(md.etat_titres().infos))
+	md.fermer("fermer")
+	await get_tree().create_timer(0.4).timeout
+	# Choix du départ : une carte par chapitre ouvert, touche 2 = 1989
+	var cartes := ChoixDepart.cartes()
+	md.choix_depart(cartes)
+	await _images(6)
+	var recu := []
+	md.choix_fait.connect(func(g: String, i: String) -> void: recu.append([g, i]))
+	var ok_cartes: bool = cartes.size() == 2 and cartes[0]["id"] == "1984" and cartes[1]["id"] == "1989" and cartes[0]["titre"] == "JANVIER 1984" and cartes[1]["titre"] == "JANVIER 1989"
+	await _touche(KEY_2)
+	await _images(3)
+	_verifier("Choix du départ : 2 cartes (1984, 1989) lues dans les données, la touche 2 choisit 1989", ok_cartes and recu.has(["depart", "1989"]), str(cartes))
+	await get_tree().create_timer(0.4).timeout
+	# Le foyer de la partie : portrait du conjoint selon le genre
+	_verifier("Noms.portrait_proche : Sylvie (f) pour Gérard ; conjoint homme pour une joueuse avec proche h",
+		Noms.portrait_proche(e) == "portrait_sylvie_" and Noms.portrait_proche(null) == "portrait_sylvie_" and CadresPixel.texture("portrait_proche_h_neutre") != null)
+	e = null
+	env[0].queue_free()
+	await _images(2)
+	Donnees.racine_chapitres = racine_avant
+	Donnees.regler_chapitre("")
+	Donnees.vider_cache()
+
+
+func _tous_textes(racine: Node) -> Array:
+	var out: Array = []
+	for l: Label in racine.find_children("*", "Label", true, false):
+		out.append(l.text)
+	return out
+
+
+## PEA, SCPI et PEP dans la fenêtre Banque, sur le vrai moteur (1992-08 du jeu d'essai : le PEA existe depuis 07/1992).
+func _test_enveloppes() -> void:
+	var racine_avant := Donnees.racine_chapitres
+	Donnees.racine_chapitres = "res://tests/donnees/chapitres"
+	Donnees.regler_chapitre("")
+	Donnees.vider_cache()
+	Partie.chemin_sauvegarde = _chemin_test
+	Partie.sauvegarde_auto = false
+	var cfg := Donnees.config_chapitre("1984", 5)
+	cfg["banquier"] = true
+	Partie.nouvelle_partie(cfg)
+	var e := Partie.etat
+	StrategieTest.aller_a(e, Dates.lire("1989-06"), true)   # GARDE : 100 mois par saut
+	StrategieTest.aller_a(e, Dates.lire("1992-08"), true)
+	e.joueur.cc = Produits.f(60000.0)
+	var env := _monter_modales()
+	var md: Modales = env[1]
+	# Produits injectés dans le carnet de la partie (le jeu d'essai n'a pas ceux de 1989)
+	var d := Banquier.donnees()
+	var ordre_avant: Array = (d["ordre_carnet"] as Array).duplicate()
+	for pid in ["scpi", "pea", "pep", "elf"]:
+		if not (d["ordre_carnet"] as Array).has(pid):
+			d["ordre_carnet"].append(pid)
+		if not Banquier.produits_vus(e).has(pid):
+			Banquier.produits_vus(e).append(pid)
+	md.ouvrir_banque(e, "scpi", -2.0)
+	await _images(10)
+	var fiche := md.banque.zone_droite()
+	_verifier("SCPI : fiche avec « Vous avez » == texte du moteur (rien), boutons ACHETER par parts (1, 5, 10)",
+		fiche.find_child("VousAvez", true, false) != null and (fiche.find_child("VousAvez", true, false) as Label).text == PanneauEnveloppes.texte_scpi(e) and _boutons_texte(fiche, "5 PARTS").size() == 1)
+	_boutons_texte(fiche, "5 PARTS")[0].pressed.emit()
+	await _images(4)
+	var l_scpi := md.banque.zone_droite().find_child("VousAvez", true, false) as Label
+	_verifier("SCPI : achat de 5 parts : 5 parts au moteur, ligne == valeur de revente (valeur_scpi), tuile du carnet == valeur de revente",
+		int(Enveloppes.parts(e.joueur)) == 5 and l_scpi != null and l_scpi.text == PanneauEnveloppes.texte_scpi(e) and l_scpi.text.contains(Format.montant(Enveloppes.valeur_scpi(e.joueur, e.ab_courant()), e.ab_courant()))
+		and (md.banque._cartes["scpi"] as CarteProduit).ligne1 == Format.entier(Enveloppes.valeur_scpi(e.joueur, e.ab_courant()), e.ab_courant()), l_scpi.text if l_scpi != null else "?")
+	(md.banque.zone_droite().find_child("Rangee_VENDRE", true, false).find_children("*", "Button", true, false)[0] as Button).pressed.emit()
+	await _images(4)
+	var ventes := e.ventes_differees()
+	var l_vente := md.banque.zone_droite().find_child("VenteEnCours", true, false)
+	var texte_vente := ""
+	for l: Label in l_vente.find_children("*", "Label", true, false) if l_vente != null else []:
+		texte_vente = l.text
+	_verifier("SCPI : vente différée de 1 part visible avec son mois d'exécution (+ 3 mois) et un bouton ANNULER",
+		ventes.size() == 1 and int(ventes[0]["parts"]) == 1 and texte_vente.contains(Dates.texte(e.ab_de(int(ventes[0]["m_execution"])))) and int(ventes[0]["m_execution"]) == e.m + 3
+		and _boutons_texte(md.banque.zone_droite(), "ANNULER").size() == 1, texte_vente)
+	_boutons_texte(md.banque.zone_droite(), "ANNULER")[0].pressed.emit()
+	await _images(4)
+	_verifier("SCPI : ANNULER supprime la vente en cours", e.ventes_differees().is_empty() and md.banque.zone_droite().find_child("VenteEnCours", true, false) == null)
+	# PEA : ouvrir, verser, acheter un titre éligible dans l'enveloppe
+	md.banque.call("_choisir", "pea")
+	await _images(4)
+	var ouvrir := _boutons_texte(md.banque.zone_droite(), "OUVRIR UN PEA")
+	_verifier("PEA : sans plan, bouton OUVRIR UN PEA", ouvrir.size() == 1)
+	ouvrir[0].pressed.emit()
+	await _images(4)
+	_verifier("PEA : plan ouvert au moteur, versements proposés", Enveloppes.a_pea(e.joueur) and _boutons_texte(md.banque.zone_droite(), Format.entier(Produits.f(5000.0), e.ab_courant())).size() >= 1, "%s ; %s ; PEA dispo %s ; boutons %s" % [str(e.joueur.pea), Dates.texte(e.ab_courant()), Enveloppes.pea_disponible(e.ab_courant()), str(md.banque.zone_droite().find_children("*", "Button", true, false).map(func(x: Button) -> String: return x.text))])
+	var b5 := _boutons_texte(md.banque.zone_droite(), Format.entier(Produits.f(5000.0), e.ab_courant()))
+	b5[0].pressed.emit()
+	await _images(4)
+	_verifier("PEA : versement de 5 000 F : espèces du PEA == versement", is_equal_approx(float(e.joueur.pea["cc"]), Produits.f(5000.0)), str(e.joueur.pea.get("cc", "?")))
+	var ba := md.banque.zone_droite().find_child("AcheterPea", true, false) as Button
+	if ba != null:
+		ba.pressed.emit()
+		await _images(4)
+	_verifier("PEA : achat d'un titre éligible DANS l'enveloppe (Partie.acheter(..., \"pea\")) : ligne portée par le PEA", not (e.joueur.pea["lignes"] as Dictionary).is_empty() and e.enveloppe((e.joueur.pea["lignes"] as Dictionary).keys()[0]) == "pea",
+		str((md.banque.zone_droite().find_child("MessageEnveloppe", true, false) as Label).text) if md.banque.zone_droite().find_child("MessageEnveloppe", true, false) != null else "pas de message ; bouton %s" % str(ba))
+	# PEP : message, aucun bouton d'achat
+	md.banque.call("_choisir", "pep")
+	await _images(4)
+	_verifier("PEP : fiche d'information sans bouton d'achat (ni ACHETER, ni OUVRIR, ni VERSER)",
+		_boutons_texte(md.banque.zone_droite(), "ACHETER").is_empty() and _boutons_texte(md.banque.zone_droite(), "VERSER").is_empty() and md.banque.zone_droite().find_child("TexteLong", true, false) != null)
+	md.banque.fermer_demande.emit()
+	await get_tree().create_timer(0.4).timeout
+	d["ordre_carnet"] = ordre_avant
+	env[0].queue_free()
+	Partie.nouvelle_partie(Donnees.config_demo(GRAINE))
+	Partie.sauvegarde_auto = false
+	await _images(2)
+	Donnees.racine_chapitres = racine_avant
+	Donnees.regler_chapitre("")
+	Donnees.vider_cache()
 
 
 func _images(n: int) -> void:

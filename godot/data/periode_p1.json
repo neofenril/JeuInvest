@@ -44,6 +44,10 @@
   "produits": [
     { "id": "sicav", "type": "sicav", "nom": "SICAV actions France", "court": "SICAV France",
       "vl0": 1000, "devise": "F", "description": "Un fonds qui achète pour vous les grandes actions françaises." },
+    { "id": "sicav_monetaire", "type": "sicav", "monetaire": true, "nom": "SICAV monétaire", "court": "SICAV monétaire",
+      "vl0": 1000, "devise": "F", "debut": "1984-01", "description": "Un fonds qui place l'argent à très court terme.",
+      "_taux_nets": "Valeur liquidative = capitalisation mensuelle du taux net de l'année (SICAV monétaire nette de frais : 1984-1988 docs/connaissances/boursier.md §2.7, A/B ; 1989-1993 docs/37 §4, B/C). Aucun aléa : ne consomme aucun tirage du marché.",
+      "taux_nets": { "1984": 11.0, "1985": 9.5, "1986": 7.0, "1987": 7.0, "1988": 7.5, "1989": 8.7, "1990": 9.6, "1991": 8.9, "1992": 9.5, "1993": 7.8 } },
     { "id": "elf", "type": "action", "nom": "Elf Aquitaine", "court": "Elf", "secteur": "Pétrole",
       "beta": 0.8, "volSpe": 0.22, "ecartDiv": 1.5, "_certDiv": "C", "devise": "F",
       "ancrages": [["1977-12", 72], ["1978-12", 96], ["1979-12", 150], ["1980-12", 190], ["1981-12", 145],

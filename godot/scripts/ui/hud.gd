@@ -577,6 +577,8 @@ func _replier_barre() -> void:
 	var h := barre.get_child(0) as HBoxContainer
 	var dispo := Ecran.taille().x - 30.0
 	var trop := func() -> bool: return h.get_combined_minimum_size().x > dispo
+	# Replis supplémentaires pour les montants à 6 chiffres : seulement dès 1989 (1984-1988 garde exactement ses replis d'origine)
+	var nouveaux_montants := Partie.etat != null and Dates.annee(Partie.etat.ab_courant()) >= 1989
 	replis_barre = PackedStringArray()
 	manque_cc = 0.0
 	# Largeur du badge : la plus large de ses deux chaînes (rien ne bouge quand le saut commence)
@@ -586,6 +588,11 @@ func _replier_barre() -> void:
 	l_titre_cc.text = "COMPTE" if compact else "COMPTE COURANT"
 	l_titre_livret.text = "VS LIVRET A" if compact else "VS TOUT AU LIVRET A"
 	l_var.visible = not compact
+	l_titre_livret.visible = true
+	l_titre_cc.visible = true
+	l_cc.add_theme_font_size_override("font_size", 28 if compact else 32)
+	l_patr.add_theme_font_size_override("font_size", 38 if compact else 44)
+	l_ecart.add_theme_font_size_override("font_size", 26 if compact else 30)
 	badge_pause.set_meta("replie", false)
 	badge_pause.visible = true
 	_disposer_courrier(true)
@@ -612,6 +619,18 @@ func _replier_barre() -> void:
 		if trop.call():
 			badge_pause.set_meta("replie", true)
 			replis_barre.append("pause")
+			badge_pause.visible = false   # le badge replié ne compte plus dans la mesure (sinon les replis suivants se déclenchent à tort)
+		if nouveaux_montants and trop.call():   # montants à 6 chiffres (1991-1993) : la ligne « VS LIVRET A » cède sa place, la flèche et le montant restent
+			l_titre_livret.visible = false
+			replis_barre.append("titre_livret_cache")
+		if nouveaux_montants and trop.call():
+			l_titre_cc.visible = false
+			replis_barre.append("titre_cc_cache")
+		if nouveaux_montants and trop.call():   # dernier recours (1280 px, montants à 6 chiffres) : chiffres un peu plus petits
+			l_cc.add_theme_font_size_override("font_size", 24)
+			l_patr.add_theme_font_size_override("font_size", 32)
+			l_ecart.add_theme_font_size_override("font_size", 22)
+			replis_barre.append("chiffres_reduits")
 	badge_pause.visible = (Partie.vitesse == 0 or Partie.saut_actif) and not badge_pause.get_meta("replie", false)
 
 
@@ -1551,6 +1570,8 @@ func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 	var chs := Donnees.chapitres()
 	for k in range(1, chs.size()):
 		var ab_c := Dates.lire(str(chs[k]["debut"]))
+		if ab_c - e.mk.ab_debut <= e.m_depart or ab_c - e.mk.ab_debut > e.m_fin:
+			continue   # hors de la partie (1984-1988 figée, ou départ en 1989) : aucune coupure
 		cp_frise.append(ab_c - e.mk.ab_debut)
 		cp_courbe.append(ab_c - e.ab_de(e.m_depart))
 	frise.coupures = cp_frise
@@ -1566,6 +1587,7 @@ func maj(e: EtatPartie, anime := true, duree_roule := 0.6) -> void:
 				mq.append({"m": mp, "type": "nouveau", "passe": mp <= e.m})
 	frise.marqueurs = mq
 	_alleger_panneau.call_deferred()
+	_replier_barre.call_deferred()   # les montants grandissent (6 chiffres en 1991) : la barre se replie selon la largeur du moment
 
 
 ## Languette repliée (téléphone) : « MON / ARGENT / 82 k F » ; le montant et son unité restent sur la même

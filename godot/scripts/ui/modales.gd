@@ -41,6 +41,8 @@ var _projet: ModaleProjet
 var _gazette: ModaleGazette
 var _titres: ModaleTitres
 var _intro: ModaleIntro
+var _passage: ModalePassage
+var _depart: ChoixDepart
 var dernier_bilan: Dictionary = {}   # bilan de la dernière fin de partie (Partie.partie_finie), lu par l'écran de fin
 
 
@@ -57,6 +59,8 @@ func _init() -> void:
 	_gazette = ModaleGazette.new(self)
 	_titres = ModaleTitres.new(self)
 	_intro = ModaleIntro.new(self)
+	_passage = ModalePassage.new(self)
+	_depart = ChoixDepart.new(self)
 
 
 func _ready() -> void:
@@ -236,9 +240,27 @@ func etat_intro() -> ModaleIntro:
 	return _intro
 
 
+## Carte de passage de chapitre (lot 10b, I5 ; docs/40 §1.2.3, version A) : émet choix_fait("passage", "continuer") ; ni Échap ni clic extérieur.
+func passage(c: Dictionary, depart: Vector2) -> void:
+	await _passage.ouvrir(c, depart)
+
+
+func etat_passage() -> ModalePassage:
+	return _passage
+
+
+## Choix du départ (lot 10b, I9 ; D6) : cartes = ChoixDepart.cartes() ; émet choix_fait("depart", id du chapitre) ou « retour ».
+func choix_depart(cartes: Array) -> void:
+	await _depart.ouvrir(cartes)
+
+
+func etat_depart() -> ChoixDepart:
+	return _depart
+
+
 ## Collection des titres d'époque (lecture seule ; Échap, clic extérieur et FERMER la ferment).
-func titres(records: Dictionary, tous: Array) -> void:
-	await _titres.ouvrir(records, tous)
+func titres(records: Dictionary, tous: Array, par_chapitre: Array = []) -> void:
+	await _titres.ouvrir(records, tous, par_chapitre)
 
 
 func etat_titres() -> ModaleTitres:
@@ -403,6 +425,8 @@ func _on_fond(event: InputEvent) -> void:
 			fermer("reprendre")
 		"confirmer":
 			fermer("non")
+		"depart":
+			fermer("retour")
 		"banque":
 			banque.fermer_demande.emit()
 		"gazette":
@@ -443,6 +467,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if genre_courant == "intro":
 		if k.keycode == KEY_1 or k.keycode == KEY_ENTER or k.keycode == KEY_KP_ENTER or k.keycode == KEY_SPACE:
 			fermer("commencer")
+			get_viewport().set_input_as_handled()
+		return
+	if genre_courant == "passage":
+		if k.keycode == KEY_1 or k.keycode == KEY_ENTER or k.keycode == KEY_KP_ENTER or k.keycode == KEY_SPACE:
+			fermer("continuer")
+			get_viewport().set_input_as_handled()
+		return
+	if genre_courant == "depart":
+		if k.keycode == KEY_ESCAPE:
+			fermer("retour")
+			get_viewport().set_input_as_handled()
+		elif k.keycode >= KEY_1 and k.keycode <= KEY_3:
+			_depart.choisir_rang(k.keycode - KEY_1)
 			get_viewport().set_input_as_handled()
 		return
 	if genre_courant == "gazette":
