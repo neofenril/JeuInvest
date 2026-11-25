@@ -67,8 +67,13 @@ static func lignes_foyer(e: EtatPartie) -> Array:
 
 
 ## Texte d'une ligne de carte jouée : « Vacances 87 · L'île de Ré · − 7 000 F ».
+## Sans montant (carte de carrière, « Pas les moyens ce mois-ci ») : rien de monétaire (M6).
 static func texte_carte(c: Dictionary, a: int) -> String:
-	return "%s · %s · %s" % [str(c.get("titre", "")), str(c.get("libelle", "")), Format.ecart(float(c.get("montant", 0.0)), a)]
+	var t := "%s · %s" % [str(c.get("titre", "")), str(c.get("libelle", ""))]
+	var montant := float(c.get("montant", 0.0))
+	if absf(montant) < 0.005:
+		return t
+	return "%s · %s" % [t, Format.ecart(montant, a)]
 
 
 ## Lignes du bloc PROJET EN COURS (docs/24 §1.4) : [nom · échéance · dans N mois, « … sans rien vendre · + … placés »,
