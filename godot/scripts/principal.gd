@@ -237,7 +237,7 @@ var _depart_fait := false
 
 func _demander_depart() -> String:
 	var cartes := ChoixDepart.cartes()
-	if cartes.size() < 2:
+	if cartes.size() < 2 or ScenariosCapture.mode_capture() or DisplayServer.get_name() == "headless":   # captures et tests : départ par défaut (étape « choix_depart » pour la fenêtre)
 		return str(Donnees.index()["chapitre_defaut"])
 	modales.choix_depart(cartes)
 	var r: Array = await modales.choix_fait

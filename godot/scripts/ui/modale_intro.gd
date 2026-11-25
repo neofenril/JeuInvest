@@ -24,9 +24,9 @@ static func textes(e: EtatPartie) -> Dictionary:
 	var g := gabarits(e)
 	var blocs: Array = []
 	for b: Dictionary in d["blocs"]:
-		blocs.append({"titre": str(b.get("titre", "")), "texte": Format.gabarit(str(b.get("texte", "")), g)})
-	return {"titre": Format.gabarit(str(d.get("titre", "")), g), "sous_titre": str(d.get("sous_titre", "")), "bouton": str(d.get("bouton", "COMMENCER")),
-		"titre_historique": Format.gabarit(str(d.get("titre_historique", "")), g), "blocs": blocs}
+		blocs.append({"titre": str(b.get("titre", "")), "texte": Format.gabarit(str(e.rendre(str(b.get("texte", "")))), g)})
+	return {"titre": Format.gabarit(str(e.rendre(str(d.get("titre", "")))), g), "sous_titre": str(e.rendre(str(d.get("sous_titre", "")))), "bouton": str(d.get("bouton", "COMMENCER")),
+		"titre_historique": Format.gabarit(str(e.rendre(str(d.get("titre_historique", "")))), g), "blocs": blocs}
 
 
 func ouvrir(e: EtatPartie) -> void:

@@ -78,7 +78,7 @@ func _test_scene_principale(empreinte_avant: String) -> void:
 	_verifier("principal._config() hors capture : \"cartes\", \"projets\" et \"rue\" vrais", cfg.get("cartes", false) == true and cfg.get("projets", false) == true and cfg.get("rue", false) == true, str(cfg.keys()))
 	# Lot 09-I (CA-I5) : la config du joueur porte le chapitre de départ et la fin bornée par la dernière année implémentée
 	print("INTERFACE _config chapitre=%s fin=%s" % [cfg.get("chapitre", "?"), cfg.get("fin", "?")])
-	_verifier("principal._config() : chapitre « 1984 » et fin « 1988-12 »", str(cfg.get("chapitre", "")) == "1984" and str(cfg.get("fin", "")) == "1988-12", str(cfg.get("chapitre", "")) + " " + str(cfg.get("fin", "")))
+	_verifier("principal._config() : chapitre « 1984 » et fin = décembre de la dernière année ouverte (1993 avec le chapitre 1989)", str(cfg.get("chapitre", "")) == "1984" and str(cfg.get("fin", "")) == "%d-12" % Donnees.derniere_annee(), str(cfg.get("chapitre", "")) + " " + str(cfg.get("fin", "")))
 	# Lot 08 : la pop-up de début s'ouvre à une nouvelle partie (JOUER, REJOUER), temps figé, pas à la reprise
 	Reglages.intro_force = true
 	scene.call("nouvelle_partie")

@@ -54,7 +54,7 @@ func ouvrir(c: Dictionary, depart: Vector2, spectaculaire: bool, lecture_choix :
 	v.add_child(ligne_date)
 	v.add_child(ModaleOutils.filet(Style.ENCRE, 1))
 	# Manchette qui s'imprime
-	var manchette := Style.label(str(c["titre"]).to_upper(), 50 if compact else 72, Style.manchette(), Style.ENCRE)
+	var manchette := Style.label(str(c["titre"]).to_upper(), (40 if c.has("courbe") else 50) if compact else 72, Style.manchette(), Style.ENCRE)
 	manchette.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	manchette.add_theme_constant_override("line_spacing", -8)
 	manchette.visible_ratio = 0.0

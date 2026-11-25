@@ -14,7 +14,7 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
 	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue", "fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre", "titre_record", "titre_sans_records", "titres_collection", "intro",
 	"frise_10ans", "mon_argent_10ans", "carnet_13",
-	"portraits_foyer", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres"]
+	"portraits_foyer", "intro_christine", "titre_palmares_v2", "golfe_un_an_apres", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres"]
 const RACINE_ESSAI := "res://tests/donnees/chapitres"   # jeu d'essai à deux chapitres ouverts (en attendant les données de 1989)
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
@@ -54,7 +54,7 @@ func jouer(etape: String) -> void:
 			jeu.modales.add_child(planche)
 			planche.position = Vector2(60, 200)
 			await sc.delai(0.8)
-		"passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres":
+		"intro_christine", "titre_palmares_v2", "golfe_un_an_apres", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres":
 			await _chapitres(etape, jeu)
 		"etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette":
 			await _etiquettes(etape, jeu)
@@ -1691,47 +1691,45 @@ func _nom(c: Control) -> String:
 # HUD : bouton HISTORIQUE (CA-I7)
 # =====================================================================
 
-## Lot 10b (I1, I2) : frise et courbe de « Mon argent » sur 120 mois, fabriquées (le moteur de 1989 n'est pas encore là) :
-## la partie de 1984 est jouée jusqu'en 1988 puis l'axe est étendu de 60 mois avec une coupure de chapitre en janvier 1989.
+## Lot 10b (I1, I2) : frise et courbe de « Mon argent » sur 120 mois avec les VRAIES données (chapitre 1989 ouvert) : partie de 1984
+## jouée jusqu'en 1991, coupure de chapitre réelle en janvier 1989.
 func _dix_ans(etape: String, jeu: Node) -> void:
 	var hud: Hud = jeu.hud
-	var e := Partie.etat
 	sc.partir_de_la_rue(etape)
-	sc.aller_a(Dates.lire("1988-01"), true)
+	await _aller_loin(Dates.lire("1991-06"))
 	Partie.changer_vitesse(0)
+	hud.maj(Partie.etat, false)
 	await sc.delai(0.8)
 	hud.basculer_panneau(true)
 	await sc.delai(0.8)
-	var coupure := e.m_fin + 1
-	hud.frise.m_fin = e.m_fin + 60
-	hud.frise.coupures = [coupure]
-	hud.courbe.total_mois = hud.frise.m_fin - e.m_depart
-	hud.courbe.coupures = [coupure - e.m_depart]
-	await sc.delai(0.4)
 	var fr := hud.frise
-	print("UI %s mois=%d coupure_visible=%s annee_paire_seule=%s" % [etape, fr.m_fin - fr.m_debut + 1, "oui" if fr.est_coupure(coupure) else "non",
+	var hb := hud.barre.get_child(0) as HBoxContainer
+	print("UI barre_largeurs %s" % str(hb.get_children().map(func(c: Control) -> String: return "%s:%d%s" % [c.name, int(c.get_combined_minimum_size().x), "" if c.visible else "(cache)"])))
+	print("UI %s mois=%d coupures=%d annee_paire_seule=%s" % [etape, fr.m_fin - fr.m_debut + 1, fr.coupures.size(),
 		"oui" if not Frise.annee_ecrite(1985, 40.0, false) and Frise.annee_ecrite(1986, 40.0, false) else "non"])
 	_mesurer(etape, hud)
 
 
-## Lot 10b (I3) : carnet de la banque à 13 produits (4 produits fabriqués, copies d'un produit existant, ajoutés
-## en mémoire au chapitre pour cette capture seulement) : 4 colonnes au PC, défilement au téléphone.
+## Avance la partie de la capture jusqu'à ab (StrategieTest.aller_a ne franchit que 100 mois par appel), modales résolues.
+func _aller_loin(ab: int) -> void:
+	var e := Partie.etat
+	for pas in 3:
+		StrategieTest.aller_a(e, mini(ab, e.ab_courant() + 90), true)
+	while not e.modale.is_empty():
+		e.resolution_auto()
+	e.file.clear()
+
+
+## Lot 10b (I3) : le vrai carnet de 1992 (chapitre 1989 : jusqu'à 13 produits) : 4 colonnes au PC, défilement au téléphone.
 func _carnet_13(jeu: Node) -> void:
 	var e := Partie.etat
 	sc.partir_de_la_rue("carnet_13")
-	sc.aller_a(Dates.lire("1986-12"), true)
-	var d := Banquier.donnees()
-	var cat := Donnees.charger("produits")   # lot 10a : catalogue du monde ; identité dans produits_vus
-	for i in 4:
-		var pid := "fab%d" % i
-		var p: Dictionary = (cat["elf"] as Dictionary).duplicate(true)
-		p["court"] = "FAB %d" % (i + 1)
-		p["nom"] = "Produit fabriqué %d" % (i + 1)
-		p["presentation"] = pid
-		cat[pid] = p
-		d["ordre_carnet"].append(pid)
-		Banquier.produits_vus(e).append(pid)
-	jeu.ouvrir_banque("sicav", -2.0)
+	await _aller_loin(Dates.lire("1992-12"))
+	for pid in Banquier.ordre_carnet():
+		if not Banquier.produits_vus(e).has(pid):
+			Banquier.produits_vus(e).append(pid)
+	Partie.bloquee = true
+	jeu.modales.ouvrir_banque(e, "sicav", -2.0)
 	await sc.delai(3.0)
 	var modales: Modales = jeu.modales
 	var grille := modales.courant.find_child("GrilleCarnet", true, false) as GridContainer if is_instance_valid(modales.courant) else null
@@ -1740,37 +1738,60 @@ func _carnet_13(jeu: Node) -> void:
 	_mesurer("carnet_13", modales.courant)
 
 
-## Lot 10b étape 2 : écrans du chapitre 1989-1993 sur le jeu d'essai (tests/donnees/chapitres : « 1984 » et « 1989 » ouverts).
-## Les contenus (passage, vitrine, bilan) viennent d'une vraie partie jouée dans le processus, la rue derrière reste celle de 1984 :
-## seules les modales sont montrées. PEA / SCPI : vraie partie du jeu d'essai posée à août 1992 (le PEA existe depuis 07/1992).
+## Lot 10b étape 2 : écrans du chapitre 1989-1993 avec les vraies données. Les contenus (passage 1988 → 1989, vitrine du Golfe 08-09/1990,
+## « un an après » 09/1991, bilan) viennent d'une vraie partie 1984 → 1993 jouée dans le processus ; seules les modales sont montrées
+## (la rue derrière reste celle de 1984). Fiches SCPI / PEA / PEP : vraie partie posée à août 1992 (le PEA existe depuis 07/1992).
 func _chapitres(etape: String, jeu: Node) -> void:
 	var modales: Modales = jeu.modales
-	Donnees.racine_chapitres = RACINE_ESSAI
-	Donnees.regler_chapitre("")
-	Donnees.vider_cache()
-	jeu.modales.donnees_demo = Donnees.charger("demo").duplicate(true)
 	match etape:
 		"choix_depart":
 			sc.partir_de_la_rue(etape)
 			modales.choix_depart(ChoixDepart.cartes())
 			await sc.delai(1.2)
 			_mesurer(etape, modales.courant)
-		"collection_chapitres":
+		"collection_chapitres", "titre_palmares_v2":
+			var par: Array = Noms.titres_par_chapitre()
+			var rec := {"chapitres": {}}
+			for k in par.size():
+				var ids: Array = (par[k]["titres"] as Array).map(func(t: Dictionary) -> String: return str(t["id"]))
+				rec["chapitres"][str(par[k]["id"])] = {"collection": {ids[0]: {"nombre": 2, "premiere": "2026-11-10"}, ids[3]: {"nombre": 1, "premiere": "2026-11-12"}} if k == 0 else {ids[1]: {"nombre": 1, "premiere": "2026-11-18"}},
+					"record_chapitre": {"ecart_pct": 8.0, "rang": 2, "titre_nom": "Le bon père de famille", "annee_fin": 1988, "ecart": 8.0},
+					"records_partie": {"1993": {"ecart_pct": 12.0, "rang": 1, "annee_fin": 1993}} if k == 0 else {}}
+			if etape == "collection_chapitres":
+				sc.partir_de_la_rue(etape)
+				modales.titres(rec, Titres.tous(), par)
+				await sc.delai(1.2)
+				_mesurer(etape, modales.courant)
+			else:
+				sc.partir_de_la_rue(etape)
+				jeu.call("_entrer_titre")
+				await sc.delai(0.6)
+				jeu.titre.maj_palmares(rec, 9, par)
+				await sc.delai(1.8)
+				_mesurer(etape, jeu.titre)
+		"intro_christine":
 			sc.partir_de_la_rue(etape)
-			var rec := {"chapitres": {"1984": {"collection": {"fourmi": {"nombre": 2, "premiere": "2026-11-10"}, "bon_pere": {"nombre": 1, "premiere": "2026-11-12"}}},
-				"1989": {"collection": {"cigale": {"nombre": 1, "premiere": "2026-11-18"}}}}}
-			modales.titres(rec, Titres.tous(), Noms.titres_par_chapitre())
-			await sc.delai(1.2)
+			jeu.set("_ignorer_modales", true)
+			Partie.nouvelle_partie(Donnees.config_chapitre("1989", 5))
+			jeu.set("_ignorer_modales", false)
+			Donnees.regler_chapitre("1989")
+			modales.donnees_demo = Donnees.infos_chapitre()
+			modales.intro(Partie.etat)
+			await sc.delai(1.6)
 			_mesurer(etape, modales.courant)
-		"passage_1989", "vitrine_golfe", "fin_1993":
+			print("UI intro_christine prenom=%s portrait=%s" % [str(Partie.etat.foyer_visuel()["joueur"]["prenom"]), str(modales.etat_intro().infos.get("portrait", false))])
+		"passage_1989", "vitrine_golfe", "golfe_un_an_apres", "fin_1993":
 			sc.partir_de_la_rue(etape)
 			var e := EtatPartie.new()
 			var cfg := Donnees.config_chapitre("1984", 5)
 			cfg["banquier"] = true
 			cfg["rue"] = true
+			cfg["cartes"] = true
+			cfg["projets"] = true
 			e.demarrer(cfg)
 			var passage := {}
 			var vitrine := {}
+			var un_an := {}
 			var garde := 0
 			while e.fin == "" and garde < 400:
 				garde += 1
@@ -1780,9 +1801,21 @@ func _chapitres(etape: String, jeu: Node) -> void:
 						passage = c0
 					if str(c0.get("kind", "")) == "marche" and c0.has("courbe") and vitrine.is_empty():
 						vitrine = c0
+					if str(c0.get("kind", "")) == "gazette" and e.ab_courant() >= Dates.lire("1991-01") and un_an.is_empty():
+						un_an = c0
+						if etape == "golfe_un_an_apres":
+							Donnees.regler_chapitre(e.chapitre)   # textes du chapitre en cours pendant l'affichage
+							modales.donnees_demo = Donnees.infos_chapitre()
+							modales.gazette(c0, Vector2(-1, -1))
+							await sc.delai(1.6)
+							_mesurer(etape, modales.courant)
+							return
 					e.resolution_auto()
 				e.avancer()
+			Donnees.regler_chapitre(e.chapitre)
+			modales.donnees_demo = Donnees.infos_chapitre()
 			if etape == "passage_1989":
+				Donnees.regler_chapitre("1989")
 				modales.passage(passage, Vector2(-1, -1))
 			elif etape == "vitrine_golfe":
 				modales.journal(vitrine, Vector2(-1, -1), false)
@@ -1801,24 +1834,11 @@ func _chapitres(etape: String, jeu: Node) -> void:
 			elif etape == "fin_1993":
 				print("UI fin_1993 plaques=%s records=%s" % [str(modales.etat_fin().infos_fin.get("plaques", 0)), str(modales.etat_fin().infos_fin.get("records", []))])
 		_:
-			# Fiches SCPI / PEA / PEP : vraie partie du jeu d'essai posée à août 1992
-			var cfg2 := Donnees.config_chapitre("1984", 5)
-			cfg2["banquier"] = true
 			sc.partir_de_la_rue(etape)
-			jeu.set("_ignorer_modales", true)   # aucune séquence de la rue pour la modale d'accueil : seule la fenêtre Banque est montrée
-			Partie.nouvelle_partie(cfg2)
-			jeu.set("_ignorer_modales", false)
+			await _aller_loin(Dates.lire("1992-08"))
 			var e2 := Partie.etat
-			StrategieTest.aller_a(e2, Dates.lire("1989-06"), true)
-			StrategieTest.aller_a(e2, Dates.lire("1992-08"), true)
-			while not e2.modale.is_empty():
-				e2.resolution_auto()
-			e2.file.clear()
 			e2.joueur.cc = Produits.f(60000.0)
-			var d := Banquier.donnees()
 			for pid in ["scpi", "pea", "pep", "elf"]:
-				if not (d["ordre_carnet"] as Array).has(pid):
-					d["ordre_carnet"].append(pid)
 				if not Banquier.produits_vus(e2).has(pid):
 					Banquier.produits_vus(e2).append(pid)
 			if etape in ["vente_differee", "fiche_scpi"]:
@@ -1834,7 +1854,7 @@ func _chapitres(etape: String, jeu: Node) -> void:
 			modales.ouvrir_banque(e2, {"fiche_scpi": "scpi", "vente_differee": "scpi", "fiche_pea": "pea", "pep_en_savoir_plus": "pep"}[etape], -2.0)
 			await sc.delai(2.0)
 			_mesurer(etape, modales.courant)
-	await sc.delai(0.3)   # la racine d'essai reste en place jusqu'à la sortie du processus de capture (la modale est encore ouverte)
+	await sc.delai(0.3)
 
 
 func _hud(jeu: Node) -> void:

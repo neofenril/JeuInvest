@@ -112,6 +112,7 @@ func construire(demo: Dictionary) -> void:
 	bouton_titres.custom_minimum_size = Vector2(230, 81)
 	bouton_titres.add_theme_font_size_override("font_size", 28)
 	bouton_titres.pressed.connect(func() -> void: titres_demande.emit())
+	Style.garder_police(bouton_titres)   # « TITRES  3 / 18 » : les chiffres restent en Atkinson
 	rangee_palmares.add_child(bouton_titres)
 	v.add_child(rangee_palmares)
 	# Aide des raccourcis de test : jamais dans la version du joueur, jamais sur mobile

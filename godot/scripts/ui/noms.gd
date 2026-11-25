@@ -24,7 +24,13 @@ static func banquier() -> String:
 
 
 ## Mois du krach (« 1987-10 ») lu dans le krach.json du premier chapitre ouvert qui en a un ; "" sinon.
-static func mois_krach() -> String:
+static func mois_krach(actif := false) -> String:
+	if actif:   # « un an après » : le krach / la vitrine du chapitre en cours (1987 pour 1984, le Golfe en 1990 pour 1989)
+		var ida := Donnees.chapitre_actif()
+		if FileAccess.file_exists("%s/%s/krach.json" % [Donnees.racine_chapitres, ida]):
+			var ma := str(Donnees._charger_dans(ida, "krach").get("mois_krach", ""))
+			if ma != "":
+				return ma
 	for c: Dictionary in Donnees.chapitres():
 		var id := str(c["id"])
 		if FileAccess.file_exists("%s/%s/krach.json" % [Donnees.racine_chapitres, id]):
@@ -41,8 +47,8 @@ static func annee_krach() -> int:
 
 
 ## « octobre 1987 » (ou en majuscules) ; "" si aucun krach.
-static func texte_mois_krach(majuscules := false) -> String:
-	var m := mois_krach()
+static func texte_mois_krach(majuscules := false, actif := false) -> String:
+	var m := mois_krach(actif)
 	return Dates.texte(Dates.lire(m), majuscules) if m != "" else ""
 
 
