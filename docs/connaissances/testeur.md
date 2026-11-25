@@ -236,3 +236,8 @@
 - Contournement « pas de choix du départ en capture / headless » : prouvé inoffensif par un test fenêtré (`principal.tscn`, `jeu.jouer()`, `modales.etat_depart().choisir_rang(i)`), à lancer sans `--headless` ni `--capture`.
 - Captures de scénario : la barre haute derrière les modales montre « JANV 1984 » (artefact), l'écran de fin s'anime (relire avec `capture.ps1 -Attente 3`) ; l'étape `fin` s'arrête désormais sur la carte de passage (la partie 1984 va jusqu'en 1993).
 - Zones fragiles : sous-titres de chapitre (données 1984 « – décembre 1988 »), légende « au krach » fixe, REJOUER AUTREMENT toujours en 1984, texte technique du PEP.
+
+## Lot 10c-interface (recette 2026-11-25, lot/10c-interface 6f546eb : OK, 5 mineures)
+- Reference : 1 766 verifications `-Recette -Delai 700` (main 1 718). Etapes carriere_k4 / carriere_k5 / mon_foyer_metier (lignes `UI carriere choix=... conforme=`, `UI foyer metier=`) ; le scenario ignore `--profil` : le chapitre 1989 = Christine ; pour Gerard, variable `TESTEUR_GERARD=h` dans une copie (sexe h, profil jeune, proche Sylvie).
+- PIEGE : ne jamais reecrire `project.godot` d'une copie avec `Set-Content -Encoding utf8` (PS 5.1 relit en ANSI : mojibake + BOM -> faux KO CA-C6) ; lire / ecrire par `[IO.File]` en UTF-8 sans BOM. `test_carriere` dure ~350 s : `-Delai 700` obligatoire en filtre.
+- Zones fragiles : metier long contre la barre de defilement de Mon foyer au telephone ; carte de carriere jouee affichee Â« 0 F Â» dans Mon foyer.

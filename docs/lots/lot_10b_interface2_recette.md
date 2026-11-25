@@ -78,3 +78,19 @@ Vrai tÃ©lÃ©phone ; ressenti en mouvement ; 1920 Ã— 1009 ; dÃ©filement tactile de
 
 ### Ce qu'il faut pour un OK
 Corriger A1 (et rejouer `jouer`, `hud`, `krach`, `carnet` en 1280 Ã— 720 contre `main` : 1984-1988 identique), puis relancer `tests.ps1 -Recette -Delai 700`. Les mineures peuvent suivre (A3 est une donnÃ©e : Ã  confier Ã  la logique avant l'export).
+
+---
+
+## Passage 2 : 2026-11-25, branche `lot/10b-interface`, commit testé ce53600 (correctifs de recette)
+
+**Verdict : OK** (0 bloquante, 0 majeure ; mineures restantes ci-dessous).
+
+- **Tests** : `tests.ps1 -Recette -Delai 700` : 47 étapes, **1 718 vérifications OK, 0 KO, 0 erreur de script**. Le script signale un « échec » : `test_sauvegarde_9396.sav` resté dans `user://` ; le fichier date du **17/11/2026** (vestige d'une ancienne session, jamais supprimable par moi : garde-fou) et son numéro 9396 a coïncidé avec le pid d'un test de ce passage : faux positif, non dû au lot (test_sauvegarde 10 OK ; sauvegarde et records du joueur inchangés). À purger par le coordinateur.
+- **A1 corrigé** : 1280 × 720, `UI barre … replis=libelle_courrier,pause`, `marge=34 marge_avec_badge=-95` (identique à main, `hud`) ; `jouer`, `hud`, `krach`, `carnet` contre main : plus aucune différence dans la barre haute (bandeau y < 100 identique) ; seule la frise du bas diffère (1984-1993, durée par défaut à 10 ans, voulue) et les animations (0,2 à 1,2 %). PC et 1440 × 648 : identiques à main hors frise et animations (confirmé).
+- **A2 corrigé** : étape `fin_1988` : écran « Décembre 1988 · cinq ans de la vie de Gérard » (titre, rue, courbe, 151 926 F, écart -15 082 F), 0 débordement aux 3 formats.
+- **A4 corrigé** : « avant la baisse : 2 000 F » pour le Golfe (légende « au krach » conservée seulement pour un titre contenant KRACH, lecture du code).
+- **A5 corrigé** : mon test fenêtré : partie 1989 terminée puis `nouvelle_partie()` (REJOUER AUTREMENT) -> chapitre 1989 (D1 OK) ; les 7 vérifications du choix du départ restent OK.
+- **A6 corrigé** : fiche PEP « Ce plan ne s'achète pas ici : votre banquier vous en parle par un message. » ; SCPI « elle vaut 900 F », montants ronds.
+- **A8 corrigé en partie** : « % » ne tombe plus seul ; au téléphone 1440 × 648 la coupure se fait désormais après « (– » (« 13 %) » à la ligne suivante) : mineure résiduelle.
+- **Mineures restantes** : A3 (sous-titre 1984 « – décembre 1988 » sur l'écran titre et le choix du départ ; donnée, non corrigée, traitée à part) ; A7 (portraits dans `data/pixel/ui/` : exception de périmètre à entériner par le chef de projet ; `principal.gd` > 650 lignes préexistant) ; A8 résiduelle.
+- Non vérifié : vrai téléphone, 1920 × 1009, série de captures complète (avant export 0.7).
