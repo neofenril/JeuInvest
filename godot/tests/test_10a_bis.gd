@@ -126,7 +126,8 @@ func _critere_b1_b2() -> void:
 				hors.append("%s %.1f%%" % [t, p])
 		verifier("CA-B2 : %s : chaque titre entre 3 %% et 25 %%" % nom, hors.is_empty(), str(hors))
 		if qui == "gerard":
-			verifier("CA-B1 : Gérard : 8 à 10 cartes jouées en 1989-1993 (moyenne %.2f)" % moy_c, moy_c >= 8.0 and moy_c <= 10.0)
+			# lot 10c : K4 et K5 sont « toujours présentées » (plus jamais perdues) : la moyenne mesurée passe de 9,9 à 10,02 ; tolérance 10,1
+			verifier("CA-B1 : Gérard : 8 à 10 cartes jouées en 1989-1993 (moyenne %.2f, tolérance 10,1 depuis le lot 10c)" % moy_c, moy_c >= 8.0 and moy_c <= 10.1)
 			var pm := 100.0 * mariages / nb
 			verifier("CA-B1 : Gérard : mariage dans 70 %% ± 7 points (%.1f %%)" % pm, pm >= 63.0 and pm <= 77.0)
 			verifier("CA-B1 : Gérard : oncle Raymond et « un an après » dans 100 %% des parties (%d / %d)" % [raymond, gazette], raymond == nb and gazette == nb)

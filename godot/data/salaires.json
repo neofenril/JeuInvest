@@ -28,19 +28,19 @@
   "_ajustLoyer": "Points de loyer ajoutés selon le profil",
   "ajustLoyer": { "jeune": 3, "technicien": 3, "christine": 3, "christine": 3, "cadre": 5, "heritier": 0 },
   "profils": {
-    "jeune": { "libelle": "Le jeune salarié", "court": "jeune salarié", "age": 22, "feminin": false,
+    "jeune": { "libelle": "Le jeune salarié", "court": "jeune salarié", "age": 22, "feminin": false, "metier": ["Salarié", "Salariée"],
       "prenoms": { "P1": "Gérard", "P2": "Sébastien", "P3": "Kevin" }, "accroche": "« Tout à construire. »" },
-    "technicien": { "libelle": "Le technicien", "court": "technicien", "age": 20, "feminin": false,
+    "technicien": { "libelle": "Le technicien", "court": "technicien", "age": 20, "feminin": false, "metier": ["Technicien", "Technicienne"],
       "_age": "Âge au début de la période (janv. 1978) : 26 ans en janvier 1984 (démo V2).",
       "prenoms": { "P1": "Gérard", "P2": "Sébastien", "P3": "Kevin" }, "accroche": "« Un CDI, Sylvie, et tout à construire. »" },
-    "christine": { "libelle": "La mère de famille", "court": "mère de famille", "age": 23, "feminin": true, "sexe": "f",
+    "christine": { "libelle": "La mère de famille", "court": "mère de famille", "age": 23, "feminin": true, "sexe": "f", "metier": ["Employé de bureau", "Employée de bureau"],
       "_age": "Âge au début de la période (janv. 1978) : 34 ans en janvier 1989 (lot 10a-contenu, docs/39 §3 et docs/47 §4.3). Colonne de salaire identique à « technicien » ; épargne possible 12 % (deux salaires, deux enfants, docs/39 §3).",
       "prenoms": { "P1": "Christine", "P2": "Christine", "P3": "Christine" },
       "proche": { "prenom": "Patrick", "sexe": "h", "lien": "conjoint", "annees_ensemble": 10 },
       "accroche": "« Deux salaires, deux enfants, et des imprévus. »" },
-    "cadre": { "libelle": "La cadre pressée", "court": "cadre pressée", "age": 30, "feminin": true,
+    "cadre": { "libelle": "La cadre pressée", "court": "cadre pressée", "age": 30, "feminin": true, "metier": ["Cadre", "Cadre"],
       "prenoms": { "P1": "Martine", "P2": "Nathalie", "P3": "Julie" }, "accroche": "« Gagne bien, dépense autant. »" },
-    "heritier": { "libelle": "L'héritier", "court": "héritier", "age": 25, "feminin": false,
+    "heritier": { "libelle": "L'héritier", "court": "héritier", "age": 25, "feminin": false, "metier": ["Héritier", "Héritière"],
       "prenoms": { "P1": "Bernard", "P2": "Christophe", "P3": "Thomas" }, "accroche": "« Un coup de pouce de mamie. »" }
   }
 }

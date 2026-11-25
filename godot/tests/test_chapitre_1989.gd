@@ -22,7 +22,7 @@ const JETONS_MOTEUR := ["prix_a", "prix_b", "montant", "vf", "taux", "annee", "x
 	"decote", "salaire", "depart", "date", "taux_av", "taux_livret", "interets_cc", "cc", "inflation", "plafond", "taux_pel", "v", "fv_pel",
 	"taux_emprunt", "coupon", "coupon_net", "annee10", "enfants", "produit_fixe", "taux_fixe", "detail", "noms", "n", "e_pct", "frais_v", "frais_an",
 	"total", "debut", "recu", "base", "ancien", "nouveau", "depuis", "interets", "frais_annee", "frais_total", "dividendes", "annees", "cout", "titre",
-	"mise", "m_action", "m_sicav", "frais_m", "nb_sg", "m_sg", "taux_pel_detail", "m_emprunt", "annee_d04", "e", "v12"]
+	"pct_a", "pct_brut", "pct_conge", "poste", "formation", "mise", "m_action", "m_sicav", "frais_m", "nb_sg", "m_sg", "taux_pel_detail", "m_emprunt", "annee_d04", "e", "v12"]
 
 var _ok := 0
 var _ko := 0
@@ -235,7 +235,7 @@ func _donnees() -> void:
 		and int(ev["mariage"]["fenetre"][0]) == 9 and int(ev["mariage"]["fenetre"][1]) == 42 and not str(ev["mariage"]["texte"]).contains("Sylvie"))
 	var cartes := (fo["cartes"] as Dictionary).keys()
 	var creneaux_ok := (fo["creneaux"] as Array).all(func(cr: Dictionary) -> bool: return (cr["candidates"] as Array).all(func(x: Variant) -> bool: return cartes.has(x)))
-	verifier("Foyer : 18 cartes H00 à H17, 12 créneaux T1 à T12 (ids propres au chapitre ; T11 / T12 = promotion ou seconde chance, conditionnelles à la formation de 1984-1988), candidates existantes, escargots (diamants) = H06, c00 = H00", cartes.size() == 18 and (fo["creneaux"] as Array).size() == 12
+	verifier("Foyer : 17 cartes (H00 à H17 sauf H03, H07, H08, plus K4 et K5 du lot 10c), 12 créneaux T1 à T12 (ids propres au chapitre ; T11 / T12 = promotion ou seconde chance, conditionnelles à la formation de 1984-1988), candidates existantes, escargots (diamants) = H06, c00 = H00", cartes.size() == 17 and (fo["creneaux"] as Array).size() == 12
 		and creneaux_ok and fo["escargots"]["carte"] == "H06" and fo["c00"]["carte"] == "H00" and fo["creneaux"][3]["fixe"] == true and fo["creneaux"][10]["si_jouee"]["carte"] == "C07")
 	var vit_ok: bool = vi["etapes"][0]["pause"] == false and vi["etapes"][1]["pause"] == true and vi["etapes"][1]["mois"] == "1990-09" and vi["etapes"][1]["courbe"] == ["1990-07", "1990-08", "1990-09"] and str(vi["etapes"][1]["mention"]).contains("Fins de mois")
 	verifier("A1 : vitrine du Golfe en deux étapes réelles (08/1990 sans pause, 09/1990 avec pause, courbe de 3 fins de mois, mention fixe), puis Maastricht 09/1992 ; krach.json : 09/1990 et un an après 09/1991", vit_ok

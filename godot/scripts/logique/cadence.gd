@@ -79,6 +79,8 @@ static func rang(e: EtatPartie, it: Dictionary) -> float:
 				return 2.0
 			return 2.5 if e.m >= int(it.get("echeance", 1 << 30)) else 5.0   # choix : daté au dernier mois de sa fenêtre
 		"carte":
+			if it.get("carriere", false):
+				return 0.9   # lot 10c : K4 et K5 « toujours présentées » : juste après le marché, avant tout le reste (date historique, coup dur forcé, échéance de projet, présentation à son échéance) ; le coup dur du mois suivant garde sa pause (carte puis vie)
 			# Lot 04 : aux deux derniers mois de sa fenêtre, une carte passe avant une présentation flexible (sinon le créneau est perdu)
 			return 3.5 if (it.get("fixe", false) or e.m >= int(it.get("fin_fenetre", 1 << 30)) - 1) else 6.0
 	return 7.0
@@ -86,7 +88,7 @@ static func rang(e: EtatPartie, it: Dictionary) -> float:
 
 ## Interruption datée (elle doit passer à son mois) : rang ≤ 2,5. Les autres sont flexibles.
 static func datee(e: EtatPartie, it: Dictionary) -> bool:
-	return rang(e, it) <= 2.5
+	return rang(e, it) <= 2.5 and str(it.get("kind", "")) != "carte"   # une carte (même K4 / K5, rang 0,9) n'est jamais « datée » : elle garde l'anticipation de peut_passer
 
 
 ## Le mois mm porte-t-il une interruption datée connue (données, calendrier, file) ? sauf : l'interruption
@@ -121,7 +123,7 @@ static func date_connue(e: EtatPartie, mm: int, sauf: Dictionary = {}) -> bool:
 ## Lot 04 : interruption datée « ferme » connue au mois mm : marché, date historique (Saint-Gobain, héritage), naissance et
 ## panne forcées, échéance de projet. Les dates limites des présentations flexibles ne comptent pas (une présentation
 ## peut glisser d'un mois ; l'échéance d'un projet reporté passe avant elle, rang 2 contre 2,5). Sert à placer un report.
-static func date_ferme(e: EtatPartie, mm: int, sauf: Dictionary = {}) -> bool:
+static func date_ferme(e: EtatPartie, mm: int, sauf: Dictionary = {}, sans_vie := false) -> bool:
 	if mm > e.m_fin:
 		return false
 	var ab := e.ab_de(mm)
@@ -129,7 +131,7 @@ static func date_ferme(e: EtatPartie, mm: int, sauf: Dictionary = {}) -> bool:
 		if Dates.lire(ev["d"]) == ab and ev["type"] != "-silencieux":
 			return true
 	for ev: Dictionary in e.calendrier:
-		if int(ev["m"]) == mm and ev.get("force", false) and not ev.get("declenche", false):
+		if not sans_vie and int(ev["m"]) == mm and ev.get("force", false) and not ev.get("declenche", false):
 			return true
 	if e.banquier_actif():
 		var dates := Banquier.dates_connues(e)
@@ -167,6 +169,8 @@ static func peut_passer(e: EtatPartie, it: Dictionary) -> bool:
 		return true   # lot 04 (D2) : un coup dur juste après une carte garde sa pause
 	if e.m - derniere < int(params()["ecart_min"]):
 		return false
+	if it["kind"] == "carte" and it.get("carriere", false):
+		return not date_ferme(e, e.m + 1, it, true)   # lot 10c : K4 / K5 ne reculent que devant une date ferme (marché, date historique, échéance de projet), ni devant la limite d'une présentation flexible ni devant un coup dur forcé (carte puis vie : la vie garde sa pause)
 	if it["kind"] == "carte":
 		var strict := e.m < int(it.get("fin_fenetre", e.m))   # dernier mois de la fenêtre : « carte puis coup dur » toléré\n		return not (date_connue_carte(e, e.m + 1, it) if strict else date_connue(e, e.m + 1, it))
 	if not datee(e, it) and date_connue(e, e.m + 1, it):
