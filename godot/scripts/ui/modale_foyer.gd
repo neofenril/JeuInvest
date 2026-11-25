@@ -26,14 +26,35 @@ func _init(modales: Modales) -> void:
 	m = modales
 
 
+## Ligne « Métier » (lot 10c) : métier du moteur (+ « Souvent absent{e} » rendu par la logique si le statut est « prenant »).
+## Seulement dès le chapitre 1989 (la page de 1984-1988 reste inchangée).
+static func texte_metier(e: EtatPartie) -> String:
+	if e.chapitre == "" or e.chapitre == "1984" or not e.has_method("metier"):
+		return ""
+	return str(e.metier())
+
+
+## Mention du statut « prenant » (ligne « Statut » sous le métier), "" sinon.
+static func texte_statut(e: EtatPartie) -> String:
+	if texte_metier(e) != "" and e.has_method("statut_carriere") and str(e.statut_carriere()) == "prenant":
+		return str(e.rendre("Souvent absent{e}"))
+	return ""
+
+
 ## Lignes du bloc « Le foyer » : [libellé, valeur] (mêmes chiffres que l'ancien panneau d'information).
 static func lignes_foyer(e: EtatPartie) -> Array:
 	var a := e.ab_courant()
 	var dep: Dictionary = e.depenses()
 	var coussin := (maxf(0.0, e.joueur.cc) + e.joueur.livret) / float(dep["total"])
-	var l: Array = [["Salaire du mois", Format.montant(e.salaire_base, a)],
-		["Loyer", Format.montant(float(dep["loyer"]), a)],
-		["Vie courante", Format.montant(float(dep["vie"]), a)]]
+	var l: Array = []
+	var metier := texte_metier(e)
+	if metier != "":
+		l.append(["Métier", metier])
+		if texte_statut(e) != "":
+			l.append(["Statut", texte_statut(e)])
+	l.append(["Salaire du mois", Format.montant(e.salaire_base, a)])
+	l.append(["Loyer", Format.montant(float(dep["loyer"]), a)])
+	l.append(["Vie courante", Format.montant(float(dep["vie"]), a)])
 	if e.enfants > 0:
 		l.append(["Enfants (%d)" % e.enfants, Format.montant(float(dep["enfants"]), a)])
 	var auto := Versements.total_mensuel(e) if e.banquier_actif() else 0.0
@@ -192,6 +213,7 @@ func _bloc_foyer(e: EtatPartie, compact: bool) -> Control:
 		g.add_child(lt)
 		var lv := Style.label(str(ligne[1]), 22 if compact else 24, Style.chiffres(), Style.ENCRE)
 		lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		lv.name = "Val_" + str(ligne[0]).replace(" ", "_")
 		g.add_child(lv)
 	v.add_child(g)
 	return v

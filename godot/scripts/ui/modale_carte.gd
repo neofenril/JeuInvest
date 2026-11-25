@@ -47,6 +47,18 @@ static func texte_montant(montant: float, a: int) -> String:
 	return Format.ecart(montant, a)
 
 
+## Carte de carrière (lot 10c) : montant par mois (« +230 F / mois »), 0 : « Pas de changement ».
+static func texte_mensuel(revenu: float, a: int) -> String:
+	if absf(Format.en_devise(revenu, Format.devise(a))) < 0.5:
+		return "Pas de changement"
+	return Format.ecart(revenu, a) + " / mois"
+
+
+## Ligne grise sous le montant : « Épargne possible : 640 F → 870 F par mois » (valeurs du contenu, rien de calculé ici).
+static func texte_epargne(ch: Dictionary, a: int) -> String:
+	return "Épargne possible : %s › %s par mois" % [Format.entier(float(ch.get("epargne_avant", 0.0)), a), Format.entier(float(ch.get("epargne_apres", 0.0)), a)]
+
+
 func ouvrir(c: Dictionary, depart: Vector2) -> void:
 	m.compact = Ecran.compact()
 	var compact := m.compact
@@ -172,8 +184,10 @@ func _bouton_choix(ch: Dictionary, k: int, a: int, compact: bool, largeur: float
 	vb.add_child(l1)
 	var l2 := HBoxContainer.new()
 	l2.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var montant := float(ch.get("montant", 0.0))
-	var lm := Style.label(texte_montant(montant, a), 26 if compact else 30, Style.ui_gras(), Style.GAIN_PAPIER if montant > 0.004 else Style.ENCRE)
+	var carriere := ch.has("revenu_mois")   # lot 10c : carte de carrière, montant par mois
+	var montant := float(ch.get("revenu_mois", 0.0)) if carriere else float(ch.get("montant", 0.0))
+	var lm := Style.label(texte_mensuel(montant, a) if carriere else texte_montant(montant, a), 26 if compact else 30, Style.ui_gras(),
+		Style.GAIN_PAPIER if montant > 0.004 else (Style.ENCRE_ROUGE if carriere and montant < -0.004 else Style.ENCRE))
 	lm.name = "Montant"
 	lm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l2.add_child(lm)
@@ -181,6 +195,19 @@ func _bouton_choix(ch: Dictionary, k: int, a: int, compact: bool, largeur: float
 	picto.name = "Picto"
 	l2.add_child(picto)
 	vb.add_child(l2)
+	if carriere:
+		var av := str(ch.get("avertissement", ""))
+		if av != "":
+			var lav := Style.label(av, 20, Style.ui(), Style.ENCRE)
+			lav.name = "Avertissement"
+			lav.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			lav.custom_minimum_size.x = largeur - 42.0
+			vb.add_child(lav)
+		var lep := Style.label(texte_epargne(ch, a), 20, Style.ui(), Style.TEXTE_PAPIER_2)
+		lep.name = "Epargne"
+		lep.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lep.custom_minimum_size.x = largeur - 42.0
+		vb.add_child(lep)
 	if desactive:
 		var lmq := Style.label("Il manque %s sur votre compte et votre Livret A" % Format.entier(float(ch.get("manque", 0.0)), a), 20, Style.ui_gras(), Style.ENCRE_ROUGE)
 		lmq.name = "Manque"
