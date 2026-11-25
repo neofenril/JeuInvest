@@ -22,7 +22,7 @@ const JETONS_MOTEUR := ["prix_a", "prix_b", "montant", "vf", "taux", "annee", "x
 	"decote", "salaire", "depart", "date", "taux_av", "taux_livret", "interets_cc", "cc", "inflation", "plafond", "taux_pel", "v", "fv_pel",
 	"taux_emprunt", "coupon", "coupon_net", "annee10", "enfants", "produit_fixe", "taux_fixe", "detail", "noms", "n", "e_pct", "frais_v", "frais_an",
 	"total", "debut", "recu", "base", "ancien", "nouveau", "depuis", "interets", "frais_annee", "frais_total", "dividendes", "annees", "cout", "titre",
-	"pct_a", "pct_conge", "poste", "formation", "mise", "m_action", "m_sicav", "frais_m", "nb_sg", "m_sg", "taux_pel_detail", "m_emprunt", "annee_d04", "e", "v12"]
+	"pct_a", "pct_brut", "pct_conge", "poste", "formation", "mise", "m_action", "m_sicav", "frais_m", "nb_sg", "m_sg", "taux_pel_detail", "m_emprunt", "annee_d04", "e", "v12"]
 
 var _ok := 0
 var _ko := 0

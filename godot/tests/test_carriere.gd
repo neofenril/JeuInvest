@@ -8,7 +8,7 @@ var _ok := 0
 var _ko := 0
 var _nb_ecarts := 0
 const NB := 200
-const NB_MESURE := 100   # R-MIROIR et CA-C4 : 2 à 4 parties de plus par graine (durée du test)
+const NB_MESURE := 200  # R-MIROIR et CA-C4 : 2 à 4 parties de plus par graine (durée du test)
 
 
 func _initialize() -> void:
@@ -56,11 +56,12 @@ func _jouer(qui: String, g: int, c4: String, c5: String, profil: Dictionary) -> 
 	StrategieTest.strategie = ""
 	var e := EtatPartie.new()
 	e.demarrer(_config(qui, g))
-	var out := {"k4": {}, "k5": {}}
+	var out := {"k4": {}, "k5": {}, "hum": {}}
 	var garde := 0
 	var attente := ""
 	while e.fin == "" and garde < 400:
 		garde += 1
+		out["hum"][e.m] = int(e.foyer["humeur"])   # humeur au début de chaque mois (CA-C4 ii : moyenne sur les mois restants)
 		if attente != "" and not out[attente].has("suite"):
 			out[attente]["suite"] = {"m": e.m, "epargne": e.epargne_du_mois(), "base": e.salaire_base - float(e.depenses()["total"]), "enfants": e.enfants,
 				"revenu": Foyer.revenu_mois(e)}
@@ -113,10 +114,10 @@ func _donnees() -> void:
 	var k5: Dictionary = fo["cartes"]["K5"]
 	verifier("D4 : natures « neutre » aux 4 choix (aucun effet sur fourmi ou cigale), humeur -1 / 0, prix 0",
 		[k4["a"], k4["b"], k5["a"], k5["b"]].all(func(c: Dictionary) -> bool: return c["nature"] == "neutre" and float(c["prix_F"]) == 0.0)
-		and int(k4["a"]["humeur"]) == -1 and int(k4["b"]["humeur"]) == 0 and int(k5["a"]["humeur"]) == -1 and int(k5["b"]["humeur"]) == 0)
-	verifier("D4 : K5 a = 90 % pendant 10 mois (-10 %, des_rel 1, jusqua_rel 10) puis + 8 % en 01/1992 ; K4 a = + 2,5 % (réglé par CA-C4) et statut prenant",
-		k5["a"]["revenu"][0]["pct"] == -10 and k5["a"]["revenu"][0]["jusqua_rel"] == 10 and k5["a"]["revenu"][1]["pct"] == 8 and k5["a"]["revenu"][1]["des"] == "1992-01"
-		and k4["a"]["revenu"][0]["pct"] == 2.5 and k4["a"]["statut"] == "prenant" and k5["a"]["statut"] == "normal")
+		and int(k4["a"]["humeur"]) == -2 and int(k4["b"]["humeur"]) == 0 and int(k5["a"]["humeur"]) == -2 and int(k5["b"]["humeur"]) == 0)
+	verifier("D4 : K5 a = 90 % pendant 10 mois (-10 %, des_rel 1, jusqua_rel 10) puis + 9,5 % en 01/1992 ; K4 a = + 15 % brut et - 12,5 % de frais (net + 2,5 %, G-K1) et statut prenant",
+		k5["a"]["revenu"][0]["pct"] == -10 and k5["a"]["revenu"][0]["jusqua_rel"] == 10 and k5["a"]["revenu"][1]["pct"] == 9.5 and k5["a"]["revenu"][1]["des"] == "1992-01"
+		and k4["a"]["revenu"][0]["pct"] == 15.0 and k4["a"]["revenu"][1]["pct"] == -12.5 and k4["a"]["statut"] == "prenant" and k5["a"]["statut"] == "normal")
 	var longs := []
 	for id in ["K4", "K5"]:
 		for t in ["texte", "pourquoi"]:
@@ -264,14 +265,14 @@ func _parties() -> void:
 				for d in range(m5, m5 + 16):
 					n90 += 1 if _pct(eff5, d) < 0.0 else 0
 				var debut_gain := maxi(m_jan92, m5 + 11)
-				var bon5: bool = n90 == 10 and _pct(eff5, m5) == 0.0 and _pct(eff5, m5 + 1) == -10.0 and _pct(eff5, m5 + 10) == -10.0 and _pct(eff5, debut_gain) == 8.0 \
-					and _pct(eff5, m5 + 11) == (8.0 if m5 + 11 >= m_jan92 else 0.0) and (m5 + 11 > m_jan92 or debut_gain == m_jan92)
+				var bon5: bool = n90 == 10 and _pct(eff5, m5) == 0.0 and _pct(eff5, m5 + 1) == -10.0 and _pct(eff5, m5 + 10) == -10.0 and _pct(eff5, debut_gain) == 9.5 \
+					and _pct(eff5, m5 + 11) == (9.5 if m5 + 11 >= m_jan92 else 0.0) and (m5 + 11 > m_jan92 or debut_gain == m_jan92)
 				k5_ok_profil += 1 if bon5 and base5 > 0.0 else 0
 				# statut : prenant après K4 a, normal après K5 a ; humeur -1 ; cause carriere
-				statut_ok += 1 if (k4["statut_apres"] == "prenant" and k5["statut_apres"] == "normal" and int(k4["humeur_apres"]) == clampi(int(k4["humeur_avant"]) - 1, -3, 3)) else 0
+				statut_ok += 1 if (k4["statut_apres"] == "prenant" and k5["statut_apres"] == "normal" and int(k4["humeur_apres"]) == clampi(int(k4["humeur_avant"]) - 2, -3, 3)) else 0
 				var causes: Array = e.foyer["jouees"].filter(func(x: Dictionary) -> bool: return str(x.get("cause", "")) == "carriere")
 				cause_ok += 1 if causes.size() == 2 else 0
-				avertissement_ok += 1 if (str(ca["avertissement"]) != "" and not str(ca["avertissement"]).contains("{") and str(cb["avertissement"]) == "") else 0
+				avertissement_ok += 1 if (str(ca["avertissement"]) != "" and not str(ca["avertissement"]).contains("{") and str(cb["avertissement"]) != "" and not str(cb["avertissement"]).contains("{")) else 0
 				# textes rendus : aucun gabarit résiduel, métier de la carte
 				var ctx := [str(k4["contenu"]["texte"]), str(k5["contenu"]["texte"]), str(ca["avertissement"]), str(k4["metier_apres"]), str(k5["metier_apres"])]
 				var propre := true
@@ -298,7 +299,7 @@ func _parties() -> void:
 		verifier("CA-C3 : %s : épargne après - avant == revenu_mois (K4 a, K5 a), confirmé par le flux du mois suivant" % nom, identite == nb, "%d / %d" % [identite, nb])
 		verifier("CA-C3 : %s : K5 a : 10 mois à 90 %% (-10 %%), puis + 8 %% exactement en 01/1992" % nom, k5_ok_profil == nb, "%d / %d" % [k5_ok_profil, nb])
 		verifier("CA-C3 : %s : R-MIROIR : Tata et Tonton reçoivent l'écart de revenu du joueur (K4 a contre K4 b)" % nom, mirroir == nm, "%d / %d" % [mirroir, nb])
-		verifier("CA-C5 : %s : statut prenant après K4 a, normal après K5 a ; humeur -1 ; deux causes « carriere » dans les cartes jouées" % nom, statut_ok == nb and cause_ok == nb, "%d %d / %d" % [statut_ok, cause_ok, nb])
+		verifier("CA-C5 : %s : statut prenant après K4 a, normal après K5 a ; humeur -2 ; deux causes « carriere » dans les cartes jouées" % nom, statut_ok == nb and cause_ok == nb, "%d %d / %d" % [statut_ok, cause_ok, nb])
 		verifier("CA-C5 : %s : aucun titre ni aucune étoile ne dépend de K4 / K5 (natures neutres, %d graines comparées)" % [nom, nm], titres_diff == 0, str(titres_diff))
 		verifier("CA-C9 : %s : textes, avertissement et métiers rendus sans gabarit résiduel" % nom, rendu_ok == nb and avertissement_ok == nb, "%d %d / %d" % [rendu_ok, avertissement_ok, nb])
 	print("    RENDU Gérard : %s" % str(rendus.get("gerard", [])))
@@ -312,8 +313,8 @@ func _parties() -> void:
 	var t5 := Gabarits.rendre(Foyer.texte_carte(e, c5), ctx)
 	var av := Gabarits.rendre(Foyer._remplir(e, str(c4["a"]["avertissement"]), c4), ctx)
 	print("    RENDU joueuse : %s | %s | %s | %s" % [t4, t5, av, _avec_sexe(_neuve("gerard", 1), "f").metier()])
-	verifier("CA-C9 : joueuse d'essai : « technico-commerciale itinérante », aucun jeton résiduel, « Gérard vous verra moins »",
-		t4.contains("technico-commerciale itinérante") and av.begins_with("Gérard vous verra moins") and Gabarits.residuels(t4 + t5 + av).is_empty() and not t4.contains("{") and not t5.contains("{"), t4 + " / " + av)
+	verifier("CA-C9 : joueuse d'essai : « technico-commerciale itinérante », aucun jeton résiduel, « Gérard vous verra beaucoup moins »",
+		t4.contains("technico-commerciale itinérante") and av.contains("Gérard vous verra beaucoup moins") and Gabarits.residuels(t4 + t5 + av).is_empty() and not t4.contains("{") and not t5.contains("{"), t4 + " / " + av)
 
 
 func _pct(effets: Array, m: int) -> float:
@@ -328,38 +329,60 @@ func _pct(effets: Array, m: int) -> float:
 # CA-C4 : aucune option dominante (mesure)
 # =====================================================================
 
+## Humeur moyenne des mois qui suivent le mois m (dictionnaire mois -> humeur).
+func _moyenne_humeur(hum: Dictionary, m: int) -> float:
+	var s := 0.0
+	var n := 0
+	for k in hum:
+		if int(k) > m:
+			s += float(hum[k])
+			n += 1
+	return s / maxf(n, 1.0)
+
+
+## CA-C4 reformulé (lot_10c.md §6 bis) : (i) écart médian de patrimoine 5 à 10 % ; (ii) l'option « temps » (b) a la meilleure humeur
+## MOYENNE sur les mois restants dans au moins 80 % des graines ; (iii) a ne bat jamais b partout (patrimoine ET humeur moyenne).
 func _mesure_c4() -> void:
 	for qui in ["gerard", "christine"]:
 		var nom := "Gérard" if qui == "gerard" else "Christine"
 		for carte in ["K4", "K5"]:
+			var k: String = carte.to_lower()
 			var pat_a := 0
 			var hum_b := 0
+			var partout := 0
 			var ecarts := []
 			var n := 0
 			for g in range(1, NB_MESURE + 1):
 				var p := _profil(g)
-				var base := _jouer(qui, g, "b", "b", p)["e"] as EtatPartie
-				var avec := _jouer(qui, g, "a" if carte == "K4" else "b", "a" if carte == "K5" else "b", p)["e"] as EtatPartie
-				if base.fin != "fin" or avec.fin != "fin":
+				var rb := _jouer(qui, g, "b", "b", p)
+				var ra := _jouer(qui, g, "a" if carte == "K4" else "b", "a" if carte == "K5" else "b", p)
+				var base := rb["e"] as EtatPartie
+				var avec := ra["e"] as EtatPartie
+				if base.fin != "fin" or avec.fin != "fin" or (rb[k] as Dictionary).is_empty():
 					continue
 				n += 1
 				var pb := float(base.hist["j"][base.m_fin])
 				var pa := float(avec.hist["j"][avec.m_fin])
-				if pa > pb:
+				var mk := int(rb[k]["m"])
+				var hb := _moyenne_humeur(rb["hum"], mk)
+				var ha := _moyenne_humeur(ra["hum"], mk)
+				var a_pat := pa > pb
+				if a_pat:
 					pat_a += 1
-				# humeur : b gagne si l'humeur finale de a est plus basse
-				if int(avec.foyer["humeur"]) < int(base.foyer["humeur"]):
+				if hb > ha:
 					hum_b += 1
+				if a_pat and ha >= hb:
+					partout += 1
 				ecarts.append(absf(pa - pb) / maxf(absf(pb), 1.0))
 			ecarts.sort()
 			var med := 100.0 * float(ecarts[ecarts.size() / 2])
-			print("    MESURE CA-C4 %s %s (%d graines P-REF) : a bat b en patrimoine dans %.0f %% des graines, b bat a en humeur dans %.0f %% ; écart médian de patrimoine %.1f %%"
-				% [nom, carte, n, 100.0 * pat_a / n, 100.0 * hum_b / n, med])
-			verifier("CA-C4 : %s %s : aucune option dominante (a meilleure en patrimoine dans au moins une graine, b meilleure en humeur dans au moins une)" % [nom, carte], pat_a > 0 and hum_b > 0)
+			print("    MESURE CA-C4 %s %s (%d graines P-REF) : a bat b en patrimoine dans %.0f %% des graines ; b meilleure en humeur moyenne dans %.0f %% ; a meilleure partout dans %.0f %% ; écart médian de patrimoine %.1f %%"
+				% [nom, carte, n, 100.0 * pat_a / n, 100.0 * hum_b / n, 100.0 * partout / n, med])
+			verifier("CA-C4 (iii) : %s %s : a n'est jamais meilleure partout (patrimoine ET humeur moyenne) dans toutes les graines" % [nom, carte], partout < n)
+			verifier("CA-C4 (ii) : %s %s : b meilleure en humeur moyenne dans au moins 80 %% des graines (%.0f %%)" % [nom, carte, 100.0 * hum_b / n], hum_b >= int(ceil(0.8 * n)))
 			if med < 5.0 or med > 10.0:
 				_nb_ecarts += 1
-				print("    ECART CA-C4 %s %s : écart médian de patrimoine %.1f %% hors de 5 à 10 %% (point d'arrêt : réglage par les montants seulement)" % [nom, carte, med])
-
+				print("    ECART CA-C4 (i) %s %s : écart médian de patrimoine %.1f %% hors de 5 à 10 %%" % [nom, carte, med])
 
 func verifier(nom: String, cond: bool, detail := "") -> void:
 	if cond:

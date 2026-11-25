@@ -548,6 +548,7 @@ static func _remplir(e: EtatPartie, t: String, c: Dictionary) -> String:
 	for eff: Dictionary in c.get("a", {}).get("revenu", []):   # {pct_a} : 1er effet du choix a (« 15 % ») ; {pct_conge} : 100 + pct (« 90 % »)
 		var ap := absf(float(eff["pct"]))
 		vals["pct_a"] = (str(int(ap)) if is_equal_approx(ap, floorf(ap)) else Format.nombre(ap, 1)) + Format.ESPACE + "%"
+		vals["pct_brut"] = "+" + Format.ESPACE + (str(int(ap)) if is_equal_approx(ap, floorf(ap)) else Format.nombre(ap, 1)) + Format.ESPACE + "%"
 		vals["pct_conge"] = str(int(100.0 + float(eff["pct"]))) + Format.ESPACE + "%"
 		break
 	return Format.gabarit(t, vals)
