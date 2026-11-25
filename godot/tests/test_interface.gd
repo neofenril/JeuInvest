@@ -40,6 +40,7 @@ func _ready() -> void:
 	await _test_scene_principale(empreinte_avant)
 	await _test_courrier()
 	await _test_dix_ans()
+	await _test_carriere()
 	await _test_chapitre_2()
 	await _test_enveloppes()
 	await _test_demo_complete(true)
@@ -262,6 +263,85 @@ func _vider_modale(e: EtatPartie, md: Modales, scene: Node) -> void:
 # ---------------------------------------------------------------------
 # a ter) Lot 10b, étape 1 : frise et courbe sur 10 ans, carnet au-delà de 9 produits, noms lus dans les données
 # ---------------------------------------------------------------------
+
+# ---------------------------------------------------------------------
+# a quater) Lot 10c : cartes de carrière K4 / K5 (montant par mois, épargne avant › après, avertissement), « Mon foyer » (Métier)
+# ---------------------------------------------------------------------
+
+func _test_carriere() -> void:
+	var cfg := Donnees.config_chapitre("1989", GRAINE)
+	cfg["cartes"] = true
+	var scene: Node = load("res://scenes/principal.tscn").instantiate()
+	add_child(scene)
+	await _images(5)
+	scene.call("nouvelle_partie", cfg)
+	await _images(3)
+	var md: Modales = scene.get("modales")
+	var e := Partie.etat
+	e.resolution_auto()
+	scene.call("demarrer_direct", 0)
+	await _images(3)
+	var a1 := e.ab_courant()
+	StrategieTest.politique_cartes = "epargner"
+	for id in ["K4", "K5"]:
+		var garde := 0
+		while e.fin == "" and garde < 200 and not (e.modale.get("kind", "") == "carte" and str(e.modale.get("id", "")) == id):
+			garde += 1
+			StrategieTest.jouer_mois(e, true)
+			while not e.modale.is_empty() and not (e.modale.get("kind", "") == "carte" and str(e.modale.get("id", "")) == id):
+				e.resolution_auto()
+			if e.modale.is_empty():
+				e.avancer()
+		_verifier("%s est présentée (chapitre 1989)" % id, str(e.modale.get("id", "")) == id)
+		if str(e.modale.get("id", "")) != id:
+			break
+		var c := e.contenu_modale()
+		var a := e.ab_courant()
+		_verifier("%s : contenu de carrière (carriere, revenu_mois, epargne avant / après)" % id, bool(c.get("carriere", false)) and (c["choix"] as Array).all(
+			func(ch: Dictionary) -> bool: return ch.has("revenu_mois") and absf(float(ch["epargne_apres"]) - float(ch["epargne_avant"]) - float(ch["revenu_mois"])) < 0.005))
+		md.carte(c, Vector2(-1, -1))
+		for i in 30:
+			await get_tree().process_frame
+		var mc := md.etat_carte()
+		var tout_ok := mc.boutons.size() == 2
+		for ch: Dictionary in c["choix"]:
+			var b: Button = mc.boutons.get(ch["id"])
+			var lm := b.find_child("Montant", true, false) as Label if b != null else null
+			var le := b.find_child("Epargne", true, false) as Label if b != null else null
+			var lv := b.find_child("Avertissement", true, false) as Label if b != null else null
+			tout_ok = tout_ok and lm != null and lm.text == ModaleCarte.texte_mensuel(float(ch["revenu_mois"]), a) and le != null and le.text == ModaleCarte.texte_epargne(ch, a) \
+				and (str(ch["avertissement"]) == "" or (lv != null and lv.text == str(ch["avertissement"])))
+			if float(ch["revenu_mois"]) == 0.0:
+				tout_ok = tout_ok and lm != null and lm.text == "Pas de changement"
+		_verifier("%s : montant par mois, ligne d'épargne et avertissement == contenu dans chaque bouton" % id, tout_ok)
+		mc.choisir("a" if id == "K4" else "b")   # le choix « a » de K4 rend le statut « prenant »
+		var r := Partie.resoudre_modale("a" if id == "K4" else "b")
+		md.conclure_carte(r, Vector2(-1, -1))
+		await get_tree().create_timer(1.6).timeout
+		while not e.modale.is_empty():
+			e.resolution_auto()
+		if id == "K4":
+			md.foyer(e)
+			for i in 30:
+				await get_tree().process_frame
+			var lmet := md.courant.find_child("Val_Métier", true, false) as Label if is_instance_valid(md.courant) else null
+			var lst := md.courant.find_child("Val_Statut", true, false) as Label if is_instance_valid(md.courant) else null
+			_verifier("Mon foyer : ligne Métier == metier() et mention du statut « prenant » (K4 acceptée)",
+				lmet != null and lmet.text == e.metier() and e.statut_carriere() == "prenant" and lst != null and lst.text != "", "" if lmet == null else lmet.text)
+			md.fermer("fermer")
+			await get_tree().create_timer(0.5).timeout
+	_verifier("Page « Mon foyer » de 1984-1988 : pas de ligne Métier", ModaleFoyer.texte_metier(_etat_1984()) == "")
+	Partie.sauvegarde_auto = false
+	scene.queue_free()
+	await _images(2)
+	_verifier("départ de la carrière en 1989 (mois de départ)", Dates.annee(a1) == 1989)
+
+
+func _etat_1984() -> EtatPartie:
+	var e84 := EtatPartie.new()
+	e84.demarrer(Donnees.config_demo(GRAINE))
+	return e84
+
 
 func _test_dix_ans() -> void:
 	var neuve := Frise.new()

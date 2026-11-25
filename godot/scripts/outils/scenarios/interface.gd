@@ -14,6 +14,7 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"projet_choix", "projet_conclusion", "projet_jour_j", "projet_confirmation", "projet_jour_j_conclusion", "etiquette_projet", "foyer_projet", "banque_guichet",
 	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue", "fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre", "titre_record", "titre_sans_records", "titres_collection", "intro",
 	"frise_10ans", "mon_argent_10ans", "carnet_13",
+	"carriere_k4", "carriere_k5", "mon_foyer_metier",
 	"portraits_foyer", "fin_1988", "intro_christine", "titre_palmares_v2", "golfe_un_an_apres", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres"]
 const RACINE_ESSAI := "res://tests/donnees/chapitres"   # jeu d'essai à deux chapitres ouverts (en attendant les données de 1989)
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
@@ -41,6 +42,8 @@ func jouer(etape: String) -> void:
 			await _dix_ans(etape, jeu)
 		"carnet_13":
 			await _carnet_13(jeu)
+		"carriere_k4", "carriere_k5", "mon_foyer_metier":
+			await _carriere(etape, jeu)
 		"portraits_foyer":
 			sc.partir_de_la_rue(etape)
 			var planche := PanelContainer.new()
@@ -1718,6 +1721,66 @@ func _aller_loin(ab: int) -> void:
 	while not e.modale.is_empty():
 		e.resolution_auto()
 	e.file.clear()
+
+
+## Lot 10c : cartes de carrière K4 (« Le poste itinérant », 1989) et K5 (« Le congé formation », 1991) sur une vraie partie du chapitre 1989
+## (graine fixe, joueur actif) ; mon_foyer_metier : « Mon foyer » après avoir accepté K4 (métier changé, statut « prenant »).
+## --profil=christine pour la joueuse (défaut : le profil du chapitre, Gérard).
+func _carriere(etape: String, jeu: Node) -> void:
+	var modales: Modales = jeu.modales
+	var cfg := Donnees.config_chapitre("1989", 5)
+	cfg["cartes"] = true
+	jeu.nouvelle_partie(cfg)
+	Donnees.regler_chapitre("1989")
+	modales.donnees_demo = Donnees.infos_chapitre()
+	var e := Partie.etat
+	e.resolution_auto()
+	jeu.demarrer_direct(0)
+	var voulue := "K5" if etape == "carriere_k5" else "K4"
+	var ok := jusqu_a_carte("K4" if etape == "mon_foyer_metier" else voulue)
+	print("UI carriere_etape %s carte=%s ok=%s mois=%s" % [etape, str(e.modale.get("id", "")), "oui" if ok else "non", Dates.texte(e.ab_courant())])
+	if not ok:
+		return
+	Partie.changer_vitesse(0)
+	var porte: Vector2 = jeu.ville.call("porte_ecran", "maison")
+	if etape == "mon_foyer_metier":
+		var r := await jouer_carte(jeu, "a")
+		print("UI carriere accepte conseq=« %s »" % str(r.get("consequence", "")))
+		while not e.modale.is_empty():
+			e.resolution_auto()
+		sc.rafraichir_apres_saut()
+		await sc.delai(0.8)
+		jeu.toucher_batiment("maison")
+		await sc.attendre_que(func() -> bool: return modales.genre_courant == "info" and modales.courant != null, 5.0)
+		await sc.delai(0.8)
+		var lm := modales.courant.find_child("Val_Métier", true, false) as Label
+		var ls := modales.courant.find_child("Val_Statut", true, false) as Label
+		print("UI foyer metier=« %s » = metier()=« %s » egal=%s statut=« %s » = %s" % [lm.text if lm != null else "-", e.metier(), "oui" if lm != null and lm.text == e.metier() else "non incoherences=1",
+			ls.text if ls != null else "-", e.statut_carriere()])
+		_mesurer(etape, modales.courant)
+		print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
+		return
+	var c := e.contenu_modale()
+	modales.carte(c, porte)
+	await sc.attendre_que(func() -> bool: return modales.etat_carte().phase == "attente", 5.0)
+	await sc.delai(0.5)
+	var mc := modales.etat_carte()
+	var a := e.ab_courant()
+	var incoh := 0
+	for ch: Dictionary in c["choix"]:
+		var b: Button = mc.boutons[ch["id"]]
+		var lmt := b.find_child("Montant", true, false) as Label
+		var lep := b.find_child("Epargne", true, false) as Label
+		var lav := b.find_child("Avertissement", true, false) as Label
+		var ok_m: bool = lmt != null and lmt.text == ModaleCarte.texte_mensuel(float(ch["revenu_mois"]), a)
+		var ok_e: bool = lep != null and lep.text ==ModaleCarte.texte_epargne(ch, a) and absf(float(ch["epargne_apres"]) - float(ch["epargne_avant"]) - float(ch["revenu_mois"])) < 0.005
+		var ok_a: bool = str(ch.get("avertissement", "")) == "" or (lav != null and lav.text == str(ch["avertissement"]))
+		if not (ok_m and ok_e and ok_a):
+			incoh += 1
+		print("UI carriere choix=%s montant=« %s » epargne=« %s » avertissement=« %s » conforme=%s" % [ch["id"], lmt.text if lmt != null else "-", lep.text if lep != null else "-", lav.text if lav != null else "-", "oui" if ok_m and ok_e and ok_a else "non"])
+	print("UI carriere titre=« %s » carriere=%s picto=%s incoherences=%d" % [str(c.get("titre", "")), str(c.get("carriere", false)), "oui" if modales.courant.find_child("Portrait", true, false) != null else "non", incoh])
+	_mesurer(etape, modales.courant)
+	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
 
 
 ## Lot 10b (I3) : le vrai carnet de 1992 (chapitre 1989 : jusqu'à 13 produits) : 4 colonnes au PC, défilement au téléphone.
