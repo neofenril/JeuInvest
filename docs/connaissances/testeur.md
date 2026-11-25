@@ -229,3 +229,10 @@
 ## Lot 10a-moteur (recette 2026-11-19, lot/10a-moteur fa1e851 : OK, 4 mineures)
 - Reference : 1 647 verifications -Recette -Delai 700 (728 s) ; main sur copie isolee : 1 527 (705 s). Scripts reutilisables (hors projet, `--script <abs> --path <projet> -- args`) : md5 des 133 cases de marche (main = branche) et rejeu de sauvegardes (3 de tests/donnees/sauvegardes + copie de partie_en_cours.sav) jusqu'a la fin, chiffres + md5 de l'historique identiques main/branche.
 - `rmdir` via variable refuse par le garde-fou : nommer les copies avec un suffixe aleatoire plutot que de les supprimer. `--export-pack` : verifier les chemins `data/...` dans les octets.
+
+## Lot 10b-interface étape 2 (recette 2026-11-25, `lot/10b-interface` bc61e1e : KO, A1 majeure barre haute 1280×720)
+- Référence : 1 718 vérifications `-Recette -Delai 700` (47 étapes, 1 178 s) ; captures par `capture_interface.ps1 -Etape x -Nom y -Taille 1920x1080|1440x648 -Telephone|1280x720 -Telephone169` sur copies isolées (main / branche), ˜ 12 s l'une ; comparaison pixel `scratchpad\testeur_cmp.ps1`. `hud` retourne code 1 sur main aussi (« saut non lancé », préexistant).
+- **Toujours comparer la barre haute à 1280×720 contre main** : `_replier_barre` mesure avec le badge « EN PAUSE » compté (pire cas), donc toute nouvelle règle de repli enchaînée après `pause` se déclenche en permanence. Ligne à lire : `UI barre … replis=` (étape `hud`).
+- Contournement « pas de choix du départ en capture / headless » : prouvé inoffensif par un test fenêtré (`principal.tscn`, `jeu.jouer()`, `modales.etat_depart().choisir_rang(i)`), à lancer sans `--headless` ni `--capture`.
+- Captures de scénario : la barre haute derrière les modales montre « JANV 1984 » (artefact), l'écran de fin s'anime (relire avec `capture.ps1 -Attente 3`) ; l'étape `fin` s'arrête désormais sur la carte de passage (la partie 1984 va jusqu'en 1993).
+- Zones fragiles : sous-titres de chapitre (données 1984 « – décembre 1988 »), légende « au krach » fixe, REJOUER AUTREMENT toujours en 1984, texte technique du PEP.
