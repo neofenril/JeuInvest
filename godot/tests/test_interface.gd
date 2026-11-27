@@ -328,8 +328,12 @@ func _test_carriere() -> void:
 			var lst := md.courant.find_child("Val_Statut", true, false) as Label if is_instance_valid(md.courant) else null
 			_verifier("Mon foyer : ligne Métier == metier() et mention du statut « prenant » (K4 acceptée)",
 				lmet != null and lmet.text == e.metier() and e.statut_carriere() == "prenant" and lst != null and lst.text != "", "" if lmet == null else lmet.text)
+			var lk4 := md.courant.find_child("Carte_0", true, false) as Label if is_instance_valid(md.courant) else null
+			_verifier("Mon foyer : la carte de carrière jouée (sans montant) n'affiche rien de monétaire (M6)",
+				lk4 != null and lk4.text.contains("Accepter") and not lk4.text.contains(Format.ESPACE + "F"), "" if lk4 == null else lk4.text)
 			md.fermer("fermer")
 			await get_tree().create_timer(0.5).timeout
+	_verifier("Mon foyer : une carte avec montant le garde", ModaleFoyer.texte_carte({"titre": "T", "libelle": "L", "montant": -1000.0}, a1).ends_with(Format.ESPACE + "F"))
 	_verifier("Page « Mon foyer » de 1984-1988 : pas de ligne Métier", ModaleFoyer.texte_metier(_etat_1984()) == "")
 	Partie.sauvegarde_auto = false
 	scene.queue_free()
@@ -581,6 +585,28 @@ func _test_enveloppes() -> void:
 			d["ordre_carnet"].append(pid)
 		if not Banquier.produits_vus(e).has(pid):
 			Banquier.produits_vus(e).append(pid)
+	# N2 : « ouvrir » chez le banquier (montant suggéré >= -1.5) sur une SCPI ou un PEA : la fiche, pas le formulaire à prix ; et la garde de
+	# l'en-tête de prix tient si le formulaire est demandé quand même (une SCRIPT ERROR ferait échouer tests.ps1)
+	for pid in ["scpi", "pea"]:
+		var pn := PanneauBanque.new()
+		env[0].add_child(pn)
+		pn.construire(e, pid, -1.0)
+		await _images(2)
+		_verifier("%s ouvert par le banquier : fiche sans formulaire à curseur" % pid, pn.zone_droite().find_children("*", "HSlider", true, false).is_empty())
+		pn.call("_afficher_ordre", pid, "a", -1.0)
+		var prix := pn.call("_info_prix", e.ab_courant()) as Label
+		_verifier("%s sans cours du jour : aucun prix affiché en tête d'ordre" % pid, is_nan(e.cours(pid)) and prix.text == "", prix.text)
+		prix.free()
+		pn.queue_free()
+		await _images(2)
+	var pa := PanneauBanque.new()
+	env[0].add_child(pa)
+	pa.construire(e, "elf", -1.0)
+	var prix_elf := pa.call("_info_prix", e.ab_courant()) as Label
+	_verifier("action avec un cours : le prix reste affiché en tête d'ordre", prix_elf.text.begins_with(Format.montant(e.cours("elf"), e.ab_courant(), true)), prix_elf.text)
+	prix_elf.free()
+	pa.queue_free()
+	await _images(2)
 	md.ouvrir_banque(e, "scpi", -2.0)
 	await _images(10)
 	var fiche := md.banque.zone_droite()

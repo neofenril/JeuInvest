@@ -161,12 +161,13 @@ func fin_demo(e: EtatPartie) -> void:
 	var vue := m.get_viewport_rect().size
 	var p := PanelContainer.new()
 	var sf := Style.panneau(22)
-	# M5 : plusieurs titres (dix ans) = contenu plus haut : marges et interlignes resserrés au PC pour que tout tienne sans défilement
+	# M5 : plusieurs titres (dix ans) au PC : plaques larges et basses, foyer étroit, courbe qui prend la hauteur restante ;
+	# tout doit tenir sans défilement dans la zone la plus basse (972 px à 1152 × 648)
 	var serre := not compact and (b.get("titres", []) as Array).size() > 1
 	sf.content_margin_left = 20 if compact else 40
 	sf.content_margin_right = 20 if compact else 40
-	sf.content_margin_top = 8 if compact else (12 if serre else 30)
-	sf.content_margin_bottom = 8 if compact else (12 if serre else 30)
+	sf.content_margin_top = 8 if compact or serre else 30
+	sf.content_margin_bottom = 8 if compact or serre else 30
 	p.add_theme_stylebox_override("panel", sf)
 	var largeur := (vue.x - 24.0) if compact else minf(1500.0, vue.x - 60.0)   # téléphone : toute la largeur libre
 	p.custom_minimum_size = Vector2(largeur, (vue.y - 12.0) if compact else 0.0)
@@ -177,6 +178,8 @@ func fin_demo(e: EtatPartie) -> void:
 	# En-tête : Atkinson gras (il contient un chiffre : jamais Pixelify)
 	var duree := _duree(b)
 	var titre := Style.label("%s · %s DE LA VIE DE %s" % [Dates.texte(a).to_upper(), duree.to_upper(), e.prenom().to_upper()], 28 if compact else 36, Style.ui_gras(), Style.ACCENT)
+	if serre:
+		titre.add_theme_font_size_override("font_size", 32)
 	titre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(titre)
 	var val := Style.label(Format.montant(0.0, a), 52 if compact else 60, Style.chiffres(), Style.TEXTE)
@@ -186,9 +189,10 @@ func fin_demo(e: EtatPartie) -> void:
 	_records_separes = []
 	_etats_records = []
 	var multi := (b.get("titres", []) as Array).size() > 1 and not bool(rec.get("hors_record", false))
-	var ligne_record := _lignes_records(b, rec, compact, (interieur - 24.0) if compact else floorf((870.0 - 14.0) / 2.0) - 60.0)
-	var foyer := _bloc_foyer(e, b, compact, interieur - 24.0 - 40.0 - 110.0)
-	var plaque: Control = _plaques(b, rec, compact, foyer, 870.0 if not compact else interieur - 24.0) if not titre_b.is_empty() else null
+	var plaques_l := (interieur - 18.0 - FOYER_ETROIT) if serre else 870.0
+	var ligne_record := _lignes_records(b, rec, compact, (interieur - 24.0) if compact else (floorf((plaques_l - 14.0) / 2.0) - 54.0 if serre else floorf((870.0 - 14.0) / 2.0) - 60.0))
+	var foyer := _bloc_foyer(e, b, compact, interieur - 24.0 - 40.0 - 110.0, serre)
+	var plaque: Control = _plaques(b, rec, compact, foyer, plaques_l if not compact else interieur - 24.0) if not titre_b.is_empty() else null
 	infos_fin = {"titre": str(titre_b.get("nom", "")), "pourquoi": plaque != null and str(titre_b.get("pourquoi", "")) != ""}
 	var ligne := HBoxContainer.new()
 	ligne.add_theme_constant_override("separation", 24)
@@ -206,6 +210,8 @@ func fin_demo(e: EtatPartie) -> void:
 		barres.regler([["VOUS", patr, Style.ACCENT], ["TATA LIVRET", e.patrimoine(e.temoins["livret"]), Courbe.COULEUR_REF]], a)
 	else:
 		_bloc_rue(bloc, barres, classement, compact, a)
+		if serre:
+			barres.custom_minimum_size.y = 4.0 * 44.0
 	bloc.add_child(barres)
 	if not classement.is_empty():
 		var rep: Dictionary = Quartier.replique_rue(classement)
@@ -225,15 +231,22 @@ func fin_demo(e: EtatPartie) -> void:
 		infos_rue.merge({"rang": BlocRue._rang_de(classement), "total": classement.size(), "replique": not rep.is_empty()}, true)
 	details_rue.append(Style.label("Argent mis de côté en %s : " % duree + Format.montant(e.epargne_nette, a), 24 if compact else 18, Style.ui(), Style.TEXTE_2))
 	var comparaison := _bloc_comparaison_livret(e, a, pct, (interieur - 24.0 - 640.0 - 24.0 - 80.0) if compact else droite_l - 110.0)
-	var courbe := _courbe_cinq_ans(e, duree, 90.0 if serre else 150.0)
+	var courbe := _courbe_cinq_ans(e, duree, 110.0 if serre else 150.0, serre)
 	# Détail : frais, produits, exemple, phrase de synthèse
 	var detail: Array = _lignes_detail(e, a, compact, interieur)
+	if serre and not detail.is_empty():
+		# dix ans au PC : « Argent mis de côté » rejoint la ligne des frais et des produits (une ligne de hauteur gagnée)
+		var mis: Control = details_rue.pop_back()
+		var infos := detail[0] as Control
+		mis.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		infos.add_child(mis)
+		infos.move_child(mis, 1)
 	var boutons := HBoxContainer.new()
 	boutons.add_theme_constant_override("separation", 16)
-	var rejouer := Style.bouton("REJOUER AUTREMENT", true, 72 if compact else 80)
+	var rejouer := Style.bouton("REJOUER AUTREMENT", true, 72 if compact else (68 if serre else 80))
 	rejouer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rejouer.pressed.connect(m.fermer.bind("rejouer"))
-	var quitter := Style.bouton("QUITTER", false, 72 if compact else 80)
+	var quitter := Style.bouton("QUITTER", false, 72 if compact else (68 if serre else 80))
 	quitter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quitter.pressed.connect(m.fermer.bind("quitter"))
 	boutons.add_child(rejouer)
@@ -244,9 +257,9 @@ func fin_demo(e: EtatPartie) -> void:
 		bande.add_theme_constant_override("separation", 18)
 		v.add_child(bande)
 		if plaque != null:
-			plaque.custom_minimum_size.x = 870.0
+			plaque.custom_minimum_size.x = plaques_l
 			bande.add_child(plaque)
-		foyer.custom_minimum_size.x = interieur - 18.0 - 870.0 if plaque != null else interieur
+		foyer.custom_minimum_size.x = interieur - 18.0 - plaques_l if plaque != null else interieur
 		bande.add_child(foyer)
 		ligne.name = "Defilant"
 		v.add_child(ligne)
@@ -436,12 +449,14 @@ func _plaque_titre(b: Dictionary, rec: Dictionary, compact: bool, foyer: Control
 		nv.name = "NouveauCollection"
 		nv.add_theme_stylebox_override("panel", _plaque_ambre(4))
 		nv.add_child(Style.label("NOUVEAU DANS LA COLLECTION" if annees == "" else "NOUVEAU", 24 if compact else 20, Style.capitales(), Style.ENCRE))
-		if annees == "":
+		var police := Style.capitales()
+		var entier_l: float = police.get_string_size(l1.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x + police.get_string_size("NOUVEAU", HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x + 30.0 + 24.0
+		if annees == "" or (not compact and entier_l <= col_w):
 			ligne1.add_child(nv)
 		else:
-			badge = nv   # plusieurs plaques côte à côte : le badge passe sous le nom (la plaque est étroite)
+			badge = nv   # plaque étroite : le badge passe sous le nom
 	col.add_child(ligne1)
-	var nom := Style.label(str(t.get("nom", "")).to_upper(), 40 if compact else (36 if annees != "" else 48), Style.neon(), Style.TEXTE)
+	var nom := Style.label(str(t.get("nom", "")).to_upper(), 40 if compact else (32 if annees != "" else 48), Style.neon(), Style.TEXTE)
 	nom.name = "NomTitre"
 	nom.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	nom.custom_minimum_size.x = col_w
@@ -458,9 +473,13 @@ func _plaque_titre(b: Dictionary, rec: Dictionary, compact: bool, foyer: Control
 	return pc
 
 
+const FOYER_ETROIT := 380.0   # PC, plusieurs titres : largeur de la carte du foyer à côté des deux plaques
+
+
 ## Le foyer : portrait de Sylvie (humeur de fin), phrase d'humeur, projets réalisés, une ligne par projet (PC).
+## `etroit` (PC, plusieurs titres) : portrait à côté de l'humeur, liste des projets en dessous sur toute la largeur, sans coupure.
 ## Au téléphone : le portrait et une ligne « humeur · projets » sont repris par la plaque du titre (méta « portrait », « ligne »).
-func _bloc_foyer(e: EtatPartie, b: Dictionary, compact: bool, larg_ligne: float) -> Control:
+func _bloc_foyer(e: EtatPartie, b: Dictionary, compact: bool, larg_ligne: float, etroit := false) -> Control:
 	var pc := PanelContainer.new()
 	pc.name = "BlocFoyer"
 	var sb := StyleBoxFlat.new()
@@ -477,7 +496,7 @@ func _bloc_foyer(e: EtatPartie, b: Dictionary, compact: bool, larg_ligne: float)
 	var realises := int(proj.get("realises", 0))
 	var visage: Control = null
 	if e.has_method("cartes_actives") and e.cartes_actives():
-		visage = CadresPixel.icone(Noms.portrait_proche(e) + ModaleCarte.nom_humeur(int(b.get("humeur_fin", e.humeur_visible()))), {}, 2 if compact else 3)   # téléphone : plus petit, le récap passe avant
+		visage = CadresPixel.icone(Noms.portrait_proche(e) + ModaleCarte.nom_humeur(int(b.get("humeur_fin", e.humeur_visible()))), {}, 2 if compact or etroit else 3)   # téléphone : plus petit, le récap passe avant
 		visage.name = "VisageSylvie"
 		visage.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		infos_rue["visage"] = true
@@ -517,9 +536,17 @@ func _bloc_foyer(e: EtatPartie, b: Dictionary, compact: bool, larg_ligne: float)
 		var lpj := Style.label(phrase_projets, 22, Style.ui_gras(), Style.TEXTE)
 		lpj.name = "ProjetsRealises"
 		col.add_child(lpj)
-	var liste := _liste_projets(b, true)
+	var liste := _liste_projets(b, true, 20, FOYER_ETROIT - 30.0 if etroit else 0.0)
 	if liste != null:
-		col.add_child(liste)
+		if etroit:
+			var pile := VBoxContainer.new()
+			pile.add_theme_constant_override("separation", 8)
+			pc.remove_child(h)
+			pc.add_child(pile)
+			pile.add_child(h)
+			pile.add_child(liste)
+		else:
+			col.add_child(liste)
 	return pc
 
 
@@ -535,7 +562,8 @@ static func _plaque_ambre(marge_v: int) -> StyleBoxFlat:
 
 
 ## Une ligne par projet : nom court et état en mots (réalisé, reporté, abandonné), jamais par la couleur seule.
-func _liste_projets(b: Dictionary, avec: bool, taille := 20) -> Control:
+## `largeur` > 0 : la ligne passe à la ligne dans cette largeur au lieu d'être coupée.
+func _liste_projets(b: Dictionary, avec: bool, taille := 20, largeur := 0.0) -> Control:
 	var proj: Dictionary = b.get("projets", {})
 	var liste: Array = proj.get("liste", [])
 	if liste.is_empty() or not avec:
@@ -546,9 +574,13 @@ func _liste_projets(b: Dictionary, avec: bool, taille := 20) -> Control:
 		var etat := str(it.get("etat", ""))
 		var mot := "réalisé" if etat.begins_with("realise") else ("abandonné" if etat.begins_with("abandon") else "pas réalisé")
 		var l := Style.label("%s : %s" % [str(it.get("nom", "")), mot], taille, Style.ui(), Style.TEXTE_2 if taille <= 20 else Style.TEXTE)
-		l.clip_text = true
-		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		l.custom_minimum_size.x = 60
+		if largeur > 0.0:
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.custom_minimum_size.x = largeur
+		else:
+			l.clip_text = true
+			l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			l.custom_minimum_size.x = 60
 		col.add_child(l)
 	return col
 
@@ -573,7 +605,7 @@ func _lignes_records(b: Dictionary, rec: Dictionary, compact: bool, larg: float)
 	boite.name = "LignesRecords"
 	boite.add_theme_constant_override("separation", 10 if compact else 8)
 	var chap := str(b.get("chapitre_depart", ""))
-	var l1 := _ligne_record(rec, compact, larg)
+	var l1 := _ligne_record(rec, compact, larg, false, not compact)
 	var leg1 := Style.label("RECORD DE CHAPITRE · " + Noms.annees_chapitre(chap), 20, Style.capitales(), Style.TEXTE_2)
 	boite.add_child(leg1)
 	if l1 != null:
@@ -582,7 +614,7 @@ func _lignes_records(b: Dictionary, rec: Dictionary, compact: bool, larg: float)
 	var parties: Dictionary = ((stock.get("chapitres", {}) as Dictionary).get(chap, {}) as Dictionary).get("records_partie", {})
 	var rp: Dictionary = parties.get(str(int(b.get("annee_fin", 0))), b.get("record_partie", {}))
 	var rec2 := {"hors_record": false, "nouveau": bool(rec.get("nouveau_partie", false)), "record": rp, "ancien": {}, "sans_suffixe": true}
-	var l2 := _ligne_record(rec2, compact, larg)
+	var l2 := _ligne_record(rec2, compact, larg, false, not compact)
 	var leg2 := Style.label("RECORD DE PARTIE · %d-%d" % [int(b.get("annee_depart", 0)), int(b.get("annee_fin", 0))], 20, Style.capitales(), Style.TEXTE_2)
 	boite.add_child(leg2)
 	if l2 != null:
@@ -607,7 +639,8 @@ func _lignes_records(b: Dictionary, rec: Dictionary, compact: bool, larg: float)
 
 
 ## Ligne du record (docs/29 §1.4), états exclusifs ; null quand il n'y a rien à dire.
-func _ligne_record(rec: Dictionary, compact: bool, larg: float, en_ligne := false) -> Control:
+## `fleche_collee` : la flèche précède le texte sur la même ligne au lieu d'occuper une ligne à elle seule.
+func _ligne_record(rec: Dictionary, compact: bool, larg: float, en_ligne := false, fleche_collee := false) -> Control:
 	var etat := _etat_record(rec)
 	if etat == "aucun":
 		return null
@@ -643,8 +676,13 @@ func _ligne_record(rec: Dictionary, compact: bool, larg: float, en_ligne := fals
 	else:
 		c = Style.TEXTE_2
 		h.add_child(Style.label("Votre record :", t - 2, Style.ui(), Style.TEXTE_2))
+	var cible: BoxContainer = h
+	if fleche_collee:
+		cible = HBoxContainer.new()
+		cible.add_theme_constant_override("separation", 8)
+		h.add_child(cible)
 	if roundi(x) != 0:
-		h.add_child(ModaleOutils.fleche(positif, c))
+		cible.add_child(ModaleOutils.fleche(positif, c))
 	var texte := "%s face à Tata Livret" % pct_texte(x)
 	if etat == "nouveau":
 		var ancien: Dictionary = rec.get("ancien", {})
@@ -662,29 +700,45 @@ func _ligne_record(rec: Dictionary, compact: bool, larg: float, en_ligne := fals
 	var l := Style.label(texte, t - (2 if etat != "nouveau" else 0), Style.ui_gras() if etat == "nouveau" else Style.ui(), c)
 	l.name = "TexteRecord"
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size.x = (larg - 60.0 - 300.0) if (compact or en_ligne) else larg - 20.0
-	h.add_child(l)
+	l.custom_minimum_size.x = (larg - 60.0 - 300.0) if (compact or en_ligne) else larg - (50.0 if fleche_collee else 20.0)
+	cible.add_child(l)
 	return h
 
 
 ## « Cinq ans en un coup d'œil » (PC seulement) : la courbe du joueur et celle de Tata Livret.
-func _courbe_cinq_ans(e: EtatPartie, duree := "cinq ans", haut := 150.0) -> VBoxContainer:
+## `serre` (dix ans au PC) : légende sur la ligne du titre, la courbe prend toute la hauteur qui reste dans la colonne.
+func _courbe_cinq_ans(e: EtatPartie, duree := "cinq ans", haut := 150.0, serre := false) -> VBoxContainer:
 	var droite := VBoxContainer.new()
+	droite.name = "BlocCourbe"
 	droite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	droite.add_child(Style.label("%s EN UN COUP D'ŒIL" % duree.to_upper(), 18, Style.capitales(), Style.TEXTE_2))
+	var titre := Style.label("%s EN UN COUP D'ŒIL" % duree.to_upper(), 18, Style.capitales(), Style.TEXTE_2)
+	var leg := HBoxContainer.new()
+	leg.name = "LegendeCourbe"
+	leg.add_theme_constant_override("separation", 18)
+	if serre:
+		droite.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var tete := HBoxContainer.new()
+		titre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tete.add_child(titre)
+		tete.add_child(leg)
+		droite.add_child(tete)
+	else:
+		droite.add_child(titre)
 	var courbe := Courbe.new()
+	courbe.name = "CourbeFin"
 	courbe.custom_minimum_size = Vector2(0, haut)
+	if serre:
+		courbe.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	courbe.total_mois = e.m_fin - e.m_depart
 	var vals: Array = e.hist["j"].slice(e.m_depart, e.m + 1)
 	var ref: Array = e.hist["livret"].slice(e.m_depart, e.m + 1)
 	courbe.regler(vals, [], e.ab_de(e.m_depart), 0.0, ref)
 	courbe.ecart_impose = e.ecart_livret()
 	droite.add_child(courbe)
-	var leg := HBoxContainer.new()
-	leg.add_theme_constant_override("separation", 18)
 	leg.add_child(Style.label("— Vous", 22 if m.compact else 18, Style.ui(), Style.ACCENT))
 	leg.add_child(Style.label("— Tata Livret", 22 if m.compact else 18, Style.ui(), Courbe.COULEUR_REF))
-	droite.add_child(leg)
+	if not serre:
+		droite.add_child(leg)
 	return droite
 
 

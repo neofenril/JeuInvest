@@ -84,7 +84,8 @@ func _draw() -> void:
 		var v := _max_affiche * i / float(n_grad)
 		var y := zone.end.y - zone.size.y * i / float(n_grad)
 		draw_line(Vector2(zone.position.x, y), Vector2(zone.end.x, y), Color(Style.TEXTE, 0.06 if i > 0 else 0.15), 1.0)
-		if i > 0 and (not compacte or i == n_grad):
+		# Courbe basse : deux étiquettes à moins de 24 px se superposeraient, seule celle du haut est écrite (M5)
+		if i > 0 and (i == n_grad or (not compacte and zone.size.y / float(n_grad) >= 24.0)):
 			etiquettes.append([Vector2(zone.position.x + 4, y - 6), Format.montant(v, ab_premier)])
 	var n := valeurs.size()
 	var total := maxi(maxi(n - 1, total_mois), 1)
