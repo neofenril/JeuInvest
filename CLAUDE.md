@@ -94,6 +94,11 @@ Chaque agent a une base de connaissances dans `docs/connaissances/<agent>.md` : 
 - Pop-up de début de partie (retour du joueur, backlog n° 6), fusionnée dans main (facc64c) : « JANVIER 1984 », 4 blocs (qui vous êtes, ce qui vous attend, objectif, comment jouer ; texte docs/32, données `godot/data/intro.json`), COMMENCER, temps figé, à chaque nouvelle partie et à « Rejouer autrement », jamais à la reprise ; entrée d'historique. 1 379 vérifications. Exports 0.6.2 (18/11). Mineures : titre d'historique en minuscule initiale (« janvier 1984 »), intertitres collés en relecture.
 - Backlog du joueur (6 idées : trophées, profils d'investisseur, bâtiment « s'amuser », décor par décennie, création de partie, pop-up de début) : `docs/lots/backlog_retours_0_6.md`. Extension de la plage des années : plan `docs/lots/plan_extension_annees.md` + contenus experts `docs/33` à `docs/36` ; décisions du joueur attendues (durée de partie, 2e chapitre, ordre, casino/tabac, profil célibataire, étoiles, PER, révision du cahier des charges).
 
+## État du projet (2026-11-27) : version 0.7 « dix ans, de 1984 à 1993 »
+- Lot 10 complet dans main (37801d4) : jeu découpé en chapitres (`godot/data/chapitres/1984`, `1989`) et catalogue de produits daté ; chapitre 1989-1993 (profil Christine, PEA, SCPI, PEP, vitrine du Golfe) ; départ au choix (1984 ou 1989), partie continue jusqu'à fin 1993, carte de passage, titre par chapitre, double record ; pilote de carrière (2 cartes) ; correctifs 10d. 1 797 vérifications ; recette finale OK (`docs/lots/lot_10d_recette.md`).
+- Exports 0.7 faits le 2026-11-27 : `export\windows\JeuClaude.exe` (111 Mo) et `export\android\JeuClaude.apk` (59 Mo, debug). Jamais essayés sur un vrai téléphone.
+- En attente : verdict du joueur sur la 0.7. Restes pour le lot 11 : `docs/lots/reprise.md`. Plan et décisions : `docs/lots/feuille_de_route_v3.md`, `docs/lots/decisions_extension_annees.md`.
+
 ## À faire plus tard
 - APK de publication (keystore de release) et version iOS.
 - Questionnaire de profil de risque au démarrage (idée de l'utilisateur mise de côté le 2026-10-27). D'ici là, le banquier adapte ses propositions à la seule situation de vie.
