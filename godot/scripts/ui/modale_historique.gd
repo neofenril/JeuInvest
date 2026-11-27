@@ -245,16 +245,20 @@ func _ligne(e: EtatPartie, h: Dictionary, largeur: float) -> Control:
 		vd.add_child(lc)
 	if h.get("a_montant", false):
 		var mt := float(h["montant"])
-		var txt := Format.montant(mt, a, false, true)
-		if str(h.get("suffixe", "")) != "":
-			txt += " " + str(h["suffixe"])
-		var lm := Style.label(txt, 20, Style.chiffres(), Style.GAIN_PAPIER if mt > 0.0 else (Style.ENCRE_ROUGE if mt < 0.0 else Style.TEXTE_PAPIER_2))
+		var lm := Style.label(texte_montant_entree(h, a), 20, Style.chiffres(), Style.GAIN_PAPIER if mt > 0.0 else (Style.ENCRE_ROUGE if mt < 0.0 else Style.TEXTE_PAPIER_2))
 		lm.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		lm.clip_text = true
 		lm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		vd.add_child(lm)
 	hb.add_child(vd)
 	return p
+
+
+## Montant d'une entrée, avec son suffixe (« par mois », « en Bourse ») : même texte dans la liste et à la relecture.
+static func texte_montant_entree(h: Dictionary, a: int) -> String:
+	var txt := Format.montant(float(h.get("montant", 0.0)), a, false, true)
+	var suffixe := str(h.get("suffixe", ""))
+	return txt if suffixe == "" else "%s %s" % [txt, suffixe]
 
 
 ## Toucher bref (sans glisser) sur une ligne : la rouvrir. Le glisser est laissé au défilement.
@@ -348,7 +352,9 @@ func lecture_notification(h: Dictionary, a: int) -> void:
 	v.add_child(texte)
 	if h.get("a_montant", false):
 		var mt := float(h["montant"])
-		v.add_child(Style.label(Format.montant(mt, a, false, true), 30, Style.chiffres(), Style.GAIN_PAPIER if mt >= 0.0 else Style.ENCRE_ROUGE))
+		var lm := Style.label(texte_montant_entree(h, a), 30, Style.chiffres(), Style.GAIN_PAPIER if mt >= 0.0 else Style.ENCRE_ROUGE)
+		lm.name = "MontantLecture"
+		v.add_child(lm)
 	var ok := Style.bouton("FERMER", true)
 	ok.pressed.connect(m.fermer.bind("fermer"))
 	v.add_child(ok)
