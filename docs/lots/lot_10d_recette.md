@@ -63,3 +63,62 @@ Série complète `capture_interface.ps1 -Serie` (252 lancements) et `capture_vil
 
 ### Fichiers de preuve (hors dépôt)
 Dossier `C:\Users\arthu\AppData\Local\Temp\claude\a5f3148d28e60fc6\b77abd8d-5910-4bb5-a447-5b2479db06ee\scratchpad\r10d_113338371\` : `tests.log`, `cap.log`, `cap2.log`, `c\partie_G1.txt` / `G2` / `C1` / `C2` (+ `.err`), `main\partie_CM.txt` / `.err` (référence `main`), `c\img\*.png`, `c\godot\captures\*.png` (`a6_*` = fin 1993 relue à 6 s, `r10d_*` = étapes ciblées).
+
+## Passage 2 (2026-11-27) : branche `lot/10d` commit c057f0d, avant fusion dans `main` et export 0.7 : verdict **OK** (aucune bloquante ni majeure, 6 mineures préexistantes)
+
+Copie isolée (`git archive c057f0d godot`, `user://` à part `JeuClaude_recette_10dp2`, supprimé ensuite). Aucun autre Godot en parallèle. Partie du joueur intacte (`partie_en_cours.sav` SHA-256 `0EFB110D...22E5E`, écriture du 15/11 21:08 ; pas de `records.sav` du joueur). Worktree `lot10d` propre. Le code du jeu n'a pas été modifié.
+
+### Points du passage 1
+| Point | Résultat |
+|---|---|
+| N1 liste des projets sur 10 ans | **Corrigé** : G1 « Super 5 / apport T3 / 405 break / maison avec jardin », G2 de même avec l'apport T3 abandonné (3 sur 4) ; 4 lignes distinctes, compte et liste cohérents |
+| N2 ouverture SCPI / PEA | **Corrigé** : ouverture sur la fiche (PC et téléphone), 0 SCRIPT ERROR dans 5 parties réelles (stdout et stderr lus) |
+| M5 écran de fin PC | **Corrigé** : aucun défilement, pire cas compris (`fin_1993_long` : feuille 960 px pour 1080, légende dedans), graduations non superposées |
+| M6 « 0 F » | **Corrigé** : « +222 F / mois » et « −949 F / mois » (Mon foyer, relecture, historique) ; carte sans montant : rien d'affiché |
+| BOM de `test_recette_fin_titres.tscn` | **Corrigé** : import d'une copie neuve propre |
+
+### Correctif non demandé (`projets.gd` : projet de 1984 encore en cours à la bascule) : conforme
+- 18 scénarios forcés (jour J en janvier, mars ou août 1989 ; réaliser, renoncer, choix par défaut ; avec et sans sauvegarde / reprise après la bascule) : **72 vérifications OK**. Le projet de 1984 garde son nom et son montant, les deux projets de 1989 sont ensuite proposés, 4 lignes distinctes à la fin, historique sans gabarit.
+- Cas naturel : **0 projet resté ouvert à la bascule sur 300 parties** (25 graines x 3 politiques x 2 échéances x actif / passif). C'est un filet de sécurité.
+- Limites sans gravité : dans ce cas forcé, REPORTER n'est pas proposé (la date limite est bornée par le projet 1 de 1989). Les autres constantes et phrases viennent des données 1989 (lu dans le code, non vu à l'écran).
+
+### Tests automatiques
+`tests.ps1 -Recette -Delai 700` : **1 797 vérifications OK, 0 KO, 0 erreur de script, 0 échec, 51 étapes, 1 378 s** (« TOUT EST PROPRE »). `test_reference_1984` 35 OK : 1984-88 inchangé.
+
+### Parties réelles (`principal.tscn`, saut, balayage des jetons à l'écran et dans les modales)
+| Partie | Format | Patrimoine (€) | Écart Tata | Historique relu | Jetons | Projets |
+|---|---|---|---|---|---|---|
+| Gérard 1984->1993, graine 7 actif, sauvegarde + reprise au passage | PC | 35 949,06 | -1,734 % | 144 / 144 | 0 | 4 sur 4 |
+| Gérard 1984->1993, graine 31 passif | tél. | 25 353,80 | -18,044 % | 151 / 151 | 0 | 3 sur 4 |
+| Christine 1989->1993, graine 7 actif | tél. | 22 021,25 | -1,112 % | 75 / 75 | 0 | 2 sur 2 |
+| Christine 1989->1993, graine 11 passif | PC | 18 638,92 | -13,482 % | 78 / 78 | 0 | 2 sur 2 |
+| Christine 1989->1993, graine 7, K4 et K5 acceptées | PC | | | complet | 0 | |
+
+Chiffres identiques au passage 1 et à la recette finale. `nominal.vous` = patrimoine du moteur, écart recalculé = affiché. Reprise au passage identique. Les 2 « résidus » `{mise}` des données brutes sont des noms de champs, pas des textes affichés.
+
+### Captures (PC 1920×1080 et 1280×720, téléphones 1440×648 et 1280×720)
+- 36 lancements ciblés (`fin_1993`, `fin_1993_long`, `fin_1988`, `mon_foyer_metier`, `carte_relue`, `carriere_k4`, `fiche_scpi`, `fiche_pea`, `mon_argent_10ans`) : tous code 0. `carriere_k5` n'a pas été relancée à part (jouée dans la série de parties).
+- **`capture_interface.ps1 -Serie` : 255 lancements, 0 échec, code 0**, 3 984 s (première série entièrement verte : les échecs `hud` et `carte_conclusion` ont disparu).
+- **`capture_ville.ps1 -Serie` : code 0, « PX1 : tout est vert ».**
+- Écran de fin relu après 6 s : 228 394 F, Tata 263 831 F, écart 35 438 F (− 13 %), cohérents. Une partie des images de la série a été relue à l'œil (planches), pas la totalité des 450.
+
+### Anomalies mineures (toutes antérieures à 10d, aucune n'empêche le OK)
+- **m1 (point signalé, classé mineur) : picto d'humeur à visage féminin quand le proche est Patrick.** Plus large que signalé : les 3 icônes `humeur_*` 16×16 (`data/pixel/ui/icones.txt`, « tête de Sylvie ») servent partout, dans l'étiquette MA MAISON, les deux choix des cartes (K4), les lignes de « Mon foyer ». Les grands portraits et la personne à la fenêtre de la maison sont, eux, masculins. Attendu : variante masculine ou visage neutre. Captures `captures\p2_mon_foyer_metier_pc.png`, `img\pc_foyer.png`.
+- **m2 (à traiter en priorité au lot 11) : carnet de la banque, chapitre 1989 : « présentée en <mois courant> », la date avance avec le temps.** Reproduire : ouvrir la Banque à deux dates différentes. Christine : jusqu'à 8 tuiles (Livret A, PEL, emprunt, assurance-vie, SICAV, L'Oréal, Peugeot, Saint-Gobain) ; Gérard après 1989 : Elf. Constaté : Gérard, Elf « présentée en févr. 1990 » puis « juil. 1992 ». Attendu : date fixe, ou pas de date. Cause : `panneau_banque.gd` l. 247 prend `e.m` par défaut quand `Banquier.presentation_de(pid)` n'est pas dans `banque.presentes`. Présent depuis le lot 10a, sans effet sur l'argent. Captures `img\pc_banque8_février_1990.png`, `img\pc_banque9_juillet_1992.png`.
+- **m3** : écran de fin, « Les frais et le krach sont passés par là » avec « Frais payés : 0 F » (et pour Christine, qui n'a pas vécu le krach de 1987).
+- **m4** : relecture d'un choix de projet : « La Super 5 neuve · +30 000 F » (le « + » fait penser à un gain).
+- **m5** : « Mon foyer », guillemets imbriqués : « C'est fait : la 405 break ! « Enfin de la place pour tout le monde ! » ».
+- **m6** : courbe de l'écran de fin de dix ans au PC : l'étiquette rouge de l'écart chevauche les courbes, peu lisible.
+
+### Critères d'acceptation
+- [x] Périmètre : 28 fichiers (données, logique, interface, outils de capture, tests, bases de connaissances), rien d'inattendu. `main` n'a avancé que sur 3 documents que la branche ne touche pas ; fusion simulée (`merge-tree`) sans conflit.
+- [x] Tests automatiques ; 1984-88 inchangé.
+- [x] A1, A2 / N1, N2, M5, M6, correctif de bascule.
+- [x] Aucun jeton, 0 SCRIPT ERROR en parties réelles.
+- [x] Séries complètes de captures en code 0.
+
+### Non vérifié
+Vrai téléphone (tactile, ressenti), ressenti en mouvement, export et exe signé / APK (à faire après fusion), relecture humaine de tous les textes et de toutes les images des séries.
+
+### Fichiers de preuve (hors dépôt)
+`C:\Users\arthu\AppData\Local\Temp\claude\a5f3148d28e60fc6\b77abd8d-5910-4bb5-a447-5b2479db06ee\scratchpad\r10d_p2_2130050140\` : `tests.log`, `cibles.log`, `serie_i.log`, `serie_v.log`, `report.txt`, `dates.txt`, `c\partie_*.txt` / `.err`, `c\img\*.png`, `c\godot\captures\*.png`, `mont\*.png`.
