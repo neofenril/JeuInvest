@@ -25,30 +25,46 @@ static func donnees() -> Dictionary:
 	return Donnees.charger("projets")
 
 
-static func _def(pid: String) -> Dictionary:
-	for p: Dictionary in donnees()["projets"]:
-		if str(p["id"]) == pid:
-			return p
-	# Projet d'un chapitre déjà quitté, encore en cours : il se termine selon les règles de son chapitre (lot 10a)
-	for c: Dictionary in Donnees.chapitres(true):
-		for p: Dictionary in Donnees.charger_dans(str(c["id"]), "projets").get("projets", []):
+## Les ids de projets et d'options sont les mêmes d'un chapitre à l'autre (P1, P2A…) : toujours préciser le chapitre d'un projet
+## qui vient d'un autre chapitre (voir chapitre_de_cle) ; sans précision, le chapitre actif, puis les autres.
+static func _def(pid: String, chapitre := "") -> Dictionary:
+	for liste: Array in _listes(chapitre):
+		for p: Dictionary in liste:
 			if str(p["id"]) == pid:
 				return p
 	return {}
 
 
 ## Option (« P1C ») et son projet (« P1 ») : { option, projet }.
-static func _option(oid: String) -> Dictionary:
-	for p: Dictionary in donnees()["projets"]:
-		for o: Dictionary in p["options"]:
-			if str(o["id"]) == oid:
-				return {"option": o, "projet": p}
-	for c: Dictionary in Donnees.chapitres(true):
-		for p: Dictionary in Donnees.charger_dans(str(c["id"]), "projets").get("projets", []):
+static func _option(oid: String, chapitre := "") -> Dictionary:
+	for liste: Array in _listes(chapitre):
+		for p: Dictionary in liste:
 			for o: Dictionary in p["options"]:
 				if str(o["id"]) == oid:
 					return {"option": o, "projet": p}
 	return {}
+
+
+## Listes de projets où chercher, dans l'ordre : le chapitre demandé, le chapitre actif, puis tous les chapitres.
+static func _listes(chapitre: String) -> Array:
+	var out := []
+	if chapitre != "":
+		out.append(Donnees.charger_dans(chapitre, "projets").get("projets", []))
+	out.append(donnees()["projets"])
+	for c: Dictionary in Donnees.chapitres(true):
+		out.append(Donnees.charger_dans(str(c["id"]), "projets").get("projets", []))
+	return out
+
+
+## Chapitre d'origine d'un état de projet : préfixe de la clé archivée (« 1984:P1 »), sinon le champ « chapitre » d'un projet
+## encore en cours après la bascule, sinon "" (chapitre actif).
+static func chapitre_de_cle(cle: String, s: Dictionary) -> String:
+	return cle.get_slice(":", 0) if cle.contains(":") else str(s.get("chapitre", ""))
+
+
+## Option choisie d'un état de projet, lue dans les données de son chapitre.
+static func _option_etat(s: Dictionary) -> Dictionary:
+	return _option(str(s["option"]), str(s.get("chapitre", "")))["option"]
 
 
 static func _mois_de(e: EtatPartie, d: String) -> int:
@@ -93,9 +109,9 @@ static func apres_chargement(e: EtatPartie, avait_projets: bool) -> void:
 		e.projets["apports"] = {}
 
 
-## Changement de chapitre (lot 10a) : les projets terminés de l'ancien chapitre sont rangés sous « <chapitre>:<id> » (les ids du
-## nouveau chapitre sont préfixés par son chapitre, ou libres) ; un projet en cours reste sous son id et se termine selon ses règles ;
-## les états des projets du nouveau chapitre sont créés. N'agit que si les projets sont actifs.
+## Changement de chapitre (lot 10a) : les projets terminés de l'ancien chapitre sont rangés sous « <chapitre>:<id> » ; un projet
+## en cours reste sous son id, garde son chapitre (champ « chapitre ») et se termine selon ses règles, puis est archivé à son tour
+## (_archiver_reporte) ; les états des projets du nouveau chapitre sont créés. N'agit que si les projets sont actifs.
 static func changer_chapitre(e: EtatPartie, ancien: String) -> void:
 	if not e.projets.has("projets"):
 		return
@@ -110,6 +126,8 @@ static func changer_chapitre(e: EtatPartie, ancien: String) -> void:
 		if str(s["etat"]) in ["realise", "realise_apres_report", "abandonne"] and nouveaux.has(str(pid)):
 			etats["%s:%s" % [ancien, pid]] = s
 			etats.erase(pid)
+		elif str(s["etat"]) != "attente" and not s.has("chapitre"):
+			s["chapitre"] = ancien   # il se termine avec les données de son chapitre (mêmes ids dans le nouveau)
 	for pid in nouveaux:
 		if not etats.has(pid):
 			etats[pid] = _etat_vide()
@@ -212,7 +230,7 @@ static func preparer(e: EtatPartie, notifs: Array) -> void:
 					s["etat"] = "choix"
 					en_cours = pid
 			"en_cours":
-				var o: Dictionary = _option(str(s["option"]))["option"]
+				var o := _option_etat(s)
 				if not bool(s["rappel_fait"]) and e.m >= int(s["m_echeance_initiale"]) - int(donnees()["rappel_mois"]) and e.m < int(s["m_echeance"]):
 					s["rappel_fait"] = true
 					notifs.append(_notif_rappel(e, s, o))
@@ -476,7 +494,7 @@ static func contenu(e: EtatPartie) -> Dictionary:
 			"texte": Format.gabarit(str(p["texte"]), {"echeance": echeance_p, "prenoms": Banquier.prenoms_enfants(e)}), "choix": ch}
 	var pid := str(e.modale.get("projet", ""))
 	var s: Dictionary = _etats(e)[pid]
-	var o: Dictionary = _option(str(s["option"]))["option"]
+	var o := _option_etat(s)
 	var mt := montant_option(o)
 	var dispo := disponible(e)
 	var manque := maxf(0.0, mt - dispo)
@@ -595,7 +613,7 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 	else:
 		var pid2 := str(e.modale["projet"])
 		var s2: Dictionary = _etats(e)[pid2]
-		var o2: Dictionary = _option(str(s2["option"]))["option"]
+		var o2 := _option_etat(s2)
 		var mt := montant_option(o2)
 		var h: Dictionary = donnees()["humeur"]
 		var vals := _vals(e, o2, int(s2["m_echeance"]))
@@ -632,11 +650,27 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 	r["humeur_apres"] = Foyer.humeur_visible(e)
 	if str(r["etape"]) == "echeance" and str(_etats(e)[str(e.modale["projet"])]["etat"]) in ["realise", "realise_apres_report"]:
 		e.noter_evt_rue("projet_realise", str(e.modale["id"]))
+	if str(r["etape"]) == "echeance":
+		_archiver_reporte(e, str(e.modale["projet"]))
 	e._enregistrer_hist()
 	vu["consequence"] = r["consequence"]
 	vu["montant_choisi"] = r["montant"]
 	vu["ventes_faites"] = r["ventes"]
 	return r
+
+
+## Projet d'un chapitre quitté qui vient de se terminer : rangé sous « <chapitre>:<id> » comme les autres, et le projet de même
+## id du chapitre courant reprend son état « attente » (il sera proposé à sa date).
+static func _archiver_reporte(e: EtatPartie, pid: String) -> void:
+	var etats := _etats(e)
+	var s: Dictionary = etats.get(pid, {})
+	if not s.has("chapitre") or not str(s["etat"]) in ["realise", "realise_apres_report", "abandonne"]:
+		return
+	etats["%s:%s" % [str(s["chapitre"]), pid]] = s
+	etats.erase(pid)
+	for x: Dictionary in donnees().get("projets", []):
+		if str(x["id"]) == pid:
+			etats[pid] = _etat_vide()
 
 
 ## Paiement de la réalisation : joueur (compte courant puis Livret A) et témoins (R-MIROIR, compte courant). Un
@@ -676,7 +710,7 @@ static func projet_en_cours(e: EtatPartie) -> Dictionary:
 	if pid == "":
 		return {}
 	var s: Dictionary = _etats(e)[pid]
-	var o: Dictionary = _option(str(s["option"]))["option"]
+	var o := _option_etat(s)
 	var mt := montant_option(o)
 	var dispo := disponible(e)
 	return {"id": str(o["id"]), "nom": str(o["nom"]), "icone": str(o["icone"]), "montant": mt, "m_echeance": int(s["m_echeance"]),
@@ -692,7 +726,7 @@ static func projets_passes(e: EtatPartie) -> Array:
 	for p: Dictionary in donnees()["projets"]:
 		var s: Dictionary = _etats(e)[str(p["id"])]
 		if str(s["etat"]) in ["realise", "realise_apres_report", "abandonne"]:
-			var o: Dictionary = _option(str(s["option"]))["option"]
+			var o := _option_etat(s)
 			out.append({"id": str(o["id"]), "nom": str(o["nom"]), "icone": str(o["icone"]), "montant": montant_option(o),
 				"statut": str(s["etat"]), "m": int(s["m_fin"]), "ab": e.ab_de(int(s["m_fin"]))})
 	return out
@@ -704,7 +738,7 @@ static func ligne_guichet(e: EtatPartie) -> String:
 	if p.is_empty():
 		return ""
 	var t: Dictionary = donnees()["textes"]
-	var o: Dictionary = _option(str(p["id"]))["option"]
+	var o := _option_etat(_etats(e)[_pid_en_cours(e)])
 	var n := int(p["mois_restants"])
 	var dans := str(t["ce_mois"]) if n <= 0 else (str(t["dans_mois_un"]) if n == 1 else Format.gabarit(str(t["dans_mois"]), {"n": str(n)}))
 	return Format.gabarit(str(t["guichet_reporte" if bool(p["report_utilise"]) else "guichet"]), {"court": str(o["court"]), "echeance": str(p["echeance_txt"]), "dans": dans,

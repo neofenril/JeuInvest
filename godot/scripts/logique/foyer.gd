@@ -218,8 +218,9 @@ static func _regler_humeur(e: EtatPartie, valeur: int, cause: String, notifs: Ar
 	var titre := str(t[_cle_visible(apres)])
 	if apres == 1 and avant == 0:
 		titre = str(t["neutre_depuis_contente"])
-	notifs.append({"type": "humeur", "source": "maison", "cls": "neutre", "humeur": apres, "titre": titre,
-		"texte": str(e.foyer.get("derniere_cause", "")) if cause != "" else humeur_phrase(e) + ".", "bulle": true,
+	# Lot 10d (A1) : gabarits ({Proche}, {e_p}…) rendus à l'émission (la bulle de la maison affiche le titre tel quel).
+	notifs.append({"type": "humeur", "source": "maison", "cls": "neutre", "humeur": apres, "titre": str(e.rendre(titre)),
+		"texte": str(e.rendre(str(e.foyer.get("derniere_cause", "")) if cause != "" else humeur_phrase(e) + ".")), "bulle": true,
 		"cause": type_cause if cause != "" else ""})
 
 
@@ -694,6 +695,7 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 	elif int(h) != 0:
 		_regler_humeur(e, int(e.foyer.get("humeur", 0)) + int(h), cause, notifs, type_cause)
 	var cons := consequence(e, c, choix_id)
+	var rv := revenu_choix(e, c, choix_id) if bool(c.get("carriere", false)) else 0.0   # le montant par mois montré sur la carte
 	var s: Dictionary = e.foyer["creneaux"].get(str(it.get("creneau", "")), {})
 	if not s.is_empty():
 		s["etat"] = "joue"
@@ -701,10 +703,11 @@ static func resoudre(e: EtatPartie, choix_id: String, vu: Dictionary) -> Diction
 		s["m"] = e.m
 	(e.foyer["jouees"] as Array).append({"id": id, "creneau": str(it.get("creneau", "")), "titre": str(c["titre"]), "choix": choix_id,
 		"libelle": str(ch["libelle"]), "montant": mt, "humeur_effet": h if h is String else int(h), "picto": _picto(h), "m": e.m, "ab": a,
-		"carriere": bool(c.get("carriere", false)) or bool(c.get("moment_carriere", false)), "cause": type_cause})
+		"carriere": bool(c.get("carriere", false)) or bool(c.get("moment_carriere", false)), "cause": type_cause, "revenu_mois": rv})
 	e._enregistrer_hist()
 	vu["consequence"] = cons
 	vu["montant_choisi"] = mt
+	vu["revenu_mois_choisi"] = rv
 	return {"choix": choix_id, "kind": "carte", "montant": mt, "consequence": cons, "humeur_avant": avant,
 		"humeur_apres": humeur_visible(e), "notifs": notifs}
 
@@ -730,8 +733,15 @@ static func _resoudre_aucun(e: EtatPartie, c: Dictionary, vu: Dictionary) -> Dic
 
 ## Entrée d'historique d'une carte (appelé par EtatPartie._historiser_modale) : montant du choix, ligne de conséquence.
 static func completer_historique(entree: Dictionary, c: Dictionary) -> void:
-	entree["montant"] = float(c.get("montant_choisi", 0.0))
-	entree["a_montant"] = true
+	# Lot 10d (M6) : jamais « 0 F » pour une carte sans montant ; une carte de carrière montre son revenu par mois
+	var mt := float(c.get("montant_choisi", 0.0))
+	var rv := float(c.get("revenu_mois_choisi", 0.0))
+	entree["montant"] = mt
+	entree["a_montant"] = absf(mt) > EPS
+	if absf(mt) <= EPS and absf(rv) > EPS:
+		entree["montant"] = rv
+		entree["a_montant"] = true
+		entree["suffixe"] = "par mois"
 	entree["resume"] = EtatPartie.resume_texte(str(c.get("consequence", "")))
 	if c.has("choix_libelle"):
 		entree["choix"] = str(c["choix_libelle"])
@@ -744,6 +754,16 @@ static func completer_historique(entree: Dictionary, c: Dictionary) -> void:
 ## Cartes jouées, de la plus ancienne à la plus récente (copie).
 static func cartes_jouees(e: EtatPartie) -> Array:
 	return (e.foyer.get("jouees", []) as Array).duplicate(true)
+
+
+## Montant d'une carte jouée tel qu'il s'écrit dans une ligne (« Mon foyer », relecture) : la somme signée, sinon le revenu
+## par mois (« +222 F / mois »), sinon "" (jamais « 0 F »). j : un élément de cartes_jouees().
+static func montant_joue_txt(j: Dictionary, a: int) -> String:
+	var mt := float(j.get("montant", 0.0))
+	if absf(mt) > EPS:
+		return Format.ecart(mt, a)
+	var rv := float(j.get("revenu_mois", 0.0))
+	return "%s / mois" % Format.ecart(rv, a) if absf(rv) > EPS else ""
 
 
 ## Résumé des créneaux (tests et compte rendu) : { Sid: { etat, carte (tirée), jouee, m, abandon } }.

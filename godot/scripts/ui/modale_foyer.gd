@@ -67,8 +67,11 @@ static func lignes_foyer(e: EtatPartie) -> Array:
 
 
 ## Texte d'une ligne de carte jouée : « Vacances 87 · L'île de Ré · − 7 000 F ».
+## Carte de carrière : « … · +222 F / mois » ; sans montant ni revenu : rien de monétaire (M6, Foyer.montant_joue_txt).
 static func texte_carte(c: Dictionary, a: int) -> String:
-	return "%s · %s · %s" % [str(c.get("titre", "")), str(c.get("libelle", "")), Format.ecart(float(c.get("montant", 0.0)), a)]
+	var t := "%s · %s" % [str(c.get("titre", "")), str(c.get("libelle", ""))]
+	var montant := Foyer.montant_joue_txt(c, a)
+	return t if montant == "" else "%s · %s" % [t, montant]
 
 
 ## Lignes du bloc PROJET EN COURS (docs/24 §1.4) : [nom · échéance · dans N mois, « … sans rien vendre · + … placés »,
@@ -132,12 +135,12 @@ func ouvrir(e: EtatPartie, depart: Vector2, fab := {}) -> void:
 	tete.add_child(croix)
 	v.add_child(tete)
 	# Corps : deux colonnes (PC) ou une seule qui défile (téléphone, version jouable)
-	var corps: BoxContainer = VBoxContainer.new() if compact else HBoxContainer.new()
+	var corps: BoxContainer = HBoxContainer.new()
 	corps.name = "Defilant"
 	corps.add_theme_constant_override("separation", 14 if compact else 30)
 	v.add_child(corps)
 	var interieur := largeur - 66.0
-	var col := (interieur - 30.0) / 2.0 if not compact else interieur
+	var col := (interieur - 30.0) / 2.0 if not compact else interieur - 30.0
 	onglet_foyer = VBoxContainer.new()
 	onglet_foyer.name = "ColonneFoyer"
 	onglet_foyer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -160,6 +163,12 @@ func ouvrir(e: EtatPartie, depart: Vector2, fab := {}) -> void:
 	corps.add_child(onglet_foyer)
 	if not compact:
 		corps.add_child(onglet_cartes)
+	else:
+		# M6 : réserve à droite pour la barre de défilement (les valeurs longues ne la touchent plus)
+		var reserve := Control.new()
+		reserve.name = "ReserveDefilement"
+		reserve.custom_minimum_size = Vector2(30, 0)
+		corps.add_child(reserve)
 	var bh := ModaleOutils.bouton_papier("TOUS LES COURRIERS DE LA MAISON  ›", "", compact)
 	bh.name = "Historique"
 	bh.pressed.connect(m.fermer.bind("extra"))

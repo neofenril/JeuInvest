@@ -328,13 +328,43 @@ func _test_carriere() -> void:
 			var lst := md.courant.find_child("Val_Statut", true, false) as Label if is_instance_valid(md.courant) else null
 			_verifier("Mon foyer : ligne Métier == metier() et mention du statut « prenant » (K4 acceptée)",
 				lmet != null and lmet.text == e.metier() and e.statut_carriere() == "prenant" and lst != null and lst.text != "", "" if lmet == null else lmet.text)
+			var lk4 := md.courant.find_child("Carte_0", true, false) as Label if is_instance_valid(md.courant) else null
+			var jouee: Dictionary = e.cartes_jouees()[-1]
+			var par_mois := Format.ecart(float(jouee.get("revenu_mois", 0.0)), e.ab_de(int(jouee["m"]))) + " / mois"
+			_verifier("Mon foyer : la carte de carrière jouée montre son revenu par mois (« %s »), jamais « 0 F » (M6)" % par_mois,
+				lk4 != null and float(jouee.get("revenu_mois", 0.0)) > 0.0 and lk4.text.contains("Accepter") and lk4.text.ends_with(par_mois), "" if lk4 == null else lk4.text)
 			md.fermer("fermer")
 			await get_tree().create_timer(0.5).timeout
+			var hk: Dictionary = e.historique.filter(func(x: Dictionary) -> bool: return str(x["genre"]) == "carte")[-1]
+			var relue := await _choix_relu(md, hk, e.ab_de(int(hk["m"])))
+			_verifier("Relecture de K4 acceptée : « Votre choix » porte le revenu par mois", relue.ends_with("  ·  " + par_mois), relue)
+	var sans := await _choix_relu(md, {"contenu": {"titre": "T", "choix_fait": "Refuser", "montant_choisi": 0.0, "revenu_mois_choisi": 0.0}}, a1)
+	_verifier("Relecture d'une carte sans montant ni revenu : ni « 0 F » ni séparateur", sans == "Votre choix : Refuser", sans)
+	md.lecture_notification({"source": "maison", "contenu": {"titre": "T", "texte": "x"}, "a_montant": true, "montant": -100.0, "suffixe": "par mois"}, a1)
+	await _images(4)
+	var lmn := md.courant.find_child("MontantLecture", true, false) as Label if is_instance_valid(md.courant) else null
+	_verifier("Relecture d'une notification : le montant garde son suffixe « par mois »",
+		lmn != null and lmn.text.ends_with(Format.ESPACE + "F par mois"), "" if lmn == null else lmn.text)
+	md.fermer("fermer")
+	await get_tree().create_timer(0.5).timeout
+	_verifier("Mon foyer : une carte avec montant le garde", ModaleFoyer.texte_carte({"titre": "T", "libelle": "L", "montant": -1000.0}, a1).ends_with(Format.ESPACE + "F"))
+	_verifier("Mon foyer : ni montant ni revenu : titre et choix seuls", ModaleFoyer.texte_carte({"titre": "T", "libelle": "L", "montant": 0.0}, a1) == "T · L")
 	_verifier("Page « Mon foyer » de 1984-1988 : pas de ligne Métier", ModaleFoyer.texte_metier(_etat_1984()) == "")
 	Partie.sauvegarde_auto = false
 	scene.queue_free()
 	await _images(2)
 	_verifier("départ de la carrière en 1989 (mois de départ)", Dates.annee(a1) == 1989)
+
+
+## Ouvre la relecture d'une carte, rend la ligne « Votre choix » puis la ferme.
+func _choix_relu(md: Modales, h: Dictionary, a: int) -> String:
+	md.carte_lecture(h, a)
+	await _images(4)
+	var l := md.courant.find_child("ChoixPris", true, false) as Label if is_instance_valid(md.courant) else null
+	var t := l.text if l != null else "?"
+	md.fermer("fermer")
+	await get_tree().create_timer(0.5).timeout
+	return t
 
 
 func _etat_1984() -> EtatPartie:
@@ -581,6 +611,28 @@ func _test_enveloppes() -> void:
 			d["ordre_carnet"].append(pid)
 		if not Banquier.produits_vus(e).has(pid):
 			Banquier.produits_vus(e).append(pid)
+	# N2 : « ouvrir » chez le banquier sur une SCPI ou un PEA (le moteur rend OUVRIR_FICHE) : la fiche, pas le formulaire à prix ; et la
+	# garde de l'en-tête de prix tient si le formulaire est demandé quand même (une SCRIPT ERROR ferait échouer tests.ps1)
+	for pid in ["scpi", "pea"]:
+		var pn := PanneauBanque.new()
+		env[0].add_child(pn)
+		pn.construire(e, pid, Banquier.OUVRIR_FICHE)
+		await _images(2)
+		_verifier("%s ouvert par le banquier : fiche sans formulaire à curseur" % pid, pn.zone_droite().find_children("*", "HSlider", true, false).is_empty())
+		pn.call("_afficher_ordre", pid, "a", -1.0)
+		var prix := pn.call("_info_prix", e.ab_courant()) as Label
+		_verifier("%s sans cours du jour : aucun prix affiché en tête d'ordre" % pid, is_nan(e.cours(pid)) and prix.text == "", prix.text)
+		prix.free()
+		pn.queue_free()
+		await _images(2)
+	var pa := PanneauBanque.new()
+	env[0].add_child(pa)
+	pa.construire(e, "elf", -1.0)
+	var prix_elf := pa.call("_info_prix", e.ab_courant()) as Label
+	_verifier("action avec un cours : le prix reste affiché en tête d'ordre", prix_elf.text.begins_with(Format.montant(e.cours("elf"), e.ab_courant(), true)), prix_elf.text)
+	prix_elf.free()
+	pa.queue_free()
+	await _images(2)
 	md.ouvrir_banque(e, "scpi", -2.0)
 	await _images(10)
 	var fiche := md.banque.zone_droite()
@@ -752,7 +804,8 @@ func _test_demo_complete(actif: bool, cartes := false) -> void:
 		garde += 1
 	hud.maj(e, false)
 	var af := e.ab_courant()
-	var attendus := [Format.montant(e.joueur.cc, af), Format.montant(e.patrimoine(e.joueur), af), Format.entier(e.frais_payes(), af)]
+	# M4 : un compte exactement à zéro s'écrit « 0 F » (entier), pas « 0,00 F »
+	var attendus := [Format.entier(0.0, af) if absf(e.joueur.cc) < 0.005 else Format.montant(e.joueur.cc, af), Format.montant(e.patrimoine(e.joueur), af), Format.entier(e.frais_payes(), af)]
 	var affiches := [hud.l_cc.text, hud.l_patr.text, hud.l_frais.text]
 	_verifier("%s : le HUD affiche les chiffres de l'état (compte, patrimoine, frais payés)" % nom, affiches == attendus, "%s / attendu %s" % [str(affiches), str(attendus)])
 	_verifier("%s : démo jouée jusqu'au bout (décembre 1988, sans faillite), HUD mis à jour chaque mois (%d)" % [nom, mois_hud],

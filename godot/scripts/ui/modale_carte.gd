@@ -399,8 +399,12 @@ func lecture(h: Dictionary, a: int) -> void:
 	txt.name = "Defilant"
 	txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(txt)
-	var montant := float(c.get("montant_choisi", h.get("montant", 0.0)))
-	var lc := Style.label("Votre choix : %s  ·  %s" % [str(c.get("choix_fait", h.get("choix", ""))), texte_montant(montant, a)], 24, Style.ui_gras(), PalettePixel.couleur("bois_sombre"))
+	# M6 : somme, sinon revenu par mois, sinon rien (jamais « 0 F », ni séparateur seul)
+	var montant := Foyer.montant_joue_txt({"montant": c.get("montant_choisi", 0.0), "revenu_mois": c.get("revenu_mois_choisi", 0.0)}, a)
+	var choisi := "Votre choix : %s" % str(c.get("choix_fait", h.get("choix", "")))
+	if montant != "":
+		choisi += "  ·  " + montant
+	var lc := Style.label(choisi, 24, Style.ui_gras(), PalettePixel.couleur("bois_sombre"))
 	lc.name = "ChoixPris"
 	lc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(lc)

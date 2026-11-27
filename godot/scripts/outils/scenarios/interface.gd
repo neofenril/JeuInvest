@@ -15,7 +15,7 @@ const ETAPES := ["planche_cadres", "cibles", "hud", "polices_jeu", "etiquettes_b
 	"rue_bloc", "rue_pastille", "rue_eteinte", "rue_notifs", "historique_rue", "krach_jours", "krach_sans_jours", "un_an_apres", "un_an_apres_vendu", "un_an_apres_renforce", "un_an_apres_exemple", "fin_rue", "fin_rue_negatif", "fin_sans_rue", "fin_titre", "fin_record", "fin_hors_record", "fin_sans_titre", "titre_record", "titre_sans_records", "titres_collection", "intro",
 	"frise_10ans", "mon_argent_10ans", "carnet_13",
 	"carriere_k4", "carriere_k5", "mon_foyer_metier",
-	"portraits_foyer", "fin_1988", "intro_christine", "titre_palmares_v2", "golfe_un_an_apres", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres"]
+	"portraits_foyer", "fin_1988", "intro_christine", "titre_palmares_v2", "golfe_un_an_apres", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "fin_1993_long", "collection_chapitres"]
 const RACINE_ESSAI := "res://tests/donnees/chapitres"   # jeu d'essai à deux chapitres ouverts (en attendant les données de 1989)
 const MOIS_COURRIER := "1986-01"   # départ des étapes du bouton COURRIER (prochain arrêt : novembre 1986, D07)
 const ACCENTS := "ÉÈÊÀÇÔŒÙÎ àéèêçôœùî « » ‹ › · − ×"   # « → » : absent des polices, plus jamais affiché (F1-L)
@@ -57,7 +57,7 @@ func jouer(etape: String) -> void:
 			jeu.modales.add_child(planche)
 			planche.position = Vector2(60, 200)
 			await sc.delai(0.8)
-		"fin_1988", "intro_christine", "titre_palmares_v2", "golfe_un_an_apres", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "collection_chapitres":
+		"fin_1988", "intro_christine", "titre_palmares_v2", "golfe_un_an_apres", "passage_1989", "vitrine_golfe", "fiche_scpi", "vente_differee", "fiche_pea", "pep_en_savoir_plus", "choix_depart", "fin_1993", "fin_1993_long", "collection_chapitres":
 			await _chapitres(etape, jeu)
 		"etiquettes_bord", "etiquettes_aller", "etiquettes_banque", "etiquettes_gazette":
 			await _etiquettes(etape, jeu)
@@ -453,9 +453,10 @@ func _carte(etape: String, jeu: Node) -> void:
 			if r.is_empty():
 				print("UI carte conclusion=absente (choix refusé)")
 				return
+			jeu.derniere_bulle = null   # M7 : repère posé AVANT la conclusion (la bulle peut naître pendant le délai ci-dessous)
 			modales.conclure_carte(r, porte)
 			await sc.delai(1.0)
-			var lq := modales.courant.find_child("Consequence", true, false) as Label if modales.courant != null else null
+			var lq :=modales.courant.find_child("Consequence", true, false) as Label if modales.courant != null else null
 			print("UI carte consequence=« %s » = r=« %s » egal=%s" % [lq.text if lq != null else "?", str(r.get("consequence", "")), "oui" if lq != null and lq.text == str(r.get("consequence", "")) else "non"])
 			_mesurer(etape, modales.courant)
 			print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
@@ -463,11 +464,10 @@ func _carte(etape: String, jeu: Node) -> void:
 			var nom_png := "res://captures/l4_carte_conclusion_vue%s.png" % ("_tel" if Ecran.compact() else "")
 			sc.get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path(nom_png))
 			# La bulle d'humeur née de cette carte n'apparaît qu'après le rangement (CA-I3)
-			var avant: Bulle = jeu.derniere_bulle if is_instance_valid(jeu.derniere_bulle) else null
 			await sc.attendre_que(func() -> bool: return not modales.carte_en_cours, 8.0)
 			await sc.delai(0.3)
 			var apres: Bulle = jeu.derniere_bulle if is_instance_valid(jeu.derniere_bulle) else null
-			print("UI bulle apres_carte=%s texte=« %s »" % ["oui" if apres != null and apres != avant else "non", apres.texte_label.text if apres != null else ""])
+			print("UI bulle apres_carte=%s texte=« %s »" % ["oui" if apres != null else "non", apres.texte_label.text if apres != null else ""])
 		"carte_relue":
 			await jouer_carte(jeu, "a")
 			await sc.delai(0.3)
@@ -1783,6 +1783,18 @@ func _carriere(etape: String, jeu: Node) -> void:
 	print("UI polices pixelify_min=%d atkinson_min=%d chiffres_pixelify=%d" % [_pix_min, _atk_min, _chiffres_pixelify])
 
 
+## Pire cas de l'écran de fin de dix ans (M5) : les titres et les noms de projets les plus longs des deux chapitres.
+func _pire_cas_fin(b: Dictionary) -> void:
+	var titres: Array = b.get("titres", [])
+	if titres.size() >= 2:
+		titres[0].merge({"nom": "L'écureuil de la Caisse d'épargne", "pourquoi": "30 % promis, 90 % perdus : plus la promesse est belle, plus le risque est grand."}, true)
+		titres[1].merge({"nom": "Le déserteur de l'automne 1990", "pourquoi": "Revendables à tout moment, disait la brochure : personne n'a voulu les racheter."}, true)
+	var liste: Array = []
+	for nom in ["La Grèce pour les 30 ans de Sylvie", "Le salon et la chaîne hi-fi", "La maison avec jardin : l'apport", "Le Canada en camping-car"]:
+		liste.append({"nom": nom, "etat": "abandonne"})
+	b["projets"] = {"total": 4, "realises": 0, "liste": liste}
+
+
 ## Lot 10b (I3) : le vrai carnet de 1992 (chapitre 1989 : jusqu'à 13 produits) : 4 colonnes au PC, défilement au téléphone.
 func _carnet_13(jeu: Node) -> void:
 	var e := Partie.etat
@@ -1862,7 +1874,7 @@ func _chapitres(etape: String, jeu: Node) -> void:
 			await sc.delai(1.6)
 			_mesurer(etape, modales.courant)
 			print("UI intro_christine prenom=%s portrait=%s" % [str(Partie.etat.foyer_visuel()["joueur"]["prenom"]), str(modales.etat_intro().infos.get("portrait", false))])
-		"passage_1989", "vitrine_golfe", "golfe_un_an_apres", "fin_1993":
+		"passage_1989", "vitrine_golfe", "golfe_un_an_apres", "fin_1993", "fin_1993_long":
 			sc.partir_de_la_rue(etape)
 			var e := EtatPartie.new()
 			var cfg := Donnees.config_chapitre("1984", 5)
@@ -1905,6 +1917,8 @@ func _chapitres(etape: String, jeu: Node) -> void:
 				var b := Bilan.calculer(e)
 				var chemin := "user://capture_chap_%d.sav" % OS.get_process_id()
 				b["record"] = Records.enregistrer(b, "capture", chemin, "2026-11-19")
+				if etape == "fin_1993_long":
+					_pire_cas_fin(b)
 				modales.dernier_bilan = b
 				Records.effacer(chemin)
 				Partie.chemin_records = chemin
@@ -1913,8 +1927,15 @@ func _chapitres(etape: String, jeu: Node) -> void:
 			_mesurer(etape, modales.courant)
 			if etape == "passage_1989":
 				print("UI passage titre=%s valeurs=%s promesse=%s" % [modales.etat_passage().infos.get("titre", ""), str(modales.etat_passage().infos.get("valeurs", [])), modales.etat_passage().infos.get("promesse", "")])
-			elif etape == "fin_1993":
+			elif etape.begins_with("fin_1993"):
 				print("UI fin_1993 plaques=%s records=%s" % [str(modales.etat_fin().infos_fin.get("plaques", 0)), str(modales.etat_fin().infos_fin.get("records", []))])
+				if not Ecran.compact():
+					# M5 : au PC rien ne défile et la légende de la courbe reste dans la feuille
+					var feuille: Rect2 = modales.courant.get_global_rect()
+					var cb := modales.courant.find_child("CourbeFin", true, false) as Control
+					var lg := modales.courant.find_child("LegendeCourbe", true, false) as Control
+					print("UI fin_1993_mep defile=%s feuille=%d ecran=%d courbe_h=%d legende_dedans=%s" % ["oui" if modales.courant.find_child("DefilementCorps", true, false) != null else "non",
+						int(feuille.size.y), int(modales.get_viewport_rect().size.y), int(cb.size.y), "oui" if feuille.encloses(lg.get_global_rect()) else "non"])
 		_:
 			sc.partir_de_la_rue(etape)
 			await _aller_loin(Dates.lire("1992-08"))
@@ -1987,9 +2008,20 @@ func _hud(jeu: Node) -> void:
 	StrategieTest.jouer_mois(e, true)
 	if not e.modale.is_empty():
 		e.resolution_auto()
+	# M7 : à 0,1 s par mois le saut peut déjà être fini après 0,4 s (arrêt proche) : on observe l'état deux images après
+	# l'appui, et le signal saut_change dit si le saut a bien été lancé
+	var lance := [false]
+	var surveille := func(actif: bool) -> void:
+		if actif:
+			lance[0] = true
+	Partie.saut_change.connect(surveille)
 	jeu.demander_saut()
-	await sc.delai(0.4)
-	print("UI barre format=%s etat=%s %s" % [format, "saut" if Partie.saut_actif else "SAUT_IMPOSSIBLE", hud.etat_barre()])
+	await sc.get_tree().process_frame
+	await sc.get_tree().process_frame
+	var barre := hud.etat_barre()
+	var en_saut := Partie.saut_actif
+	Partie.saut_change.disconnect(surveille)
+	print("UI barre format=%s etat=%s %s" % [format, "saut" if (en_saut or lance[0]) else "SAUT_IMPOSSIBLE", barre])
 	if Partie.saut_actif:
 		jeu.demander_saut()
 	Partie.changer_vitesse(0)

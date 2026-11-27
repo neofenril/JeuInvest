@@ -629,8 +629,19 @@ static func resoudre(e: EtatPartie, id: String, choix_id: String) -> Dictionary:
 			b["nouveaux"].append(pid)
 	if choix_id == "ouvrir":
 		r["ouvrir"] = produits[0]
-		r["montant"] = montant_exemple(e, produits[0])
+		# Lot 10d (N2) : PEA et SCPI n'ont pas de cours : pas de formulaire d'ordre prérempli (ouvrir sur la fiche)
+		r["montant"] = montant_exemple(e, produits[0]) if a_un_ordre(str(produits[0])) else OUVRIR_FICHE
 	return r
+
+
+## « montant » rendu par une présentation quand la Banque doit s'ouvrir sur la fiche du produit, sans formulaire d'ordre.
+const OUVRIR_FICHE := -2.0
+
+
+## Le produit passe-t-il par le formulaire d'ordre commun (livret, PEL, emprunt, assurance-vie, titres cotés) ?
+## PEA, SCPI et PEP ont leur propre bas de fiche (aucun cours : le formulaire commun ne sait pas les afficher).
+static func a_un_ordre(pid: String) -> bool:
+	return not str(info_produit(pid).get("type", "")) in ["pea", "scpi", "message"]
 
 
 # =====================================================================

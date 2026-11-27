@@ -86,7 +86,7 @@
       "gabarits": { "poste": { "technicien": "technico-commercial{e} itinérant{e}", "christine": "assistant{e} du directeur commercial, en déplacement", "defaut": "poste itinérant" } },
       "a": { "libelle": "Accepter", "prix_F": 0, "nature": "neutre", "sens": "depense", "humeur": -2, "revenu": [ { "pct": 15, "des_rel": 1 }, { "pct": -12.5, "des_rel": 1 } ], "statut": "prenant",
         "metier": { "technicien": ["Technico-commercial itinérant", "Technico-commerciale itinérante"], "christine": ["Assistant du directeur commercial", "Assistante du directeur commercial"] },
-        "avertissement": "Garde et frais de route déduits. {Proche} vous verra beaucoup moins : le couple peut en souffrir.", "replique": "Encore une valise…" },
+        "avertissement": "La garde du soir est déduite. {Proche} vous verra beaucoup moins : le couple peut en souffrir.", "replique": "Encore une valise…" },
       "b": { "libelle": "Rester à votre poste", "prix_F": 0, "nature": "neutre", "sens": "depense", "humeur": 0, "avertissement": "Pas d'augmentation. Vos soirées restent à la maison.", "replique": "Le soir, tu es là." },
       "pourquoi": "Une augmentation se juge après ses frais : ici, il en reste peu. Le reste se paie en soirées loin des siens." },
     "K5": { "titre": "Le congé formation", "type": "revenu", "carriere": true, "moment_carriere": true, "_certitude": "C",

@@ -169,6 +169,7 @@ func construire(etat: EtatPartie, id: String, montant_initial: float) -> void:
 	v.add_child(pied)
 	_maj_carnet()
 	var depart := id if id != "" else _premier_produit()
+	# montant_initial <= -1.5 : fiche seule (consultation, ou Banquier.OUVRIR_FICHE pour un produit sans formulaire d'ordre, N2)
 	if id != "" and Banquier.presente(e, id) and montant_initial > -1.5:
 		_choisir(depart)
 		_afficher_ordre(depart, "a", montant_initial)
@@ -731,11 +732,13 @@ func _info_prix(a: int) -> Label:
 		_:
 			var p := e.cours(produit)
 			var p0 := e.cours(produit, e.m - 1)
-			t = Format.montant(p, a, true) + (" l'action" if _type() == "action" else " la part")
-			if e.en_offre(produit):
-				t += " · offre publique"
-			elif not is_nan(p0) and p0 > 0.0:
-				t += " · " + Format.pct(p / p0 - 1.0) + " ce mois"
+			# N2 : sans cours du jour (produit sans série de prix), aucun prix affiché ; un cours réel passe toujours
+			if not (is_nan(p) or is_inf(p)):
+				t = Format.montant(p, a, true) + (" l'action" if _type() == "action" else " la part")
+				if e.en_offre(produit):
+					t += " · offre publique"
+				elif not is_nan(p0) and p0 > 0.0:
+					t += " · " + Format.pct(p / p0 - 1.0) + " ce mois"
 	var l := Style.label(t, 20, Style.chiffres(), Style.TEXTE_2)
 	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	return l
