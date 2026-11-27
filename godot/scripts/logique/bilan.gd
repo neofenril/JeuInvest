@@ -25,11 +25,12 @@ static func _projets(e: EtatPartie) -> Dictionary:
 	for cle: String in cles:
 		var s: Dictionary = etats[cle]
 		var pid := cle.get_slice(":", 1) if cle.contains(":") else cle
-		var def := Projets._def(pid)
+		var chapitre := Projets.chapitre_de_cle(cle, s)   # les ids sont les mêmes d'un chapitre à l'autre
+		var def := Projets._def(pid, chapitre)
 		var id := pid
 		var nom := str(def.get("titre", pid))
 		if str(s["option"]) != "":
-			var o: Dictionary = Projets._option(str(s["option"])).get("option", {})
+			var o: Dictionary = Projets._option(str(s["option"]), chapitre).get("option", {})
 			id = str(o.get("id", s["option"]))
 			nom = str(o.get("nom", nom))
 		out["liste"].append({"id": id, "nom": nom, "etat": str(s["etat"])})
