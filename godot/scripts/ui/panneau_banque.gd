@@ -169,8 +169,8 @@ func construire(etat: EtatPartie, id: String, montant_initial: float) -> void:
 	v.add_child(pied)
 	_maj_carnet()
 	var depart := id if id != "" else _premier_produit()
-	if id != "" and Banquier.presente(e, id) and montant_initial > -1.5 and not PanneauEnveloppes.gere(str(Banquier.info_produit(id).get("type", ""))):
-		# N2 : SCPI, PEA et PEP n'ont pas le formulaire à curseur ; « ouvrir » chez le banquier mène à leur fiche
+	# montant_initial <= -1.5 : fiche seule (consultation, ou Banquier.OUVRIR_FICHE pour un produit sans formulaire d'ordre, N2)
+	if id != "" and Banquier.presente(e, id) and montant_initial > -1.5:
 		_choisir(depart)
 		_afficher_ordre(depart, "a", montant_initial)
 	else:
